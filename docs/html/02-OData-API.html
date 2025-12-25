@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OData API</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
+            .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="odata-api">OData API</h1>
+<h2 id="overview">Overview</h2>
+<p>The OData API provides <strong>read-only</strong> access to P21 data using the standard OData v4 protocol. It's the fastest way to query P21 tables and views.</p>
+<h3 id="key-characteristics">Key Characteristics</h3>
+<ul>
+<li><strong>Read-only</strong> - Cannot create, update, or delete data</li>
+<li><strong>Standard protocol</strong> - OData v4 compatible</li>
+<li><strong>Direct access</strong> - Query any P21 table or view</li>
+<li><strong>Efficient</strong> - Supports filtering, pagination, field selection</li>
+<li><strong>No session</strong> - Simple request/response model</li>
+</ul>
+<hr />
+<h2 id="endpoints">Endpoints</h2>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/odataservice/odata/table/{tablename}</code></td>
+<td>Query a database table</td>
+</tr>
+<tr>
+<td><code>/odataservice/odata/view/{viewname}</code></td>
+<td>Query a database view</td>
+</tr>
+</tbody>
+</table>
+<h3 id="base-url-example">Base URL Example</h3>
+<div class="highlight"><pre><span></span><code>https://play.ifpusa.com/odataservice/odata/table/supplier
+</code></pre></div>
+
+<hr />
+<h2 id="authentication">Authentication</h2>
+<p>Include the Bearer token in the Authorization header:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/odataservice/odata/table/supplier</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<p>See <a href="00-Authentication.md">Authentication</a> for token generation.</p>
+<hr />
+<h2 id="query-parameters">Query Parameters</h2>
+<p>All OData query parameters are prefixed with <code>$</code>.</p>
+<h3 id="select-choose-fields">$select - Choose Fields</h3>
+<p>Return only specific fields:</p>
+<div class="highlight"><pre><span></span><code>/odata/table/supplier?$select=supplier_id,supplier_name
+</code></pre></div>
+
+<h3 id="filter-filter-results">$filter - Filter Results</h3>
+<p>Filter records based on conditions:</p>
+<div class="highlight"><pre><span></span><code>/odata/table/supplier?$filter=supplier_id eq 21274
+</code></pre></div>
+
+<h3 id="orderby-sort-results">$orderby - Sort Results</h3>
+<p>Sort by one or more fields:</p>
+<div class="highlight"><pre><span></span><code>/odata/table/supplier?$orderby=supplier_name asc
+</code></pre></div>
+
+<h3 id="top-limit-results">$top - Limit Results</h3>
+<p>Return only N records:</p>
+<div class="highlight"><pre><span></span><code>/odata/table/supplier?$top=10
+</code></pre></div>
+
+<h3 id="skip-pagination">$skip - Pagination</h3>
+<p>Skip N records (combine with $top for paging):</p>
+<div class="highlight"><pre><span></span><code>/odata/table/supplier?$skip=20&amp;$top=10
+</code></pre></div>
+
+<h3 id="count-get-count">$count - Get Count</h3>
+<p>Include total count in response:</p>
+<div class="highlight"><pre><span></span><code>/odata/table/supplier?$count=true
+</code></pre></div>
+
+<hr />
+<h2 id="filter-expressions">Filter Expressions</h2>
+<h3 id="comparison-operators">Comparison Operators</h3>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eq</code></td>
+<td>Equal</td>
+<td><code>$filter=supplier_id eq 21274</code></td>
+</tr>
+<tr>
+<td><code>ne</code></td>
+<td>Not equal</td>
+<td><code>$filter=status ne 'Inactive'</code></td>
+</tr>
+<tr>
+<td><code>gt</code></td>
+<td>Greater than</td>
+<td><code>$filter=amount gt 100</code></td>
+</tr>
+<tr>
+<td><code>ge</code></td>
+<td>Greater or equal</td>
+<td><code>$filter=date ge 2025-01-01</code></td>
+</tr>
+<tr>
+<td><code>lt</code></td>
+<td>Less than</td>
+<td><code>$filter=quantity lt 50</code></td>
+</tr>
+<tr>
+<td><code>le</code></td>
+<td>Less or equal</td>
+<td><code>$filter=price le 99.99</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="logical-operators">Logical Operators</h3>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>and</code></td>
+<td><code>$filter=supplier_id eq 21274 and row_status_flag eq 704</code></td>
+</tr>
+<tr>
+<td><code>or</code></td>
+<td><code>$filter=status eq 'A' or status eq 'B'</code></td>
+</tr>
+<tr>
+<td><code>not</code></td>
+<td><code>$filter=not endswith(name,'Inc')</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="string-functions">String Functions</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>startswith</code></td>
+<td><code>$filter=startswith(supplier_name,'ABC')</code></td>
+</tr>
+<tr>
+<td><code>endswith</code></td>
+<td><code>$filter=endswith(supplier_name,'Inc')</code></td>
+</tr>
+<tr>
+<td><code>contains</code></td>
+<td><code>$filter=contains(description,'filter')</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="null-checks">Null Checks</h3>
+<div class="highlight"><pre><span></span><code>$filter=expiration_date eq null
+$filter=notes ne null
+</code></pre></div>
+
+<hr />
+<h2 id="data-type-formatting">Data Type Formatting</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Format</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>String</td>
+<td>Single quotes</td>
+<td><code>'Active'</code></td>
+</tr>
+<tr>
+<td>Number</td>
+<td>No quotes</td>
+<td><code>21274</code></td>
+</tr>
+<tr>
+<td>Decimal</td>
+<td>No quotes</td>
+<td><code>99.99</code></td>
+</tr>
+<tr>
+<td>Date</td>
+<td>ISO format</td>
+<td><code>2025-01-01</code></td>
+</tr>
+<tr>
+<td>DateTime</td>
+<td>ISO format</td>
+<td><code>2025-01-01T00:00:00.000Z</code></td>
+</tr>
+<tr>
+<td>Boolean</td>
+<td>No quotes</td>
+<td><code>true</code> or <code>false</code></td>
+</tr>
+<tr>
+<td>GUID</td>
+<td>No quotes</td>
+<td><code>5BC2E4CE-0C0A-4394-A066-29B5835424DA</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="string-escaping">String Escaping</h3>
+<p>Single quotes in values must be escaped by doubling:</p>
+<div class="highlight"><pre><span></span><code>$filter=supplier_name eq &#39;O&#39;&#39;Brien Supply&#39;
+</code></pre></div>
+
+<hr />
+<h2 id="response-format">Response Format</h2>
+<h3 id="success-response">Success Response</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;@odata.context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://play.ifpusa.com/odataservice/odata/$metadata#supplier&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;supplier_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">21274</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;supplier_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;row_status_flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">704</span><span class="p">,</span>
+<span class="w">            </span><span class="err">...</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="err">...</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="with-count">With Count</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;@odata.context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;@odata.count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1547</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="error-response">Error Response</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;400&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invalid filter expression&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="common-tables">Common Tables</h2>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>supplier</code></td>
+<td>Supplier master data</td>
+</tr>
+<tr>
+<td><code>customer</code></td>
+<td>Customer records</td>
+</tr>
+<tr>
+<td><code>inv_mast</code></td>
+<td>Inventory master</td>
+</tr>
+<tr>
+<td><code>price_page</code></td>
+<td>Price page definitions</td>
+</tr>
+<tr>
+<td><code>price_book</code></td>
+<td>Price book records</td>
+</tr>
+<tr>
+<td><code>price_library</code></td>
+<td>Price library definitions</td>
+</tr>
+<tr>
+<td><code>product_group</code></td>
+<td>Product groups</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="examples">Examples</h2>
+<h3 id="basic-query">Basic Query</h3>
+<p>Get all suppliers:</p>
+<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/supplier
+</code></pre></div>
+
+<h3 id="filtered-query">Filtered Query</h3>
+<p>Get active price pages for a supplier:</p>
+<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/price_page
+    ?$filter=supplier_id eq 21274 and row_status_flag eq 704
+    &amp;$select=price_page_uid,description,effective_date,expiration_date
+    &amp;$orderby=description
+</code></pre></div>
+
+<h3 id="pagination">Pagination</h3>
+<p>Get page 3 (10 records per page):</p>
+<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/supplier
+    ?$skip=20
+    &amp;$top=10
+    &amp;$count=true
+</code></pre></div>
+
+<h3 id="complex-filter">Complex Filter</h3>
+<p>Products starting with 'FILTER' and price over $10:</p>
+<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/inv_mast
+    ?$filter=startswith(item_id,&#39;FILTER&#39;) and list_price gt 10
+    &amp;$select=item_id,item_desc,list_price
+</code></pre></div>
+
+<hr />
+<h2 id="python-examples">Python Examples</h2>
+<h3 id="basic-query_1">Basic Query</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scripts.common.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_token</span><span class="p">,</span> <span class="n">get_auth_headers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scripts.common.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_config</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">()</span>
+<span class="n">token_data</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<span class="n">headers</span> <span class="o">=</span> <span class="n">get_auth_headers</span><span class="p">(</span><span class="n">token_data</span><span class="p">[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">])</span>
+
+<span class="c1"># Query suppliers</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">odata_url</span><span class="si">}</span><span class="s2">/table/supplier&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;supplier_id,supplier_name&quot;</span><span class="p">},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">supplier</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">supplier</span><span class="p">[</span><span class="s1">&#39;supplier_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">supplier</span><span class="p">[</span><span class="s1">&#39;supplier_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="filtered-query_1">Filtered Query</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get price pages for supplier</span>
+<span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;supplier_id eq 21274 and row_status_flag eq 704&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;price_page_uid,description,calculation_value1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="s2">&quot;description&quot;</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">odata_url</span><span class="si">}</span><span class="s2">/table/price_page&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3 id="pagination-helper">Pagination Helper</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_all_records</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">page_size</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch all records with pagination.&quot;&quot;&quot;</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">skip</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="n">page_size</span><span class="p">,</span> <span class="s2">&quot;$skip&quot;</span><span class="p">:</span> <span class="n">skip</span><span class="p">,</span> <span class="s2">&quot;$count&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">filter_expr</span><span class="p">:</span>
+            <span class="n">params</span><span class="p">[</span><span class="s2">&quot;$filter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_expr</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/table/</span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+            <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+        <span class="n">records</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;@odata.count&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">total</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">skip</span> <span class="o">+=</span> <span class="n">page_size</span>
+
+    <span class="k">return</span> <span class="n">records</span>
+</code></pre></div>
+
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Always use $select</strong> - Only request fields you need</li>
+<li><strong>Add $filter early</strong> - Filter server-side, not client-side</li>
+<li><strong>Use $top for previews</strong> - Don't fetch all data unnecessarily</li>
+<li><strong>Paginate large results</strong> - Use $skip/$top for big datasets</li>
+<li><strong>Escape strings properly</strong> - Double single quotes in values</li>
+<li><strong>Handle null values</strong> - Check for null in filters and responses</li>
+</ol>
+<hr />
+<h2 id="common-errors">Common Errors</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>400 Bad Request</td>
+<td>Invalid filter syntax</td>
+<td>Check filter expression</td>
+</tr>
+<tr>
+<td>401 Unauthorized</td>
+<td>Invalid/expired token</td>
+<td>Refresh token</td>
+</tr>
+<tr>
+<td>404 Not Found</td>
+<td>Table doesn't exist</td>
+<td>Verify table name</td>
+</tr>
+<tr>
+<td>500 Server Error</td>
+<td>Query too complex</td>
+<td>Simplify query</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="performance-tips">Performance Tips</h2>
+<ul>
+<li>OData queries are fast (~100ms for simple queries)</li>
+<li>Complex filters may be slower</li>
+<li>Use views for pre-joined data</li>
+<li>Limit fields with $select</li>
+<li>Paginate large result sets</li>
+</ul>
+<h3 id="measured-performance">Measured Performance</h3>
+<table>
+<thead>
+<tr>
+<th>Query Type</th>
+<th>Records</th>
+<th>Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simple table</td>
+<td>10</td>
+<td>~100ms</td>
+</tr>
+<tr>
+<td>Filtered query</td>
+<td>160</td>
+<td>~115ms</td>
+</tr>
+<tr>
+<td>Full table scan</td>
+<td>1000+</td>
+<td>~500ms</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="00-Authentication.md">Authentication</a></li>
+<li><a href="01-API-Selection-Guide.md">API Selection Guide</a></li>
+<li><a href="06-Error-Handling.md">Error Handling</a></li>
+<li><a href="../scripts/odata/">scripts/odata/</a> - Working examples</li>
+</ul>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>

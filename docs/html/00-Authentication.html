@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P21 API Authentication</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
+            .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="p21-api-authentication">P21 API Authentication</h1>
+<h2 id="overview">Overview</h2>
+<p>All P21 APIs require authentication via Bearer tokens. This guide covers the two authentication methods:</p>
+<ol>
+<li><strong>User Credentials</strong> - Username and password authentication</li>
+<li><strong>Consumer Key</strong> - Pre-authenticated application key</li>
+</ol>
+<h2 id="token-endpoints">Token Endpoints</h2>
+<h3 id="v2-endpoint-recommended">V2 Endpoint (Recommended)</h3>
+<div class="highlight"><pre><span></span><code>POST https://{hostname}/api/security/token/v2
+</code></pre></div>
+
+<p>The V2 endpoint accepts credentials in the request body.</p>
+<h3 id="v1-endpoint-deprecated">V1 Endpoint (Deprecated)</h3>
+<div class="highlight"><pre><span></span><code>POST https://{hostname}/api/security/token
+</code></pre></div>
+
+<p>The V1 endpoint accepts credentials as headers. While still functional, Epicor recommends migrating to V2.</p>
+<hr />
+<h2 id="method-1-user-credentials">Method 1: User Credentials</h2>
+<p>Use when you have a P21 username and password. The user must be:
+- A valid, non-deleted Prophet 21 user
+- Associated with a Windows user, AAD user, or SQL user</p>
+<h3 id="v2-request-recommended">V2 Request (Recommended)</h3>
+<p><strong>Request:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token/v2</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api_user&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your_password&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;AccessToken&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RefreshToken&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dGhpcyBpcyBhIHNhbXBsZSByZWZyZXNoIHRva2Vu...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ExpiresInSeconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">86400</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;TokenType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Bearer&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="v1-request-legacy">V1 Request (Legacy)</h3>
+<p><strong>Request:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">username</span><span class="o">:</span> <span class="l">api_user</span>
+<span class="na">password</span><span class="o">:</span> <span class="l">your_password</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<p><strong>Response:</strong> Same as V2.</p>
+<h3 id="python-example">Python Example</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token_v2</span><span class="p">(</span><span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get token using V2 endpoint (recommended).&quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">password</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token_v1</span><span class="p">(</span><span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get token using V1 endpoint (legacy).&quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span>
+            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">password</span><span class="p">,</span>
+            <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
+        <span class="p">},</span>
+        <span class="n">content</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</code></pre></div>
+
+<hr />
+<h2 id="method-2-consumer-key">Method 2: Consumer Key</h2>
+<p>Use for service accounts and automated integrations. Consumer keys are created in the SOA Admin console.</p>
+<h3 id="creating-a-consumer-key">Creating a Consumer Key</h3>
+<ol>
+<li>Log in to SOA Admin Page (<code>https://{hostname}/api/admin</code>)</li>
+<li>Open the <strong>API Console</strong> tab</li>
+<li>Click <strong>Register Consumer Key</strong></li>
+<li>Configure:</li>
+<li><strong>Consumer</strong>: Descriptive name</li>
+<li><strong>SDK Access</strong>: Enable for SDK access</li>
+<li><strong>Token Expire</strong>: Key validity duration</li>
+<li><strong>API Scope</strong>: Restrict access (see Scopes section)</li>
+</ol>
+<h3 id="request">Request</h3>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token/v2</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ClientSecret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;62ccc18a-25e2-440c-bf6d-749c117fa9db&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;GrantType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;client_credentials&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>With optional username (required for Interactive API):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ClientSecret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;62ccc18a-25e2-440c-bf6d-749c117fa9db&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;GrantType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;client_credentials&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api_user&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="api-specific-behavior">API-Specific Behavior</h3>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Without Username</th>
+<th>With Username</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OData</strong></td>
+<td>Works - uses consumer key scope</td>
+<td>Username ignored</td>
+</tr>
+<tr>
+<td><strong>Transaction</strong></td>
+<td>Works - uses P21 install user</td>
+<td>Uses specified user</td>
+</tr>
+<tr>
+<td><strong>Interactive</strong></td>
+<td><strong>Does not work</strong> - username required</td>
+<td>Works</td>
+</tr>
+<tr>
+<td><strong>Entity</strong></td>
+<td>Works - uses admin by default</td>
+<td>Uses specified user</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="api-scopes">API Scopes</h2>
+<p>Consumer keys can restrict access to specific endpoints and data.</p>
+<h3 id="url-scopes">URL Scopes</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Access</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api</code></td>
+<td>All API endpoints</td>
+</tr>
+<tr>
+<td><code>/uiserver0</code></td>
+<td>Interactive and Transaction APIs</td>
+</tr>
+<tr>
+<td><code>/odata</code></td>
+<td>OData endpoints (must specify tables)</td>
+</tr>
+<tr>
+<td><code>/api;/uiserver0</code></td>
+<td>Multiple scopes (semicolon delimiter)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="odata-table-scopes">OData Table Scopes</h3>
+<p>For OData access, specify allowed tables/views:</p>
+<div class="highlight"><pre><span></span><code>/odata:price_page,supplier,product_group
+</code></pre></div>
+
+<p>This restricts the token to only those tables.</p>
+<hr />
+<h2 id="using-the-token">Using the Token</h2>
+<p>Include the token in the <code>Authorization</code> header for all API requests:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/odataservice/odata/table/supplier</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<h3 id="python-example_1">Python Example</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_auth_headers</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build authorization headers for API requests.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
+    <span class="p">}</span>
+
+<span class="c1"># Usage</span>
+<span class="n">token_data</span> <span class="o">=</span> <span class="n">get_token_v2</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+<span class="n">headers</span> <span class="o">=</span> <span class="n">get_auth_headers</span><span class="p">(</span><span class="n">token_data</span><span class="p">[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">])</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/odataservice/odata/table/supplier&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h2 id="token-expiration">Token Expiration</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default lifetime</td>
+<td>24 hours (86400 seconds)</td>
+</tr>
+<tr>
+<td>Returned in</td>
+<td><code>ExpiresInSeconds</code> field</td>
+</tr>
+<tr>
+<td>Refresh token</td>
+<td>Provided for token renewal</td>
+</tr>
+</tbody>
+</table>
+<h3 id="handling-expiration">Handling Expiration</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TokenManager</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token_time</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get valid token, refreshing if needed.&quot;&quot;&quot;</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">expires</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ExpiresInSeconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="c1"># Refresh if expired or expiring in 5 minutes</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="ow">or</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_time</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">expires</span> <span class="o">-</span> <span class="mi">300</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="o">=</span> <span class="n">get_token_v2</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">token_time</span> <span class="o">=</span> <span class="n">now</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span><span class="p">[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+</code></pre></div>
+
+<hr />
+<h2 id="ui-server-url">UI Server URL</h2>
+<p>The Interactive and Transaction APIs require the UI server URL, which is obtained after authentication:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/ui/router/v1?urlType=external</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer {token}</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://play.ifpusa.com/uiserver0&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="python-example_2">Python Example</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server_url</span><span class="p">(</span><span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get UI server URL for Interactive/Transaction APIs.&quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">get_auth_headers</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h2 id="common-errors">Common Errors</h2>
+<table>
+<thead>
+<tr>
+<th>HTTP Code</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>401</td>
+<td>Invalid credentials</td>
+<td>Check username/password</td>
+</tr>
+<tr>
+<td>401</td>
+<td>Expired token</td>
+<td>Request new token</td>
+</tr>
+<tr>
+<td>401</td>
+<td>Invalid consumer key</td>
+<td>Verify key in SOA Admin</td>
+</tr>
+<tr>
+<td>403</td>
+<td>Scope restriction</td>
+<td>Check consumer key scope</td>
+</tr>
+<tr>
+<td>404</td>
+<td>Wrong endpoint</td>
+<td>Use <code>/api/security/token</code> or <code>/api/security/token/v2</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Use V2 endpoint</strong> for new integrations</li>
+<li><strong>Store credentials securely</strong> - use environment variables, not code</li>
+<li><strong>Handle token expiration</strong> - refresh before expiry</li>
+<li><strong>Use consumer keys</strong> for service accounts</li>
+<li><strong>Restrict scopes</strong> to minimum required access</li>
+<li><strong>Disable SSL verification</strong> only in development (<code>verify=False</code>)</li>
+</ol>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="01-API-Selection-Guide.md">API Selection Guide</a></li>
+<li><a href="06-Error-Handling.md">Error Handling</a></li>
+<li><a href="../scripts/common/auth.py">scripts/common/auth.py</a> - Authentication module</li>
+</ul>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>

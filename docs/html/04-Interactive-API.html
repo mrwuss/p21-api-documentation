@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive API</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
+            .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="interactive-api">Interactive API</h1>
+<h2 id="overview">Overview</h2>
+<p>The Interactive API (IAPI) is a <strong>stateful</strong> RESTful API that simulates user interaction with P21 windows. It maintains session state, allowing you to perform complex multi-step operations with full business logic validation.</p>
+<h3 id="key-characteristics">Key Characteristics</h3>
+<ul>
+<li><strong>Stateful</strong> - Maintains session like a real user</li>
+<li><strong>Full business logic</strong> - All validations applied</li>
+<li><strong>Window-based</strong> - Works with P21 windows and fields</li>
+<li><strong>Response window handling</strong> - Can handle dialogs</li>
+<li><strong>Complex workflows</strong> - Multi-step operations supported</li>
+</ul>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li>Complex data entry requiring business logic</li>
+<li>Multi-step workflows with dependencies</li>
+<li>Operations that trigger response windows</li>
+<li>When you need to interact like a real user</li>
+</ul>
+<hr />
+<h2 id="endpoints">Endpoints</h2>
+<p>All Interactive API endpoints use the UI Server URL. First, obtain it:</p>
+<div class="highlight"><pre><span></span><code>GET https://{hostname}/api/ui/router/v1?urlType=external
+</code></pre></div>
+
+<p>Then use the returned URL as base:</p>
+<h3 id="session-management">Session Management</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/ui/interactive/sessions</code></td>
+<td>POST</td>
+<td>Create new session</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/sessions</code></td>
+<td>GET</td>
+<td>List open sessions</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/sessions</code></td>
+<td>DELETE</td>
+<td>End session</td>
+</tr>
+</tbody>
+</table>
+<h3 id="window-operations-v2">Window Operations (v2)</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/ui/interactive/v2/window</code></td>
+<td>POST</td>
+<td>Open a window</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/window</code></td>
+<td>GET</td>
+<td>Get window state</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/window</code></td>
+<td>DELETE</td>
+<td>Close window</td>
+</tr>
+</tbody>
+</table>
+<h3 id="data-operations">Data Operations</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/ui/interactive/v1/data</code></td>
+<td>PUT</td>
+<td>Save data</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/data</code></td>
+<td>GET</td>
+<td>Get active data</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/data</code></td>
+<td>DELETE</td>
+<td>Clear data</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/change</code></td>
+<td>PUT</td>
+<td>Change field values</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/tab</code></td>
+<td>PUT</td>
+<td>Change active tab</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/row</code></td>
+<td>POST</td>
+<td>Add a row</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/row</code></td>
+<td>PUT</td>
+<td>Change current row</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/tools</code></td>
+<td>GET</td>
+<td>Get available tools</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v1/tools</code></td>
+<td>POST</td>
+<td>Run a tool</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="authentication">Authentication</h2>
+<p>Include the Bearer token in the Authorization header:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/ui/interactive/sessions</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">{ui-server-host}</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<p>See <a href="00-Authentication.md">Authentication</a> for token generation.</p>
+<hr />
+<h2 id="session-lifecycle">Session Lifecycle</h2>
+<h3 id="1-start-session">1. Start Session</h3>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/sessio</span><span class="kc">ns</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;SessionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Active&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="2-open-window">2. Open Window</h3>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/wi</span><span class="kc">n</span><span class="err">dow</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ServiceName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SalesPricePage&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Or by menu title:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sales Price Page Entry&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sales Price Page Entry&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="3-change-data">3. Change Data</h3>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/cha</span><span class="kc">n</span><span class="err">ge</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ChangeRequests&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;DataWindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;d_form&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;description&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New Description&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="4-save-data">4. Save Data</h3>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/da</span><span class="kc">ta</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="5-close-window">5. Close Window</h3>
+<div class="highlight"><pre><span></span><code><span class="err">DELETE</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/wi</span><span class="kc">n</span><span class="err">dow?wi</span><span class="kc">n</span><span class="err">dowId=w_sales_price_page</span>
+</code></pre></div>
+
+<h3 id="6-end-session">6. End Session</h3>
+<div class="highlight"><pre><span></span><code><span class="err">DELETE</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/sessio</span><span class="kc">ns</span>
+</code></pre></div>
+
+<hr />
+<h2 id="finding-field-names">Finding Field Names</h2>
+<p>To find the correct field and datawindow names:</p>
+<ol>
+<li>Open P21 in the web client</li>
+<li>Navigate to the window</li>
+<li>Right-click on the field</li>
+<li>Select <strong>Help &gt; SQL Information</strong></li>
+<li>Note the datawindow name and column name</li>
+</ol>
+<hr />
+<h2 id="response-windows">Response Windows</h2>
+<p>Response windows (dialogs) can pop up during operations. When this happens:</p>
+<ol>
+<li>The result will have <code>Status: "Blocked"</code></li>
+<li>Check the <code>Events</code> array for <code>windowopened</code></li>
+<li>Get the new window ID from the event data</li>
+<li>Handle the response window</li>
+<li>Close it to resume the original operation</li>
+</ol>
+<p>Example response with blocked status:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Blocked&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Events&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;windowopened&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Data&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_response_123&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="changing-tabs">Changing Tabs</h2>
+<p>Before changing fields on a different tab, select the tab first:</p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/</span><span class="kc">ta</span><span class="err">b</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PagePath&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;PageName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;VALUES&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="running-tools-buttons">Running Tools (Buttons)</h2>
+<p>Get available tools:</p>
+<div class="highlight"><pre><span></span><code>GET /api/ui/interactive/v1/tools?windowId=w_sales_price_page
+</code></pre></div>
+
+<p>Run a tool:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/</span><span class="kc">t</span><span class="err">ools</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cb_save&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ToolText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Save&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="python-examples">Python Examples</h2>
+<h3 id="basic-client-class">Basic Client Class</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">InteractiveClient</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">verify_ssl</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span> <span class="o">=</span> <span class="n">verify_ssl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ui_server_url</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">authenticate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">,</span>
+                <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
+            <span class="p">},</span>
+            <span class="n">content</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">verify</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span>
+        <span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+            <span class="n">verify</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span>
+        <span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/sessions/&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
+            <span class="p">},</span>
+            <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span>
+            <span class="n">verify</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span>
+        <span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">end_session</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">httpx</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/sessions/&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+            <span class="n">verify</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span>
+        <span class="p">)</span>
+</code></pre></div>
+
+<h3 id="context-manager-usage">Context Manager Usage</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InteractiveClient</span><span class="p">:</span>
+    <span class="c1"># ... methods above ...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_ui_server</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_session</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_session</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+<span class="c1"># Usage</span>
+<span class="k">with</span> <span class="n">InteractiveClient</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">open_window</span><span class="p">(</span><span class="s2">&quot;SalesPricePage&quot;</span><span class="p">)</span>
+    <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;New Value&quot;</span><span class="p">)</span>
+    <span class="n">window</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+    <span class="n">window</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+
+<hr />
+<h2 id="working-example-scripts">Working Example Scripts</h2>
+<p>See the <code>scripts/interactive/</code> directory:</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01_open_session.py</code></td>
+<td>Session lifecycle</td>
+</tr>
+<tr>
+<td><code>02_open_window.py</code></td>
+<td>Open and close windows</td>
+</tr>
+<tr>
+<td><code>03_change_data.py</code></td>
+<td>Change field values</td>
+</tr>
+<tr>
+<td><code>04_save_and_close.py</code></td>
+<td>Complete save workflow</td>
+</tr>
+<tr>
+<td><code>05_response_windows.py</code></td>
+<td>Handle response dialogs</td>
+</tr>
+<tr>
+<td><code>06_complex_workflow.py</code></td>
+<td>Multi-step example</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="common-windows">Common Windows</h2>
+<table>
+<thead>
+<tr>
+<th>Window Title</th>
+<th>Service Name</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Customer Maintenance</td>
+<td>Customer</td>
+<td>Customer records</td>
+</tr>
+<tr>
+<td>Order Entry</td>
+<td>Order</td>
+<td>Sales orders</td>
+</tr>
+<tr>
+<td>Invoice Entry</td>
+<td>Invoice</td>
+<td>Invoices</td>
+</tr>
+<tr>
+<td>Supplier Maintenance</td>
+<td>Supplier</td>
+<td>Supplier records</td>
+</tr>
+<tr>
+<td>Sales Price Page Entry</td>
+<td>SalesPricePage</td>
+<td>Price pages</td>
+</tr>
+<tr>
+<td>Purchase Order Entry</td>
+<td>PurchaseOrder</td>
+<td>Purchase orders</td>
+</tr>
+<tr>
+<td>Inventory Maintenance</td>
+<td>InventoryMaster</td>
+<td>Inventory items</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Always end sessions</strong> - Use context managers or try/finally</li>
+<li><strong>Handle response windows</strong> - Check for blocked status</li>
+<li><strong>Change tabs before fields</strong> - Tab selection required for REST</li>
+<li><strong>Find field names in P21</strong> - Use SQL Information dialog</li>
+<li><strong>Save before close</strong> - Unsaved changes are lost</li>
+<li><strong>Keep sessions short</strong> - Long sessions consume server resources</li>
+<li><strong>Log window IDs</strong> - Helps debugging</li>
+</ol>
+<hr />
+<h2 id="common-errors">Common Errors</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>401 Unauthorized</td>
+<td>Invalid/expired token</td>
+<td>Re-authenticate</td>
+</tr>
+<tr>
+<td>"Session not found"</td>
+<td>Session ended/timed out</td>
+<td>Start new session</td>
+</tr>
+<tr>
+<td>"Blocked" status</td>
+<td>Response window opened</td>
+<td>Handle the dialog</td>
+</tr>
+<tr>
+<td>"Field not found"</td>
+<td>Wrong field/datawindow name</td>
+<td>Check SQL Information</td>
+</tr>
+<tr>
+<td>"Window not open"</td>
+<td>Window was closed</td>
+<td>Re-open the window</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="session-vs-transaction-api">Session vs Transaction API</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Interactive API</th>
+<th>Transaction API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stateful</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Response windows</td>
+<td>Handled</td>
+<td>Cause failures</td>
+</tr>
+<tr>
+<td>Business logic</td>
+<td>Full validation</td>
+<td>Full validation</td>
+</tr>
+<tr>
+<td>Complexity</td>
+<td>Higher</td>
+<td>Lower</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Slower</td>
+<td>Faster</td>
+</tr>
+<tr>
+<td>Use case</td>
+<td>Complex workflows</td>
+<td>Bulk operations</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="00-Authentication.md">Authentication</a></li>
+<li><a href="01-API-Selection-Guide.md">API Selection Guide</a></li>
+<li><a href="03-Transaction-API.md">Transaction API</a></li>
+<li><a href="../scripts/interactive/">scripts/interactive/</a> - Working examples</li>
+</ul>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>

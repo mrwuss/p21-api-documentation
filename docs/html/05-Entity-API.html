@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity API</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
+            .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="entity-api">Entity API</h1>
+<h2 id="overview">Overview</h2>
+<p>The Entity API is a <strong>stateless REST</strong> API for simple CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models for straightforward data manipulation.</p>
+<h3 id="key-characteristics">Key Characteristics</h3>
+<ul>
+<li><strong>Stateless</strong> - No session management required</li>
+<li><strong>Entity-based</strong> - Works with domain objects (Customer, Order, etc.)</li>
+<li><strong>Simple CRUD</strong> - Get, Create, Update, Delete operations</li>
+<li><strong>Query support</strong> - Filter results with query syntax</li>
+<li><strong>Extended properties</strong> - Include related data in responses</li>
+</ul>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li>Simple lookups and queries</li>
+<li>Basic CRUD operations</li>
+<li>B2B integrations</li>
+<li>When you need cleaner domain object models</li>
+</ul>
+<hr />
+<h2 id="base-url">Base URL</h2>
+<p>The Entity API uses the main P21 API base URL:</p>
+<div class="highlight"><pre><span></span><code>https://{hostname}/api/{category}/{entity}
+</code></pre></div>
+
+<p>Examples:
+- <code>https://play.ifpusa.com/api/sales/customers</code>
+- <code>https://play.ifpusa.com/api/sales/orders</code>
+- <code>https://play.ifpusa.com/api/inventory/parts</code></p>
+<hr />
+<h2 id="common-endpoints">Common Endpoints</h2>
+<h3 id="sales">Sales</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/sales/customers</code></td>
+<td>Customer records</td>
+</tr>
+<tr>
+<td><code>/api/sales/customers/{id}</code></td>
+<td>Single customer</td>
+</tr>
+<tr>
+<td><code>/api/sales/orders</code></td>
+<td>Sales orders</td>
+</tr>
+<tr>
+<td><code>/api/sales/orders/{id}</code></td>
+<td>Single order</td>
+</tr>
+<tr>
+<td><code>/api/sales/invoices</code></td>
+<td>Invoices</td>
+</tr>
+<tr>
+<td><code>/api/sales/quotes</code></td>
+<td>Quotes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="inventory">Inventory</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/inventory/parts</code></td>
+<td>Inventory items</td>
+</tr>
+<tr>
+<td><code>/api/inventory/parts/{id}</code></td>
+<td>Single item</td>
+</tr>
+<tr>
+<td><code>/api/inventory/warehouses</code></td>
+<td>Warehouses</td>
+</tr>
+<tr>
+<td><code>/api/inventory/locations</code></td>
+<td>Locations</td>
+</tr>
+</tbody>
+</table>
+<h3 id="purchasing">Purchasing</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/purchasing/suppliers</code></td>
+<td>Suppliers</td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders</code></td>
+<td>Purchase orders</td>
+</tr>
+</tbody>
+</table>
+<h3 id="other">Other</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/contacts</code></td>
+<td>Contacts</td>
+</tr>
+<tr>
+<td><code>/api/addresses</code></td>
+<td>Addresses</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="authentication">Authentication</h2>
+<p>Include the Bearer token in the Authorization header:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/sales/customers</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<p>See <a href="00-Authentication.md">Authentication</a> for token generation.</p>
+<hr />
+<h2 id="crud-operations">CRUD Operations</h2>
+<h3 id="create-post">Create (POST)</h3>
+<p>To create a new record:</p>
+<ol>
+<li>Get a template: <code>GET /api/sales/customers/new</code></li>
+<li>Fill in the required fields</li>
+<li>POST the object: <code>POST /api/sales/customers</code></li>
+</ol>
+<p><strong>Key Point</strong>: The absence of key fields indicates a new record.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/sales/customers</span>
+<span class="err">Content-Type: application/json</span>
+
+<span class="err">{</span>
+<span class="err">    &quot;CustomerName&quot;: &quot;New Customer&quot;,</span>
+<span class="err">    &quot;Address1&quot;: &quot;123 Main St&quot;,</span>
+<span class="err">    &quot;City&quot;: &quot;Cedar Rapids&quot;,</span>
+<span class="err">    &quot;State&quot;: &quot;IA&quot;</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<h3 id="read-get">Read (GET)</h3>
+<p>Get all records:</p>
+<div class="highlight"><pre><span></span><code>GET /api/sales/customers
+</code></pre></div>
+
+<p>Get single record by ID:</p>
+<div class="highlight"><pre><span></span><code>GET /api/sales/customers/100198
+</code></pre></div>
+
+<h3 id="update-post">Update (POST)</h3>
+<p>To update an existing record:</p>
+<ol>
+<li>Include the key field(s) in the object</li>
+<li>POST the object</li>
+</ol>
+<p><strong>Key Point</strong>: The presence of key fields indicates an update.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/sales/customers</span>
+
+<span class="err">{</span>
+<span class="err">    &quot;CustomerCode&quot;: 100198,</span>
+<span class="err">    &quot;CustomerName&quot;: &quot;Updated Name&quot;</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<h3 id="delete-delete">Delete (DELETE)</h3>
+<div class="highlight"><pre><span></span><code>DELETE /api/sales/customers/100198
+</code></pre></div>
+
+<hr />
+<h2 id="query-syntax">Query Syntax</h2>
+<p>Filter results using the <code>$query</code> parameter:</p>
+<div class="highlight"><pre><span></span><code>GET /api/sales/customers?$query=State eq &#39;IA&#39;
+</code></pre></div>
+
+<h3 id="comparison-operators">Comparison Operators</h3>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eq</code></td>
+<td>Equal</td>
+<td><code>LastName eq 'Brown'</code></td>
+</tr>
+<tr>
+<td><code>ne</code></td>
+<td>Not equal</td>
+<td><code>LastName ne null</code></td>
+</tr>
+<tr>
+<td><code>gt</code></td>
+<td>Greater than</td>
+<td><code>CreditLimit gt 1000</code></td>
+</tr>
+<tr>
+<td><code>ge</code></td>
+<td>Greater than or equal</td>
+<td><code>CreditLimit ge 1000</code></td>
+</tr>
+<tr>
+<td><code>lt</code></td>
+<td>Less than</td>
+<td><code>CreditLimit lt 1000</code></td>
+</tr>
+<tr>
+<td><code>le</code></td>
+<td>Less than or equal</td>
+<td><code>CreditLimit le 1000</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="logical-operators">Logical Operators</h3>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>and</code></td>
+<td>Logical AND</td>
+<td><code>CreditLimit ge 1000 and State eq 'CO'</code></td>
+</tr>
+<tr>
+<td><code>or</code></td>
+<td>Logical OR</td>
+<td><code>State eq 'CO' or State eq 'PA'</code></td>
+</tr>
+<tr>
+<td><code>not</code></td>
+<td>Logical NOT</td>
+<td><code>not (CustomerCode eq 1)</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="string-functions">String Functions</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>startswith</code></td>
+<td>Starts with</td>
+<td><code>startswith(CustomerName, 'ABC')</code></td>
+</tr>
+<tr>
+<td><code>endswith</code></td>
+<td>Ends with</td>
+<td><code>endswith(CustomerName, 'Inc')</code></td>
+</tr>
+<tr>
+<td><code>substringof</code></td>
+<td>Contains</td>
+<td><code>substringof('copper', ItemDesc)</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="extended-properties">Extended Properties</h2>
+<p>Include related data using the <code>extendedproperties</code> parameter:</p>
+<p>Get order with all related data:</p>
+<div class="highlight"><pre><span></span><code>GET /api/sales/orders/100999?extendedproperties=*
+</code></pre></div>
+
+<p>Get order with just line items:</p>
+<div class="highlight"><pre><span></span><code>GET /api/sales/orders/100999?extendedproperties=Lines
+</code></pre></div>
+
+<hr />
+<h2 id="async-operations">Async Operations</h2>
+<p>For long-running operations (orders, POs), use async endpoints:</p>
+<h3 id="submit-async">Submit Async</h3>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/sales/orders/async</span>
+<span class="err">Content-Type: application/json</span>
+
+<span class="err">{</span>
+<span class="err">    &quot;CustomerCode&quot;: 100198,</span>
+<span class="err">    &quot;Lines&quot;: [...]</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<p>Response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Active&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="check-status">Check Status</h3>
+<div class="highlight"><pre><span></span><code>GET /api/sales/orders/async?id=ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d
+</code></pre></div>
+
+<h3 id="with-callback">With Callback</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Content&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100198</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Lines&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Callback&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://your-server.com/webhook&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;ContentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/json&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="response-format">Response Format</h2>
+<h3 id="success-response">Success Response</h3>
+<p>Single record:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100198</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Address1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Main St&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;City&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;State&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Collection:</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100198</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Company&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100199</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;XYZ Corp&quot;</span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3 id="error-response">Error Response</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The request is invalid.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Errors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;CustomerName is required&quot;</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="python-examples">Python Examples</h2>
+<h3 id="basic-query">Basic Query</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/customers&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;State eq &#39;IA&#39;&quot;</span><span class="p">},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+
+<span class="n">customers</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">customer</span> <span class="ow">in</span> <span class="n">customers</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerCode&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="get-with-extended-properties">Get with Extended Properties</h3>
+<div class="highlight"><pre><span></span><code><span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/orders/100999&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;*&quot;</span><span class="p">},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+
+<span class="n">order</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Order: </span><span class="si">{</span><span class="n">order</span><span class="p">[</span><span class="s1">&#39;OrderNumber&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">order</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Lines&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;ItemId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;Quantity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="create-record">Create Record</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get template</span>
+<span class="n">template</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/customers/new&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># Fill required fields</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;CustomerName&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;New Customer&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;Address1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;123 Main St&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;City&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Cedar Rapids&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;IA&quot;</span>
+
+<span class="c1"># Create</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/customers&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
+    <span class="p">},</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">template</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h2 id="working-example-scripts">Working Example Scripts</h2>
+<p>See the <code>scripts/entity/</code> directory:</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01_list_entities.py</code></td>
+<td>Discover available entities</td>
+</tr>
+<tr>
+<td><code>02_query_entity.py</code></td>
+<td>Query with filters</td>
+</tr>
+<tr>
+<td><code>03_create_entity.py</code></td>
+<td>Create a record</td>
+</tr>
+<tr>
+<td><code>04_update_entity.py</code></td>
+<td>Update existing record</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Use templates</strong> - Get <code>/new</code> before creating to see available fields</li>
+<li><strong>Query efficiently</strong> - Use <code>$query</code> to filter server-side</li>
+<li><strong>Extended properties sparingly</strong> - Only request related data when needed</li>
+<li><strong>Check for key fields</strong> - Include keys for updates, omit for creates</li>
+<li><strong>Handle async for orders</strong> - Large orders should use async endpoint</li>
+</ol>
+<hr />
+<h2 id="common-errors">Common Errors</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>401 Unauthorized</td>
+<td>Invalid/expired token</td>
+<td>Refresh token</td>
+</tr>
+<tr>
+<td>404 Not Found</td>
+<td>Entity/endpoint doesn't exist</td>
+<td>Check endpoint path, verify Entity API is enabled</td>
+</tr>
+<tr>
+<td>400 Bad Request</td>
+<td>Invalid data</td>
+<td>Check required fields</td>
+</tr>
+<tr>
+<td>"Field is required"</td>
+<td>Missing required field</td>
+<td>Check template for requirements</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note</strong>: Entity API availability depends on P21 server configuration. Some endpoints may require specific licensing or middleware setup. Check your middleware documentation page for available endpoints.</p>
+<hr />
+<h2 id="entity-api-vs-odata">Entity API vs OData</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Entity API</th>
+<th>OData</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Operations</td>
+<td>Full CRUD</td>
+<td>Read-only</td>
+</tr>
+<tr>
+<td>Format</td>
+<td>Domain objects</td>
+<td>Table rows</td>
+</tr>
+<tr>
+<td>Queries</td>
+<td><code>$query</code> parameter</td>
+<td>OData <code>$filter</code></td>
+</tr>
+<tr>
+<td>Extended data</td>
+<td><code>extendedproperties</code></td>
+<td>Not available</td>
+</tr>
+<tr>
+<td>Use case</td>
+<td>Business objects</td>
+<td>Raw data access</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="00-Authentication.md">Authentication</a></li>
+<li><a href="01-API-Selection-Guide.md">API Selection Guide</a></li>
+<li><a href="02-OData-API.md">OData API</a></li>
+<li><a href="../scripts/entity/">scripts/entity/</a> - Working examples</li>
+</ul>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>
