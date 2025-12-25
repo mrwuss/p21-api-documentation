@@ -33,6 +33,22 @@ cp .env.example .env
 python scripts/odata/01_basic_query.py
 ```
 
+## Online Documentation
+
+This documentation is available online via GitHub Pages:
+
+**[View Documentation](https://jscarbrough.github.io/p21-api-documentation/)**
+
+### Enabling GitHub Pages (for forks)
+
+1. Go to repository **Settings** > **Pages**
+2. Under "Source", select **Deploy from a branch**
+3. Choose branch: `master`, folder: `/docs`
+4. Click **Save**
+5. Your docs will be live at `https://<username>.github.io/p21-api-documentation/`
+
+---
+
 ## Documentation
 
 ### Getting Started

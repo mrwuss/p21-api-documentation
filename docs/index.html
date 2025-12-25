@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P21 API Documentation</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #1a5276 0%, #2874a6 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: #1a5276;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-number {
+            background: #2874a6;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+
+        .card p {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .section-title {
+            color: white;
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .api-cards .card h2 {
+            color: #27ae60;
+        }
+
+        .api-cards .card-number {
+            background: #27ae60;
+        }
+
+        footer {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        footer a {
+            color: white;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .badge-read {
+            background: #3498db;
+            color: white;
+        }
+
+        .badge-write {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .badge-both {
+            background: #9b59b6;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>P21 API Documentation</h1>
+            <p>Comprehensive guides and examples for Epicor Prophet 21 APIs</p>
+        </header>
+
+        <h3 class="section-title">Getting Started</h3>
+        <div class="card-grid">
+            <a href="00-Authentication.html" class="card">
+                <h2><span class="card-number">0</span> Authentication</h2>
+                <p>Token generation, credentials vs consumer keys, V1 and V2 endpoints, and token refresh patterns.</p>
+            </a>
+            <a href="01-API-Selection-Guide.html" class="card">
+                <h2><span class="card-number">1</span> API Selection Guide</h2>
+                <p>Decision tree and comparison table to help you choose the right API for your use case.</p>
+            </a>
+        </div>
+
+        <h3 class="section-title">API Reference</h3>
+        <div class="card-grid api-cards">
+            <a href="02-OData-API.html" class="card">
+                <h2><span class="card-number">2</span> OData API <span class="badge badge-read">READ</span></h2>
+                <p>Query any P21 table using standard OData protocol. Filtering, pagination, and complex queries.</p>
+            </a>
+            <a href="03-Transaction-API.html" class="card">
+                <h2><span class="card-number">3</span> Transaction API <span class="badge badge-write">WRITE</span></h2>
+                <p>Stateless bulk operations for creating and updating records. Service discovery and async operations.</p>
+            </a>
+            <a href="04-Interactive-API.html" class="card">
+                <h2><span class="card-number">4</span> Interactive API <span class="badge badge-both">READ/WRITE</span></h2>
+                <p>Stateful window interactions with full business logic. Sessions, windows, and response handling.</p>
+            </a>
+            <a href="05-Entity-API.html" class="card">
+                <h2><span class="card-number">5</span> Entity API <span class="badge badge-both">CRUD</span></h2>
+                <p>Simple REST operations on domain objects. Clean API for basic create, read, update, delete.</p>
+            </a>
+        </div>
+
+        <h3 class="section-title">Troubleshooting</h3>
+        <div class="card-grid">
+            <a href="06-Error-Handling.html" class="card">
+                <h2><span class="card-number">6</span> Error Handling</h2>
+                <p>HTTP status codes, API-specific errors, Python error handling patterns, and debugging tips.</p>
+            </a>
+            <a href="07-Session-Pool-Troubleshooting.html" class="card">
+                <h2><span class="card-number">7</span> Session Pool Issues</h2>
+                <p>Diagnosing and fixing Transaction API session pool contamination and related problems.</p>
+            </a>
+        </div>
+
+        <footer>
+            <p>
+                <a href="https://github.com/jscarbrough/p21-api-documentation">View on GitHub</a>
+                &nbsp;|&nbsp;
+                Built with Python example scripts included
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
