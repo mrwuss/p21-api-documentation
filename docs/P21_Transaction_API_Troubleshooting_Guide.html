@@ -6,12 +6,34 @@
     <title>P21 Transaction API Troubleshooting Guide</title>
     <style>
         @media print {
-            body { font-size: 11pt; }
-            h1 { page-break-before: auto; }
-            h2 { page-break-before: always; page-break-after: avoid; }
-            h3 { page-break-after: avoid; }
-            pre, table { page-break-inside: avoid; }
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
             .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
         }
 
         body {
