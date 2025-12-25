@@ -12,14 +12,19 @@ See docs/00-Authentication.md for full documentation.
 
 import httpx
 from typing import Optional
-from .config import P21Config, load_config
+
+try:
+    from .config import P21Config, load_config
+except ImportError:
+    from config import P21Config, load_config
 
 
 def get_token(
     config: Optional[P21Config] = None,
     username: Optional[str] = None,
     password: Optional[str] = None,
-    consumer_key: Optional[str] = None
+    consumer_key: Optional[str] = None,
+    use_v2: bool = False
 ) -> dict:
     """
     Obtain an access token from P21.
@@ -29,6 +34,7 @@ def get_token(
         username: Override username from config
         password: Override password from config
         consumer_key: Use consumer key authentication instead of credentials
+        use_v2: Use V2 endpoint (credentials in body). Default False uses V1.
 
     Returns:
         dict: Token response containing:
@@ -48,27 +54,50 @@ def get_token(
     if config is None:
         config = load_config()
 
-    # Build headers based on auth method
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-    }
+    with httpx.Client(verify=config.verify_ssl, follow_redirects=True) as client:
+        if use_v2:
+            # V2 endpoint - credentials in body (recommended)
+            url = f"{config.base_url}/api/security/token/v2"
 
-    if consumer_key:
-        # Consumer key authentication
-        headers["appkey"] = consumer_key
-    else:
-        # User credentials authentication
-        headers["username"] = username or config.username
-        headers["password"] = password or config.password
+            if consumer_key:
+                body = {
+                    "ClientSecret": consumer_key,
+                    "GrantType": "client_credentials"
+                }
+                if username:
+                    body["username"] = username
+            else:
+                body = {
+                    "username": username or config.username,
+                    "password": password or config.password
+                }
 
-    # Request token
-    with httpx.Client(verify=config.verify_ssl) as client:
-        response = client.post(
-            config.token_url,
-            headers=headers,
-            content=""  # Empty body required
-        )
+            response = client.post(
+                url,
+                json=body,
+                headers={"Accept": "application/json"}
+            )
+        else:
+            # V1 endpoint - credentials in headers (legacy but widely used)
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+
+            if consumer_key:
+                headers["appkey"] = consumer_key
+                if username:
+                    headers["username"] = username
+            else:
+                headers["username"] = username or config.username
+                headers["password"] = password or config.password
+
+            response = client.post(
+                config.token_url,
+                headers=headers,
+                content=""
+            )
+
         response.raise_for_status()
         return response.json()
 
@@ -117,7 +146,7 @@ def get_ui_server_url(base_url: str, token: str, verify_ssl: bool = False) -> st
         >>> print(ui_url)
         'https://play.ifpusa.com/uiserver0'
     """
-    with httpx.Client(verify=verify_ssl) as client:
+    with httpx.Client(verify=verify_ssl, follow_redirects=True) as client:
         response = client.get(
             f"{base_url}/api/ui/router/v1?urlType=external",
             headers=get_auth_headers(token)
