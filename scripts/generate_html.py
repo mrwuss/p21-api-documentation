@@ -1,26 +1,28 @@
 """
 Generate PDF-ready HTML from Markdown documentation.
 
-This script converts the Transaction API Troubleshooting Guide
-to a well-formatted HTML file that can be:
+This script converts all markdown files in the docs/ folder
+to well-formatted HTML files that can be:
 1. Opened in a browser and printed to PDF
 2. Shared directly as HTML
 
 Usage:
-    python scripts/generate_pdf_doc.py
+    python scripts/generate_html.py           # Convert all docs
+    python scripts/generate_html.py <file>    # Convert specific file
 
 Output:
-    docs/P21_Transaction_API_Troubleshooting_Guide.html
+    docs/html/<filename>.html
 """
 
+import sys
 import markdown
 from pathlib import Path
 
 # Paths
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_DIR = SCRIPT_DIR.parent
-MD_FILE = PROJECT_DIR / "docs" / "P21_Transaction_API_Troubleshooting_Guide.md"
-HTML_FILE = PROJECT_DIR / "docs" / "P21_Transaction_API_Troubleshooting_Guide.html"
+DOCS_DIR = PROJECT_DIR / "docs"
+HTML_DIR = DOCS_DIR / "html"
 
 # HTML template with professional styling for PDF
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -28,7 +30,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P21 Transaction API Troubleshooting Guide</title>
+    <title>{title}</title>
     <style>
         @media print {{
             body {{
@@ -152,40 +154,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             margin: 30px 0;
         }}
 
-        .warning {{
-            background: #fef9e7;
-            border-left: 4px solid #f4d03f;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-
-        .info {{
-            background: #eaf2f8;
-            border-left: 4px solid #2874a6;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-
         a {{
             color: #2874a6;
-        }}
-
-        /* Header styling */
-        .doc-header {{
-            text-align: center;
-            margin-bottom: 40px;
-            padding-bottom: 20px;
-            border-bottom: 3px double #2874a6;
-        }}
-
-        .doc-header h1 {{
-            border: none;
-            margin-bottom: 10px;
-        }}
-
-        .doc-meta {{
-            color: #666;
-            font-size: 0.9em;
         }}
 
         /* Print button */
@@ -205,28 +175,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         .print-btn:hover {{
             background: #1a5276;
-        }}
-
-        /* TOC styling */
-        .toc {{
-            background: #f8f9fa;
-            padding: 20px 30px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }}
-
-        .toc h2 {{
-            margin-top: 0;
-            border: none;
-        }}
-
-        .toc ul {{
-            margin: 0;
-            padding-left: 20px;
-        }}
-
-        .toc li {{
-            margin: 8px 0;
         }}
     </style>
 </head>
@@ -252,12 +200,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 
-def convert_md_to_html():
-    """Convert markdown file to PDF-ready HTML."""
-    print(f"Reading: {MD_FILE}")
+def convert_md_to_html(md_file: Path) -> Path:
+    """Convert a markdown file to PDF-ready HTML."""
+    print(f"Converting: {md_file.name}")
 
     # Read markdown content
-    md_content = MD_FILE.read_text(encoding='utf-8')
+    md_content = md_file.read_text(encoding='utf-8')
+
+    # Extract title from first heading or filename
+    title = md_file.stem.replace("-", " ").replace("_", " ")
+    for line in md_content.split("\n"):
+        if line.startswith("# "):
+            title = line[2:].strip()
+            break
 
     # Configure markdown extensions
     md = markdown.Markdown(
@@ -280,20 +235,51 @@ def convert_md_to_html():
     html_content = md.convert(md_content)
 
     # Wrap in template
-    full_html = HTML_TEMPLATE.format(content=html_content)
+    full_html = HTML_TEMPLATE.format(title=title, content=html_content)
+
+    # Ensure output directory exists
+    HTML_DIR.mkdir(exist_ok=True)
 
     # Write output
-    HTML_FILE.write_text(full_html, encoding='utf-8')
+    html_file = HTML_DIR / f"{md_file.stem}.html"
+    html_file.write_text(full_html, encoding='utf-8')
 
-    print(f"Generated: {HTML_FILE}")
-    print(f"\nTo create PDF:")
-    print(f"  1. Open the HTML file in a browser")
-    print(f"  2. Click 'Print / Save as PDF' button")
-    print(f"  3. Or use Ctrl+P and select 'Save as PDF'")
+    return html_file
 
-    return HTML_FILE
+
+def convert_all_docs():
+    """Convert all markdown files in docs/ to HTML."""
+    md_files = list(DOCS_DIR.glob("*.md"))
+
+    if not md_files:
+        print("No markdown files found in docs/")
+        return
+
+    print(f"Found {len(md_files)} markdown files\n")
+
+    for md_file in sorted(md_files):
+        html_file = convert_md_to_html(md_file)
+        print(f"  -> {html_file.name}")
+
+    print(f"\nGenerated {len(md_files)} HTML files in docs/html/")
+    print("\nTo create PDF:")
+    print("  1. Open the HTML file in a browser")
+    print("  2. Click 'Print / Save as PDF' button")
+    print("  3. Or use Ctrl+P and select 'Save as PDF'")
 
 
 if __name__ == "__main__":
-    output = convert_md_to_html()
-    print(f"\nDone! Open in browser: file:///{output.as_posix()}")
+    if len(sys.argv) > 1:
+        # Convert specific file
+        md_file = Path(sys.argv[1])
+        if not md_file.exists():
+            md_file = DOCS_DIR / sys.argv[1]
+        if not md_file.exists():
+            print(f"File not found: {sys.argv[1]}")
+            sys.exit(1)
+        html_file = convert_md_to_html(md_file)
+        print(f"\nGenerated: {html_file}")
+        print(f"Open in browser: file:///{html_file.as_posix()}")
+    else:
+        # Convert all docs
+        convert_all_docs()
