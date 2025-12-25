@@ -24,7 +24,7 @@ from typing import Optional
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-BASE_URL = os.getenv("P21_BASE_URL", "https://play.ifpusa.com")
+BASE_URL = os.getenv("P21_BASE_URL", "https://play.p21server.com")
 USERNAME = os.getenv("P21_USERNAME")
 PASSWORD = os.getenv("P21_PASSWORD")
 
@@ -100,7 +100,7 @@ class SessionPoolTester:
                             "Rows": [{
                                 "Edits": [
                                     {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
-                                    {"Name": "company_id", "Value": "IFPG"},
+                                    {"Name": "company_id", "Value": "ACME"},
                                     {"Name": "supplier_id", "Value": 10.0},
                                     {"Name": "product_group_id", "Value": "FA5"},
                                     {"Name": "description", "Value": f"SESSION-TEST-{datetime.now().strftime('%H%M%S%f')}"},

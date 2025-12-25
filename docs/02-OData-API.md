@@ -24,7 +24,7 @@ The OData API provides **read-only** access to P21 data using the standard OData
 ### Base URL Example
 
 ```
-https://play.ifpusa.com/odataservice/odata/table/supplier
+https://play.p21server.com/odataservice/odata/table/supplier
 ```
 
 ---
@@ -35,7 +35,7 @@ Include the Bearer token in the Authorization header:
 
 ```http
 GET /odataservice/odata/table/supplier HTTP/1.1
-Host: play.ifpusa.com
+Host: play.p21server.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -164,7 +164,7 @@ $filter=supplier_name eq 'O''Brien Supply'
 
 ```json
 {
-    "@odata.context": "https://play.ifpusa.com/odataservice/odata/$metadata#supplier",
+    "@odata.context": "https://play.p21server.com/odataservice/odata/$metadata#supplier",
     "value": [
         {
             "supplier_id": 21274,

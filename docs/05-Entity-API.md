@@ -30,9 +30,9 @@ https://{hostname}/api/{category}/{entity}
 ```
 
 Examples:
-- `https://play.ifpusa.com/api/sales/customers`
-- `https://play.ifpusa.com/api/sales/orders`
-- `https://play.ifpusa.com/api/inventory/parts`
+- `https://play.p21server.com/api/sales/customers`
+- `https://play.p21server.com/api/sales/orders`
+- `https://play.p21server.com/api/inventory/parts`
 
 ---
 
@@ -80,7 +80,7 @@ Include the Bearer token in the Authorization header:
 
 ```http
 GET /api/sales/customers HTTP/1.1
-Host: play.ifpusa.com
+Host: play.p21server.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -108,7 +108,7 @@ Content-Type: application/json
 {
     "CustomerName": "New Customer",
     "Address1": "123 Main St",
-    "City": "Cedar Rapids",
+    "City": "Anytown",
     "State": "IA"
 }
 ```
@@ -156,7 +156,7 @@ DELETE /api/sales/customers/100198
 Filter results using the `$query` parameter:
 
 ```
-GET /api/sales/customers?$query=State eq 'IA'
+GET /api/sales/customers?$query=State eq 'NY'
 ```
 
 ### Comparison Operators
@@ -262,7 +262,7 @@ Single record:
     "CustomerCode": 100198,
     "CustomerName": "ABC Company",
     "Address1": "123 Main St",
-    "City": "Cedar Rapids",
+    "City": "Anytown",
     "State": "IA"
 }
 ```
@@ -297,7 +297,7 @@ import httpx
 
 response = httpx.get(
     f"{base_url}/api/sales/customers",
-    params={"$query": "State eq 'IA'"},
+    params={"$query": "State eq 'NY'"},
     headers={"Authorization": f"Bearer {token}"},
     verify=False
 )
@@ -336,7 +336,7 @@ template = httpx.get(
 # Fill required fields
 template["CustomerName"] = "New Customer"
 template["Address1"] = "123 Main St"
-template["City"] = "Cedar Rapids"
+template["City"] = "Anytown"
 template["State"] = "IA"
 
 # Create

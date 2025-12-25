@@ -45,7 +45,7 @@ def build_test_payload() -> dict:
                         "Rows": [{
                             "Edits": [
                                 {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
-                                {"Name": "company_id", "Value": "IFPG"},
+                                {"Name": "company_id", "Value": "ACME"},
                                 {"Name": "supplier_id", "Value": 10.0},
                                 {"Name": "product_group_id", "Value": "FA5"},
                                 {"Name": "description", "Value": f"ASYNC-TEST-{timestamp}"},

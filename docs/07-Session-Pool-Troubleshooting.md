@@ -410,7 +410,7 @@ at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2025-12-25 | IFP IT | Initial version |
+| 1.0 | 2025-12-25 | Author | Initial version |
 
 ---
 

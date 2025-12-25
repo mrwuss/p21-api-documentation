@@ -47,7 +47,7 @@ def build_bulk_payload(records: list[dict]) -> dict:
                     "Rows": [{
                         "Edits": [
                             {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
-                            {"Name": "company_id", "Value": "IFPG"},
+                            {"Name": "company_id", "Value": "ACME"},
                             {"Name": "supplier_id", "Value": float(record["supplier_id"])},
                             {"Name": "product_group_id", "Value": record["product_group"]},
                             {"Name": "description", "Value": record["description"]},

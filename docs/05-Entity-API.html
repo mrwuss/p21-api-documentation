@@ -181,9 +181,9 @@
 </code></pre></div>
 
 <p>Examples:
-- <code>https://play.ifpusa.com/api/sales/customers</code>
-- <code>https://play.ifpusa.com/api/sales/orders</code>
-- <code>https://play.ifpusa.com/api/inventory/parts</code></p>
+- <code>https://play.p21server.com/api/sales/customers</code>
+- <code>https://play.p21server.com/api/sales/orders</code>
+- <code>https://play.p21server.com/api/inventory/parts</code></p>
 <hr />
 <h2 id="common-endpoints">Common Endpoints</h2>
 <h3 id="sales">Sales</h3>
@@ -290,7 +290,7 @@
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
 <div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/sales/customers</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-<span class="na">Host</span><span class="o">:</span> <span class="l">play.ifpusa.com</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
@@ -312,7 +312,7 @@
 <span class="err">{</span>
 <span class="err">    &quot;CustomerName&quot;: &quot;New Customer&quot;,</span>
 <span class="err">    &quot;Address1&quot;: &quot;123 Main St&quot;,</span>
-<span class="err">    &quot;City&quot;: &quot;Cedar Rapids&quot;,</span>
+<span class="err">    &quot;City&quot;: &quot;Anytown&quot;,</span>
 <span class="err">    &quot;State&quot;: &quot;IA&quot;</span>
 <span class="err">}</span>
 </code></pre></div>
@@ -348,7 +348,7 @@
 <hr />
 <h2 id="query-syntax">Query Syntax</h2>
 <p>Filter results using the <code>$query</code> parameter:</p>
-<div class="highlight"><pre><span></span><code>GET /api/sales/customers?$query=State eq &#39;IA&#39;
+<div class="highlight"><pre><span></span><code>GET /api/sales/customers?$query=State eq &#39;NY&#39;
 </code></pre></div>
 
 <h3 id="comparison-operators">Comparison Operators</h3>
@@ -504,7 +504,7 @@
 <span class="w">    </span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100198</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;Address1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Main St&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;City&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;City&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Anytown&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;State&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -532,7 +532,7 @@
 
 <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/customers&quot;</span><span class="p">,</span>
-    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;State eq &#39;IA&#39;&quot;</span><span class="p">},</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;State eq &#39;NY&#39;&quot;</span><span class="p">},</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
@@ -567,7 +567,7 @@
 <span class="c1"># Fill required fields</span>
 <span class="n">template</span><span class="p">[</span><span class="s2">&quot;CustomerName&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;New Customer&quot;</span>
 <span class="n">template</span><span class="p">[</span><span class="s2">&quot;Address1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;123 Main St&quot;</span>
-<span class="n">template</span><span class="p">[</span><span class="s2">&quot;City&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Cedar Rapids&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;City&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Anytown&quot;</span>
 <span class="n">template</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;IA&quot;</span>
 
 <span class="c1"># Create</span>

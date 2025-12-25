@@ -41,7 +41,7 @@ def load_config() -> P21Config:
     Looks for .env file in project root.
 
     Required variables:
-        P21_BASE_URL: P21 server URL (e.g., https://play.ifpusa.com)
+        P21_BASE_URL: P21 server URL (e.g., https://play.p21server.com)
         P21_USERNAME: API username
         P21_PASSWORD: API password
 

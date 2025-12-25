@@ -38,7 +38,7 @@ Use when you have a P21 username and password. The user must be:
 **Request:**
 ```http
 POST /api/security/token/v2 HTTP/1.1
-Host: play.ifpusa.com
+Host: play.p21server.com
 Content-Type: application/json
 Accept: application/json
 
@@ -63,7 +63,7 @@ Accept: application/json
 **Request:**
 ```http
 POST /api/security/token HTTP/1.1
-Host: play.ifpusa.com
+Host: play.p21server.com
 username: api_user
 password: your_password
 Content-Type: application/json
@@ -124,7 +124,7 @@ Use for service accounts and automated integrations. Consumer keys are created i
 
 ```http
 POST /api/security/token/v2 HTTP/1.1
-Host: play.ifpusa.com
+Host: play.p21server.com
 Content-Type: application/json
 Accept: application/json
 
@@ -185,7 +185,7 @@ Include the token in the `Authorization` header for all API requests:
 
 ```http
 GET /odataservice/odata/table/supplier HTTP/1.1
-Host: play.ifpusa.com
+Host: play.p21server.com
 Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -257,7 +257,7 @@ The Interactive and Transaction APIs require the UI server URL, which is obtaine
 
 ```http
 GET /api/ui/router/v1?urlType=external HTTP/1.1
-Host: play.ifpusa.com
+Host: play.p21server.com
 Authorization: Bearer {token}
 Accept: application/json
 ```
@@ -265,7 +265,7 @@ Accept: application/json
 **Response:**
 ```json
 {
-    "Url": "https://play.ifpusa.com/uiserver0"
+    "Url": "https://play.p21server.com/uiserver0"
 }
 ```
 

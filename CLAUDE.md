@@ -69,7 +69,7 @@ python scripts/odata/01_basic_query.py
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.ifpusa.com`) |
+| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.p21server.com`) |
 | `P21_USERNAME` | Yes | P21 API username |
 | `P21_PASSWORD` | Yes | P21 API password |
 
@@ -78,9 +78,9 @@ python scripts/odata/01_basic_query.py
 ## Content Sources
 
 All documentation is derived from:
-1. **Official SDK Docs**: `T:\P21API\docs\p21sdk\`
-2. **Working Code**: `C:\Projects\Cube Writer\p21\`
-3. **Actual Testing**: Verified against play.ifpusa.com
+1. **Official SDK Docs**: Epicor P21 SDK documentation
+2. **Working Code**: Verified production implementations
+3. **Actual Testing**: Verified against P21 test environments
 
 ---
 

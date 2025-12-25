@@ -206,7 +206,7 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
 
         # Step 3: Fill required fields (order matters for some fields)
         print("    Setting company...", end=" ")
-        window.change("company_id", "IFPG")
+        window.change("company_id", "ACME")
         print("OK")
 
         print("    Setting product group...", end=" ")

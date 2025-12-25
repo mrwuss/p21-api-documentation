@@ -134,7 +134,7 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
         # Step 3: Fill in required fields (order matters!)
         session.change_data(window_id, [
-            {"DataWindowName": "d_form", "FieldName": "company_id", "Value": "IFPG"},
+            {"DataWindowName": "d_form", "FieldName": "company_id", "Value": "ACME"},
         ])
 
         session.change_data(window_id, [

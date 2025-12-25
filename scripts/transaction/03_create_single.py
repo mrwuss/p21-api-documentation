@@ -41,7 +41,7 @@ def build_price_page_payload(description: str, supplier_id: int, product_group: 
                         "Rows": [{
                             "Edits": [
                                 {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
-                                {"Name": "company_id", "Value": "IFPG"},
+                                {"Name": "company_id", "Value": "ACME"},
                                 {"Name": "supplier_id", "Value": float(supplier_id)},
                                 {"Name": "product_group_id", "Value": product_group},
                                 {"Name": "description", "Value": description},

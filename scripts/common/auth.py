@@ -138,13 +138,13 @@ def get_ui_server_url(base_url: str, token: str, verify_ssl: bool = False) -> st
         verify_ssl: Whether to verify SSL certificates
 
     Returns:
-        str: UI server URL (e.g., "https://play.ifpusa.com/uiserver0")
+        str: UI server URL (e.g., "https://play.p21server.com/uiserver0")
 
     Example:
         >>> token_data = get_token()
         >>> ui_url = get_ui_server_url(config.base_url, token_data["AccessToken"])
         >>> print(ui_url)
-        'https://play.ifpusa.com/uiserver0'
+        'https://play.p21server.com/uiserver0'
     """
     with httpx.Client(verify=verify_ssl, follow_redirects=True) as client:
         response = client.get(

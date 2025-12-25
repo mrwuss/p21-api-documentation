@@ -162,7 +162,7 @@ def main():
 
         timestamp = datetime.now().strftime("%H%M%S")
         changes = [
-            {"DataWindowName": "d_form", "FieldName": "company_id", "Value": "IFPG"},
+            {"DataWindowName": "d_form", "FieldName": "company_id", "Value": "ACME"},
             {"DataWindowName": "d_form", "FieldName": "supplier_id", "Value": "10"},
             {"DataWindowName": "d_form", "FieldName": "product_group_id", "Value": "FA5"},
             {"DataWindowName": "d_form", "FieldName": "description", "Value": f"IAPI-TEST-{timestamp}"},
