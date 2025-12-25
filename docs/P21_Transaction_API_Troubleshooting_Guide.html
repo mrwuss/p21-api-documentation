@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P21 Transaction API Troubleshooting Guide</title>
+    <style>
+        @media print {
+            body { font-size: 11pt; }
+            h1 { page-break-before: auto; }
+            h2 { page-break-before: always; page-break-after: avoid; }
+            h3 { page-break-after: avoid; }
+            pre, table { page-break-inside: avoid; }
+            .no-print { display: none; }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        .warning {
+            background: #fef9e7;
+            border-left: 4px solid #f4d03f;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .info {
+            background: #eaf2f8;
+            border-left: 4px solid #2874a6;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Header styling */
+        .doc-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px double #2874a6;
+        }
+
+        .doc-header h1 {
+            border: none;
+            margin-bottom: 10px;
+        }
+
+        .doc-meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* TOC styling */
+        .toc {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .toc h2 {
+            margin-top: 0;
+            border: none;
+        }
+
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .toc li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="p21-transaction-api-troubleshooting-guide">P21 Transaction API Troubleshooting Guide</h1>
+<h2 id="intermittent-unexpected-response-window-errors">Intermittent "Unexpected Response Window" Errors</h2>
+<p><strong>Document Version:</strong> 1.0
+<strong>Date:</strong> December 25, 2025
+<strong>Audience:</strong> Mid-Level IT / Developers
+<strong>Classification:</strong> Internal Technical Documentation</p>
+<hr />
+<h2 id="executive-summary">Executive Summary</h2>
+<p>This document addresses intermittent failures when using the Prophet 21 (P21) Transaction API, specifically the "Unexpected response window" error. Through systematic investigation, we identified the root cause as <strong>session pool contamination</strong> - a condition where pooled API sessions retain state from previous operations, causing subsequent requests to fail unpredictably.</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-error">The Error</a></li>
+<li><a href="#2-investigation-process">Investigation Process</a></li>
+<li><a href="#3-root-cause-analysis">Root Cause Analysis</a></li>
+<li><a href="#4-recommended-solutions">Recommended Solutions</a></li>
+<li><a href="#5-testing-tools">Testing Tools</a></li>
+<li><a href="#appendix">Appendix</a></li>
+</ol>
+<hr />
+<h2 id="1-the-error">1. The Error</h2>
+<h3 id="11-error-message">1.1 Error Message</h3>
+<div class="highlight"><pre><span></span><code>System.AggregateException: One or more errors occurred.
+---&gt; P21.UI.Common.UiServerException: Unexpected response window:
+Email Purchase Order(s). Window class: w_email_response
+</code></pre></div>
+
+<h3 id="12-observed-behavior">1.2 Observed Behavior</h3>
+<p>The error exhibits <strong>no predictable pattern</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Attempt</th>
+<th>Delay</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>-</td>
+<td>FAIL</td>
+</tr>
+<tr>
+<td>2</td>
+<td>10 seconds</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Immediate</td>
+<td>FAIL</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Minutes</td>
+<td>FAIL</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Immediate</td>
+<td>PASS</td>
+</tr>
+</tbody>
+</table>
+<p>This randomness initially suggested a configuration issue, but the inconsistency pointed to something more systemic.</p>
+<h3 id="13-sample-payload-that-triggered-error">1.3 Sample Payload That Triggered Error</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PurchaseOrder&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;po_no&quot;</span><span class="p">],</span>
+<span class="w">          </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">              </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;982428&quot;</span><span class="p">}</span>
+<span class="w">              </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">          </span><span class="p">]</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_18.extended_info&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">              </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;acknowledged&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;acknowledged_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-12-17&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c_shipped_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;supplier_ship_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-02-11&quot;</span><span class="p">}</span>
+<span class="w">              </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">          </span><span class="p">]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="2-investigation-process">2. Investigation Process</h2>
+<h3 id="21-initial-hypothesis-configuration-issue">2.1 Initial Hypothesis: Configuration Issue</h3>
+<p><strong>Information Provided:</strong></p>
+<blockquote>
+<p>"The payload we tried to send and the error that was returned."</p>
+</blockquote>
+<p><strong>Initial Analysis:</strong></p>
+<p>The error message mentioned <code>Email Purchase Order(s)</code> dialog, which suggested a P21 business rule was triggering an email workflow. The stack trace showed:</p>
+<div class="highlight"><pre><span></span><code>at P21.Application.Business.n_cst_emailsrv.of_retrieveemailinformation()
+at P21.Application.Business.n_cst_script.of_showprinterdialogbox()
+at P21.Application.UI.w_purchase_order_entry_sheet.ue_print()
+</code></pre></div>
+
+<p>This indicated the PO window was attempting to show an email dialog after processing certain fields (<code>acknowledged</code>, <code>c_shipped_flag</code>).</p>
+<p><strong>Suggested Investigation:</strong>
+- Check DynaChange rules on Purchase Order Entry
+- Check supplier email settings
+- Check PO type notification configurations</p>
+<h3 id="22-critical-information-that-changed-the-diagnosis">2.2 Critical Information That Changed the Diagnosis</h3>
+<p><strong>Information Provided:</strong></p>
+<blockquote>
+<p>"We could send this payload and it would fail, then try again in 10 seconds and it would pass, try again right away and it would fail, try again in minutes and it would fail, try again and it would pass. There was no cadence to the error."</p>
+</blockquote>
+<p><strong>Why This Changed Everything:</strong></p>
+<p>If the error was caused by a configuration (email trigger, DynaChange rule, etc.), it would fail <strong>every time</strong> or follow a predictable pattern. The random nature of failures indicated:</p>
+<ol>
+<li>The payload format was likely correct</li>
+<li>The P21 configuration was not the direct cause</li>
+<li>Something <strong>external to the request itself</strong> was causing failures</li>
+</ol>
+<h3 id="23-revised-hypothesis-session-pool-contamination">2.3 Revised Hypothesis: Session Pool Contamination</h3>
+<p>The randomness pattern matched known behavior of <strong>connection/session pools</strong>:</p>
+<ul>
+<li>The Transaction API uses a <strong>pool of reusable sessions</strong></li>
+<li>Each session maintains state (open windows, dialogs, etc.)</li>
+<li>If a previous request fails mid-operation, the session may retain "dirty" state</li>
+<li>Subsequent requests that receive a dirty session will fail</li>
+<li>Which session you get is essentially <strong>random</strong></li>
+</ul>
+<hr />
+<h2 id="3-root-cause-analysis">3. Root Cause Analysis</h2>
+<h3 id="31-how-the-transaction-api-session-pool-works">3.1 How the Transaction API Session Pool Works</h3>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────┐
+│                    P21 UI Server                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Session Pool                            │    │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │    │
+│  │  │Session 1│ │Session 2│ │Session 3│ │Session 4│    │    │
+│  │  │  CLEAN  │ │  DIRTY  │ │  CLEAN  │ │  DIRTY  │    │    │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘    │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+</code></pre></div>
+
+<p><strong>Normal Flow:</strong>
+1. Request arrives → Gets available session from pool
+2. Session processes request → Returns result
+3. Session is cleaned up → Returned to pool</p>
+<p><strong>Contamination Flow:</strong>
+1. Request A arrives → Gets Session 2
+2. Request A triggers email dialog → Dialog opens
+3. Request A times out or fails → <strong>Dialog remains open</strong>
+4. Session 2 returned to pool with open dialog
+5. Request B arrives → Gets Session 2 (dirty)
+6. Request B encounters unexpected dialog → <strong>FAILS</strong></p>
+<h3 id="32-evidence-in-the-stack-trace">3.2 Evidence in the Stack Trace</h3>
+<p>The error occurs during <code>ue_clear()</code> - the <strong>cleanup phase</strong>:</p>
+<div class="highlight"><pre><span></span><code>at P21.Application.UI.w_purchase_order_entry_sheet.ue_clear()
+</code></pre></div>
+
+<p>This confirms:
+- The actual data operation may have succeeded
+- The failure occurs when cleaning up the session
+- An unexpected window (email dialog) was found
+- This window was <strong>not opened by the current request</strong></p>
+<h3 id="33-why-certain-fields-trigger-this">3.3 Why Certain Fields Trigger This</h3>
+<p>The <code>acknowledged</code> and <code>c_shipped_flag</code> fields trigger email notifications in P21:</p>
+<div class="highlight"><pre><span></span><code>acknowledged = ON  →  &quot;Send acknowledgment to supplier&quot;
+c_shipped_flag = ON  →  &quot;Notify about shipment status&quot;
+</code></pre></div>
+
+<p>When another user or process previously set these fields via the API:
+1. The email dialog opened in that session
+2. The operation failed/timed out before the dialog closed
+3. The session was returned to the pool with the dialog still open
+4. Your request randomly got that same dirty session</p>
+<hr />
+<h2 id="4-recommended-solutions">4. Recommended Solutions</h2>
+<h3 id="41-immediate-workarounds">4.1 Immediate Workarounds</h3>
+<h4 id="option-a-implement-retry-with-random-jitter">Option A: Implement Retry with Random Jitter</h4>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">call_transaction_api</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">make_api_call</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">result</span>
+        <span class="k">except</span> <span class="n">TransactionApiError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;Unexpected response window&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                <span class="c1"># Dirty session - wait and retry with jitter</span>
+                <span class="n">delay</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">raise</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Max retries exceeded&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h4 id="option-b-use-async-endpoint">Option B: Use Async Endpoint</h4>
+<p>The async endpoint may use dedicated sessions:</p>
+<div class="highlight"><pre><span></span><code>POST /uiserver0/api/v2/transaction/async
+</code></pre></div>
+
+<p>Then poll for results:</p>
+<div class="highlight"><pre><span></span><code>GET /uiserver0/api/v2/transaction/async?id={RequestId}
+</code></pre></div>
+
+<h4 id="option-c-split-transactions">Option C: Split Transactions</h4>
+<p>Separate the "trigger" fields into a second transaction:</p>
+<p><strong>Transaction 1:</strong> Update line items</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_17.tp_17_dw_17&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Transaction 2:</strong> Update acknowledgment (with retry)</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_18.extended_info&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="42-configuration-changes">4.2 Configuration Changes</h3>
+<h4 id="disable-email-notifications-for-api-user">Disable Email Notifications for API User</h4>
+<ol>
+<li>Create a dedicated P21 user for API operations</li>
+<li>Configure user profile to suppress email dialogs</li>
+<li>Check: System Settings → Purchase Order → Email Options</li>
+</ol>
+<h4 id="check-dynachange-rules">Check DynaChange Rules</h4>
+<ol>
+<li>Navigate to: Tools → DynaChange → Rules</li>
+<li>Search for rules on "Purchase Order Entry"</li>
+<li>Look for rules triggered by <code>acknowledged</code> or <code>c_shipped_flag</code></li>
+<li>Consider adding condition: <code>IF user &lt;&gt; 'API_USER'</code></li>
+</ol>
+<h3 id="43-long-term-report-to-epicor">4.3 Long-Term: Report to Epicor</h3>
+<p>This is arguably a <strong>bug in P21's session pool management</strong>. Sessions with open dialogs should not be returned to the pool.</p>
+<p><strong>Bug Report Should Include:</strong>
+- Payload that triggers the issue
+- Error message and full stack trace
+- Evidence of intermittent pattern
+- Request for session pool hygiene improvements</p>
+<hr />
+<h2 id="5-testing-tools">5. Testing Tools</h2>
+<h3 id="51-session-pool-behavior-test-script">5.1 Session Pool Behavior Test Script</h3>
+<p>A Python script has been created to diagnose session pool issues:</p>
+<p><strong>Location:</strong> <code>scripts/test_session_pool.py</code></p>
+<p><strong>What It Tests:</strong>
+1. Rapid-fire requests (no delay)
+2. Delayed requests (500ms, 2000ms)
+3. Parallel concurrent requests
+4. Random jitter patterns</p>
+<p><strong>Running the Test:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;C:\Projects\Cube Writer&quot;</span>
+python<span class="w"> </span>scripts/test_session_pool.py
+</code></pre></div>
+
+<p><strong>Sample Output:</strong></p>
+<div class="highlight"><pre><span></span><code>TEST 1: Rapid Fire (10 requests, no delay)
+======================================================================
+  [ 1] ✓  234ms - Succeeded: 1
+  [ 2] ✗  189ms - Failed: UnexpectedWindow
+  [ 3] ✓  201ms - Succeeded: 1
+  [ 4] ✗  178ms - Failed: UnexpectedWindow
+  ...
+
+CONCLUSIONS:
+  ⚠️ Intermittent failures detected
+  ⚠️ Pattern suggests session pool issues
+  ⚠️ &#39;Unexpected window&#39; errors confirm dirty session pool
+</code></pre></div>
+
+<h3 id="52-sample-test-results-salespricepage-window">5.2 Sample Test Results (SalesPricePage Window)</h3>
+<p>A test run against the SalesPricePage window showed 100% success:</p>
+<div class="highlight"><pre><span></span><code>SESSION POOL BEHAVIOR ANALYSIS
+======================================================================
+RAPID_FIRE:       Total: 10, Success: 10, Failed: 0 (100.0%)
+DELAYED_500MS:    Total: 10, Success: 10, Failed: 0 (100.0%)
+DELAYED_2000MS:   Total:  5, Success:  5, Failed: 0 (100.0%)
+PARALLEL:         Total:  5, Success:  5, Failed: 0 (100.0%)
+RANDOM_JITTER:    Total: 10, Success: 10, Failed: 0 (100.0%)
+
+SUMMARY:
+  Total Requests: 40
+  Total Failures: 0
+  Overall Success Rate: 100.0%
+
+CONCLUSIONS:
+  [OK] No failures detected - session pool appears healthy
+</code></pre></div>
+
+<p><strong>Key Insight:</strong> The SalesPricePage window does not trigger email dialogs, so session pool contamination is not observed. The intermittent failures are <strong>window-specific</strong> - Purchase Order Entry triggers email workflows that leave dialogs open, contaminating the session.</p>
+<h3 id="53-interpreting-results">5.3 Interpreting Results</h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100% success</td>
+<td>Session pool is healthy for this window</td>
+</tr>
+<tr>
+<td>Alternating success/fail</td>
+<td>Strong pool contamination</td>
+</tr>
+<tr>
+<td>Random failures</td>
+<td>Moderate pool contamination</td>
+</tr>
+<tr>
+<td>100% failure</td>
+<td>Likely configuration issue, not pool</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important:</strong> A healthy result for one window (SalesPricePage) does not guarantee other windows (PurchaseOrder) are safe. Each window type can have different behaviors that affect session state.</p>
+<hr />
+<h2 id="appendix">Appendix</h2>
+<h3 id="a-complete-error-stack-trace">A. Complete Error Stack Trace</h3>
+<div class="highlight"><pre><span></span><code>System.AggregateException: One or more errors occurred.
+---&gt; P21.UI.Common.UiServerException:
+     Unexpected response window: Email Purchase Order(s).
+     Window class: w_email_response
+
+at P21.Application.n_cst_actionrequestexecutor.se_nwindowopener_responsewindowopened()
+at P21.Application.UI.Infrastructure.n_windowopener.of_open()
+at P21.Application.Business.n_cst_emailsrv.of_retrieveemailinformation()
+at P21.Application.Business.n_cst_script.of_showprinterdialogbox()
+at P21.Application.UI.w_purchase_order_entry_sheet.ue_print()
+at P21.Application.UI.w_purchase_order_entry_sheet.ue_clear()
+at P21.Application.n_uirequestprocessor_clearwindow.ProcessRequest()
+at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
+</code></pre></div>
+
+<h3 id="b-transaction-api-endpoints-reference">B. Transaction API Endpoints Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v2/services</code></td>
+<td>GET</td>
+<td>List available services</td>
+</tr>
+<tr>
+<td><code>/api/v2/definition/{name}</code></td>
+<td>GET</td>
+<td>Get service schema</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction</code></td>
+<td>POST</td>
+<td>Synchronous processing</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction/async</code></td>
+<td>POST</td>
+<td>Async processing</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction/get</code></td>
+<td>POST</td>
+<td>Bulk retrieve</td>
+</tr>
+</tbody>
+</table>
+<h3 id="c-related-documentation">C. Related Documentation</h3>
+<ul>
+<li>P21 SDK Documentation: <code>T:\P21API\docs\p21sdk\</code></li>
+<li>Transaction API Tutorial: <code>content\transaction\tutorial\</code></li>
+<li>Entity API Reference: <code>content\entity\reference-guide\</code></li>
+</ul>
+<hr />
+<h2 id="document-history">Document History</h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Date</th>
+<th>Author</th>
+<th>Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2025-12-25</td>
+<td>IFP IT</td>
+<td>Initial version</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>This document was created as part of API performance research for the P21 Price Page Manager project. The investigation methodology demonstrates how systematic analysis of error patterns and user-provided context can lead to accurate root cause identification.</em></p>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>

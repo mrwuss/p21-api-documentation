@@ -1,0 +1,10 @@
+# P21 Transaction API Guide - Dependencies
+
+# HTTP client
+httpx>=0.25.0
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Markdown to HTML conversion
+markdown>=3.5.0

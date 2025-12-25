@@ -1,0 +1,18 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Test results (regenerated on each run)
+scripts/session_pool_results.json
