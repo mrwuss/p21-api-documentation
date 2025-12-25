@@ -37,7 +37,7 @@ python scripts/odata/01_basic_query.py
 
 This documentation is available online via GitHub Pages:
 
-**[View Documentation](https://jscarbrough.github.io/p21-api-documentation/)**
+**[View Documentation](https://mrwuss.github.io/p21-api-documentation/)**
 
 ### Enabling GitHub Pages (for forks)
 
