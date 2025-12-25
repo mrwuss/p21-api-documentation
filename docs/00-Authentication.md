@@ -311,4 +311,4 @@ def get_ui_server_url(base_url: str, token: str) -> str:
 
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Error Handling](06-Error-Handling.md)
-- [scripts/common/auth.py](../scripts/common/auth.py) - Authentication module
+- [scripts/common/auth.py](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/common/auth.py) - Authentication module

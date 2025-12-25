@@ -380,4 +380,4 @@ def get_all_records(base_url, table, filter_expr=None, page_size=100):
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Error Handling](06-Error-Handling.md)
-- [scripts/odata/](../scripts/odata/) - Working examples
+- [scripts/odata/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/odata/) - Working examples

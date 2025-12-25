@@ -395,4 +395,4 @@ See the `scripts/interactive/` directory:
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Transaction API](03-Transaction-API.md)
-- [scripts/interactive/](../scripts/interactive/) - Working examples
+- [scripts/interactive/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/interactive/) - Working examples
