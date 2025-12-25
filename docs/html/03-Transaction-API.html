@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction API</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
+            .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="transaction-api">Transaction API</h1>
+<h2 id="overview">Overview</h2>
+<p>The Transaction API is a <strong>stateless RESTful</strong> web service for bulk data manipulation in P21. It allows creating and updating records across any P21 window without maintaining session state.</p>
+<h3 id="key-characteristics">Key Characteristics</h3>
+<ul>
+<li><strong>Stateless</strong> - No session management required</li>
+<li><strong>Bulk operations</strong> - Process multiple records in single request</li>
+<li><strong>Service-based</strong> - Each P21 window maps to a service</li>
+<li><strong>JSON or XML</strong> - Supports both formats</li>
+<li><strong>Async support</strong> - Long operations can run asynchronously</li>
+</ul>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li>Creating multiple records (orders, invoices, etc.)</li>
+<li>Bulk updates</li>
+<li>Automated data import</li>
+<li>Integration with external systems</li>
+</ul>
+<hr />
+<h2 id="endpoints">Endpoints</h2>
+<p>All Transaction API endpoints use the UI Server URL. First, obtain the UI Server URL:</p>
+<div class="highlight"><pre><span></span><code>GET https://{hostname}/api/ui/router/v1?urlType=external
+</code></pre></div>
+
+<p>Then use the returned URL as base:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v2/services</code></td>
+<td>GET</td>
+<td>List available services</td>
+</tr>
+<tr>
+<td><code>/api/v2/definition/{name}</code></td>
+<td>GET</td>
+<td>Get service schema</td>
+</tr>
+<tr>
+<td><code>/api/v2/defaults/{name}</code></td>
+<td>GET</td>
+<td>Get default values</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction/get</code></td>
+<td>POST</td>
+<td>Retrieve existing records</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction</code></td>
+<td>POST</td>
+<td>Create or update records</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction/async</code></td>
+<td>POST</td>
+<td>Async create/update</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction/async/callback</code></td>
+<td>POST</td>
+<td>Async with callback</td>
+</tr>
+<tr>
+<td><code>/api/v2/transaction/async?id={id}</code></td>
+<td>GET</td>
+<td>Check async status</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="authentication">Authentication</h2>
+<p>Include the Bearer token in the Authorization header:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/v2/transaction</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">{ui-server-host}</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<p>See <a href="00-Authentication.md">Authentication</a> for token generation.</p>
+<hr />
+<h2 id="request-structure">Request Structure</h2>
+<h3 id="transactionset">TransactionSet</h3>
+<p>The main request body for create/update operations:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ServiceName&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.table_name&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">                    </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;field_name&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;field_value&quot;</span><span class="p">}</span>
+<span class="w">                            </span><span class="p">],</span>
+<span class="w">                            </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">]</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="key-fields">Key Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>Service name (e.g., "Order", "SalesPricePage")</td>
+</tr>
+<tr>
+<td><code>UseCodeValues</code></td>
+<td>If <code>true</code>, use code values; if <code>false</code>, use display values</td>
+</tr>
+<tr>
+<td><code>Status</code></td>
+<td>Must be "New" for create operations</td>
+</tr>
+<tr>
+<td><code>DataElements</code></td>
+<td>Array of tabs/sections in the window</td>
+</tr>
+<tr>
+<td><code>Type</code></td>
+<td>"Form" for single record, "List" for multiple</td>
+</tr>
+<tr>
+<td><code>Keys</code></td>
+<td>Key fields for List-type elements</td>
+</tr>
+<tr>
+<td><code>Edits</code></td>
+<td>Array of field name/value pairs</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="common-services">Common Services</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>P21 Window</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Order</code></td>
+<td>Order Entry</td>
+<td>Create/edit sales orders</td>
+</tr>
+<tr>
+<td><code>Invoice</code></td>
+<td>Invoice Entry</td>
+<td>Create/edit invoices</td>
+</tr>
+<tr>
+<td><code>Customer</code></td>
+<td>Customer Maintenance</td>
+<td>Customer records</td>
+</tr>
+<tr>
+<td><code>Supplier</code></td>
+<td>Supplier Maintenance</td>
+<td>Supplier records</td>
+</tr>
+<tr>
+<td><code>SalesPricePage</code></td>
+<td>Sales Price Page</td>
+<td>Price page management</td>
+</tr>
+<tr>
+<td><code>PurchaseOrder</code></td>
+<td>Purchase Order Entry</td>
+<td>Create POs</td>
+</tr>
+<tr>
+<td><code>InventoryMaster</code></td>
+<td>Inventory Maintenance</td>
+<td>Item records</td>
+</tr>
+<tr>
+<td><code>Task</code></td>
+<td>Task Entry</td>
+<td>Create tasks/activities</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="response-format">Response Format</h2>
+<h3 id="success-response">Success Response</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Transaction 1:: &quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;Results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span>
+<span class="w">                        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">                            </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;order_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1013938&quot;</span><span class="p">}</span>
+<span class="w">                            </span><span class="p">]</span>
+<span class="w">                        </span><span class="p">}]</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">],</span>
+<span class="w">                </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Passed&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Succeeded&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Other&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="error-response">Error Response</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;Transaction 1:: Customer ID is required&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;Results&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Succeeded&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Other&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="field-order-matters">Field Order Matters</h2>
+<p>For some services, the order of fields in the request is significant. The API processes fields sequentially, and some fields trigger validation or auto-population of other fields.</p>
+<h3 id="example-salespricepage">Example: SalesPricePage</h3>
+<p>Fields must be set in this order:
+1. <code>price_page_type_cd</code> - Triggers type-specific validation
+2. <code>company_id</code> - Required before product group
+3. <code>product_group_id</code> or <code>discount_group_id</code>
+4. <code>supplier_id</code>
+5. Other fields...</p>
+<hr />
+<h2 id="usecodevalues">UseCodeValues</h2>
+<p>This setting controls how dropdown/checkbox values are interpreted:</p>
+<table>
+<thead>
+<tr>
+<th>UseCodeValues</th>
+<th>Pass</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>false</code> (default)</td>
+<td>Display value</td>
+<td><code>"Cancelled": "ON"</code></td>
+</tr>
+<tr>
+<td><code>true</code></td>
+<td>Code value</td>
+<td><code>"Cancelled": "Y"</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation</strong>: Use <code>false</code> (display values) for better readability.</p>
+<hr />
+<h2 id="async-operations">Async Operations</h2>
+<p>For long-running operations, use the async endpoint:</p>
+<h3 id="submit-async-request">Submit Async Request</h3>
+<div class="highlight"><pre><span></span><code>POST /api/v2/transaction/async
+</code></pre></div>
+
+<p>Response includes a request ID:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Active&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="check-status">Check Status</h3>
+<div class="highlight"><pre><span></span><code>GET /api/v2/transaction/async?id=ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d
+</code></pre></div>
+
+<p>Response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Complete&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompletedDate&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-15T16:34:53&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Status values: <code>Active</code>, <code>Complete</code>, <code>Failed</code></p>
+<h3 id="with-callback">With Callback</h3>
+<p>Use the callback endpoint to receive notification when complete:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Content&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Callback&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://your-server.com/webhook&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;ContentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Headers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;X-API-Key&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your-key&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="examples">Examples</h2>
+<h3 id="get-service-definition">Get Service Definition</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/v2/definition/Order&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+
+<span class="n">definition</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="c1"># definition[&quot;Template&quot;] - blank template for creating records</span>
+<span class="c1"># definition[&quot;TransactionDefinition&quot;] - field definitions with valid values</span>
+</code></pre></div>
+
+<h3 id="create-order">Create Order</h3>
+<div class="highlight"><pre><span></span><code><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;Order&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;customer_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;100198&quot;</span><span class="p">}</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]</span>
+                <span class="p">}]</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ITEM123&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">}</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]</span>
+                <span class="p">}]</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">}]</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
+    <span class="p">},</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h2 id="python-examples">Python Examples</h2>
+<p>See the <code>scripts/transaction/</code> directory for working examples:</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01_list_services.py</code></td>
+<td>List all available services</td>
+</tr>
+<tr>
+<td><code>02_get_definition.py</code></td>
+<td>Get service schema/template</td>
+</tr>
+<tr>
+<td><code>03_create_single.py</code></td>
+<td>Create a single record</td>
+</tr>
+<tr>
+<td><code>04_create_bulk.py</code></td>
+<td>Create multiple records</td>
+</tr>
+<tr>
+<td><code>05_update_existing.py</code></td>
+<td>Update existing records</td>
+</tr>
+<tr>
+<td><code>06_async_operations.py</code></td>
+<td>Use async endpoints</td>
+</tr>
+<tr>
+<td><code>test_session_pool.py</code></td>
+<td>Session pool diagnostic</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="known-issues">Known Issues</h2>
+<h3 id="session-pool-contamination">Session Pool Contamination</h3>
+<p>The Transaction API uses a session pool on the server. When a transaction fails mid-process (e.g., due to validation errors), the session may be left in a "dirty" state with dialogs still open. Subsequent requests using that pooled session may fail with errors like:</p>
+<ul>
+<li>"Unexpected response window"</li>
+<li>"Object reference not set"</li>
+<li>Validation errors for fields that weren't changed</li>
+</ul>
+<p><strong>Workarounds:</strong></p>
+<ol>
+<li><strong>Use the async endpoint</strong> - Creates dedicated session per request</li>
+<li><strong>Implement retry logic</strong> - Retry failed requests after a delay</li>
+<li><strong>Add jitter</strong> - Random delays between rapid requests</li>
+<li><strong>Restart middleware</strong> - Clears the session pool (last resort)</li>
+</ol>
+<p>See <a href="07-Session-Pool-Troubleshooting.md">Session Pool Troubleshooting</a> for detailed analysis.</p>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Get definition first</strong> - Fetch the service definition to understand required fields</li>
+<li><strong>Use display values</strong> - Set <code>UseCodeValues: false</code> for clarity</li>
+<li><strong>Check Summary</strong> - Always check <code>Summary.Succeeded</code> and <code>Summary.Failed</code></li>
+<li><strong>Handle failures gracefully</strong> - Messages array contains error details</li>
+<li><strong>Consider async for bulk</strong> - Use async endpoint for large batches</li>
+<li><strong>Add delays between requests</strong> - Prevents session pool issues</li>
+<li><strong>Validate locally first</strong> - Check required fields before sending</li>
+</ol>
+<hr />
+<h2 id="common-errors">Common Errors</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>401 Unauthorized</td>
+<td>Invalid/expired token</td>
+<td>Refresh token</td>
+</tr>
+<tr>
+<td>400 Bad Request</td>
+<td>Malformed request</td>
+<td>Check JSON structure</td>
+</tr>
+<tr>
+<td>"Required field missing"</td>
+<td>Missing required field</td>
+<td>Check definition for required fields</td>
+</tr>
+<tr>
+<td>"Unexpected response window"</td>
+<td>Session pool dirty</td>
+<td>Retry or use async</td>
+</tr>
+<tr>
+<td>"Invalid value"</td>
+<td>Wrong dropdown value</td>
+<td>Use <code>UseCodeValues: false</code> with display values</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="00-Authentication.md">Authentication</a></li>
+<li><a href="01-API-Selection-Guide.md">API Selection Guide</a></li>
+<li><a href="07-Session-Pool-Troubleshooting.md">Session Pool Troubleshooting</a></li>
+<li><a href="../scripts/transaction/">scripts/transaction/</a> - Working examples</li>
+</ul>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>

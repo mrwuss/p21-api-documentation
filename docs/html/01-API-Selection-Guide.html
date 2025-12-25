@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P21 API Selection Guide</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
+            .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="p21-api-selection-guide">P21 API Selection Guide</h1>
+<h2 id="overview">Overview</h2>
+<p>Prophet 21 provides four different APIs for external data access and manipulation. This guide helps you choose the right API for your use case.</p>
+<h2 id="quick-decision-table">Quick Decision Table</h2>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Best API</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read data quickly</td>
+<td><strong>OData</strong></td>
+<td>Standard protocol, efficient queries</td>
+</tr>
+<tr>
+<td>Bulk create records</td>
+<td><strong>Transaction API</strong></td>
+<td>Stateless, supports batching</td>
+</tr>
+<tr>
+<td>Complex business workflows</td>
+<td><strong>Interactive API</strong></td>
+<td>Full business logic, validation</td>
+</tr>
+<tr>
+<td>Simple CRUD operations</td>
+<td><strong>Entity API</strong></td>
+<td>Straightforward object access</td>
+</tr>
+<tr>
+<td>Update existing records</td>
+<td><strong>Interactive API</strong></td>
+<td>Reliable field-level updates</td>
+</tr>
+<tr>
+<td>Handle response dialogs</td>
+<td><strong>Interactive API</strong></td>
+<td>Only API with dialog handling</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="api-comparison">API Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>OData</th>
+<th>Transaction</th>
+<th>Interactive</th>
+<th>Entity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Read Data</strong></td>
+<td>Excellent</td>
+<td>Limited</td>
+<td>Good</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Create Data</strong></td>
+<td>No</td>
+<td>Excellent</td>
+<td>Good</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Update Data</strong></td>
+<td>No</td>
+<td>Limited*</td>
+<td>Excellent</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><strong>Delete Data</strong></td>
+<td>No</td>
+<td>No</td>
+<td>Via UI</td>
+<td>Limited</td>
+</tr>
+<tr>
+<td><strong>Bulk Operations</strong></td>
+<td>Yes (read)</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Business Logic</strong></td>
+<td>No</td>
+<td>Partial</td>
+<td>Full</td>
+<td>Partial</td>
+</tr>
+<tr>
+<td><strong>Session Required</strong></td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Stateful</strong></td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><strong>Response Dialogs</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>Yes</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<p>*Transaction API updates have known issues - see <a href="07-Session-Pool-Troubleshooting.md">Session Pool Troubleshooting</a></p>
+<hr />
+<h2 id="odata-api">OData API</h2>
+<h3 id="best-for">Best For</h3>
+<ul>
+<li>Reporting and data exports</li>
+<li>Quick lookups and searches</li>
+<li>Dashboard data</li>
+<li>Data validation</li>
+<li>Any read-only operation</li>
+</ul>
+<h3 id="characteristics">Characteristics</h3>
+<ul>
+<li><strong>Standard OData v4 protocol</strong> - familiar to most developers</li>
+<li><strong>Read-only</strong> - cannot create, update, or delete</li>
+<li><strong>No session management</strong> - simple request/response</li>
+<li><strong>Efficient</strong> - supports filtering, pagination, field selection</li>
+<li><strong>Direct table/view access</strong> - query any P21 table or view</li>
+</ul>
+<h3 id="use-when">Use When</h3>
+<ul>
+<li>You only need to read data</li>
+<li>Performance is critical</li>
+<li>You need standard query capabilities ($filter, $select, $orderby)</li>
+<li>You want to minimize complexity</li>
+</ul>
+<h3 id="dont-use-when">Don't Use When</h3>
+<ul>
+<li>You need to create or modify data</li>
+<li>You need business logic validation</li>
+</ul>
+<h3 id="example-use-cases">Example Use Cases</h3>
+<ul>
+<li>Get supplier list for dropdown</li>
+<li>Search for products</li>
+<li>Export pricing data</li>
+<li>Validate customer exists</li>
+<li>Dashboard metrics</li>
+</ul>
+<hr />
+<h2 id="transaction-api">Transaction API</h2>
+<h3 id="best-for_1">Best For</h3>
+<ul>
+<li>Bulk record creation</li>
+<li>External system integration</li>
+<li>Automated data import</li>
+<li>High-volume operations</li>
+</ul>
+<h3 id="characteristics_1">Characteristics</h3>
+<ul>
+<li><strong>Stateless</strong> - each request is independent</li>
+<li><strong>Bulk operations</strong> - multiple records per request</li>
+<li><strong>Metadata-driven</strong> - follows P21 window schemas</li>
+<li><strong>Fast</strong> - 50-100x faster than Interactive API for creates</li>
+<li><strong>Limited updates</strong> - update operations have known issues</li>
+</ul>
+<h3 id="use-when_1">Use When</h3>
+<ul>
+<li>Creating many records at once</li>
+<li>Building integrations from external systems</li>
+<li>Performance is critical for creation</li>
+<li>You don't need complex validation feedback</li>
+</ul>
+<h3 id="dont-use-when_1">Don't Use When</h3>
+<ul>
+<li>Updating existing records (use Interactive API)</li>
+<li>You need to handle response dialogs</li>
+<li>You need field-by-field validation feedback</li>
+</ul>
+<h3 id="known-issues">Known Issues</h3>
+<ul>
+<li><strong>Session Pool Contamination</strong> - intermittent failures with some windows</li>
+<li><strong>Update operations</strong> - may fail with NullReferenceException</li>
+<li>See <a href="07-Session-Pool-Troubleshooting.md">Session Pool Troubleshooting</a></li>
+</ul>
+<h3 id="example-use-cases_1">Example Use Cases</h3>
+<ul>
+<li>Import price pages from spreadsheet</li>
+<li>Sync products from external catalog</li>
+<li>Bulk create purchase orders</li>
+<li>Automated data migration</li>
+</ul>
+<hr />
+<h2 id="interactive-api">Interactive API</h2>
+<h3 id="best-for_2">Best For</h3>
+<ul>
+<li>Complex business workflows</li>
+<li>Record updates</li>
+<li>Operations requiring validation</li>
+<li>Handling response dialogs</li>
+</ul>
+<h3 id="characteristics_2">Characteristics</h3>
+<ul>
+<li><strong>Stateful</strong> - maintains session between requests</li>
+<li><strong>Full business logic</strong> - all P21 validation and rules</li>
+<li><strong>Window-based</strong> - interacts with P21 windows</li>
+<li><strong>Response dialogs</strong> - can handle pop-up confirmations</li>
+<li><strong>Reliable updates</strong> - field-level control</li>
+</ul>
+<h3 id="use-when_2">Use When</h3>
+<ul>
+<li>Updating existing records</li>
+<li>You need full P21 business validation</li>
+<li>Operations may trigger dialogs (email, confirmations)</li>
+<li>Complex multi-step workflows</li>
+<li>You need to mimic user interaction</li>
+</ul>
+<h3 id="dont-use-when_2">Don't Use When</h3>
+<ul>
+<li>Simple reads (use OData - faster)</li>
+<li>Bulk creates (use Transaction API - faster)</li>
+<li>You don't need business logic</li>
+</ul>
+<h3 id="performance-note">Performance Note</h3>
+<p>The Interactive API is slower than Transaction API for creates (~5s vs 0.05s per record) but more reliable for updates.</p>
+<h3 id="example-use-cases_2">Example Use Cases</h3>
+<ul>
+<li>Update purchase order status</li>
+<li>Modify customer records</li>
+<li>Complex order entry</li>
+<li>Any operation with approval dialogs</li>
+</ul>
+<hr />
+<h2 id="entity-api">Entity API</h2>
+<h3 id="best-for_3">Best For</h3>
+<ul>
+<li>Simple CRUD on business objects</li>
+<li>Quick single-record operations</li>
+<li>When you know the entity structure</li>
+</ul>
+<h3 id="characteristics_3">Characteristics</h3>
+<ul>
+<li><strong>Entity-based</strong> - works with P21 business objects</li>
+<li><strong>Simple CRUD</strong> - create, read, update, delete</li>
+<li><strong>Less overhead</strong> - simpler than Interactive API</li>
+<li><strong>Object-oriented</strong> - works with entity instances</li>
+</ul>
+<h3 id="use-when_3">Use When</h3>
+<ul>
+<li>Simple single-record operations</li>
+<li>You prefer object-based access</li>
+<li>Transaction or Interactive API is overkill</li>
+</ul>
+<h3 id="dont-use-when_3">Don't Use When</h3>
+<ul>
+<li>Complex validation is required</li>
+<li>You need response dialog handling</li>
+<li>Bulk operations (use Transaction API)</li>
+</ul>
+<h3 id="example-use-cases_3">Example Use Cases</h3>
+<ul>
+<li>Look up single customer</li>
+<li>Update a specific field</li>
+<li>Simple record creation</li>
+</ul>
+<hr />
+<h2 id="decision-flowchart">Decision Flowchart</h2>
+<div class="highlight"><pre><span></span><code>Start
+  │
+  ├─ Need to READ data only?
+  │   │
+  │   └─ Yes → Use OData API
+  │
+  ├─ Need to CREATE multiple records?
+  │   │
+  │   └─ Yes → Use Transaction API
+  │
+  ├─ Need to UPDATE records?
+  │   │
+  │   ├─ Simple field update → Try Entity API
+  │   │
+  │   └─ Complex/validated → Use Interactive API
+  │
+  ├─ Need response dialog handling?
+  │   │
+  │   └─ Yes → Use Interactive API
+  │
+  └─ Simple single-record CRUD?
+      │
+      └─ Yes → Use Entity API
+</code></pre></div>
+
+<hr />
+<h2 id="hybrid-approaches">Hybrid Approaches</h2>
+<h3 id="read-with-odata-write-with-transactioninteractive">Read with OData, Write with Transaction/Interactive</h3>
+<p>The most common pattern:
+1. Use <strong>OData</strong> for all reads (fast, simple)
+2. Use <strong>Transaction API</strong> for bulk creates (fast)
+3. Use <strong>Interactive API</strong> for updates (reliable)</p>
+<h3 id="example-price-page-management">Example: Price Page Management</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Read existing pages - OData (fast)</span>
+<span class="n">pages</span> <span class="o">=</span> <span class="n">odata</span><span class="o">.</span><span class="n">get_price_pages</span><span class="p">(</span><span class="n">supplier_id</span><span class="o">=</span><span class="mi">21274</span><span class="p">)</span>
+
+<span class="c1"># Create new pages - Transaction API (bulk, fast)</span>
+<span class="n">new_pages</span> <span class="o">=</span> <span class="n">transaction</span><span class="o">.</span><span class="n">create_pages</span><span class="p">([</span><span class="o">...</span><span class="p">])</span>
+
+<span class="c1"># Update existing page - Interactive API (reliable)</span>
+<span class="k">with</span> <span class="n">interactive</span><span class="o">.</span><span class="n">open_window</span><span class="p">(</span><span class="s2">&quot;SalesPricePage&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">window</span><span class="p">:</span>
+    <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;calculation_value1&quot;</span><span class="p">,</span> <span class="s2">&quot;0.55&quot;</span><span class="p">)</span>
+    <span class="n">window</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+</code></pre></div>
+
+<hr />
+<h2 id="performance-benchmarks">Performance Benchmarks</h2>
+<p>Measured against production P21 instance:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>OData</th>
+<th>Transaction</th>
+<th>Interactive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read 160 records</td>
+<td>0.12s</td>
+<td>N/A</td>
+<td>~2s</td>
+</tr>
+<tr>
+<td>Create 1 record</td>
+<td>N/A</td>
+<td>0.05s</td>
+<td>2.5s</td>
+</tr>
+<tr>
+<td>Create 25 records</td>
+<td>N/A</td>
+<td>1.4s</td>
+<td>62s</td>
+</tr>
+<tr>
+<td>Update 1 record</td>
+<td>N/A</td>
+<td>Unreliable*</td>
+<td>2.0s</td>
+</tr>
+</tbody>
+</table>
+<p>*Transaction API updates may fail - see known issues</p>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="00-Authentication.md">Authentication</a></li>
+<li><a href="02-OData-API.md">OData API</a></li>
+<li><a href="03-Transaction-API.md">Transaction API</a></li>
+<li><a href="04-Interactive-API.md">Interactive API</a></li>
+<li><a href="05-Entity-API.md">Entity API</a></li>
+<li><a href="07-Session-Pool-Troubleshooting.md">Session Pool Troubleshooting</a></li>
+</ul>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>
