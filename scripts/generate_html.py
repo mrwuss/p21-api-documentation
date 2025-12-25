@@ -14,6 +14,7 @@ Output:
     docs/html/<filename>.html
 """
 
+import re
 import sys
 import markdown
 from pathlib import Path
@@ -206,6 +207,9 @@ def convert_md_to_html(md_file: Path) -> Path:
 
     # Read markdown content
     md_content = md_file.read_text(encoding='utf-8')
+
+    # Convert internal .md links to .html links
+    md_content = re.sub(r'\]\((\d{2}-[^)]+)\.md\)', r'](\1.html)', md_content)
 
     # Extract title from first heading or filename
     title = md_file.stem.replace("-", " ").replace("_", " ")
