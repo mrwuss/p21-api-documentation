@@ -111,6 +111,17 @@ All documentation is derived from:
 - **Working Code**: Verified implementations from production projects
 - **Actual Testing**: Tested against P21 test environments
 
+## Contributing
+
+This documentation is a community effort! We welcome contributions:
+
+- **Found an error?** [Open an issue](../../issues/new?template=bug-report.md)
+- **Need something documented?** [Request it](../../issues/new?template=documentation-request.md)
+- **Have P21 knowledge to share?** [Contribute](../../issues/new?template=contribution.md)
+- **Questions?** [Start a discussion](../../discussions)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
 
 MIT License - See LICENSE file
