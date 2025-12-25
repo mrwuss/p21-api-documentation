@@ -395,4 +395,4 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
-- [scripts/transaction/](../scripts/transaction/) - Working examples
+- [scripts/transaction/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/transaction/) - Working examples

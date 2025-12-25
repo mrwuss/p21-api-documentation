@@ -406,4 +406,4 @@ See the `scripts/entity/` directory:
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [OData API](02-OData-API.md)
-- [scripts/entity/](../scripts/entity/) - Working examples
+- [scripts/entity/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/entity/) - Working examples
