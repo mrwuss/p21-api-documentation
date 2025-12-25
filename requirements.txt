@@ -1,6 +1,6 @@
-# P21 Transaction API Guide - Dependencies
+# P21 API Documentation - Dependencies
 
-# HTTP client
+# HTTP client (sync and async)
 httpx>=0.25.0
 
 # Environment management

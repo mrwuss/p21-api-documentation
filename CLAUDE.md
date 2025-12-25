@@ -1,48 +1,67 @@
-# Project: P21 Transaction API Guide
+# Project: P21 API Documentation
 
-> Documentation and testing tools for P21 Transaction API troubleshooting.
+> Comprehensive documentation and working examples for all P21 APIs.
 
 ---
 
 ## Quick Context
 
-This project provides documentation and diagnostic tools for troubleshooting P21 Transaction API issues, specifically session pool contamination that causes intermittent "Unexpected response window" errors.
+This project provides developer-focused documentation for Prophet 21's integration APIs. All content is based on official Epicor SDK documentation and verified working implementations - no guesses or assumptions.
 
 ---
 
-## Key Files
+## APIs Covered
 
-| File | Purpose |
-|------|---------|
-| `docs/P21_Transaction_API_Troubleshooting_Guide.md` | Main documentation |
-| `docs/P21_Transaction_API_Troubleshooting_Guide.html` | PDF-ready HTML version |
-| `scripts/test_session_pool.py` | Session pool behavior test |
-| `scripts/generate_pdf_doc.py` | MD to HTML converter |
+| API | Purpose | Use When |
+|-----|---------|----------|
+| **OData** | Read-only data access via standard OData protocol | Quick reads, reporting, lookups |
+| **Transaction API** | Stateless bulk data manipulation | Bulk creates, external integrations |
+| **Interactive API** | Stateful window interactions with business logic | Complex workflows, validation needed |
+| **Entity API** | Simple CRUD on business objects | Basic record operations |
 
 ---
 
-## Usage
+## Project Structure
 
-### Run Session Pool Test
-
-```bash
-python scripts/test_session_pool.py
+```
+p21-api-documentation/
+├── docs/
+│   ├── 00-Authentication.md
+│   ├── 01-API-Selection-Guide.md
+│   ├── 02-OData-API.md
+│   ├── 03-Transaction-API.md
+│   ├── 04-Interactive-API.md
+│   ├── 05-Entity-API.md
+│   ├── 06-Error-Handling.md
+│   ├── 07-Session-Pool-Troubleshooting.md
+│   └── html/                    # Generated HTML versions
+│
+├── scripts/
+│   ├── common/                  # Shared auth/config
+│   ├── odata/                   # OData examples
+│   ├── transaction/             # Transaction API examples
+│   ├── interactive/             # Interactive API examples
+│   ├── entity/                  # Entity API examples
+│   └── generate_html.py         # MD to HTML converter
+│
+└── examples/                    # Real-world scenarios
 ```
 
-Tests 5 patterns (40 total requests):
-- Rapid fire (no delay)
-- 500ms delay
-- 2000ms delay
-- Parallel (5 concurrent)
-- Random jitter
+---
 
-### Generate PDF Documentation
+## Running Scripts
 
 ```bash
-python scripts/generate_pdf_doc.py
-```
+# Setup
+cp .env.example .env
+# Edit .env with P21 credentials
 
-Opens HTML in browser, use Print > Save as PDF.
+# Install dependencies
+pip install -r requirements.txt
+
+# Run any example
+python scripts/odata/01_basic_query.py
+```
 
 ---
 
@@ -50,53 +69,27 @@ Opens HTML in browser, use Print > Save as PDF.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `P21_BASE_URL` | Yes | P21 server URL |
+| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.ifpusa.com`) |
 | `P21_USERNAME` | Yes | P21 API username |
 | `P21_PASSWORD` | Yes | P21 API password |
 
 ---
 
-## Key Findings
+## Content Sources
 
-### Session Pool Contamination
-
-The Transaction API uses a pool of reusable sessions. If a previous operation triggers a modal dialog (like email) and fails, the session is returned to the pool with the dialog still open. Subsequent requests that get this "dirty" session fail with:
-
-```
-Unexpected response window: Email Purchase Order(s)
-Window class: w_email_response
-```
-
-### Window-Specific Behavior
-
-- **Purchase Order Entry** - Triggers email dialogs, prone to contamination
-- **SalesPricePage** - No email triggers, sessions remain clean
-
-### Recommended Solutions
-
-1. Implement retry with random jitter
-2. Use async endpoint (`/api/v2/transaction/async`)
-3. Disable email notifications for API user
-4. Report to Epicor as session pool hygiene bug
+All documentation is derived from:
+1. **Official SDK Docs**: `T:\P21API\docs\p21sdk\`
+2. **Working Code**: `C:\Projects\Cube Writer\p21\`
+3. **Actual Testing**: Verified against play.ifpusa.com
 
 ---
 
-## Project Structure
+## Key Principles
 
-```
-p21-transaction-api-guide/
-├── CLAUDE.md              # This file
-├── README.md              # User-facing documentation
-├── requirements.txt       # Python dependencies
-├── .env.example           # Environment template
-├── docs/
-│   ├── P21_Transaction_API_Troubleshooting_Guide.md
-│   └── P21_Transaction_API_Troubleshooting_Guide.html
-└── scripts/
-    ├── test_session_pool.py
-    ├── generate_pdf_doc.py
-    └── session_pool_results.json
-```
+- **Facts only** - No guesses about undocumented behavior
+- **Verified examples** - All code runs without errors
+- **Real payloads** - Request/response examples from actual API calls
+- **Known issues documented** - Session pool contamination, async limitations
 
 ---
 
