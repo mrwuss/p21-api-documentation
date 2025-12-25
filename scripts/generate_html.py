@@ -11,7 +11,7 @@ Usage:
     python scripts/generate_html.py <file>    # Convert specific file
 
 Output:
-    docs/html/<filename>.html
+    docs/<filename>.html
 """
 
 import re
@@ -23,7 +23,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_DIR = SCRIPT_DIR.parent
 DOCS_DIR = PROJECT_DIR / "docs"
-HTML_DIR = DOCS_DIR / "html"
+HTML_DIR = DOCS_DIR  # Output HTML to same folder as markdown (for GitHub Pages)
 
 # HTML template with professional styling for PDF
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -241,9 +241,6 @@ def convert_md_to_html(md_file: Path) -> Path:
     # Wrap in template
     full_html = HTML_TEMPLATE.format(title=title, content=html_content)
 
-    # Ensure output directory exists
-    HTML_DIR.mkdir(exist_ok=True)
-
     # Write output
     html_file = HTML_DIR / f"{md_file.stem}.html"
     html_file.write_text(full_html, encoding='utf-8')
@@ -265,7 +262,7 @@ def convert_all_docs():
         html_file = convert_md_to_html(md_file)
         print(f"  -> {html_file.name}")
 
-    print(f"\nGenerated {len(md_files)} HTML files in docs/html/")
+    print(f"\nGenerated {len(md_files)} HTML files in docs/")
     print("\nTo create PDF:")
     print("  1. Open the HTML file in a browser")
     print("  2. Click 'Print / Save as PDF' button")
