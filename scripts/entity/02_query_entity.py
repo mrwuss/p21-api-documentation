@@ -52,14 +52,14 @@ def main():
     print(f"Server: {config.base_url}")
 
     # Example 1: Simple equality filter
-    print("\n1. Equality filter (State eq 'IA'):")
+    print("\n1. Equality filter (State eq 'NY'):")
     print("-" * 50)
 
     try:
         customers = query_entity(
             config.base_url,
             "/api/sales/customers",
-            "State eq 'IA'",
+            "State eq 'NY'",
             headers,
             config.verify_ssl,
             top=5
@@ -136,7 +136,7 @@ def main():
         customers = query_entity(
             config.base_url,
             "/api/sales/customers",
-            "State eq 'IA' and CreditLimit gt 5000",
+            "State eq 'NY' and CreditLimit gt 5000",
             headers,
             config.verify_ssl,
             top=5
@@ -162,7 +162,7 @@ def main():
         customers = query_entity(
             config.base_url,
             "/api/sales/customers",
-            "State eq 'IA' or State eq 'IL'",
+            "State eq 'NY' or State eq 'IL'",
             headers,
             config.verify_ssl,
             top=5

@@ -101,8 +101,8 @@ def main():
     print("  2. Fill required fields:")
     print("     template['CustomerName'] = 'New Customer Inc'")
     print("     template['Address1'] = '123 Main Street'")
-    print("     template['City'] = 'Cedar Rapids'")
-    print("     template['State'] = 'IA'")
+    print("     template['City'] = 'Anytown'")
+    print("     template['State'] = 'NY'")
     print("  3. Remove/leave empty the key field (CustomerCode)")
     print("  4. POST to: /api/sales/customers")
     print()
@@ -115,7 +115,7 @@ def main():
     sample_payload = {
         "CustomerName": "New Customer Inc",
         "Address1": "123 Main Street",
-        "City": "Cedar Rapids",
+        "City": "Anytown",
         "State": "IA",
         "Zip": "52402",
         "Country": "USA"

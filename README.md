@@ -107,10 +107,10 @@ This documentation is available online via GitHub Pages:
 ## Content Sources
 
 All documentation is derived from:
-- **Official SDK**: `T:\P21API\docs\p21sdk\`
+- **Official SDK**: Epicor P21 SDK documentation
 - **Working Code**: Verified implementations from production projects
-- **Actual Testing**: Tested against play.p21server.com
+- **Actual Testing**: Tested against P21 test environments
 
 ## License
 
-Internal use only - IFP IT
+MIT License - See LICENSE file
