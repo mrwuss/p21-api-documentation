@@ -1,5 +1,9 @@
 # Error Handling
 
+> **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
+
+---
+
 ## Overview
 
 This guide covers error handling across all P21 APIs, including HTTP status codes, API-specific error responses, and troubleshooting strategies.

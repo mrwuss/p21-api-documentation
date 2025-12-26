@@ -1,5 +1,7 @@
 # P21 API Documentation
 
+> **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
+
 Comprehensive documentation and working Python examples for all Prophet 21 integration APIs.
 
 ## Overview

@@ -1,5 +1,9 @@
 # P21 API Selection Guide
 
+> **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
+
+---
+
 ## Overview
 
 Prophet 21 provides four different APIs for external data access and manipulation. This guide helps you choose the right API for your use case.
