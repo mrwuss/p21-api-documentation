@@ -1,5 +1,7 @@
 # Contributing to P21 API Documentation
 
+> **Note:** This is unofficial, community-created documentation not affiliated with Epicor Software Corporation.
+
 Thank you for your interest in improving P21 API documentation! This project aims to be the comprehensive resource for Prophet 21 API integration that the community deserves.
 
 ## Ways to Contribute

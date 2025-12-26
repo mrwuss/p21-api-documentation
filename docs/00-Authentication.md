@@ -1,5 +1,9 @@
 # P21 API Authentication
 
+> **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
+
+---
+
 ## Overview
 
 All P21 APIs require authentication via Bearer tokens. This guide covers the two authentication methods:
