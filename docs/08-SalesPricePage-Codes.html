@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Price Page Dropdown Codes</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                padding: 0;
+                margin: 0;
+            }
+            h1 {
+                page-break-after: avoid;
+                margin-top: 0;
+            }
+            h2 {
+                page-break-after: avoid;
+                margin-top: 20pt;
+            }
+            h3 {
+                page-break-after: avoid;
+                margin-top: 15pt;
+            }
+            pre, table, blockquote {
+                page-break-inside: avoid;
+            }
+            p {
+                orphans: 3;
+                widows: 3;
+            }
+            .no-print { display: none; }
+            hr {
+                margin: 15pt 0;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn no-print" onclick="window.print()">
+        Print / Save as PDF
+    </button>
+
+    <h1 id="sales-price-page-dropdown-codes">Sales Price Page Dropdown Codes</h1>
+<blockquote>
+<p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
+</blockquote>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>When working with the SalesPricePage window via the Interactive API, dropdown fields require specific <strong>display values</strong> (not codes). This document provides the mappings discovered through API testing.</p>
+<p><strong>Important:</strong> P21's code tables (<code>code_p21</code>) may not be accessible via OData in all environments. These values were discovered by testing the Interactive API directly.</p>
+<hr />
+<h2 id="calculation-method-values-tab">Calculation Method (VALUES Tab)</h2>
+<p>The <code>calculation_method_cd</code> field on the VALUES tab controls how pricing calculations are applied.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Display Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>211</td>
+<td>Multiplier</td>
+<td>Multiply by value (most common)</td>
+</tr>
+<tr>
+<td>228</td>
+<td>Difference</td>
+<td>Subtract value from source price</td>
+</tr>
+<tr>
+<td>229</td>
+<td>Mark Up</td>
+<td>Add markup percentage to cost</td>
+</tr>
+<tr>
+<td>230</td>
+<td>Percentage</td>
+<td>Apply as percentage</td>
+</tr>
+<tr>
+<td>1292</td>
+<td>Fixed Price</td>
+<td>Use fixed price value</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Usage Example:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Correct - use display value</span>
+<span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Mark Up&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Incorrect - do not use code</span>
+<span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;229&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<hr />
+<h2 id="price-page-type-form-tab">Price Page Type (FORM Tab)</h2>
+<p>The <code>price_page_type_cd</code> field determines the page type.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Display Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>210</td>
+<td>Customer</td>
+</tr>
+<tr>
+<td>211</td>
+<td>Customer / Item</td>
+</tr>
+<tr>
+<td>214</td>
+<td>Supplier / Product Group</td>
+</tr>
+<tr>
+<td>215</td>
+<td>Supplier / Discount Group</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="pricing-method-form-tab">Pricing Method (FORM Tab)</h2>
+<p>The <code>pricing_method_cd</code> field controls how the source price is used.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Display Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>220</td>
+<td>Source</td>
+</tr>
+<tr>
+<td>221</td>
+<td>Margin</td>
+</tr>
+<tr>
+<td>222</td>
+<td>Fixed</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="source-price-form-tab">Source Price (FORM Tab)</h2>
+<p>The <code>source_price_cd</code> field determines the base price source.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Display Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200</td>
+<td>Supplier List Price</td>
+</tr>
+<tr>
+<td>201</td>
+<td>Replacement Cost</td>
+</tr>
+<tr>
+<td>202</td>
+<td>Average Cost</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cost-type-costs-tab">Cost Type (COSTS Tab)</h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Display Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>220</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>221</td>
+<td>Source</td>
+</tr>
+<tr>
+<td>222</td>
+<td>Order</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="commission-cost-calculation-method-costs-tab">Commission Cost Calculation Method (COSTS Tab)</h2>
+<p>The <code>commission_cost_calc_method_cd</code> on the COSTS tab (different from VALUES tab).</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Display Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>211</td>
+<td>Multiplier</td>
+</tr>
+<tr>
+<td>212</td>
+<td>Difference</td>
+</tr>
+<tr>
+<td>213</td>
+<td>Mark Up</td>
+</tr>
+<tr>
+<td>214</td>
+<td>Percentage</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> These codes differ from the VALUES tab <code>calculation_method_cd</code> codes.</p>
+<hr />
+<h2 id="discovery-method">Discovery Method</h2>
+<p>These codes were discovered by:</p>
+<ol>
+<li>Opening the SalesPricePage window via Interactive API</li>
+<li>Setting each dropdown to different display values</li>
+<li>Reading the resulting code from window state</li>
+<li>Verifying against live database records</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="c1"># Example discovery code</span>
+<span class="n">window</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">open_window</span><span class="p">(</span><span class="n">service_name</span><span class="o">=</span><span class="s2">&quot;SalesPricePage&quot;</span><span class="p">)</span>
+<span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;price_page_uid&quot;</span><span class="p">,</span> <span class="s2">&quot;45556&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+<span class="n">window</span><span class="o">.</span><span class="n">select_tab</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">)</span>
+
+<span class="c1"># Try setting a display value</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Mark Up&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Read back the code from window state</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">window</span><span class="o">.</span><span class="n">get_state</span><span class="p">()</span>
+<span class="c1"># Extract calculation_method_cd from state[&#39;Data&#39;]</span>
+</code></pre></div>
+
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="04-Interactive-API.html">Interactive API</a></li>
+<li><a href="06-Error-Handling.html">Error Handling</a></li>
+</ul>
+
+    <script>
+        // Add IDs to headers for TOC linking
+        document.querySelectorAll('h2, h3').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+    </script>
+</body>
+</html>

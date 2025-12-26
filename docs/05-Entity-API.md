@@ -1,5 +1,9 @@
 # Entity API
 
+> **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
+
+---
+
 ## Overview
 
 The Entity API is a **stateless REST** API for simple CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models for straightforward data manipulation.

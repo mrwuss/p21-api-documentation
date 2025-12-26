@@ -1,5 +1,9 @@
 # P21 Transaction API Troubleshooting Guide
 
+> **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
+
+---
+
 ## Intermittent "Unexpected Response Window" Errors
 
 **Document Version:** 1.0
