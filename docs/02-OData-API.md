@@ -140,6 +140,51 @@ $filter=notes ne null
 
 ---
 
+## Common Patterns
+
+### Active Record Filter
+
+P21 uses `row_status_flag` to track record status. Active records have `row_status_flag = 704`:
+
+```
+$filter=row_status_flag eq 704
+```
+
+Always include this filter when querying for active data:
+
+```
+$filter=supplier_id eq 21274 and row_status_flag eq 704
+```
+
+### Non-Expired Records
+
+To filter out expired records, compare `expiration_date` against a date value:
+
+```
+$filter=expiration_date ge 2025-01-01
+```
+
+**Warning:** The `now()` function is not supported in P21 OData. Using it will return a 404 error:
+
+```
+# DOES NOT WORK - returns 404
+$filter=expiration_date ge now()
+
+# CORRECT - use explicit date
+$filter=expiration_date ge 2025-12-28
+```
+
+For date-relative queries, calculate the date in your application code:
+
+```python
+from datetime import date, timedelta
+
+tomorrow = (date.today() + timedelta(days=1)).isoformat()
+filter_expr = f"expiration_date ge {tomorrow}"
+```
+
+---
+
 ## Data Type Formatting
 
 | Type | Format | Example |
@@ -356,8 +401,21 @@ def get_all_records(base_url, table, filter_expr=None, page_size=100):
 |-------|-------|----------|
 | 400 Bad Request | Invalid filter syntax | Check filter expression |
 | 401 Unauthorized | Invalid/expired token | Refresh token |
-| 404 Not Found | Table doesn't exist | Verify table name |
+| 404 Not Found | Table doesn't exist, or unsupported function | Verify table name; avoid `now()` |
 | 500 Server Error | Query too complex | Simplify query |
+
+### now() Function Not Supported
+
+The standard OData `now()` function returns 404 in P21. Use explicit date values instead:
+
+```python
+# Calculate date in code
+from datetime import date, timedelta
+tomorrow = (date.today() + timedelta(days=1)).isoformat()
+
+# Use in filter
+params = {"$filter": f"expiration_date ge {tomorrow}"}
+```
 
 ---
 
@@ -376,6 +434,52 @@ def get_all_records(base_url, table, filter_expr=None, page_size=100):
 | Simple table | 10 | ~100ms |
 | Filtered query | 160 | ~115ms |
 | Full table scan | 1000+ | ~500ms |
+
+### Avoiding N+1 Query Patterns
+
+When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:
+
+```python
+# BAD: N+1 queries - one query per page
+for page in pages:
+    book = await odata.get_book_for_page(page['uid'])  # N queries!
+    library = await odata.get_library_for_book(book['uid'])  # N more!
+```
+
+**Solution 1: Batch queries**
+
+Fetch all related data upfront with IN clauses or multiple conditions:
+
+```python
+# Get all pages first
+pages = await odata.query("price_page", filter_expr="supplier_id eq 21274")
+page_uids = [p['price_page_uid'] for p in pages]
+
+# Get all links in fewer queries
+for page_uid in page_uids:
+    links = await odata.query("price_page_x_book",
+                               filter_expr=f"price_page_uid eq {page_uid}")
+```
+
+**Solution 2: Cache lookups**
+
+For repeated lookups (like library-to-book mapping), cache results:
+
+```python
+class P21OData:
+    def __init__(self):
+        self._library_book_cache: dict[str, dict | None] = {}
+
+    async def get_book_for_library(self, library_id: str) -> dict | None:
+        # Return cached result if available
+        if library_id in self._library_book_cache:
+            return self._library_book_cache[library_id]
+
+        # Fetch and cache
+        result = await self._fetch_book_for_library(library_id)
+        self._library_book_cache[library_id] = result
+        return result
+```
 
 ---
 
