@@ -334,6 +334,37 @@ $filter=notes ne null
 </code></pre></div>
 
 <hr />
+<h2 id="common-patterns">Common Patterns</h2>
+<h3 id="active-record-filter">Active Record Filter</h3>
+<p>P21 uses <code>row_status_flag</code> to track record status. Active records have <code>row_status_flag = 704</code>:</p>
+<div class="highlight"><pre><span></span><code>$filter=row_status_flag eq 704
+</code></pre></div>
+
+<p>Always include this filter when querying for active data:</p>
+<div class="highlight"><pre><span></span><code>$filter=supplier_id eq 21274 and row_status_flag eq 704
+</code></pre></div>
+
+<h3 id="non-expired-records">Non-Expired Records</h3>
+<p>To filter out expired records, compare <code>expiration_date</code> against a date value:</p>
+<div class="highlight"><pre><span></span><code>$filter=expiration_date ge 2025-01-01
+</code></pre></div>
+
+<p><strong>Warning:</strong> The <code>now()</code> function is not supported in P21 OData. Using it will return a 404 error:</p>
+<div class="highlight"><pre><span></span><code># DOES NOT WORK - returns 404
+$filter=expiration_date ge now()
+
+# CORRECT - use explicit date
+$filter=expiration_date ge 2025-12-28
+</code></pre></div>
+
+<p>For date-relative queries, calculate the date in your application code:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="n">tomorrow</span> <span class="o">=</span> <span class="p">(</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+<span class="n">filter_expr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;expiration_date ge </span><span class="si">{</span><span class="n">tomorrow</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<hr />
 <h2 id="data-type-formatting">Data Type Formatting</h2>
 <table>
 <thead>
@@ -592,8 +623,8 @@ $filter=notes ne null
 </tr>
 <tr>
 <td>404 Not Found</td>
-<td>Table doesn't exist</td>
-<td>Verify table name</td>
+<td>Table doesn't exist, or unsupported function</td>
+<td>Verify table name; avoid <code>now()</code></td>
 </tr>
 <tr>
 <td>500 Server Error</td>
@@ -602,6 +633,16 @@ $filter=notes ne null
 </tr>
 </tbody>
 </table>
+<h3 id="now-function-not-supported">now() Function Not Supported</h3>
+<p>The standard OData <code>now()</code> function returns 404 in P21. Use explicit date values instead:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Calculate date in code</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="n">tomorrow</span> <span class="o">=</span> <span class="p">(</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+
+<span class="c1"># Use in filter</span>
+<span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;expiration_date ge </span><span class="si">{</span><span class="n">tomorrow</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+</code></pre></div>
+
 <hr />
 <h2 id="performance-tips">Performance Tips</h2>
 <ul>
@@ -638,6 +679,43 @@ $filter=notes ne null
 </tr>
 </tbody>
 </table>
+<h3 id="avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</h3>
+<p>When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># BAD: N+1 queries - one query per page</span>
+<span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">:</span>
+    <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">get_book_for_page</span><span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>  <span class="c1"># N queries!</span>
+    <span class="n">library</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">get_library_for_book</span><span class="p">(</span><span class="n">book</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>  <span class="c1"># N more!</span>
+</code></pre></div>
+
+<p><strong>Solution 1: Batch queries</strong></p>
+<p>Fetch all related data upfront with IN clauses or multiple conditions:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get all pages first</span>
+<span class="n">pages</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;price_page&quot;</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="s2">&quot;supplier_id eq 21274&quot;</span><span class="p">)</span>
+<span class="n">page_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;price_page_uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]</span>
+
+<span class="c1"># Get all links in fewer queries</span>
+<span class="k">for</span> <span class="n">page_uid</span> <span class="ow">in</span> <span class="n">page_uids</span><span class="p">:</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;price_page_x_book&quot;</span><span class="p">,</span>
+                               <span class="n">filter_expr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;price_page_uid eq </span><span class="si">{</span><span class="n">page_uid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Solution 2: Cache lookups</strong></p>
+<p>For repeated lookups (like library-to-book mapping), cache results:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">P21OData</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_library_book_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_book_for_library</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">library_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Return cached result if available</span>
+        <span class="k">if</span> <span class="n">library_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_library_book_cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_library_book_cache</span><span class="p">[</span><span class="n">library_id</span><span class="p">]</span>
+
+        <span class="c1"># Fetch and cache</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_book_for_library</span><span class="p">(</span><span class="n">library_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_library_book_cache</span><span class="p">[</span><span class="n">library_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">result</span>
+</code></pre></div>
+
 <hr />
 <h2 id="related">Related</h2>
 <ul>

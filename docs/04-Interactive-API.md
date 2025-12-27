@@ -299,7 +299,7 @@ class InteractiveClient:
         )
 ```
 
-### Context Manager Usage
+### Context Manager Usage (Sync)
 
 ```python
 class InteractiveClient:
@@ -325,6 +325,94 @@ with InteractiveClient(base_url, username, password) as client:
     window.save()
     window.close()
 ```
+
+### Async Context Manager (Recommended)
+
+For production code, use async patterns with proper cleanup:
+
+```python
+import httpx
+import logging
+
+logger = logging.getLogger(__name__)
+
+class P21Client:
+    def __init__(self, base_url: str, username: str, password: str, verify_ssl: bool = True):
+        self.base_url = base_url.rstrip('/')
+        self.username = username
+        self.password = password
+        self.verify_ssl = verify_ssl
+        self.token: dict | None = None
+        self.ui_server_url: str | None = None
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                verify=self.verify_ssl,
+                timeout=60.0,
+                follow_redirects=True
+            )
+        return self._client
+
+    async def authenticate(self) -> dict:
+        url = f"{self.base_url}/api/security/token"
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "username": self.username,
+            "password": self.password
+        }
+        client = self._get_client()
+        response = await client.post(url, headers=headers, content="")
+        response.raise_for_status()
+        self.token = response.json()
+        return self.token
+
+    async def start_session(self) -> None:
+        if not self.token:
+            await self.authenticate()
+        # ... get ui_server_url and start session ...
+
+    async def end_session(self) -> None:
+        # ... end session ...
+        pass
+
+    async def close(self) -> None:
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
+
+    async def __aenter__(self):
+        """Async context manager entry - authenticate and start session."""
+        await self.authenticate()
+        await self.start_session()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - end session and close client."""
+        try:
+            await self.end_session()
+        except Exception as e:
+            logger.debug(f"Session cleanup error (ignored): {e}")
+        await self.close()
+        return False
+
+# Usage
+async with P21Client(base_url, username, password) as client:
+    window = await client.open_window(service_name="SalesPricePage")
+    await window.change_data("FORM", "description", "New Value", datawindow_name="form")
+    await window.save_data()
+    await window.close()
+```
+
+**Key points for async usage:**
+
+1. Use `httpx.AsyncClient` instead of sync `httpx`
+2. Implement `__aenter__` and `__aexit__` for async context manager
+3. Always close the HTTP client in `__aexit__`
+4. Ignore cleanup errors - session may have timed out
+5. Use `async with` syntax for guaranteed cleanup
 
 ---
 
@@ -352,8 +440,85 @@ See the `scripts/interactive/` directory:
 | Invoice Entry | Invoice | Invoices |
 | Supplier Maintenance | Supplier | Supplier records |
 | Sales Price Page Entry | SalesPricePage | Price pages |
+| Sales Price Book Entry | SalesPriceBook | Price book maintenance |
 | Purchase Order Entry | PurchaseOrder | Purchase orders |
 | Inventory Maintenance | InventoryMaster | Inventory items |
+
+---
+
+## Example: Linking Price Page to Price Book
+
+This example shows how to use the SalesPriceBook window to link a price page to a price book. This is a common operation after creating a new price page.
+
+```python
+async def link_page_to_book(
+    client: P21Client,
+    price_page_uid: int,
+    price_book_id: str
+) -> bool:
+    """Link a price page to a price book via SalesPriceBook window.
+
+    Args:
+        client: Authenticated P21Client with active session
+        price_page_uid: The price page UID to link
+        price_book_id: The price book ID (e.g., "P2 IND_OEM_HUGE")
+
+    Returns:
+        True if successful
+    """
+    # Open the SalesPriceBook window
+    window = await client.open_window(service_name='SalesPriceBook')
+
+    try:
+        # Step 1: Retrieve the book by ID on FORM tab
+        result = await window.change_data(
+            'FORM', 'price_book_id', price_book_id,
+            datawindow_name='form'
+        )
+        if not result.success:
+            logger.error(f"Failed to retrieve book {price_book_id}: {result.messages}")
+            return False
+
+        # Step 2: Switch to LIST tab
+        await window.select_tab('LIST')
+
+        # Step 3: Add a new row to the list_detail datawindow
+        result = await window.add_row('list_detail')
+        if not result.success:
+            logger.error(f"Failed to add row: {result.messages}")
+            return False
+
+        # Step 4: Set the price_page_uid on the new row
+        result = await window.change_data(
+            'LIST', 'price_page_uid', str(price_page_uid),
+            datawindow_name='list_detail'
+        )
+        if not result.success:
+            logger.error(f"Failed to set price_page_uid: {result.messages}")
+            return False
+
+        # Step 5: Save the changes
+        result = await window.save_data()
+
+        if result.success:
+            logger.info(f"Linked page {price_page_uid} to book {price_book_id}")
+            return True
+        else:
+            logger.error(f"Failed to save: {result.messages}")
+            return False
+
+    finally:
+        await window.close()
+```
+
+**Key points:**
+
+1. Open window by `ServiceName`, not title
+2. Retrieve the book first - this loads it into the window
+3. Switch to LIST tab before adding/modifying rows
+4. Use `add_row('list_detail')` to add a new link row
+5. Set `price_page_uid` as a string value
+6. Always close the window in a `finally` block
 
 ---
 
