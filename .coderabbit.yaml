@@ -1,0 +1,65 @@
+# .coderabbit.yaml - P21 API Documentation
+# CodeRabbit AI code review configuration
+# Docs: https://docs.coderabbit.ai/configuration
+
+language: en
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: true
+
+  path_instructions:
+    # Documentation Files
+    - path: "docs/**/*.md"
+      instructions: |
+        Documentation standards:
+        - Verify code examples are syntactically correct
+        - Check for broken internal links (e.g., [text](other-doc.md))
+        - Ensure consistent formatting and heading structure
+        - Verify API examples include proper authentication headers
+        - Check that Python examples use httpx (not requests)
+        - Ensure examples handle errors appropriately
+        - Verify OData filter syntax is correct
+        - Check for typos in P21 table/field names
+
+    # Python Example Scripts
+    - path: "scripts/**/*.py"
+      instructions: |
+        Python example standards:
+        - Use httpx for HTTP requests (async preferred)
+        - Include proper error handling
+        - Use type hints for function parameters
+        - Follow PEP 8 style guidelines
+        - Examples should be self-contained and runnable
+        - Include comments explaining P21-specific behavior
+
+    # HTML Documentation
+    - path: "docs/**/*.html"
+      instructions: |
+        HTML documentation:
+        - Verify generated from markdown source
+        - Check for consistent styling
+        - Ensure navigation links work
+
+    # Configuration Files
+    - path: "**/.env*"
+      instructions: |
+        Environment file standards:
+        - Never commit actual credentials
+        - .env.example should have placeholder values only
+
+  # Patterns to ignore in reviews
+  path_filters:
+    - "!**/.git/**"
+    - "!**/node_modules/**"
+    - "!**/__pycache__/**"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+
+chat:
+  auto_reply: true
