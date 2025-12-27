@@ -164,6 +164,70 @@
 <h2 id="overview">Overview</h2>
 <p>When working with the SalesPricePage window via the Interactive API, dropdown fields require specific <strong>display values</strong> (not codes). This document provides the mappings discovered through API testing.</p>
 <p><strong>Important:</strong> P21's code tables (<code>code_p21</code>) may not be accessible via OData in all environments. These values were discovered by testing the Interactive API directly.</p>
+<p><strong>Note:</strong> Code mappings may vary between P21 versions and configurations. Always verify codes in your specific environment.</p>
+<hr />
+<h2 id="field-order-requirements">Field Order Requirements</h2>
+<p>When creating or modifying price pages, fields must be set in a specific order. Setting fields out of order can cause validation failures or incorrect data.</p>
+<h3 id="required-field-order-for-page-creation">Required Field Order for Page Creation</h3>
+<ol>
+<li><strong><code>price_page_type_cd</code></strong> - Set page type FIRST (e.g., "Supplier / Product Group")</li>
+<li><strong><code>company_id</code></strong> - Required BEFORE product_group_id</li>
+<li><strong><code>product_group_id</code></strong> or <strong><code>discount_group_id</code></strong> - Depends on page type</li>
+<li><strong><code>supplier_id</code></strong></li>
+<li><strong><code>description</code></strong></li>
+<li><strong><code>pricing_method_cd</code></strong> - Use display value "Source"</li>
+<li><strong><code>source_price_cd</code></strong> - Use display value "Supplier List Price"</li>
+<li><strong><code>effective_date</code></strong> / <strong><code>expiration_date</code></strong></li>
+<li>Switch to <strong>VALUES</strong> tab</li>
+<li><strong><code>calculation_method_cd</code></strong> - Use display value "Multiplier"</li>
+<li><strong><code>calculation_value1</code></strong> (and additional break values if needed)</li>
+</ol>
+<h3 id="example-creating-a-price-page">Example: Creating a Price Page</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Step 1: Set page type FIRST - this determines available fields</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;price_page_type_cd&quot;</span><span class="p">,</span>
+                         <span class="s2">&quot;Supplier / Product Group&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Set company_id BEFORE product_group_id</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;IFPG&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Set product group</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;product_group_id&quot;</span><span class="p">,</span> <span class="s2">&quot;FA5&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Set supplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="s2">&quot;21274&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Set description</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;P2-L5-21274-FA5-IND_OEMA&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 6-7: Set pricing method and source</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;pricing_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Source&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;source_price_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Supplier List Price&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 8: Set dates</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;effective_date&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-01-01&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;expiration_date&quot;</span><span class="p">,</span> <span class="s2">&quot;2030-12-31&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 9: Switch to VALUES tab</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">select_tab</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 10-11: Set calculation method and value</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Multiplier&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value1&quot;</span><span class="p">,</span> <span class="s2">&quot;0.85&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Save</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">save_data</span><span class="p">()</span>
+</code></pre></div>
+
+<h3 id="why-order-matters">Why Order Matters</h3>
+<ul>
+<li>Setting <code>product_group_id</code> before <code>price_page_type_cd</code> will fail validation</li>
+<li>Setting <code>product_group_id</code> before <code>company_id</code> may cause lookup errors</li>
+<li>The VALUES tab fields are only available after FORM tab fields are set</li>
+<li>Some fields become read-only after others are set</li>
+</ul>
 <hr />
 <h2 id="calculation-method-values-tab">Calculation Method (VALUES Tab)</h2>
 <p>The <code>calculation_method_cd</code> field on the VALUES tab controls how pricing calculations are applied.</p>
@@ -253,18 +317,19 @@
 <tbody>
 <tr>
 <td>220</td>
-<td>Source</td>
+<td>Value</td>
 </tr>
 <tr>
 <td>221</td>
-<td>Margin</td>
+<td>Source</td>
 </tr>
 <tr>
 <td>222</td>
-<td>Fixed</td>
+<td>Order</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Note:</strong> Some P21 environments may show different display values (e.g., "Margin", "Fixed"). The codes above were verified in a working implementation. Always test in your environment.</p>
 <hr />
 <h2 id="source-price-form-tab">Source Price (FORM Tab)</h2>
 <p>The <code>source_price_cd</code> field determines the base price source.</p>
@@ -366,6 +431,83 @@
 <span class="c1"># Extract calculation_method_cd from state[&#39;Data&#39;]</span>
 </code></pre></div>
 
+<hr />
+<h2 id="price-breaks-quantity-based-pricing">Price Breaks (Quantity-Based Pricing)</h2>
+<p>Price pages support up to 15 calculation values and 14 break quantities for quantity-based pricing.</p>
+<h3 id="fields">Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>calculation_value1</code></td>
+<td>Base price (applies to quantity 1+)</td>
+</tr>
+<tr>
+<td><code>calculation_value2</code> - <code>calculation_value15</code></td>
+<td>Applied at corresponding break quantity</td>
+</tr>
+<tr>
+<td><code>break1</code> - <code>break14</code></td>
+<td>Quantity thresholds for each price level</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-setting-up-price-breaks">Example: Setting Up Price Breaks</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Base multiplier: 0.85 for qty 1+</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value1&quot;</span><span class="p">,</span> <span class="s2">&quot;0.85&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Price break at qty 6: 0.82 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;break1&quot;</span><span class="p">,</span> <span class="s2">&quot;6&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value2&quot;</span><span class="p">,</span> <span class="s2">&quot;0.82&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Price break at qty 25: 0.78 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;break2&quot;</span><span class="p">,</span> <span class="s2">&quot;25&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value3&quot;</span><span class="p">,</span> <span class="s2">&quot;0.78&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Price break at qty 100: 0.75 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;break3&quot;</span><span class="p">,</span> <span class="s2">&quot;100&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value4&quot;</span><span class="p">,</span> <span class="s2">&quot;0.75&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="mapping">Mapping</h3>
+<table>
+<thead>
+<tr>
+<th>Quantity Range</th>
+<th>Calculation Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 to (break1-1)</td>
+<td><code>calculation_value1</code></td>
+</tr>
+<tr>
+<td>break1 to (break2-1)</td>
+<td><code>calculation_value2</code></td>
+</tr>
+<tr>
+<td>break2 to (break3-1)</td>
+<td><code>calculation_value3</code></td>
+</tr>
+<tr>
+<td>...</td>
+<td>...</td>
+</tr>
+</tbody>
+</table>
+<h3 id="notes">Notes</h3>
+<ul>
+<li><code>calculation_value1</code> is always the base price (qty 1+)</li>
+<li><code>break1</code> corresponds to <code>calculation_value2</code> (not <code>calculation_value1</code>)</li>
+<li>Unused break/value fields should be 0 or null</li>
+<li>Maximum 14 break points (15 price levels including base)</li>
+</ul>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

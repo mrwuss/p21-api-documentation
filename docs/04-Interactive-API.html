@@ -491,7 +491,7 @@
         <span class="p">)</span>
 </code></pre></div>
 
-<h3 id="context-manager-usage">Context Manager Usage</h3>
+<h3 id="context-manager-usage-sync">Context Manager Usage (Sync)</h3>
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InteractiveClient</span><span class="p">:</span>
     <span class="c1"># ... methods above ...</span>
 
@@ -516,6 +516,91 @@
     <span class="n">window</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </code></pre></div>
 
+<h3 id="async-context-manager-recommended">Async Context Manager (Recommended)</h3>
+<p>For production code, use async patterns with proper cleanup:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">P21Client</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">verify_ssl</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span> <span class="o">=</span> <span class="n">verify_ssl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ui_server_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_client</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">is_closed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span>
+                <span class="n">verify</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="mf">60.0</span><span class="p">,</span>
+                <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">authenticate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token&quot;</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span>
+        <span class="p">}</span>
+        <span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_client</span><span class="p">()</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">start_session</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+        <span class="c1"># ... get ui_server_url and start session ...</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">end_session</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># ... end session ...</span>
+        <span class="k">pass</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">is_closed</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">aclose</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aenter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Async context manager entry - authenticate and start session.&quot;&quot;&quot;</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_session</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__aexit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Async context manager exit - end session and close client.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_session</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Session cleanup error (ignored): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+<span class="c1"># Usage</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">P21Client</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">open_window</span><span class="p">(</span><span class="n">service_name</span><span class="o">=</span><span class="s2">&quot;SalesPricePage&quot;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;New Value&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">save_data</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+
+<p><strong>Key points for async usage:</strong></p>
+<ol>
+<li>Use <code>httpx.AsyncClient</code> instead of sync <code>httpx</code></li>
+<li>Implement <code>__aenter__</code> and <code>__aexit__</code> for async context manager</li>
+<li>Always close the HTTP client in <code>__aexit__</code></li>
+<li>Ignore cleanup errors - session may have timed out</li>
+<li>Use <code>async with</code> syntax for guaranteed cleanup</li>
+</ol>
 <hr />
 <h2 id="working-example-scripts">Working Example Scripts</h2>
 <p>See the <code>scripts/interactive/</code> directory:</p>
@@ -590,6 +675,11 @@
 <td>Price pages</td>
 </tr>
 <tr>
+<td>Sales Price Book Entry</td>
+<td>SalesPriceBook</td>
+<td>Price book maintenance</td>
+</tr>
+<tr>
 <td>Purchase Order Entry</td>
 <td>PurchaseOrder</td>
 <td>Purchase orders</td>
@@ -601,6 +691,78 @@
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="example-linking-price-page-to-price-book">Example: Linking Price Page to Price Book</h2>
+<p>This example shows how to use the SalesPriceBook window to link a price page to a price book. This is a common operation after creating a new price page.</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">link_page_to_book</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">P21Client</span><span class="p">,</span>
+    <span class="n">price_page_uid</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">price_book_id</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Link a price page to a price book via SalesPriceBook window.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        client: Authenticated P21Client with active session</span>
+<span class="sd">        price_page_uid: The price page UID to link</span>
+<span class="sd">        price_book_id: The price book ID (e.g., &quot;P2 IND_OEM_HUGE&quot;)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if successful</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Open the SalesPriceBook window</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">open_window</span><span class="p">(</span><span class="n">service_name</span><span class="o">=</span><span class="s1">&#39;SalesPriceBook&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Step 1: Retrieve the book by ID on FORM tab</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span>
+            <span class="s1">&#39;FORM&#39;</span><span class="p">,</span> <span class="s1">&#39;price_book_id&#39;</span><span class="p">,</span> <span class="n">price_book_id</span><span class="p">,</span>
+            <span class="n">datawindow_name</span><span class="o">=</span><span class="s1">&#39;form&#39;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to retrieve book </span><span class="si">{</span><span class="n">price_book_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">messages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Step 2: Switch to LIST tab</span>
+        <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">select_tab</span><span class="p">(</span><span class="s1">&#39;LIST&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Step 3: Add a new row to the list_detail datawindow</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">add_row</span><span class="p">(</span><span class="s1">&#39;list_detail&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to add row: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">messages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Step 4: Set the price_page_uid on the new row</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span>
+            <span class="s1">&#39;LIST&#39;</span><span class="p">,</span> <span class="s1">&#39;price_page_uid&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">price_page_uid</span><span class="p">),</span>
+            <span class="n">datawindow_name</span><span class="o">=</span><span class="s1">&#39;list_detail&#39;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to set price_page_uid: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">messages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Step 5: Save the changes</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">save_data</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linked page </span><span class="si">{</span><span class="n">price_page_uid</span><span class="si">}</span><span class="s2"> to book </span><span class="si">{</span><span class="n">price_book_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">messages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div>
+
+<p><strong>Key points:</strong></p>
+<ol>
+<li>Open window by <code>ServiceName</code>, not title</li>
+<li>Retrieve the book first - this loads it into the window</li>
+<li>Switch to LIST tab before adding/modifying rows</li>
+<li>Use <code>add_row('list_detail')</code> to add a new link row</li>
+<li>Set <code>price_page_uid</code> as a string value</li>
+<li>Always close the window in a <code>finally</code> block</li>
+</ol>
 <hr />
 <h2 id="best-practices">Best Practices</h2>
 <ol>
