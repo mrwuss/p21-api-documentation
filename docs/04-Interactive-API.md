@@ -51,7 +51,23 @@ Then use the returned URL as base:
 | `/api/ui/interactive/v2/window` | GET | Get window state |
 | `/api/ui/interactive/v2/window` | DELETE | Close window |
 
-### Data Operations
+### Data Operations (v2 - Recommended)
+
+> **Important:** Some P21 servers only support v2 endpoints. If you receive 404 errors on v1 endpoints, use v2 instead.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/ui/interactive/v2/data` | PUT | Save data |
+| `/api/ui/interactive/v2/data` | GET | Get active data |
+| `/api/ui/interactive/v2/data` | DELETE | Clear data |
+| `/api/ui/interactive/v2/change` | PUT | Change field values |
+| `/api/ui/interactive/v2/tab` | PUT | Change active tab |
+| `/api/ui/interactive/v2/row` | POST | Add a row |
+| `/api/ui/interactive/v2/row` | PUT | Change current row |
+| `/api/ui/interactive/v2/tools` | GET | Get available tools |
+| `/api/ui/interactive/v2/tools` | POST | Run a tool |
+
+### Data Operations (v1 - Legacy)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -129,6 +145,27 @@ Response:
 
 ### 3. Change Data
 
+**v2 Format (Recommended):**
+
+```json
+PUT /api/ui/interactive/v2/change
+{
+    "WindowId": "w_sales_price_page",
+    "List": [
+        {
+            "TabName": "FORM",
+            "FieldName": "description",
+            "Value": "New Description",
+            "DatawindowName": "form"
+        }
+    ]
+}
+```
+
+> **Note:** v2 uses `List` with `TabName`, while v1 uses `ChangeRequests` with `DataWindowName`. The `DatawindowName` field in v2 uses lowercase 'w'.
+
+**v1 Format (Legacy):**
+
 ```json
 PUT /api/ui/interactive/v1/change
 {
@@ -144,6 +181,17 @@ PUT /api/ui/interactive/v1/change
 ```
 
 ### 4. Save Data
+
+**v2 Format (Recommended):**
+
+```json
+PUT /api/ui/interactive/v2/data
+"w_sales_price_page"
+```
+
+> **Critical:** In v2, send just the WindowId GUID string as the JSON body - NOT wrapped in an object. This is a common source of 422 errors.
+
+**v1 Format (Legacy):**
 
 ```json
 PUT /api/ui/interactive/v1/data
@@ -208,6 +256,20 @@ Example response with blocked status:
 ## Changing Tabs
 
 Before changing fields on a different tab, select the tab first:
+
+**v2 Format (Recommended):**
+
+```json
+PUT /api/ui/interactive/v2/tab
+{
+    "WindowId": "w_sales_price_page",
+    "PageName": "VALUES"
+}
+```
+
+> **Note:** In v2, use `PageName` directly. In v1, use `PagePath: { PageName: "..." }`.
+
+**v1 Format (Legacy):**
 
 ```json
 PUT /api/ui/interactive/v1/tab
@@ -556,6 +618,90 @@ async def link_page_to_book(
 | Complexity | Higher | Lower |
 | Performance | Slower | Faster |
 | Use case | Complex workflows | Bulk operations |
+
+---
+
+## v1 vs v2 API Differences
+
+> **Important:** Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.
+
+### Summary Table
+
+| Operation | v1 | v2 |
+|-----------|----|----|
+| **Change** | `ChangeRequests` array | `List` array |
+| **Change field ref** | `DataWindowName` (capital W) | `TabName` + optional `DatawindowName` (lowercase w) |
+| **Save** | `{"WindowId": "..."}` | `"..."` (just GUID string) |
+| **Tab change** | `PagePath: {PageName: "..."}` | `PageName: "..."` (direct) |
+| **Row change** | `RowNumber` | `Row` |
+| **Row datawindow** | `DataWindowName` | `DatawindowName` (lowercase w) |
+
+### Change Request Format
+
+**v1:**
+```json
+{
+    "WindowId": "...",
+    "ChangeRequests": [
+        {"DataWindowName": "form", "FieldName": "item_id", "Value": "ABC"}
+    ]
+}
+```
+
+**v2:**
+```json
+{
+    "WindowId": "...",
+    "List": [
+        {"TabName": "FORM", "FieldName": "item_id", "Value": "ABC", "DatawindowName": "form"}
+    ]
+}
+```
+
+### Save Format
+
+**v1:** `{"WindowId": "abc-123..."}`
+
+**v2:** `"abc-123..."` (just the GUID string - this is critical!)
+
+### Tab Change Format
+
+**v1:**
+```json
+{"WindowId": "...", "PagePath": {"PageName": "TABPAGE_17"}}
+```
+
+**v2:**
+```json
+{"WindowId": "...", "PageName": "TABPAGE_17"}
+```
+
+### Row Change Format
+
+**v1:**
+```json
+{"WindowId": "...", "DataWindowName": "list", "RowNumber": 0}
+```
+
+**v2:**
+```json
+{"WindowId": "...", "DatawindowName": "list", "Row": 0}
+```
+
+### Get Window Data
+
+**v2:** Use query parameter: `GET /api/ui/interactive/v2/data?id={windowId}`
+
+---
+
+## Troubleshooting v2 Issues
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| 404 on v1 | Server only supports v2 | Use v2 endpoints |
+| 422 "Window ID was not provided" | Save payload wrapped in object | Send just the GUID string for v2 |
+| 500 on tab change | Using PagePath wrapper | Use PageName directly for v2 |
+| Field change doesn't persist | Missing TabName | Include TabName in change request |
 
 ---
 
