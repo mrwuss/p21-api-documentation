@@ -559,6 +559,200 @@ async def link_page_to_book(
 
 ---
 
+## Known Issues and Workarounds
+
+### Row Selection Synchronization Bug (List → Detail)
+
+When working with windows that have a list/detail pattern (e.g., Item Maintenance with `invloclist` and `inv_loc_detail`), there is a synchronization issue where selecting a row in the list does not immediately update the detail view.
+
+**Symptom:** After selecting row N in a list datawindow and navigating to the detail tab, the detail shows the **previous** row's data instead of row N.
+
+**Pattern observed:**
+```
+Row 0 selected → Detail shows row 0 (correct - first selection)
+Row 1 selected → Detail shows row 0 (1 behind)
+Row 2 selected → Detail shows row 1 (1 behind)
+Row 3 selected → Detail shows row 2 (1 behind)
+...
+Row 5 selected → Detail shows row 4 (1 behind)
+```
+
+**Workaround:** Select row N+1 after selecting row N to "push" row N's data through to the detail view.
+
+```python
+# To edit row 5 (last row in a 6-row list):
+
+# 1. Select target row
+await client.put(f"{ui_url}/api/ui/interactive/v2/row", headers=headers,
+    json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": 5})
+
+# 2. Select row N+1 to push row N's data through (can be non-existent)
+await client.put(f"{ui_url}/api/ui/interactive/v2/row", headers=headers,
+    json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": 6})
+
+# 3. Now go to detail tab - it will show row 5's data
+await client.put(f"{ui_url}/api/ui/interactive/v2/tab", headers=headers,
+    json={"WindowId": window_id, "PageName": "TABPAGE_18"})
+
+# 4. Change the field and save
+await client.put(f"{ui_url}/api/ui/interactive/v2/change", headers=headers,
+    json={"WindowId": window_id, "List": [
+        {"TabName": "TABPAGE_18", "FieldName": "product_group_id", "Value": "NEW_VALUE"}
+    ]})
+await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=window_id)
+```
+
+**Affected Windows:**
+- Item Maintenance (`Item` service) - Location Detail tab
+- Likely other windows with list/detail patterns
+
+**Note:** This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.
+
+---
+
+## Example: Updating Product Group per Location
+
+This example shows the complete workflow for updating `product_group_id` in `inv_loc` via the Item Maintenance window, including the row selection workaround.
+
+```python
+async def update_inv_loc_product_group(
+    client: httpx.AsyncClient,
+    ui_url: str,
+    headers: dict,
+    item_id: str,
+    location_id: int,
+    new_product_group_id: str
+) -> bool:
+    """Update product_group_id for an item at a specific location.
+
+    Uses Item service window with row selection workaround.
+    """
+    # Open Item window
+    resp = await client.post(
+        f"{ui_url}/api/ui/interactive/v2/window",
+        headers=headers,
+        json={"ServiceName": "Item"}
+    )
+    window_id = resp.json()["WindowId"]
+
+    try:
+        # 1. Retrieve item
+        await client.put(
+            f"{ui_url}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{"TabName": "TABPAGE_1", "FieldName": "item_id", "Value": item_id}]
+            }
+        )
+
+        # 2. Go to Locations tab
+        await client.put(
+            f"{ui_url}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "TABPAGE_17"}
+        )
+
+        # 3. Find the row index for this location
+        resp = await client.get(
+            f"{ui_url}/api/ui/interactive/v2/data?id={window_id}",
+            headers=headers
+        )
+        data = resp.json()
+
+        row_idx = None
+        for dw in data:
+            if "invloclist" in dw.get("Name", "").lower():
+                cols = dw.get("Columns", [])
+                rows = dw.get("Data", [])
+                if "location_id" in cols:
+                    loc_col_idx = cols.index("location_id")
+                    for i, row in enumerate(rows):
+                        if str(row[loc_col_idx]) == str(location_id):
+                            row_idx = i
+                            break
+
+        if row_idx is None:
+            return False
+
+        # 4. Select target row
+        await client.put(
+            f"{ui_url}/api/ui/interactive/v2/row",
+            headers=headers,
+            json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": row_idx}
+        )
+
+        # 5. WORKAROUND: Select row+1 to push data through
+        await client.put(
+            f"{ui_url}/api/ui/interactive/v2/row",
+            headers=headers,
+            json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": row_idx + 1}
+        )
+
+        # 6. Go to Location Detail tab
+        await client.put(
+            f"{ui_url}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "TABPAGE_18"}
+        )
+
+        # 7. Verify correct location is showing
+        resp = await client.get(
+            f"{ui_url}/api/ui/interactive/v2/data?id={window_id}",
+            headers=headers
+        )
+        data = resp.json()
+        for dw in data:
+            if "inv_loc_detail" in dw.get("Name", "").lower():
+                cols = dw.get("Columns", [])
+                rows = dw.get("Data", [])
+                if rows and "location_id" in cols:
+                    current_loc = rows[0][cols.index("location_id")]
+                    if str(current_loc) != str(location_id):
+                        return False  # Wrong location showing
+
+        # 8. Change product_group_id
+        resp = await client.put(
+            f"{ui_url}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{
+                    "TabName": "TABPAGE_18",
+                    "FieldName": "product_group_id",
+                    "Value": new_product_group_id,
+                    "DatawindowName": "inv_loc_detail"
+                }]
+            }
+        )
+        if resp.json().get("Status") != 1:
+            return False
+
+        # 9. Save
+        resp = await client.put(
+            f"{ui_url}/api/ui/interactive/v2/data",
+            headers=headers,
+            json=window_id
+        )
+        return resp.json().get("Status") == 1
+
+    finally:
+        await client.delete(
+            f"{ui_url}/api/ui/interactive/v2/window",
+            headers=headers,
+            params={"windowId": window_id}
+        )
+```
+
+**Key Points:**
+- Window: `Item` service (not `InventoryMaster` or `InventorySheet`)
+- Locations list: `TABPAGE_17` / `invloclist`
+- Location detail: `TABPAGE_18` / `inv_loc_detail`
+- Field: `product_group_id` (char 8)
+- Always use the row+1 workaround for reliable row selection
+
+---
+
 ## Related
 
 - [Authentication](00-Authentication.md)
