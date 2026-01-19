@@ -180,28 +180,225 @@ To find the correct field and datawindow names:
 
 ## Response Windows
 
-Response windows (dialogs) can pop up during operations. When this happens:
+Response windows (dialogs) can pop up during operations that trigger business logic questions.
 
-1. The result will have `Status: "Blocked"`
-2. Check the `Events` array for `windowopened`
-3. Get the new window ID from the event data
-4. Handle the response window
-5. Close it to resume the original operation
+### ResponseWindowHandlingEnabled Session Option
 
-Example response with blocked status:
+When creating a session, you can specify how dialogs are handled:
+
+```json
+POST /api/ui/interactive/sessions
+{
+    "ResponseWindowHandlingEnabled": false
+}
+```
+
+| Value | Behavior |
+|-------|----------|
+| `false` (default) | P21 **auto-handles** dialogs with the **default response** (usually "Yes"). You won't see dialogs but **default actions are taken automatically**. |
+| `true` | P21 returns dialog events to your code. You must handle them programmatically before proceeding. |
+
+> ⚠️ **Critical Warning**: `ResponseWindowHandlingEnabled: false` does NOT mean "answer No" - it means "auto-answer with the default", which is typically "Yes".
+
+### Dialog Detection (with ResponseWindowHandlingEnabled: true)
+
+When a dialog opens, the API response will have:
+- `Status: 3` (numeric, not string "Blocked")
+- A `windowopened` event with the dialog's window ID
+
+Example response:
 ```json
 {
-    "Status": "Blocked",
+    "Status": 3,
     "Events": [
         {
             "Name": "windowopened",
-            "Data": {
-                "WindowId": "w_response_123"
-            }
+            "Data": [
+                {
+                    "Key": "windowid",
+                    "Value": "8aaa50e6-a2c7-455b-8598-f37c7ee37188"
+                }
+            ]
         }
-    ]
+    ],
+    "Messages": []
 }
 ```
+
+### Getting Dialog Information
+
+You can retrieve information about the dialog window:
+
+```json
+GET /api/ui/interactive/v2/window?id={dialog_window_id}
+```
+
+Response:
+```json
+{
+    "Definition": {
+        "Title": "Epicor Prophet 21 - Startup",
+        "Name": "w_message",
+        "Datawindows": {},
+        "Id": "8aaa50e6-a2c7-455b-8598-f37c7ee37188",
+        "TabPageList": []
+    },
+    "Data": []
+}
+```
+
+### Responding to Dialogs
+
+**Discovered endpoint (P21 version 25.2.x):** You CAN respond to dialogs using the tools endpoint:
+
+```http
+POST /api/ui/interactive/v2/tools
+Content-Type: application/json
+
+{
+    "WindowId": "{response_window_id}",
+    "ToolName": "cb_2"
+}
+```
+
+**Common button tool names:**
+| ToolName | Typical Text | Use |
+|----------|--------------|-----|
+| `cb_1` | &Yes | Confirm/Accept |
+| `cb_2` | &No | Decline/Cancel |
+| `cb_3` | (varies) | Third option if present |
+
+### Getting Available Buttons
+
+Query the response window to see available tools:
+
+```http
+GET /api/ui/interactive/v2/tools?windowId={response_window_id}
+```
+
+Response:
+```json
+[
+    {"WindowId": "...", "ToolName": "cb_1", "Text": "&Yes", ...},
+    {"WindowId": "...", "ToolName": "cb_2", "Text": "&No", ...},
+    {"WindowId": "...", "ToolName": "cb_print", "Text": "&Print", ...}
+]
+```
+
+### Complete Dialog Handling Workflow
+
+1. **Detect dialog** - Check for `Status: 3` and `windowopened` event
+2. **Get window info** (optional) - `GET /api/ui/interactive/v2/window?id={id}`
+3. **Get available buttons** (optional) - `GET /api/ui/interactive/v2/tools?windowId={id}`
+4. **Click the desired button** - `POST /api/ui/interactive/v2/tools` with `ToolName`
+5. **Continue with main window** - Dialog is dismissed, proceed normally
+
+### What You CANNOT Get
+
+The actual dialog message text (e.g., "Do you want the GL accounts...") is NOT available via API. The window query only returns:
+- `Name`: `w_message` (generic)
+- `Title`: `Epicor Prophet 21 - Startup` (generic)
+- `Data`: `[]` (empty)
+
+The message text only appears in error responses if you try to continue without handling the dialog.
+
+### Endpoints That Do NOT Work
+
+| Endpoint | Result |
+|----------|--------|
+| `PUT /api/ui/interactive/v2/tool` (singular) | 404 Not Found |
+| `PUT /api/ui/interactive/v2/responsewindow` | 404 Not Found |
+| `DELETE /api/ui/interactive/v2/window` with button param | 400 Bad Request |
+| `PUT /api/ui/interactive/v2/change` on dialog | "Column is disabled" |
+
+### If Dialog Is Not Handled
+
+If you attempt to continue with the main window while a dialog is open:
+
+```json
+{
+    "ErrorMessage": "Unable to process request on window {main_window_id} since response window {dialog_window_id} blocks it: w_message (Title) - Dialog message here.",
+    "ErrorType": "P21.UI.Common.UiServerUserErrorException"
+}
+```
+
+---
+
+## GL Account Dialog When Changing Product Groups
+
+### The Problem
+
+When changing the `product_group_id` field on an inventory location (`inv_loc`) via the Item window, P21 displays a dialog:
+
+> "Do you want the GL accounts for product group 'XXX' to be set?"
+
+- **Default answer**: "Yes"
+- **Consequence**: GL account fields (`gl_account_no`, `revenue_account_no`, `cos_account_no`) are overwritten with the new product group's default values
+
+### The Solution
+
+Use `ResponseWindowHandlingEnabled: true` and click "No" (`cb_2`) when the dialog appears:
+
+```python
+# 1. Start session with ResponseWindowHandlingEnabled: true
+await client.post(
+    f"{ui_url}/api/ui/interactive/sessions/",
+    json={"ResponseWindowHandlingEnabled": True}
+)
+
+# 2. Change product_group_id
+result = await client.put(
+    f"{ui_url}/api/ui/interactive/v2/change",
+    json={
+        "WindowId": window_id,
+        "List": [{
+            "TabName": "TABPAGE_18",
+            "FieldName": "product_group_id",
+            "Value": new_product_group_id,
+            "DatawindowName": "inv_loc_detail"
+        }]
+    }
+)
+
+# 3. Check for dialog (Status: 3)
+if result.json().get("Status") == 3:
+    events = result.json().get("Events", [])
+    for event in events:
+        if event.get("Name") == "windowopened":
+            for data_item in event.get("Data", []):
+                if data_item.get("Key") == "windowid":
+                    response_window_id = data_item.get("Value")
+
+                    # 4. Click "No" to preserve GL accounts
+                    await client.post(
+                        f"{ui_url}/api/ui/interactive/v2/tools",
+                        json={
+                            "WindowId": response_window_id,
+                            "ToolName": "cb_2"  # "No" button
+                        }
+                    )
+
+# 5. Save - GL accounts are preserved
+await client.put(f"{ui_url}/api/ui/interactive/v2/data", json=window_id)
+```
+
+### Key Points
+
+- `ResponseWindowHandlingEnabled: true` - Required to intercept the dialog
+- `Status: 3` - Indicates a dialog window opened
+- `windowopened` event - Contains the response window ID
+- `cb_2` = "No" button - Declines GL account overwrite
+- `cb_1` = "Yes" button - Would apply GL account defaults
+
+### What You Cannot Do
+
+- Get the actual dialog message text via API (only visible in error responses)
+- Modify GL accounts via the Item window (fields are read-only on TABPAGE_24)
+- Update GL accounts via OData or REST API (404 - not supported)
+
+### If You Need to Accept GL Changes
+
+Simply use `ResponseWindowHandlingEnabled: false` (default) - the dialog will be auto-answered "Yes" and GL accounts will be updated to match the product group defaults
 
 ---
 
