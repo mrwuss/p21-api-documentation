@@ -4,6 +4,17 @@
 
 ---
 
+> **Warning: API Currently Non-Functional**
+>
+> As of December 2025, the Entity API is **not working** in P21 environments. Requests to Entity API endpoints return errors or unexpected results. This documentation is preserved for reference, as Epicor may fix this API in a future release.
+>
+> **Recommended alternatives:**
+> - **OData API** - For read-only queries ([docs](02-OData-API.md))
+> - **Transaction API** - For bulk data operations ([docs](03-Transaction-API.md))
+> - **Interactive API** - For stateful CRUD with business logic ([docs](04-Interactive-API.md))
+
+---
+
 ## Overview
 
 The Entity API is a **stateless REST** API for simple CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models for straightforward data manipulation.

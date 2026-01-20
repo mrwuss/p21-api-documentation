@@ -21,7 +21,7 @@ This repository provides developer-focused documentation for P21's four integrat
 
 ```bash
 # Clone and setup
-git clone <repo-url>
+git clone https://github.com/mrwuss/p21-api-documentation.git
 cd p21-api-documentation
 
 # Install dependencies
@@ -39,7 +39,7 @@ python scripts/odata/01_basic_query.py
 
 This documentation is available online via GitHub Pages:
 
-**[View Documentation](https://mrwuss.github.io/p21-api-documentation/)**
+**[View Documentation](https://mrwuss.github.io/p21-api-documentation/html/)**
 
 ### Enabling GitHub Pages (for forks)
 
@@ -47,7 +47,7 @@ This documentation is available online via GitHub Pages:
 2. Under "Source", select **Deploy from a branch**
 3. Choose branch: `master`, folder: `/docs`
 4. Click **Save**
-5. Your docs will be live at `https://<username>.github.io/p21-api-documentation/`
+5. Your docs will be live at `https://<username>.github.io/p21-api-documentation/html/`
 
 ---
 
@@ -66,6 +66,9 @@ This documentation is available online via GitHub Pages:
 ### Troubleshooting
 - [Error Handling](docs/06-Error-Handling.md) - HTTP codes, error responses
 - [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md) - Intermittent failures
+
+### Reference
+- [SalesPricePage Dropdown Codes](docs/08-SalesPricePage-Codes.md) - Valid values for price page fields
 
 ## Example Scripts
 
@@ -92,11 +95,6 @@ This documentation is available online via GitHub Pages:
 - `scripts/entity/01_list_entities.py` - Discover entities
 - `scripts/entity/02_query_entity.py` - Query records
 - `scripts/entity/03_create_entity.py` - Create record
-
-### Real-World Examples
-- `examples/price_page_create.py` - Create price page workflow
-- `examples/supplier_lookup.py` - Lookup supplier data
-- `examples/bulk_update.py` - Bulk update operations
 
 ## Environment Variables
 

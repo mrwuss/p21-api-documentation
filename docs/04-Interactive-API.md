@@ -501,7 +501,7 @@ See the `scripts/interactive/` directory:
 | Order Entry | Order | Sales orders |
 | Invoice Entry | Invoice | Invoices |
 | Supplier Maintenance | Supplier | Supplier records |
-| Sales Price Page Entry | SalesPricePage | Price pages |
+| Sales Price Page Entry | SalesPricePage | Price pages ([dropdown codes](08-SalesPricePage-Codes.md)) |
 | Sales Price Book Entry | SalesPriceBook | Price book maintenance |
 | Purchase Order Entry | PurchaseOrder | Purchase orders |
 | Inventory Maintenance | InventoryMaster | Inventory items |
@@ -618,6 +618,57 @@ async def link_page_to_book(
 | Complexity | Higher | Lower |
 | Performance | Slower | Faster |
 | Use case | Complex workflows | Bulk operations |
+
+---
+
+## Known Issues and Workarounds
+
+### Row Selection Synchronization Bug (List → Detail)
+
+When working with windows that have a list/detail pattern (e.g., Item Maintenance with `invloclist` and `inv_loc_detail`), there is a synchronization issue where selecting a row in the list does not immediately update the detail view.
+
+**Symptom:** After selecting row N in a list datawindow and navigating to the detail tab, the detail shows the **previous** row's data instead of row N.
+
+**Pattern observed:**
+```
+Row 0 selected → Detail shows row 0 (correct - first selection)
+Row 1 selected → Detail shows row 0 (1 behind)
+Row 2 selected → Detail shows row 1 (1 behind)
+Row 3 selected → Detail shows row 2 (1 behind)
+...
+Row 5 selected → Detail shows row 4 (1 behind)
+```
+
+**Workaround:** Select row N+1 after selecting row N to "push" row N's data through to the detail view.
+
+```python
+# To edit row 5 (last row in a 6-row list):
+
+# 1. Select target row
+await client.put(f"{ui_url}/api/ui/interactive/v2/row", headers=headers,
+    json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": 5})
+
+# 2. Select row N+1 to push row N's data through (can be non-existent)
+await client.put(f"{ui_url}/api/ui/interactive/v2/row", headers=headers,
+    json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": 6})
+
+# 3. Now go to detail tab - it will show row 5's data
+await client.put(f"{ui_url}/api/ui/interactive/v2/tab", headers=headers,
+    json={"WindowId": window_id, "PageName": "TABPAGE_18"})
+
+# 4. Change the field and save
+await client.put(f"{ui_url}/api/ui/interactive/v2/change", headers=headers,
+    json={"WindowId": window_id, "List": [
+        {"TabName": "TABPAGE_18", "FieldName": "product_group_id", "Value": "NEW_VALUE"}
+    ]})
+await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=window_id)
+```
+
+**Affected Windows:**
+- Item Maintenance (`Item` service) - Location Detail tab
+- Likely other windows with list/detail patterns
+
+**Note:** This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.
 
 ---
 
