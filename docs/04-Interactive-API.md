@@ -51,7 +51,23 @@ Then use the returned URL as base:
 | `/api/ui/interactive/v2/window` | GET | Get window state |
 | `/api/ui/interactive/v2/window` | DELETE | Close window |
 
-### Data Operations
+### Data Operations (v2 - Recommended)
+
+> **Important:** Some P21 servers only support v2 endpoints. If you receive 404 errors on v1 endpoints, use v2 instead.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/ui/interactive/v2/data` | PUT | Save data |
+| `/api/ui/interactive/v2/data` | GET | Get active data |
+| `/api/ui/interactive/v2/data` | DELETE | Clear data |
+| `/api/ui/interactive/v2/change` | PUT | Change field values |
+| `/api/ui/interactive/v2/tab` | PUT | Change active tab |
+| `/api/ui/interactive/v2/row` | POST | Add a row |
+| `/api/ui/interactive/v2/row` | PUT | Change current row |
+| `/api/ui/interactive/v2/tools` | GET | Get available tools |
+| `/api/ui/interactive/v2/tools` | POST | Run a tool |
+
+### Data Operations (v1 - Legacy)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -129,6 +145,27 @@ Response:
 
 ### 3. Change Data
 
+**v2 Format (Recommended):**
+
+```json
+PUT /api/ui/interactive/v2/change
+{
+    "WindowId": "w_sales_price_page",
+    "List": [
+        {
+            "TabName": "FORM",
+            "FieldName": "description",
+            "Value": "New Description",
+            "DatawindowName": "form"
+        }
+    ]
+}
+```
+
+> **Note:** v2 uses `List` with `TabName`, while v1 uses `ChangeRequests` with `DataWindowName`. The `DatawindowName` field in v2 uses lowercase 'w'.
+
+**v1 Format (Legacy):**
+
 ```json
 PUT /api/ui/interactive/v1/change
 {
@@ -144,6 +181,17 @@ PUT /api/ui/interactive/v1/change
 ```
 
 ### 4. Save Data
+
+**v2 Format (Recommended):**
+
+```json
+PUT /api/ui/interactive/v2/data
+"w_sales_price_page"
+```
+
+> **Critical:** In v2, send just the WindowId GUID string as the JSON body - NOT wrapped in an object. This is a common source of 422 errors.
+
+**v1 Format (Legacy):**
 
 ```json
 PUT /api/ui/interactive/v1/data
@@ -180,231 +228,48 @@ To find the correct field and datawindow names:
 
 ## Response Windows
 
-Response windows (dialogs) can pop up during operations that trigger business logic questions.
+Response windows (dialogs) can pop up during operations. When this happens:
 
-### ResponseWindowHandlingEnabled Session Option
+1. The result will have `Status: "Blocked"`
+2. Check the `Events` array for `windowopened`
+3. Get the new window ID from the event data
+4. Handle the response window
+5. Close it to resume the original operation
 
-When creating a session, you can specify how dialogs are handled:
-
-```json
-POST /api/ui/interactive/sessions
-{
-    "ResponseWindowHandlingEnabled": false
-}
-```
-
-| Value | Behavior |
-|-------|----------|
-| `false` (default) | P21 **auto-handles** dialogs with the **default response** (usually "Yes"). You won't see dialogs but **default actions are taken automatically**. |
-| `true` | P21 returns dialog events to your code. You must handle them programmatically before proceeding. |
-
-> ⚠️ **Critical Warning**: `ResponseWindowHandlingEnabled: false` does NOT mean "answer No" - it means "auto-answer with the default", which is typically "Yes".
-
-### Dialog Detection (with ResponseWindowHandlingEnabled: true)
-
-When a dialog opens, the API response will have:
-- `Status: 3` (numeric, not string "Blocked")
-- A `windowopened` event with the dialog's window ID
-
-Example response:
+Example response with blocked status:
 ```json
 {
-    "Status": 3,
+    "Status": "Blocked",
     "Events": [
         {
             "Name": "windowopened",
-            "Data": [
-                {
-                    "Key": "windowid",
-                    "Value": "8aaa50e6-a2c7-455b-8598-f37c7ee37188"
-                }
-            ]
+            "Data": {
+                "WindowId": "w_response_123"
+            }
         }
-    ],
-    "Messages": []
+    ]
 }
 ```
-
-### Getting Dialog Information
-
-You can retrieve information about the dialog window:
-
-```json
-GET /api/ui/interactive/v2/window?id={dialog_window_id}
-```
-
-Response:
-```json
-{
-    "Definition": {
-        "Title": "Epicor Prophet 21 - Startup",
-        "Name": "w_message",
-        "Datawindows": {},
-        "Id": "8aaa50e6-a2c7-455b-8598-f37c7ee37188",
-        "TabPageList": []
-    },
-    "Data": []
-}
-```
-
-### Responding to Dialogs
-
-**Discovered endpoint (P21 version 25.2.x):** You CAN respond to dialogs using the tools endpoint:
-
-```http
-POST /api/ui/interactive/v2/tools
-Content-Type: application/json
-
-{
-    "WindowId": "{response_window_id}",
-    "ToolName": "cb_2"
-}
-```
-
-**Common button tool names:**
-| ToolName | Typical Text | Use |
-|----------|--------------|-----|
-| `cb_1` | &Yes | Confirm/Accept |
-| `cb_2` | &No | Decline/Cancel |
-| `cb_3` | (varies) | Third option if present |
-
-### Getting Available Buttons
-
-Query the response window to see available tools:
-
-```http
-GET /api/ui/interactive/v2/tools?windowId={response_window_id}
-```
-
-Response:
-```json
-[
-    {"WindowId": "...", "ToolName": "cb_1", "Text": "&Yes", ...},
-    {"WindowId": "...", "ToolName": "cb_2", "Text": "&No", ...},
-    {"WindowId": "...", "ToolName": "cb_print", "Text": "&Print", ...}
-]
-```
-
-### Complete Dialog Handling Workflow
-
-1. **Detect dialog** - Check for `Status: 3` and `windowopened` event
-2. **Get window info** (optional) - `GET /api/ui/interactive/v2/window?id={id}`
-3. **Get available buttons** (optional) - `GET /api/ui/interactive/v2/tools?windowId={id}`
-4. **Click the desired button** - `POST /api/ui/interactive/v2/tools` with `ToolName`
-5. **Continue with main window** - Dialog is dismissed, proceed normally
-
-### What You CANNOT Get
-
-The actual dialog message text (e.g., "Do you want the GL accounts...") is NOT available via API. The window query only returns:
-- `Name`: `w_message` (generic)
-- `Title`: `Epicor Prophet 21 - Startup` (generic)
-- `Data`: `[]` (empty)
-
-The message text only appears in error responses if you try to continue without handling the dialog.
-
-### Endpoints That Do NOT Work
-
-| Endpoint | Result |
-|----------|--------|
-| `PUT /api/ui/interactive/v2/tool` (singular) | 404 Not Found |
-| `PUT /api/ui/interactive/v2/responsewindow` | 404 Not Found |
-| `DELETE /api/ui/interactive/v2/window` with button param | 400 Bad Request |
-| `PUT /api/ui/interactive/v2/change` on dialog | "Column is disabled" |
-
-### If Dialog Is Not Handled
-
-If you attempt to continue with the main window while a dialog is open:
-
-```json
-{
-    "ErrorMessage": "Unable to process request on window {main_window_id} since response window {dialog_window_id} blocks it: w_message (Title) - Dialog message here.",
-    "ErrorType": "P21.UI.Common.UiServerUserErrorException"
-}
-```
-
----
-
-## GL Account Dialog When Changing Product Groups
-
-### The Problem
-
-When changing the `product_group_id` field on an inventory location (`inv_loc`) via the Item window, P21 displays a dialog:
-
-> "Do you want the GL accounts for product group 'XXX' to be set?"
-
-- **Default answer**: "Yes"
-- **Consequence**: GL account fields (`gl_account_no`, `revenue_account_no`, `cos_account_no`) are overwritten with the new product group's default values
-
-### The Solution
-
-Use `ResponseWindowHandlingEnabled: true` and click "No" (`cb_2`) when the dialog appears:
-
-```python
-# 1. Start session with ResponseWindowHandlingEnabled: true
-await client.post(
-    f"{ui_url}/api/ui/interactive/sessions/",
-    json={"ResponseWindowHandlingEnabled": True}
-)
-
-# 2. Change product_group_id
-result = await client.put(
-    f"{ui_url}/api/ui/interactive/v2/change",
-    json={
-        "WindowId": window_id,
-        "List": [{
-            "TabName": "TABPAGE_18",
-            "FieldName": "product_group_id",
-            "Value": new_product_group_id,
-            "DatawindowName": "inv_loc_detail"
-        }]
-    }
-)
-
-# 3. Check for dialog (Status: 3)
-if result.json().get("Status") == 3:
-    events = result.json().get("Events", [])
-    for event in events:
-        if event.get("Name") == "windowopened":
-            for data_item in event.get("Data", []):
-                if data_item.get("Key") == "windowid":
-                    response_window_id = data_item.get("Value")
-
-                    # 4. Click "No" to preserve GL accounts
-                    await client.post(
-                        f"{ui_url}/api/ui/interactive/v2/tools",
-                        json={
-                            "WindowId": response_window_id,
-                            "ToolName": "cb_2"  # "No" button
-                        }
-                    )
-
-# 5. Save - GL accounts are preserved
-await client.put(f"{ui_url}/api/ui/interactive/v2/data", json=window_id)
-```
-
-### Key Points
-
-- `ResponseWindowHandlingEnabled: true` - Required to intercept the dialog
-- `Status: 3` - Indicates a dialog window opened
-- `windowopened` event - Contains the response window ID
-- `cb_2` = "No" button - Declines GL account overwrite
-- `cb_1` = "Yes" button - Would apply GL account defaults
-
-### What You Cannot Do
-
-- Get the actual dialog message text via API (only visible in error responses)
-- Modify GL accounts via the Item window (fields are read-only on TABPAGE_24)
-- Update GL accounts via OData or REST API (404 - not supported)
-
-### If You Need to Accept GL Changes
-
-Simply use `ResponseWindowHandlingEnabled: false` (default) - the dialog will be auto-answered "Yes" and GL accounts will be updated to match the product group defaults
 
 ---
 
 ## Changing Tabs
 
 Before changing fields on a different tab, select the tab first:
+
+**v2 Format (Recommended):**
+
+```json
+PUT /api/ui/interactive/v2/tab
+{
+    "WindowId": "w_sales_price_page",
+    "PageName": "VALUES"
+}
+```
+
+> **Note:** In v2, use `PageName` directly. In v1, use `PagePath: { PageName: "..." }`.
+
+**v1 Format (Legacy):**
 
 ```json
 PUT /api/ui/interactive/v1/tab
@@ -756,197 +621,87 @@ async def link_page_to_book(
 
 ---
 
-## Known Issues and Workarounds
+## v1 vs v2 API Differences
 
-### Row Selection Synchronization Bug (List → Detail)
+> **Important:** Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.
 
-When working with windows that have a list/detail pattern (e.g., Item Maintenance with `invloclist` and `inv_loc_detail`), there is a synchronization issue where selecting a row in the list does not immediately update the detail view.
+### Summary Table
 
-**Symptom:** After selecting row N in a list datawindow and navigating to the detail tab, the detail shows the **previous** row's data instead of row N.
+| Operation | v1 | v2 |
+|-----------|----|----|
+| **Change** | `ChangeRequests` array | `List` array |
+| **Change field ref** | `DataWindowName` (capital W) | `TabName` + optional `DatawindowName` (lowercase w) |
+| **Save** | `{"WindowId": "..."}` | `"..."` (just GUID string) |
+| **Tab change** | `PagePath: {PageName: "..."}` | `PageName: "..."` (direct) |
+| **Row change** | `RowNumber` | `Row` |
+| **Row datawindow** | `DataWindowName` | `DatawindowName` (lowercase w) |
 
-**Pattern observed:**
-```
-Row 0 selected → Detail shows row 0 (correct - first selection)
-Row 1 selected → Detail shows row 0 (1 behind)
-Row 2 selected → Detail shows row 1 (1 behind)
-Row 3 selected → Detail shows row 2 (1 behind)
-...
-Row 5 selected → Detail shows row 4 (1 behind)
-```
+### Change Request Format
 
-**Workaround:** Select row N+1 after selecting row N to "push" row N's data through to the detail view.
-
-```python
-# To edit row 5 (last row in a 6-row list):
-
-# 1. Select target row
-await client.put(f"{ui_url}/api/ui/interactive/v2/row", headers=headers,
-    json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": 5})
-
-# 2. Select row N+1 to push row N's data through (can be non-existent)
-await client.put(f"{ui_url}/api/ui/interactive/v2/row", headers=headers,
-    json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": 6})
-
-# 3. Now go to detail tab - it will show row 5's data
-await client.put(f"{ui_url}/api/ui/interactive/v2/tab", headers=headers,
-    json={"WindowId": window_id, "PageName": "TABPAGE_18"})
-
-# 4. Change the field and save
-await client.put(f"{ui_url}/api/ui/interactive/v2/change", headers=headers,
-    json={"WindowId": window_id, "List": [
-        {"TabName": "TABPAGE_18", "FieldName": "product_group_id", "Value": "NEW_VALUE"}
-    ]})
-await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=window_id)
+**v1:**
+```json
+{
+    "WindowId": "...",
+    "ChangeRequests": [
+        {"DataWindowName": "form", "FieldName": "item_id", "Value": "ABC"}
+    ]
+}
 ```
 
-**Affected Windows:**
-- Item Maintenance (`Item` service) - Location Detail tab
-- Likely other windows with list/detail patterns
+**v2:**
+```json
+{
+    "WindowId": "...",
+    "List": [
+        {"TabName": "FORM", "FieldName": "item_id", "Value": "ABC", "DatawindowName": "form"}
+    ]
+}
+```
 
-**Note:** This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.
+### Save Format
+
+**v1:** `{"WindowId": "abc-123..."}`
+
+**v2:** `"abc-123..."` (just the GUID string - this is critical!)
+
+### Tab Change Format
+
+**v1:**
+```json
+{"WindowId": "...", "PagePath": {"PageName": "TABPAGE_17"}}
+```
+
+**v2:**
+```json
+{"WindowId": "...", "PageName": "TABPAGE_17"}
+```
+
+### Row Change Format
+
+**v1:**
+```json
+{"WindowId": "...", "DataWindowName": "list", "RowNumber": 0}
+```
+
+**v2:**
+```json
+{"WindowId": "...", "DatawindowName": "list", "Row": 0}
+```
+
+### Get Window Data
+
+**v2:** Use query parameter: `GET /api/ui/interactive/v2/data?id={windowId}`
 
 ---
 
-## Example: Updating Product Group per Location
+## Troubleshooting v2 Issues
 
-This example shows the complete workflow for updating `product_group_id` in `inv_loc` via the Item Maintenance window, including the row selection workaround.
-
-```python
-async def update_inv_loc_product_group(
-    client: httpx.AsyncClient,
-    ui_url: str,
-    headers: dict,
-    item_id: str,
-    location_id: int,
-    new_product_group_id: str
-) -> bool:
-    """Update product_group_id for an item at a specific location.
-
-    Uses Item service window with row selection workaround.
-    """
-    # Open Item window
-    resp = await client.post(
-        f"{ui_url}/api/ui/interactive/v2/window",
-        headers=headers,
-        json={"ServiceName": "Item"}
-    )
-    window_id = resp.json()["WindowId"]
-
-    try:
-        # 1. Retrieve item
-        await client.put(
-            f"{ui_url}/api/ui/interactive/v2/change",
-            headers=headers,
-            json={
-                "WindowId": window_id,
-                "List": [{"TabName": "TABPAGE_1", "FieldName": "item_id", "Value": item_id}]
-            }
-        )
-
-        # 2. Go to Locations tab
-        await client.put(
-            f"{ui_url}/api/ui/interactive/v2/tab",
-            headers=headers,
-            json={"WindowId": window_id, "PageName": "TABPAGE_17"}
-        )
-
-        # 3. Find the row index for this location
-        resp = await client.get(
-            f"{ui_url}/api/ui/interactive/v2/data?id={window_id}",
-            headers=headers
-        )
-        data = resp.json()
-
-        row_idx = None
-        for dw in data:
-            if "invloclist" in dw.get("Name", "").lower():
-                cols = dw.get("Columns", [])
-                rows = dw.get("Data", [])
-                if "location_id" in cols:
-                    loc_col_idx = cols.index("location_id")
-                    for i, row in enumerate(rows):
-                        if str(row[loc_col_idx]) == str(location_id):
-                            row_idx = i
-                            break
-
-        if row_idx is None:
-            return False
-
-        # 4. Select target row
-        await client.put(
-            f"{ui_url}/api/ui/interactive/v2/row",
-            headers=headers,
-            json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": row_idx}
-        )
-
-        # 5. WORKAROUND: Select row+1 to push data through
-        await client.put(
-            f"{ui_url}/api/ui/interactive/v2/row",
-            headers=headers,
-            json={"WindowId": window_id, "DatawindowName": "invloclist", "Row": row_idx + 1}
-        )
-
-        # 6. Go to Location Detail tab
-        await client.put(
-            f"{ui_url}/api/ui/interactive/v2/tab",
-            headers=headers,
-            json={"WindowId": window_id, "PageName": "TABPAGE_18"}
-        )
-
-        # 7. Verify correct location is showing
-        resp = await client.get(
-            f"{ui_url}/api/ui/interactive/v2/data?id={window_id}",
-            headers=headers
-        )
-        data = resp.json()
-        for dw in data:
-            if "inv_loc_detail" in dw.get("Name", "").lower():
-                cols = dw.get("Columns", [])
-                rows = dw.get("Data", [])
-                if rows and "location_id" in cols:
-                    current_loc = rows[0][cols.index("location_id")]
-                    if str(current_loc) != str(location_id):
-                        return False  # Wrong location showing
-
-        # 8. Change product_group_id
-        resp = await client.put(
-            f"{ui_url}/api/ui/interactive/v2/change",
-            headers=headers,
-            json={
-                "WindowId": window_id,
-                "List": [{
-                    "TabName": "TABPAGE_18",
-                    "FieldName": "product_group_id",
-                    "Value": new_product_group_id,
-                    "DatawindowName": "inv_loc_detail"
-                }]
-            }
-        )
-        if resp.json().get("Status") != 1:
-            return False
-
-        # 9. Save
-        resp = await client.put(
-            f"{ui_url}/api/ui/interactive/v2/data",
-            headers=headers,
-            json=window_id
-        )
-        return resp.json().get("Status") == 1
-
-    finally:
-        await client.delete(
-            f"{ui_url}/api/ui/interactive/v2/window",
-            headers=headers,
-            params={"windowId": window_id}
-        )
-```
-
-**Key Points:**
-- Window: `Item` service (not `InventoryMaster` or `InventorySheet`)
-- Locations list: `TABPAGE_17` / `invloclist`
-- Location detail: `TABPAGE_18` / `inv_loc_detail`
-- Field: `product_group_id` (char 8)
-- Always use the row+1 workaround for reliable row selection
+| Error | Cause | Solution |
+|-------|-------|----------|
+| 404 on v1 | Server only supports v2 | Use v2 endpoints |
+| 422 "Window ID was not provided" | Save payload wrapped in object | Send just the GUID string for v2 |
+| 500 on tab change | Using PagePath wrapper | Use PageName directly for v2 |
+| Field change doesn't persist | Missing TabName | Include TabName in change request |
 
 ---
 

@@ -15,7 +15,7 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 | Read data quickly | **OData** | Standard protocol, efficient queries |
 | Bulk create records | **Transaction API** | Stateless, supports batching |
 | Complex business workflows | **Interactive API** | Full business logic, validation |
-| Simple CRUD operations | **Entity API** | Straightforward object access |
+| Simple CRUD operations | ~~Entity API~~ | **Not working** - use Interactive API |
 | Update existing records | **Interactive API** | Reliable field-level updates |
 | Handle response dialogs | **Interactive API** | Only API with dialog handling |
 
@@ -23,19 +23,20 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 
 ## API Comparison
 
-| Feature | OData | Transaction | Interactive | Entity |
-|---------|-------|-------------|-------------|--------|
-| **Read Data** | Excellent | Limited | Good | Good |
-| **Create Data** | No | Excellent | Good | Good |
-| **Update Data** | No | Limited* | Excellent | Good |
-| **Delete Data** | No | No | Via UI | Limited |
-| **Bulk Operations** | Yes (read) | Yes | No | No |
-| **Business Logic** | No | Partial | Full | Partial |
-| **Session Required** | No | No | Yes | No |
-| **Stateful** | No | No | Yes | No |
+| Feature | OData | Transaction | Interactive | Entity* |
+|---------|-------|-------------|-------------|---------|
+| **Read Data** | Excellent | Limited | Good | N/A |
+| **Create Data** | No | Excellent | Good | N/A |
+| **Update Data** | No | Limited** | Excellent | N/A |
+| **Delete Data** | No | No | Via UI | N/A |
+| **Bulk Operations** | Yes (read) | Yes | No | N/A |
+| **Business Logic** | No | Partial | Full | N/A |
+| **Session Required** | No | No | Yes | N/A |
+| **Stateful** | No | No | Yes | N/A |
 | **Response Dialogs** | N/A | N/A | Yes | N/A |
 
-*Transaction API updates have known issues - see [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
+*Entity API is currently non-functional (Dec 2025) - see [Entity API](05-Entity-API.md)
+**Transaction API updates have known issues - see [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
 
 ---
 
@@ -143,6 +144,9 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 ### Performance Note
 The Interactive API is slower than Transaction API for creates (~5s vs 0.05s per record) but more reliable for updates.
 
+### Version Note
+Some P21 servers only support v2 Interactive API endpoints. If you receive 404 errors on `/api/ui/interactive/v1/*` endpoints, use `/api/ui/interactive/v2/*` instead. The v2 endpoints have different payload formats - see [Interactive API v1 vs v2](04-Interactive-API.md#v1-vs-v2-api-differences).
+
 ### Example Use Cases
 - Update purchase order status
 - Modify customer records
@@ -152,6 +156,10 @@ The Interactive API is slower than Transaction API for creates (~5s vs 0.05s per
 ---
 
 ## Entity API
+
+> **Warning: Currently Non-Functional**
+>
+> As of December 2025, the Entity API is not working. Use **Interactive API** for CRUD operations instead. This section is preserved for reference in case Epicor fixes the API in a future release.
 
 ### Best For
 - Simple CRUD on business objects
@@ -165,19 +173,17 @@ The Interactive API is slower than Transaction API for creates (~5s vs 0.05s per
 - **Object-oriented** - works with entity instances
 
 ### Use When
-- Simple single-record operations
-- You prefer object-based access
-- Transaction or Interactive API is overkill
+- ~~Simple single-record operations~~ **Not currently working**
+- ~~You prefer object-based access~~ **Use Interactive API instead**
+- ~~Transaction or Interactive API is overkill~~
 
 ### Don't Use When
-- Complex validation is required
-- You need response dialog handling
-- Bulk operations (use Transaction API)
+- **Always** - API is currently non-functional
 
 ### Example Use Cases
-- Look up single customer
-- Update a specific field
-- Simple record creation
+- ~~Look up single customer~~ → Use OData or Interactive API
+- ~~Update a specific field~~ → Use Interactive API
+- ~~Simple record creation~~ → Use Transaction or Interactive API
 
 ---
 
@@ -196,17 +202,17 @@ Start
   │
   ├─ Need to UPDATE records?
   │   │
-  │   ├─ Simple field update → Try Entity API
-  │   │
-  │   └─ Complex/validated → Use Interactive API
+  │   └─ Yes → Use Interactive API
   │
   ├─ Need response dialog handling?
   │   │
   │   └─ Yes → Use Interactive API
   │
-  └─ Simple single-record CRUD?
+  └─ Single-record CREATE?
       │
-      └─ Yes → Use Entity API
+      ├─ High volume → Use Transaction API
+      │
+      └─ Low volume / needs validation → Use Interactive API
 ```
 
 ---
