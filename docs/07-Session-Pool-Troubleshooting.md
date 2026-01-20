@@ -314,8 +314,7 @@ A Python script has been created to diagnose session pool issues:
 **Running the Test:**
 
 ```bash
-cd "C:\Projects\Cube Writer"
-python scripts/test_session_pool.py
+python scripts/transaction/test_session_pool.py
 ```
 
 **Sample Output:**
@@ -404,9 +403,9 @@ at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
 
 ### C. Related Documentation
 
-- P21 SDK Documentation: `T:\P21API\docs\p21sdk\`
-- Transaction API Tutorial: `content\transaction\tutorial\`
-- Entity API Reference: `content\entity\reference-guide\`
+- [Transaction API](03-Transaction-API.md) - Service discovery, bulk operations
+- [Interactive API](04-Interactive-API.md) - Sessions, windows, workflows
+- [Error Handling](06-Error-Handling.md) - HTTP codes, error responses
 
 ---
 
