@@ -40,16 +40,16 @@ await window.change_data("FORM", "price_page_type_cd",
                          "Supplier / Product Group", datawindow_name="form")
 
 # Step 2: Set company_id BEFORE product_group_id
-await window.change_data("FORM", "company_id", "IFPG", datawindow_name="form")
+await window.change_data("FORM", "company_id", "ACME", datawindow_name="form")
 
 # Step 3: Set product group
-await window.change_data("FORM", "product_group_id", "FA5", datawindow_name="form")
+await window.change_data("FORM", "product_group_id", "HVAC", datawindow_name="form")
 
 # Step 4: Set supplier
-await window.change_data("FORM", "supplier_id", "21274", datawindow_name="form")
+await window.change_data("FORM", "supplier_id", "10050", datawindow_name="form")
 
 # Step 5: Set description
-await window.change_data("FORM", "description", "P2-L5-21274-FA5-IND_OEMA",
+await window.change_data("FORM", "description", "P2-L5-10050-HVAC-WHOLESALE",
                          datawindow_name="form")
 
 # Step 6-7: Set pricing method and source
@@ -283,13 +283,13 @@ await window.change_data("FORM", "price_page_type_cd",
                          "Supplier / Discount Group", datawindow_name="form")
 
 # Step 2: Company ID first
-await window.change_data("FORM", "company_id", "IFPG", datawindow_name="form")
+await window.change_data("FORM", "company_id", "ACME", datawindow_name="form")
 
 # Step 3: Discount group (NOT product_group_id)
 await window.change_data("FORM", "discount_group_id", "DG001", datawindow_name="form")
 
 # Step 4: Supplier
-await window.change_data("FORM", "supplier_id", "21274", datawindow_name="form")
+await window.change_data("FORM", "supplier_id", "10050", datawindow_name="form")
 
 # Steps 5-11: Same as product group pages...
 ```
