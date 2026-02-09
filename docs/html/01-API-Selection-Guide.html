@@ -152,7 +152,6 @@
     </style>
 </head>
 <body>
-    <nav class="no-print" style="margin-bottom: 20px;"><a href="index.html" style="color: #1a5276; text-decoration: none; font-weight: bold;">&larr; Back to Index</a></nav>
     <button class="print-btn no-print" onclick="window.print()">
         Print / Save as PDF
     </button>
@@ -191,8 +190,8 @@
 </tr>
 <tr>
 <td>Simple CRUD operations</td>
-<td><strong>Entity API</strong></td>
-<td>Straightforward object access</td>
+<td>~~Entity API~~</td>
+<td><strong>Not working</strong> - use Interactive API</td>
 </tr>
 <tr>
 <td>Update existing records</td>
@@ -215,7 +214,7 @@
 <th>OData</th>
 <th>Transaction</th>
 <th>Interactive</th>
-<th>Entity</th>
+<th>Entity*</th>
 </tr>
 </thead>
 <tbody>
@@ -224,56 +223,56 @@
 <td>Excellent</td>
 <td>Limited</td>
 <td>Good</td>
-<td>Good</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Create Data</strong></td>
 <td>No</td>
 <td>Excellent</td>
 <td>Good</td>
-<td>Good</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Update Data</strong></td>
 <td>No</td>
-<td>Limited*</td>
+<td>Limited**</td>
 <td>Excellent</td>
-<td>Good</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Delete Data</strong></td>
 <td>No</td>
 <td>No</td>
 <td>Via UI</td>
-<td>Limited</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Bulk Operations</strong></td>
 <td>Yes (read)</td>
 <td>Yes</td>
 <td>No</td>
-<td>No</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Business Logic</strong></td>
 <td>No</td>
 <td>Partial</td>
 <td>Full</td>
-<td>Partial</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Session Required</strong></td>
 <td>No</td>
 <td>No</td>
 <td>Yes</td>
-<td>No</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Stateful</strong></td>
 <td>No</td>
 <td>No</td>
 <td>Yes</td>
-<td>No</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td><strong>Response Dialogs</strong></td>
@@ -284,7 +283,8 @@
 </tr>
 </tbody>
 </table>
-<p>*Transaction API updates have known issues - see <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></p>
+<p><em>Entity API is currently non-functional (Dec 2025) - see <a href="05-Entity-API.html">Entity API</a>
+</em>*Transaction API updates have known issues - see <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></p>
 <hr />
 <h2 id="odata-api">OData API</h2>
 <h3 id="best-for">Best For</h3>
@@ -399,6 +399,8 @@
 </ul>
 <h3 id="performance-note">Performance Note</h3>
 <p>The Interactive API is slower than Transaction API for creates (~5s vs 0.05s per record) but more reliable for updates.</p>
+<h3 id="version-note">Version Note</h3>
+<p>Some P21 servers only support v2 Interactive API endpoints. If you receive 404 errors on <code>/api/ui/interactive/v1/*</code> endpoints, use <code>/api/ui/interactive/v2/*</code> instead. The v2 endpoints have different payload formats - see <a href="04-Interactive-API.md#v1-vs-v2-api-differences">Interactive API v1 vs v2</a>.</p>
 <h3 id="example-use-cases_2">Example Use Cases</h3>
 <ul>
 <li>Update purchase order status</li>
@@ -408,6 +410,10 @@
 </ul>
 <hr />
 <h2 id="entity-api">Entity API</h2>
+<blockquote>
+<p><strong>Warning: Currently Non-Functional</strong></p>
+<p>As of December 2025, the Entity API is not working. Use <strong>Interactive API</strong> for CRUD operations instead. This section is preserved for reference in case Epicor fixes the API in a future release.</p>
+</blockquote>
 <h3 id="best-for_3">Best For</h3>
 <ul>
 <li>Simple CRUD on business objects</li>
@@ -423,21 +429,19 @@
 </ul>
 <h3 id="use-when_3">Use When</h3>
 <ul>
-<li>Simple single-record operations</li>
-<li>You prefer object-based access</li>
-<li>Transaction or Interactive API is overkill</li>
+<li>~~Simple single-record operations~~ <strong>Not currently working</strong></li>
+<li>~~You prefer object-based access~~ <strong>Use Interactive API instead</strong></li>
+<li>~~Transaction or Interactive API is overkill~~</li>
 </ul>
 <h3 id="dont-use-when_3">Don't Use When</h3>
 <ul>
-<li>Complex validation is required</li>
-<li>You need response dialog handling</li>
-<li>Bulk operations (use Transaction API)</li>
+<li><strong>Always</strong> - API is currently non-functional</li>
 </ul>
 <h3 id="example-use-cases_3">Example Use Cases</h3>
 <ul>
-<li>Look up single customer</li>
-<li>Update a specific field</li>
-<li>Simple record creation</li>
+<li>~~Look up single customer~~ → Use OData or Interactive API</li>
+<li>~~Update a specific field~~ → Use Interactive API</li>
+<li>~~Simple record creation~~ → Use Transaction or Interactive API</li>
 </ul>
 <hr />
 <h2 id="decision-flowchart">Decision Flowchart</h2>
@@ -453,17 +457,17 @@
   │
   ├─ Need to UPDATE records?
   │   │
-  │   ├─ Simple field update → Try Entity API
-  │   │
-  │   └─ Complex/validated → Use Interactive API
+  │   └─ Yes → Use Interactive API
   │
   ├─ Need response dialog handling?
   │   │
   │   └─ Yes → Use Interactive API
   │
-  └─ Simple single-record CRUD?
+  └─ Single-record CREATE?
       │
-      └─ Yes → Use Entity API
+      ├─ High volume → Use Transaction API
+      │
+      └─ Low volume / needs validation → Use Interactive API
 </code></pre></div>
 
 <hr />
@@ -475,7 +479,7 @@
 3. Use <strong>Interactive API</strong> for updates (reliable)</p>
 <h3 id="example-price-page-management">Example: Price Page Management</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Read existing pages - OData (fast)</span>
-<span class="n">pages</span> <span class="o">=</span> <span class="n">odata</span><span class="o">.</span><span class="n">get_price_pages</span><span class="p">(</span><span class="n">supplier_id</span><span class="o">=</span><span class="mi">21274</span><span class="p">)</span>
+<span class="n">pages</span> <span class="o">=</span> <span class="n">odata</span><span class="o">.</span><span class="n">get_price_pages</span><span class="p">(</span><span class="n">supplier_id</span><span class="o">=</span><span class="mi">10050</span><span class="p">)</span>
 
 <span class="c1"># Create new pages - Transaction API (bulk, fast)</span>
 <span class="n">new_pages</span> <span class="o">=</span> <span class="n">transaction</span><span class="o">.</span><span class="n">create_pages</span><span class="p">([</span><span class="o">...</span><span class="p">])</span>
