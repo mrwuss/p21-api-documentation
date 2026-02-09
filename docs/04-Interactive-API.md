@@ -582,6 +582,96 @@ async def link_page_to_book(
 5. Set `price_page_uid` as a string value
 6. Always close the window in a `finally` block
 
+### Price Book Naming and Lookup Strategies
+
+In production P21 environments, price book names are often inconsistent. For example, the same conceptual book might be named differently across environments or suppliers:
+
+- `P2 IND_OEM_LARGE`
+- `P2_JOBBER_HUGE`
+- `P2_TP_Huge`
+
+**Strategy: Case-Insensitive OData Lookup**
+
+Use `contains()` with case-insensitive matching to find books by partial name:
+
+```python
+async def find_price_book(
+    odata_client: ODataClient,
+    search_terms: list[str],
+) -> dict | None:
+    """Find a price book by trying multiple naming patterns.
+
+    Args:
+        odata_client: OData API client
+        search_terms: List of partial names to try (e.g., ["IND_OEM", "JOBBER"])
+
+    Returns:
+        Price book record or None
+    """
+    for term in search_terms:
+        filter_expr = (
+            f"contains(price_book_id,'{term}') "
+            f"and row_status_flag eq 704"
+        )
+        results = await odata_client.query(
+            "price_book",
+            filter_expr=filter_expr,
+            select="price_book_id,description",
+        )
+        if results:
+            return results[0]
+    return None
+```
+
+**Strategy: Library-to-Book Resolution**
+
+Price books are organized into libraries. Use the `price_book_x_library` junction table to resolve which books belong to a library:
+
+```python
+async def get_books_for_library(
+    odata_client: ODataClient,
+    library_id: str,
+) -> list[dict]:
+    """Get all price books linked to a library."""
+    links = await odata_client.query(
+        "price_book_x_library",
+        filter_expr=f"price_library_uid eq {library_id}",
+        select="price_book_uid",
+    )
+    book_uids = [link["price_book_uid"] for link in links]
+
+    books = []
+    for uid in book_uids:
+        result = await odata_client.query(
+            "price_book",
+            filter_expr=f"price_book_uid eq {uid} and row_status_flag eq 704",
+            select="price_book_id,price_book_uid,description",
+        )
+        if result:
+            books.append(result[0])
+    return books
+```
+
+**Strategy: Cache Library-to-Book Mapping**
+
+For bulk operations that link many pages to books, cache the library-to-book mapping to avoid N+1 queries:
+
+```python
+class BookLookupCache:
+    """Cache library-to-book mappings for bulk operations."""
+
+    def __init__(self, odata_client: ODataClient):
+        self.odata = odata_client
+        self._cache: dict[str, list[dict]] = {}
+
+    async def get_books(self, library_id: str) -> list[dict]:
+        if library_id not in self._cache:
+            self._cache[library_id] = await get_books_for_library(
+                self.odata, library_id
+            )
+        return self._cache[library_id]
+```
+
 ---
 
 ## Best Practices
@@ -669,6 +759,29 @@ await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=w
 - Likely other windows with list/detail patterns
 
 **Note:** This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.
+
+### Row 0 Auto-Selection Quirk
+
+After switching to a tab that contains a list or grid datawindow, row 0 is **automatically selected** by the API. Explicitly calling `change_row(0)` after switching tabs returns HTTP 422 because the row is already selected.
+
+**Symptom:** `PUT /api/ui/interactive/v2/row` with `Row: 0` returns 422 error.
+
+**Workaround:** Skip the `change_row(0)` call when targeting the first row. Start explicit row selection at row 1.
+
+```python
+async def select_row_safe(window: Window, row: int, datawindow_name: str):
+    """Select a row, handling the row 0 auto-selection quirk.
+
+    Row 0 is auto-selected when switching to a tab with a grid.
+    Calling change_row(0) explicitly returns 422.
+    """
+    if row == 0:
+        # Row 0 is already selected after tab switch - skip
+        return
+    await window.change_row(row, datawindow_name)
+```
+
+**Important:** This is different from the [row selection synchronization bug](#row-selection-synchronization-bug-list--detail) documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.
 
 ---
 
@@ -761,4 +874,5 @@ await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=w
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Transaction API](03-Transaction-API.md)
+- [Batch Processing Patterns](09-Batch-Processing-Patterns.md) - Production batch processing, async client, error recovery
 - [scripts/interactive/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/interactive/) - Working examples

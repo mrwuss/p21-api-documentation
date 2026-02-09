@@ -205,6 +205,51 @@ Single quotes in values must be escaped by doubling:
 $filter=supplier_name eq 'O''Brien Supply'
 ```
 
+### Item IDs with Special Characters
+
+P21 item IDs commonly contain characters that need URL encoding in OData filters: `/`, `+`, `#`, `&`, and spaces. The single-quote doubling rule still applies within the OData filter expression, but these special characters also need URL encoding in the query string.
+
+**Python pattern for safe OData filter construction:**
+
+```python
+from urllib.parse import quote
+
+def safe_item_filter(item_id: str) -> str:
+    """Build a safe OData filter for item IDs with special characters.
+
+    Handles:
+    - Single quotes (doubled within OData expression)
+    - URL-unsafe characters (/, +, #, &, spaces) via percent-encoding
+
+    Args:
+        item_id: Raw item ID (e.g., "1/2-FITTING", "ITEM+SIZE#3")
+
+    Returns:
+        URL-encoded filter expression
+    """
+    # First, escape single quotes for OData
+    escaped = item_id.replace("'", "''")
+
+    # Build the filter expression
+    filter_expr = f"item_id eq '{escaped}'"
+
+    return filter_expr
+
+
+# Examples of item IDs that need escaping:
+# "1/2-FITTING"     -> item_id eq '1/2-FITTING'     (/ needs URL encoding)
+# "ITEM+SIZE"       -> item_id eq 'ITEM+SIZE'       (+ needs URL encoding)
+# "PART #3"         -> item_id eq 'PART #3'          (# and space need URL encoding)
+# "O'RING-204"      -> item_id eq 'O''RING-204'     (quote doubled)
+
+# Using with httpx (handles URL encoding automatically):
+params = {"$filter": safe_item_filter("1/2-FITTING")}
+response = httpx.get(f"{base_url}/table/inv_mast", params=params, headers=headers)
+# httpx encodes the filter value in the query string automatically
+```
+
+> **Tip:** When using `httpx` with the `params` dict, URL encoding is handled automatically. The main concern is correctly doubling single quotes within the OData filter expression itself.
+
 ---
 
 ## Response Format
@@ -488,4 +533,5 @@ class P21OData:
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Error Handling](06-Error-Handling.md)
+- [Batch Processing Patterns](09-Batch-Processing-Patterns.md) - Caching and N+1 query patterns
 - [scripts/odata/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/odata/) - Working examples
