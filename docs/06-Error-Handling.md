@@ -91,13 +91,13 @@ This guide covers error handling across all P21 APIs, including HTTP status code
 {
     "error": {
         "code": "400",
-        "message": "Invalid filter expression: 'supplier eq 21274'"
+        "message": "Invalid filter expression: 'supplier eq 10050'"
     }
 }
 ```
 
 **Solution**: Check filter syntax. Common issues:
-- Missing `_id` suffix on numeric fields: `supplier_id eq 21274`
+- Missing `_id` suffix on numeric fields: `supplier_id eq 10050`
 - Wrong operator: Use `eq`, not `=`
 - Unquoted strings: Use `'value'` for strings
 

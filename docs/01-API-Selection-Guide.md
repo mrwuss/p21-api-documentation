@@ -230,7 +230,7 @@ The most common pattern:
 
 ```python
 # Read existing pages - OData (fast)
-pages = odata.get_price_pages(supplier_id=21274)
+pages = odata.get_price_pages(supplier_id=10050)
 
 # Create new pages - Transaction API (bulk, fast)
 new_pages = transaction.create_pages([...])
