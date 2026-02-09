@@ -23,7 +23,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_DIR = SCRIPT_DIR.parent
 DOCS_DIR = PROJECT_DIR / "docs"
-HTML_DIR = DOCS_DIR  # Output HTML to same folder as markdown (for GitHub Pages)
+HTML_DIR = DOCS_DIR / "html"  # Output HTML to docs/html/
 
 # HTML template with professional styling for PDF
 HTML_TEMPLATE = """<!DOCTYPE html>

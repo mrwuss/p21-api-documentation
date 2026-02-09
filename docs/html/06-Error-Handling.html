@@ -152,7 +152,6 @@
     </style>
 </head>
 <body>
-    <nav class="no-print" style="margin-bottom: 20px;"><a href="index.html" style="color: #1a5276; text-decoration: none; font-weight: bold;">&larr; Back to Index</a></nav>
     <button class="print-btn no-print" onclick="window.print()">
         Print / Save as PDF
     </button>
@@ -334,13 +333,13 @@
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;400&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invalid filter expression: &#39;supplier eq 21274&#39;&quot;</span>
+<span class="w">        </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invalid filter expression: &#39;supplier eq 10050&#39;&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <p><strong>Solution</strong>: Check filter syntax. Common issues:
-- Missing <code>_id</code> suffix on numeric fields: <code>supplier_id eq 21274</code>
+- Missing <code>_id</code> suffix on numeric fields: <code>supplier_id eq 10050</code>
 - Wrong operator: Use <code>eq</code>, not <code>=</code>
 - Unquoted strings: Use <code>'value'</code> for strings</p>
 <h3 id="404-table-not-found">404 - Table Not Found</h3>

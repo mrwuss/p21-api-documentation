@@ -152,7 +152,6 @@
     </style>
 </head>
 <body>
-    <nav class="no-print" style="margin-bottom: 20px;"><a href="index.html" style="color: #1a5276; text-decoration: none; font-weight: bold;">&larr; Back to Index</a></nav>
     <button class="print-btn no-print" onclick="window.print()">
         Print / Save as PDF
     </button>
@@ -436,8 +435,7 @@ c_shipped_flag = ON  →  &quot;Notify about shipment status&quot;
 3. Parallel concurrent requests
 4. Random jitter patterns</p>
 <p><strong>Running the Test:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;C:\Projects\Cube Writer&quot;</span>
-python<span class="w"> </span>scripts/test_session_pool.py
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/transaction/test_session_pool.py
 </code></pre></div>
 
 <p><strong>Sample Output:</strong></p>
@@ -560,9 +558,9 @@ at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
 </table>
 <h3 id="c-related-documentation">C. Related Documentation</h3>
 <ul>
-<li>P21 SDK Documentation: <code>T:\P21API\docs\p21sdk\</code></li>
-<li>Transaction API Tutorial: <code>content\transaction\tutorial\</code></li>
-<li>Entity API Reference: <code>content\entity\reference-guide\</code></li>
+<li><a href="03-Transaction-API.html">Transaction API</a> - Service discovery, bulk operations</li>
+<li><a href="04-Interactive-API.html">Interactive API</a> - Sessions, windows, workflows</li>
+<li><a href="06-Error-Handling.html">Error Handling</a> - HTTP codes, error responses</li>
 </ul>
 <hr />
 <h2 id="document-history">Document History</h2>
