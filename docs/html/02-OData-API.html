@@ -152,7 +152,6 @@
     </style>
 </head>
 <body>
-    <nav class="no-print" style="margin-bottom: 20px;"><a href="index.html" style="color: #1a5276; text-decoration: none; font-weight: bold;">&larr; Back to Index</a></nav>
     <button class="print-btn no-print" onclick="window.print()">
         Print / Save as PDF
     </button>
@@ -216,7 +215,7 @@
 
 <h3 id="filter-filter-results">$filter - Filter Results</h3>
 <p>Filter records based on conditions:</p>
-<div class="highlight"><pre><span></span><code>/odata/table/supplier?$filter=supplier_id eq 21274
+<div class="highlight"><pre><span></span><code>/odata/table/supplier?$filter=supplier_id eq 10050
 </code></pre></div>
 
 <h3 id="orderby-sort-results">$orderby - Sort Results</h3>
@@ -254,7 +253,7 @@
 <tr>
 <td><code>eq</code></td>
 <td>Equal</td>
-<td><code>$filter=supplier_id eq 21274</code></td>
+<td><code>$filter=supplier_id eq 10050</code></td>
 </tr>
 <tr>
 <td><code>ne</code></td>
@@ -294,7 +293,7 @@
 <tbody>
 <tr>
 <td><code>and</code></td>
-<td><code>$filter=supplier_id eq 21274 and row_status_flag eq 704</code></td>
+<td><code>$filter=supplier_id eq 10050 and row_status_flag eq 704</code></td>
 </tr>
 <tr>
 <td><code>or</code></td>
@@ -342,7 +341,7 @@ $filter=notes ne null
 </code></pre></div>
 
 <p>Always include this filter when querying for active data:</p>
-<div class="highlight"><pre><span></span><code>$filter=supplier_id eq 21274 and row_status_flag eq 704
+<div class="highlight"><pre><span></span><code>$filter=supplier_id eq 10050 and row_status_flag eq 704
 </code></pre></div>
 
 <h3 id="non-expired-records">Non-Expired Records</h3>
@@ -384,7 +383,7 @@ $filter=expiration_date ge 2025-12-28
 <tr>
 <td>Number</td>
 <td>No quotes</td>
-<td><code>21274</code></td>
+<td><code>10050</code></td>
 </tr>
 <tr>
 <td>Decimal</td>
@@ -418,6 +417,48 @@ $filter=expiration_date ge 2025-12-28
 <div class="highlight"><pre><span></span><code>$filter=supplier_name eq &#39;O&#39;&#39;Brien Supply&#39;
 </code></pre></div>
 
+<h3 id="item-ids-with-special-characters">Item IDs with Special Characters</h3>
+<p>P21 item IDs commonly contain characters that need URL encoding in OData filters: <code>/</code>, <code>+</code>, <code>#</code>, <code>&amp;</code>, and spaces. The single-quote doubling rule still applies within the OData filter expression, but these special characters also need URL encoding in the query string.</p>
+<p><strong>Python pattern for safe OData filter construction:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">quote</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">safe_item_filter</span><span class="p">(</span><span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a safe OData filter for item IDs with special characters.</span>
+
+<span class="sd">    Handles:</span>
+<span class="sd">    - Single quotes (doubled within OData expression)</span>
+<span class="sd">    - URL-unsafe characters (/, +, #, &amp;, spaces) via percent-encoding</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        item_id: Raw item ID (e.g., &quot;1/2-FITTING&quot;, &quot;ITEM+SIZE#3&quot;)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        URL-encoded filter expression</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># First, escape single quotes for OData</span>
+    <span class="n">escaped</span> <span class="o">=</span> <span class="n">item_id</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;&#39;&#39;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Build the filter expression</span>
+    <span class="n">filter_expr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;item_id eq &#39;</span><span class="si">{</span><span class="n">escaped</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+
+    <span class="k">return</span> <span class="n">filter_expr</span>
+
+
+<span class="c1"># Examples of item IDs that need escaping:</span>
+<span class="c1"># &quot;1/2-FITTING&quot;     -&gt; item_id eq &#39;1/2-FITTING&#39;     (/ needs URL encoding)</span>
+<span class="c1"># &quot;ITEM+SIZE&quot;       -&gt; item_id eq &#39;ITEM+SIZE&#39;       (+ needs URL encoding)</span>
+<span class="c1"># &quot;PART #3&quot;         -&gt; item_id eq &#39;PART #3&#39;          (# and space need URL encoding)</span>
+<span class="c1"># &quot;O&#39;RING-204&quot;      -&gt; item_id eq &#39;O&#39;&#39;RING-204&#39;     (quote doubled)</span>
+
+<span class="c1"># Using with httpx (handles URL encoding automatically):</span>
+<span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="n">safe_item_filter</span><span class="p">(</span><span class="s2">&quot;1/2-FITTING&quot;</span><span class="p">)}</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/table/inv_mast&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+<span class="c1"># httpx encodes the filter value in the query string automatically</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Tip:</strong> When using <code>httpx</code> with the <code>params</code> dict, URL encoding is handled automatically. The main concern is correctly doubling single quotes within the OData filter expression itself.</p>
+</blockquote>
 <hr />
 <h2 id="response-format">Response Format</h2>
 <h3 id="success-response">Success Response</h3>
@@ -425,7 +466,7 @@ $filter=expiration_date ge 2025-12-28
 <span class="w">    </span><span class="nt">&quot;@odata.context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://play.p21server.com/odataservice/odata/$metadata#supplier&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="nt">&quot;supplier_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">21274</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;supplier_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10050</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;supplier_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
 <span class="w">            </span><span class="nt">&quot;row_status_flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">704</span><span class="p">,</span>
 <span class="w">            </span><span class="err">...</span>
@@ -502,7 +543,7 @@ $filter=expiration_date ge 2025-12-28
 <h3 id="filtered-query">Filtered Query</h3>
 <p>Get active price pages for a supplier:</p>
 <div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/price_page
-    ?$filter=supplier_id eq 21274 and row_status_flag eq 704
+    ?$filter=supplier_id eq 10050 and row_status_flag eq 704
     &amp;$select=price_page_uid,description,effective_date,expiration_date
     &amp;$orderby=description
 </code></pre></div>
@@ -549,7 +590,7 @@ $filter=expiration_date ge 2025-12-28
 <h3 id="filtered-query_1">Filtered Query</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Get price pages for supplier</span>
 <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;supplier_id eq 21274 and row_status_flag eq 704&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;supplier_id eq 10050 and row_status_flag eq 704&quot;</span><span class="p">,</span>
     <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;price_page_uid,description,calculation_value1&quot;</span><span class="p">,</span>
     <span class="s2">&quot;$orderby&quot;</span><span class="p">:</span> <span class="s2">&quot;description&quot;</span>
 <span class="p">}</span>
@@ -691,7 +732,7 @@ $filter=expiration_date ge 2025-12-28
 <p><strong>Solution 1: Batch queries</strong></p>
 <p>Fetch all related data upfront with IN clauses or multiple conditions:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Get all pages first</span>
-<span class="n">pages</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;price_page&quot;</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="s2">&quot;supplier_id eq 21274&quot;</span><span class="p">)</span>
+<span class="n">pages</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;price_page&quot;</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="s2">&quot;supplier_id eq 10050&quot;</span><span class="p">)</span>
 <span class="n">page_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;price_page_uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]</span>
 
 <span class="c1"># Get all links in fewer queries</span>
@@ -723,6 +764,7 @@ $filter=expiration_date ge 2025-12-28
 <li><a href="00-Authentication.html">Authentication</a></li>
 <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
 <li><a href="06-Error-Handling.html">Error Handling</a></li>
+<li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a> - Caching and N+1 query patterns</li>
 <li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/odata/">scripts/odata/</a> - Working examples</li>
 </ul>
 

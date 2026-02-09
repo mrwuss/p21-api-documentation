@@ -152,7 +152,6 @@
     </style>
 </head>
 <body>
-    <nav class="no-print" style="margin-bottom: 20px;"><a href="index.html" style="color: #1a5276; text-decoration: none; font-weight: bold;">&larr; Back to Index</a></nav>
     <button class="print-btn no-print" onclick="window.print()">
         Print / Save as PDF
     </button>
@@ -189,16 +188,16 @@
                          <span class="s2">&quot;Supplier / Product Group&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
 
 <span class="c1"># Step 2: Set company_id BEFORE product_group_id</span>
-<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;IFPG&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;ACME&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
 
 <span class="c1"># Step 3: Set product group</span>
-<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;product_group_id&quot;</span><span class="p">,</span> <span class="s2">&quot;FA5&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;product_group_id&quot;</span><span class="p">,</span> <span class="s2">&quot;HVAC&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
 
 <span class="c1"># Step 4: Set supplier</span>
-<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="s2">&quot;21274&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="s2">&quot;10050&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
 
 <span class="c1"># Step 5: Set description</span>
-<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;P2-L5-21274-FA5-IND_OEMA&quot;</span><span class="p">,</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;P2-L5-10050-HVAC-WHOLESALE&quot;</span><span class="p">,</span>
                          <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
 
 <span class="c1"># Step 6-7: Set pricing method and source</span>
@@ -284,27 +283,40 @@
 <tr>
 <th>Code</th>
 <th>Display Value</th>
+<th>Key Field</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>210</td>
 <td>Customer</td>
+<td><code>customer_id</code></td>
 </tr>
 <tr>
 <td>211</td>
 <td>Customer / Item</td>
+<td><code>customer_id</code> + <code>item_id</code></td>
+</tr>
+<tr>
+<td>213</td>
+<td>Supplier / Discount Group</td>
+<td><code>discount_group_id</code></td>
 </tr>
 <tr>
 <td>214</td>
 <td>Supplier / Product Group</td>
+<td><code>product_group_id</code></td>
 </tr>
 <tr>
 <td>215</td>
-<td>Supplier / Discount Group</td>
+<td>Supplier / Discount Group (alt)</td>
+<td><code>discount_group_id</code></td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Note:</strong> Type 213 ("Supplier / Discount Group") uses <code>discount_group_id</code> instead of <code>product_group_id</code>. The field order changes slightly for this type - see <a href="#discount-group-pages-type-213">Discount Group Pages</a> below.</p>
+</blockquote>
 <hr />
 <h2 id="pricing-method-form-tab">Pricing Method (FORM Tab)</h2>
 <p>The <code>pricing_method_cd</code> field controls how the source price is used.</p>
@@ -339,23 +351,53 @@
 <tr>
 <th>Code</th>
 <th>Display Value</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>200</td>
 <td>Supplier List Price</td>
+<td>Use with Multiplier (211) calculation method</td>
 </tr>
 <tr>
 <td>201</td>
 <td>Replacement Cost</td>
+<td>Also known as "Primary Supplier Cost". Use with Mark Up (229)</td>
 </tr>
 <tr>
 <td>202</td>
 <td>Average Cost</td>
+<td></td>
 </tr>
 </tbody>
 </table>
+<h3 id="source-price-and-calculation-method-pairing">Source Price and Calculation Method Pairing</h3>
+<p>Using the wrong combination of source price and calculation method produces incorrect pricing. Follow these pairings:</p>
+<table>
+<thead>
+<tr>
+<th>Calculation Method</th>
+<th>Recommended Source Price</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multiplier (211)</td>
+<td>Supplier List Price (200)</td>
+<td>Multiplier applies a factor to list price</td>
+</tr>
+<tr>
+<td>Mark Up (229)</td>
+<td>Replacement Cost / Primary Supplier Cost (201)</td>
+<td>Mark up adds margin above cost</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Important:</strong> Source Price code 201 is labeled "Replacement Cost" in the dropdown but represents the <strong>Primary Supplier Cost</strong> in P21's pricing engine. This distinction matters when building pricing logic.</p>
+</blockquote>
 <hr />
 <h2 id="cost-type-costs-tab">Cost Type (COSTS Tab)</h2>
 <table>
@@ -510,9 +552,246 @@
 <li>Maximum 14 break points (15 price levels including base)</li>
 </ul>
 <hr />
+<h2 id="discount-group-pages-type-213">Discount Group Pages (Type 213)</h2>
+<p>Discount group pages use <code>discount_group_id</code> instead of <code>product_group_id</code>. The field order differs from the standard product group page creation sequence.</p>
+<h3 id="field-order-for-type-213">Field Order for Type 213</h3>
+<ol>
+<li><strong><code>price_page_type_cd</code></strong> - Set to "Supplier / Discount Group"</li>
+<li><strong><code>company_id</code></strong> - Required before discount_group_id</li>
+<li><strong><code>discount_group_id</code></strong> - Replaces <code>product_group_id</code></li>
+<li><strong><code>supplier_id</code></strong></li>
+<li><strong><code>description</code></strong></li>
+<li><strong><code>pricing_method_cd</code></strong> - "Source"</li>
+<li><strong><code>source_price_cd</code></strong> - "Supplier List Price"</li>
+<li><strong><code>effective_date</code></strong> / <strong><code>expiration_date</code></strong></li>
+<li>Switch to <strong>VALUES</strong> tab</li>
+<li><strong><code>calculation_method_cd</code></strong> and values</li>
+</ol>
+<h3 id="example-creating-a-discount-group-page">Example: Creating a Discount Group Page</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Step 1: Set page type to Discount Group</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;price_page_type_cd&quot;</span><span class="p">,</span>
+                         <span class="s2">&quot;Supplier / Discount Group&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 2: Company ID first</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;ACME&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 3: Discount group (NOT product_group_id)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;discount_group_id&quot;</span><span class="p">,</span> <span class="s2">&quot;DG001&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Supplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="s2">&quot;10050&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span><span class="p">)</span>
+
+<span class="c1"># Steps 5-11: Same as product group pages...</span>
+</code></pre></div>
+
+<h3 id="odata-queries-for-both-page-types">OData Queries for Both Page Types</h3>
+<p>When querying price pages, check both <code>product_group_id</code> and <code>discount_group_id</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get ALL active pages for a supplier (both types)</span>
+<span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;supplier_id eq </span><span class="si">{</span><span class="n">supplier_id</span><span class="si">}</span><span class="s2"> &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;and row_status_flag eq 704 &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;and (product_group_id ne null or discount_group_id ne null)&quot;</span>
+    <span class="p">),</span>
+    <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="p">(</span>
+        <span class="s2">&quot;price_page_uid,description,price_page_type_cd,&quot;</span>
+        <span class="s2">&quot;product_group_id,discount_group_id,supplier_id&quot;</span>
+    <span class="p">),</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="dollar-based-price-breaks">Dollar-Based Price Breaks</h2>
+<p>In addition to quantity-based breaks (documented above), price pages support <strong>dollar-based breaks</strong> where break values represent total order value rather than unit quantities.</p>
+<h3 id="configuration-fields">Configuration Fields</h3>
+<p>Dollar-based breaks require additional fields on the VALUES tab:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Display Value</th>
+<th>Code</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>totaling_method_cd</code></td>
+<td>Discount Group</td>
+<td>217</td>
+<td>Group items by discount group for break calculation</td>
+</tr>
+<tr>
+<td><code>totaling_basis_cd</code></td>
+<td>Supplier List Price</td>
+<td>200</td>
+<td>Use supplier list price as the dollar total basis</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-dollar-based-breaks">Example: Dollar-Based Breaks</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Switch to VALUES tab</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">select_tab</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">)</span>
+
+<span class="c1"># Set calculation method</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Multiplier&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Configure dollar-based totaling</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;totaling_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Discount Group&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;totaling_basis_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Supplier List Price&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># Set dollar-based breaks (total order value thresholds)</span>
+<span class="c1"># $0-$4,999: 0.85 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value1&quot;</span><span class="p">,</span> <span class="s2">&quot;0.85&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># $5,000-$9,999: 0.82 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;break1&quot;</span><span class="p">,</span> <span class="s2">&quot;5000&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value2&quot;</span><span class="p">,</span> <span class="s2">&quot;0.82&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># $10,000-$14,999: 0.78 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;break2&quot;</span><span class="p">,</span> <span class="s2">&quot;10000&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value3&quot;</span><span class="p">,</span> <span class="s2">&quot;0.78&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># $15,000-$19,999: 0.75 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;break3&quot;</span><span class="p">,</span> <span class="s2">&quot;15000&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value4&quot;</span><span class="p">,</span> <span class="s2">&quot;0.75&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+
+<span class="c1"># $20,000+: 0.72 multiplier</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;break4&quot;</span><span class="p">,</span> <span class="s2">&quot;20000&quot;</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;VALUES&quot;</span><span class="p">,</span> <span class="s2">&quot;calculation_value5&quot;</span><span class="p">,</span> <span class="s2">&quot;0.72&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;values&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="quantity-vs-dollar-breaks-comparison">Quantity vs Dollar Breaks Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Quantity Breaks</th>
+<th>Dollar Breaks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Break values represent</td>
+<td>Unit quantities</td>
+<td>Total order value ($)</td>
+</tr>
+<tr>
+<td><code>totaling_method_cd</code></td>
+<td>Not set (default)</td>
+<td>"Discount Group" (217)</td>
+</tr>
+<tr>
+<td><code>totaling_basis_cd</code></td>
+<td>Not set (default)</td>
+<td>"Supplier List Price" (200)</td>
+</tr>
+<tr>
+<td>Typical use case</td>
+<td>Volume discounts per SKU</td>
+<td>Order-level discounts</td>
+</tr>
+<tr>
+<td>Break example</td>
+<td>6 units, 25 units, 100 units</td>
+<td>$5K, $10K, $15K, $20K</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="costs-tab-configuration">COSTS Tab Configuration</h2>
+<p>The COSTS tab is a separate tab on the SalesPricePage window that controls <strong>commission cost calculation</strong>. This determines how cost is calculated for commission purposes, separate from the selling price configured on the VALUES tab.</p>
+<h3 id="accessing-the-costs-tab">Accessing the COSTS Tab</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Switch to COSTS tab</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">select_tab</span><span class="p">(</span><span class="s2">&quot;COSTS&quot;</span><span class="p">)</span>
+
+<span class="c1"># Set commission cost calculation method</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;COSTS&quot;</span><span class="p">,</span> <span class="s2">&quot;commission_cost_calc_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Multiplier&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;costs&quot;</span><span class="p">)</span>
+
+<span class="c1"># Set commission cost value (1.01 = pass-through costing with 1% margin)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;COSTS&quot;</span><span class="p">,</span> <span class="s2">&quot;commission_cost_value1&quot;</span><span class="p">,</span> <span class="s2">&quot;1.01&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;costs&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="common-pattern-pass-through-costing">Common Pattern: Pass-Through Costing</h3>
+<p>For pages where commission cost should simply pass through at cost:</p>
+<div class="highlight"><pre><span></span><code><span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">select_tab</span><span class="p">(</span><span class="s2">&quot;COSTS&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;COSTS&quot;</span><span class="p">,</span> <span class="s2">&quot;commission_cost_calc_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Multiplier&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;costs&quot;</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span><span class="s2">&quot;COSTS&quot;</span><span class="p">,</span> <span class="s2">&quot;commission_cost_value1&quot;</span><span class="p">,</span> <span class="s2">&quot;1.01&quot;</span><span class="p">,</span>
+                         <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;costs&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="commission-cost-codes-different-from-values-tab">Commission Cost Codes (Different from VALUES Tab)</h3>
+<p>The COSTS tab uses <strong>different code numbers</strong> than the VALUES tab for calculation methods:</p>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Code</th>
+<th>Display Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VALUES</td>
+<td>211</td>
+<td>Multiplier</td>
+</tr>
+<tr>
+<td>VALUES</td>
+<td>228</td>
+<td>Difference</td>
+</tr>
+<tr>
+<td>VALUES</td>
+<td>229</td>
+<td>Mark Up</td>
+</tr>
+<tr>
+<td>VALUES</td>
+<td>230</td>
+<td>Percentage</td>
+</tr>
+<tr>
+<td>COSTS</td>
+<td>211</td>
+<td>Multiplier</td>
+</tr>
+<tr>
+<td>COSTS</td>
+<td>212</td>
+<td>Difference</td>
+</tr>
+<tr>
+<td>COSTS</td>
+<td>213</td>
+<td>Mark Up</td>
+</tr>
+<tr>
+<td>COSTS</td>
+<td>214</td>
+<td>Percentage</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Warning:</strong> Do not assume codes are the same across tabs. "Difference" is 228 on VALUES but 212 on COSTS.</p>
+</blockquote>
+<hr />
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="04-Interactive-API.html">Interactive API</a></li>
+<li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
 <li><a href="06-Error-Handling.html">Error Handling</a></li>
 </ul>
 

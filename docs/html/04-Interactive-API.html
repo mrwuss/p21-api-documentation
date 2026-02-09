@@ -152,7 +152,6 @@
     </style>
 </head>
 <body>
-    <nav class="no-print" style="margin-bottom: 20px;"><a href="index.html" style="color: #1a5276; text-decoration: none; font-weight: bold;">&larr; Back to Index</a></nav>
     <button class="print-btn no-print" onclick="window.print()">
         Print / Save as PDF
     </button>
@@ -240,7 +239,67 @@
 </tr>
 </tbody>
 </table>
-<h3 id="data-operations">Data Operations</h3>
+<h3 id="data-operations-v2-recommended">Data Operations (v2 - Recommended)</h3>
+<blockquote>
+<p><strong>Important:</strong> Some P21 servers only support v2 endpoints. If you receive 404 errors on v1 endpoints, use v2 instead.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/ui/interactive/v2/data</code></td>
+<td>PUT</td>
+<td>Save data</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/data</code></td>
+<td>GET</td>
+<td>Get active data</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/data</code></td>
+<td>DELETE</td>
+<td>Clear data</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/change</code></td>
+<td>PUT</td>
+<td>Change field values</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/tab</code></td>
+<td>PUT</td>
+<td>Change active tab</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/row</code></td>
+<td>POST</td>
+<td>Add a row</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/row</code></td>
+<td>PUT</td>
+<td>Change current row</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/tools</code></td>
+<td>GET</td>
+<td>Get available tools</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/tools</code></td>
+<td>POST</td>
+<td>Run a tool</td>
+</tr>
+</tbody>
+</table>
+<h3 id="data-operations-v1-legacy">Data Operations (v1 - Legacy)</h3>
 <table>
 <thead>
 <tr>
@@ -346,6 +405,25 @@
 </code></pre></div>
 
 <h3 id="3-change-data">3. Change Data</h3>
+<p><strong>v2 Format (Recommended):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/cha</span><span class="kc">n</span><span class="err">ge</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;List&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;description&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New Description&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;form&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> v2 uses <code>List</code> with <code>TabName</code>, while v1 uses <code>ChangeRequests</code> with <code>DataWindowName</code>. The <code>DatawindowName</code> field in v2 uses lowercase 'w'.</p>
+</blockquote>
+<p><strong>v1 Format (Legacy):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/cha</span><span class="kc">n</span><span class="err">ge</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
@@ -360,6 +438,15 @@
 </code></pre></div>
 
 <h3 id="4-save-data">4. Save Data</h3>
+<p><strong>v2 Format (Recommended):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/da</span><span class="kc">ta</span>
+<span class="s2">&quot;w_sales_price_page&quot;</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Critical:</strong> In v2, send just the WindowId GUID string as the JSON body - NOT wrapped in an object. This is a common source of 422 errors.</p>
+</blockquote>
+<p><strong>v1 Format (Legacy):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/da</span><span class="kc">ta</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span>
@@ -411,6 +498,18 @@
 <hr />
 <h2 id="changing-tabs">Changing Tabs</h2>
 <p>Before changing fields on a different tab, select the tab first:</p>
+<p><strong>v2 Format (Recommended):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">ta</span><span class="err">b</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PageName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;VALUES&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> In v2, use <code>PageName</code> directly. In v1, use <code>PagePath: { PageName: "..." }</code>.</p>
+</blockquote>
+<p><strong>v1 Format (Legacy):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/</span><span class="kc">ta</span><span class="err">b</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
@@ -673,7 +772,7 @@
 <tr>
 <td>Sales Price Page Entry</td>
 <td>SalesPricePage</td>
-<td>Price pages</td>
+<td>Price pages (<a href="08-SalesPricePage-Codes.html">dropdown codes</a>)</td>
 </tr>
 <tr>
 <td>Sales Price Book Entry</td>
@@ -764,6 +863,86 @@
 <li>Set <code>price_page_uid</code> as a string value</li>
 <li>Always close the window in a <code>finally</code> block</li>
 </ol>
+<h3 id="price-book-naming-and-lookup-strategies">Price Book Naming and Lookup Strategies</h3>
+<p>In production P21 environments, price book names are often inconsistent. For example, the same conceptual book might be named differently across environments or suppliers:</p>
+<ul>
+<li><code>P2 IND_OEM_LARGE</code></li>
+<li><code>P2_JOBBER_HUGE</code></li>
+<li><code>P2_TP_Huge</code></li>
+</ul>
+<p><strong>Strategy: Case-Insensitive OData Lookup</strong></p>
+<p>Use <code>contains()</code> with case-insensitive matching to find books by partial name:</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">find_price_book</span><span class="p">(</span>
+    <span class="n">odata_client</span><span class="p">:</span> <span class="n">ODataClient</span><span class="p">,</span>
+    <span class="n">search_terms</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Find a price book by trying multiple naming patterns.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        odata_client: OData API client</span>
+<span class="sd">        search_terms: List of partial names to try (e.g., [&quot;IND_OEM&quot;, &quot;JOBBER&quot;])</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Price book record or None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="n">search_terms</span><span class="p">:</span>
+        <span class="n">filter_expr</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;contains(price_book_id,&#39;</span><span class="si">{</span><span class="n">term</span><span class="si">}</span><span class="s2">&#39;) &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;and row_status_flag eq 704&quot;</span>
+        <span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata_client</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+            <span class="s2">&quot;price_book&quot;</span><span class="p">,</span>
+            <span class="n">filter_expr</span><span class="o">=</span><span class="n">filter_expr</span><span class="p">,</span>
+            <span class="n">select</span><span class="o">=</span><span class="s2">&quot;price_book_id,description&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p><strong>Strategy: Library-to-Book Resolution</strong></p>
+<p>Price books are organized into libraries. Use the <code>price_book_x_library</code> junction table to resolve which books belong to a library:</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_books_for_library</span><span class="p">(</span>
+    <span class="n">odata_client</span><span class="p">:</span> <span class="n">ODataClient</span><span class="p">,</span>
+    <span class="n">library_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all price books linked to a library.&quot;&quot;&quot;</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata_client</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+        <span class="s2">&quot;price_book_x_library&quot;</span><span class="p">,</span>
+        <span class="n">filter_expr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;price_library_uid eq </span><span class="si">{</span><span class="n">library_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">select</span><span class="o">=</span><span class="s2">&quot;price_book_uid&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">book_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">link</span><span class="p">[</span><span class="s2">&quot;price_book_uid&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">]</span>
+
+    <span class="n">books</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">uid</span> <span class="ow">in</span> <span class="n">book_uids</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata_client</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+            <span class="s2">&quot;price_book&quot;</span><span class="p">,</span>
+            <span class="n">filter_expr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;price_book_uid eq </span><span class="si">{</span><span class="n">uid</span><span class="si">}</span><span class="s2"> and row_status_flag eq 704&quot;</span><span class="p">,</span>
+            <span class="n">select</span><span class="o">=</span><span class="s2">&quot;price_book_id,price_book_uid,description&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+            <span class="n">books</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">books</span>
+</code></pre></div>
+
+<p><strong>Strategy: Cache Library-to-Book Mapping</strong></p>
+<p>For bulk operations that link many pages to books, cache the library-to-book mapping to avoid N+1 queries:</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BookLookupCache</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cache library-to-book mappings for bulk operations.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">odata_client</span><span class="p">:</span> <span class="n">ODataClient</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">odata</span> <span class="o">=</span> <span class="n">odata_client</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_books</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">library_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">library_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">library_id</span><span class="p">]</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_books_for_library</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">odata</span><span class="p">,</span> <span class="n">library_id</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">library_id</span><span class="p">]</span>
+</code></pre></div>
+
 <hr />
 <h2 id="best-practices">Best Practices</h2>
 <ol>
@@ -857,11 +1036,192 @@
 </tbody>
 </table>
 <hr />
+<h2 id="known-issues-and-workarounds">Known Issues and Workarounds</h2>
+<h3 id="row-selection-synchronization-bug-list-detail">Row Selection Synchronization Bug (List → Detail)</h3>
+<p>When working with windows that have a list/detail pattern (e.g., Item Maintenance with <code>invloclist</code> and <code>inv_loc_detail</code>), there is a synchronization issue where selecting a row in the list does not immediately update the detail view.</p>
+<p><strong>Symptom:</strong> After selecting row N in a list datawindow and navigating to the detail tab, the detail shows the <strong>previous</strong> row's data instead of row N.</p>
+<p><strong>Pattern observed:</strong></p>
+<div class="highlight"><pre><span></span><code>Row 0 selected → Detail shows row 0 (correct - first selection)
+Row 1 selected → Detail shows row 0 (1 behind)
+Row 2 selected → Detail shows row 1 (1 behind)
+Row 3 selected → Detail shows row 2 (1 behind)
+...
+Row 5 selected → Detail shows row 4 (1 behind)
+</code></pre></div>
+
+<p><strong>Workaround:</strong> Select row N+1 after selecting row N to "push" row N's data through to the detail view.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># To edit row 5 (last row in a 6-row list):</span>
+
+<span class="c1"># 1. Select target row</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/row&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="s2">&quot;invloclist&quot;</span><span class="p">,</span> <span class="s2">&quot;Row&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">})</span>
+
+<span class="c1"># 2. Select row N+1 to push row N&#39;s data through (can be non-existent)</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/row&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="s2">&quot;invloclist&quot;</span><span class="p">,</span> <span class="s2">&quot;Row&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">})</span>
+
+<span class="c1"># 3. Now go to detail tab - it will show row 5&#39;s data</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/tab&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;PageName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_18&quot;</span><span class="p">})</span>
+
+<span class="c1"># 4. Change the field and save</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/change&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_18&quot;</span><span class="p">,</span> <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;product_group_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;NEW_VALUE&quot;</span><span class="p">}</span>
+    <span class="p">]})</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/data&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">window_id</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Affected Windows:</strong>
+- Item Maintenance (<code>Item</code> service) - Location Detail tab
+- Likely other windows with list/detail patterns</p>
+<p><strong>Note:</strong> This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.</p>
+<h3 id="row-0-auto-selection-quirk">Row 0 Auto-Selection Quirk</h3>
+<p>After switching to a tab that contains a list or grid datawindow, row 0 is <strong>automatically selected</strong> by the API. Explicitly calling <code>change_row(0)</code> after switching tabs returns HTTP 422 because the row is already selected.</p>
+<p><strong>Symptom:</strong> <code>PUT /api/ui/interactive/v2/row</code> with <code>Row: 0</code> returns 422 error.</p>
+<p><strong>Workaround:</strong> Skip the <code>change_row(0)</code> call when targeting the first row. Start explicit row selection at row 1.</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">select_row_safe</span><span class="p">(</span><span class="n">window</span><span class="p">:</span> <span class="n">Window</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Select a row, handling the row 0 auto-selection quirk.</span>
+
+<span class="sd">    Row 0 is auto-selected when switching to a tab with a grid.</span>
+<span class="sd">    Calling change_row(0) explicitly returns 422.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">row</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Row 0 is already selected after tab switch - skip</span>
+        <span class="k">return</span>
+    <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_row</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">datawindow_name</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Important:</strong> This is different from the <a href="#row-selection-synchronization-bug-list--detail">row selection synchronization bug</a> documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.</p>
+<hr />
+<h2 id="v1-vs-v2-api-differences">v1 vs v2 API Differences</h2>
+<blockquote>
+<p><strong>Important:</strong> Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.</p>
+</blockquote>
+<h3 id="summary-table">Summary Table</h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>v1</th>
+<th>v2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Change</strong></td>
+<td><code>ChangeRequests</code> array</td>
+<td><code>List</code> array</td>
+</tr>
+<tr>
+<td><strong>Change field ref</strong></td>
+<td><code>DataWindowName</code> (capital W)</td>
+<td><code>TabName</code> + optional <code>DatawindowName</code> (lowercase w)</td>
+</tr>
+<tr>
+<td><strong>Save</strong></td>
+<td><code>{"WindowId": "..."}</code></td>
+<td><code>"..."</code> (just GUID string)</td>
+</tr>
+<tr>
+<td><strong>Tab change</strong></td>
+<td><code>PagePath: {PageName: "..."}</code></td>
+<td><code>PageName: "..."</code> (direct)</td>
+</tr>
+<tr>
+<td><strong>Row change</strong></td>
+<td><code>RowNumber</code></td>
+<td><code>Row</code></td>
+</tr>
+<tr>
+<td><strong>Row datawindow</strong></td>
+<td><code>DataWindowName</code></td>
+<td><code>DatawindowName</code> (lowercase w)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="change-request-format">Change Request Format</h3>
+<p><strong>v1:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ChangeRequests&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;DataWindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>v2:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;List&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;form&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="save-format">Save Format</h3>
+<p><strong>v1:</strong> <code>{"WindowId": "abc-123..."}</code></p>
+<p><strong>v2:</strong> <code>"abc-123..."</code> (just the GUID string - this is critical!)</p>
+<h3 id="tab-change-format">Tab Change Format</h3>
+<p><strong>v1:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;PagePath&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;PageName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_17&quot;</span><span class="p">}}</span>
+</code></pre></div>
+
+<p><strong>v2:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;PageName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_17&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<h3 id="row-change-format">Row Change Format</h3>
+<p><strong>v1:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataWindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;list&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;RowNumber&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
+</code></pre></div>
+
+<p><strong>v2:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;list&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Row&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
+</code></pre></div>
+
+<h3 id="get-window-data">Get Window Data</h3>
+<p><strong>v2:</strong> Use query parameter: <code>GET /api/ui/interactive/v2/data?id={windowId}</code></p>
+<hr />
+<h2 id="troubleshooting-v2-issues">Troubleshooting v2 Issues</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>404 on v1</td>
+<td>Server only supports v2</td>
+<td>Use v2 endpoints</td>
+</tr>
+<tr>
+<td>422 "Window ID was not provided"</td>
+<td>Save payload wrapped in object</td>
+<td>Send just the GUID string for v2</td>
+</tr>
+<tr>
+<td>500 on tab change</td>
+<td>Using PagePath wrapper</td>
+<td>Use PageName directly for v2</td>
+</tr>
+<tr>
+<td>Field change doesn't persist</td>
+<td>Missing TabName</td>
+<td>Include TabName in change request</td>
+</tr>
+</tbody>
+</table>
+<hr />
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="00-Authentication.html">Authentication</a></li>
 <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
 <li><a href="03-Transaction-API.html">Transaction API</a></li>
+<li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a> - Production batch processing, async client, error recovery</li>
 <li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/interactive/">scripts/interactive/</a> - Working examples</li>
 </ul>
 

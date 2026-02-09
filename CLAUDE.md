@@ -35,6 +35,7 @@ p21-api-documentation/
 │   ├── 06-Error-Handling.md
 │   ├── 07-Session-Pool-Troubleshooting.md
 │   ├── 08-SalesPricePage-Codes.md
+│   ├── 09-Batch-Processing-Patterns.md
 │   └── html/                    # Generated HTML versions
 │
 └── scripts/
@@ -143,4 +144,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-01-18*
+*Last updated: 2026-02-09*
