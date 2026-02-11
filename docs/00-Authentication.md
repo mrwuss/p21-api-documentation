@@ -183,6 +183,59 @@ This restricts the token to only those tables.
 
 ---
 
+## P21 Permissions (User Credential Auth)
+
+When authenticating with **User Credentials** (Method 1), generating a valid token is **not sufficient** for API access. The P21 user account must also have specific permissions enabled in the P21 Desktop Client. Without these, you'll receive a generic `"You are not authorized to access API"` error even with a valid token.
+
+> **Note:** Consumer Key authentication (Method 2) bypasses these requirements entirely. Access is controlled by the consumer key's API scope instead.
+
+### Step 1: Application Security
+
+Each user must be explicitly granted API access in **User Maintenance**.
+
+1. Open **User Maintenance** in the P21 Desktop Client
+2. Pull up the user's details
+3. Go to the **Application Security** tab
+4. Find **"Allow OData API Service"** and set it to **Yes** (default is No)
+
+![User Maintenance - Application Security tab showing "Allow OData API Service" set to Yes](img/authorization1.jpg)
+
+### Step 2: Role-Level Dataservice Permissions
+
+After enabling Application Security, the user's **role** must grant access to specific tables and views.
+
+1. Open **Role Maintenance** in the P21 Desktop Client
+2. Pull up the role assigned to the user
+3. Go to the **Dataservice Permission** tab
+4. Set each required table/view to **Allow**
+
+![Role Maintenance - Dataservice Permission tab showing table/view Allow/Deny settings](img/authorization2.jpg)
+
+Key details about the Dataservice Permission screen:
+
+- **Schema Type** dropdown filters between Tables, Views, or Both
+- **Allow All** / **Allow All Views** / **Allow All Tables** checkboxes grant blanket access
+- Each table/view can be individually set to **Allow** or **Deny**
+- The list includes all 6000+ tables and views in the P21 database
+
+### Permission Requirements by Auth Method
+
+| Auth Method | Application Security | Dataservice Permission | Notes |
+|-------------|---------------------|----------------------|-------|
+| **User Credentials** | Required | Required | Both must be configured |
+| **Consumer Key** (no username) | Not needed | Not needed | Access controlled by API scope |
+| **Consumer Key** (with username) | Not needed | Not needed | User credentials are **ignored** for OData |
+
+### Troubleshooting
+
+If you receive a `401` or `403` "not authorized" error with a valid token:
+
+1. Verify **Allow OData API Service** = Yes in User Maintenance → Application Security
+2. Verify the target table/view is set to **Allow** in Role Maintenance → Dataservice Permission
+3. Ensure you're checking the correct **role** (the one actually assigned to the user)
+
+---
+
 ## Using the Token
 
 Include the token in the `Authorization` header for all API requests:

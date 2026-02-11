@@ -50,7 +50,7 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 - Any read-only operation
 
 ### Characteristics
-- **Standard OData v4 protocol** - familiar to most developers
+- **Standard OData v3 protocol** - familiar to most developers
 - **Read-only** - cannot create, update, or delete
 - **No session management** - simple request/response
 - **Efficient** - supports filtering, pagination, field selection

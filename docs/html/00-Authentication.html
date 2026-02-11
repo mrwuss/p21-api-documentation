@@ -348,6 +348,75 @@
 
 <p>This restricts the token to only those tables.</p>
 <hr />
+<h2 id="p21-permissions-user-credential-auth">P21 Permissions (User Credential Auth)</h2>
+<p>When authenticating with <strong>User Credentials</strong> (Method 1), generating a valid token is <strong>not sufficient</strong> for API access. The P21 user account must also have specific permissions enabled in the P21 Desktop Client. Without these, you'll receive a generic <code>"You are not authorized to access API"</code> error even with a valid token.</p>
+<blockquote>
+<p><strong>Note:</strong> Consumer Key authentication (Method 2) bypasses these requirements entirely. Access is controlled by the consumer key's API scope instead.</p>
+</blockquote>
+<h3 id="step-1-application-security">Step 1: Application Security</h3>
+<p>Each user must be explicitly granted API access in <strong>User Maintenance</strong>.</p>
+<ol>
+<li>Open <strong>User Maintenance</strong> in the P21 Desktop Client</li>
+<li>Pull up the user's details</li>
+<li>Go to the <strong>Application Security</strong> tab</li>
+<li>Find <strong>"Allow OData API Service"</strong> and set it to <strong>Yes</strong> (default is No)</li>
+</ol>
+<p><img alt="User Maintenance - Application Security tab showing &quot;Allow OData API Service&quot; set to Yes" src="img/authorization1.jpg" /></p>
+<h3 id="step-2-role-level-dataservice-permissions">Step 2: Role-Level Dataservice Permissions</h3>
+<p>After enabling Application Security, the user's <strong>role</strong> must grant access to specific tables and views.</p>
+<ol>
+<li>Open <strong>Role Maintenance</strong> in the P21 Desktop Client</li>
+<li>Pull up the role assigned to the user</li>
+<li>Go to the <strong>Dataservice Permission</strong> tab</li>
+<li>Set each required table/view to <strong>Allow</strong></li>
+</ol>
+<p><img alt="Role Maintenance - Dataservice Permission tab showing table/view Allow/Deny settings" src="img/authorization2.jpg" /></p>
+<p>Key details about the Dataservice Permission screen:</p>
+<ul>
+<li><strong>Schema Type</strong> dropdown filters between Tables, Views, or Both</li>
+<li><strong>Allow All</strong> / <strong>Allow All Views</strong> / <strong>Allow All Tables</strong> checkboxes grant blanket access</li>
+<li>Each table/view can be individually set to <strong>Allow</strong> or <strong>Deny</strong></li>
+<li>The list includes all 6000+ tables and views in the P21 database</li>
+</ul>
+<h3 id="permission-requirements-by-auth-method">Permission Requirements by Auth Method</h3>
+<table>
+<thead>
+<tr>
+<th>Auth Method</th>
+<th>Application Security</th>
+<th>Dataservice Permission</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>User Credentials</strong></td>
+<td>Required</td>
+<td>Required</td>
+<td>Both must be configured</td>
+</tr>
+<tr>
+<td><strong>Consumer Key</strong> (no username)</td>
+<td>Not needed</td>
+<td>Not needed</td>
+<td>Access controlled by API scope</td>
+</tr>
+<tr>
+<td><strong>Consumer Key</strong> (with username)</td>
+<td>Not needed</td>
+<td>Not needed</td>
+<td>User credentials are <strong>ignored</strong> for OData</td>
+</tr>
+</tbody>
+</table>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<p>If you receive a <code>401</code> or <code>403</code> "not authorized" error with a valid token:</p>
+<ol>
+<li>Verify <strong>Allow OData API Service</strong> = Yes in User Maintenance → Application Security</li>
+<li>Verify the target table/view is set to <strong>Allow</strong> in Role Maintenance → Dataservice Permission</li>
+<li>Ensure you're checking the correct <strong>role</strong> (the one actually assigned to the user)</li>
+</ol>
+<hr />
 <h2 id="using-the-token">Using the Token</h2>
 <p>Include the token in the <code>Authorization</code> header for all API requests:</p>
 <div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/odataservice/odata/table/supplier</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
