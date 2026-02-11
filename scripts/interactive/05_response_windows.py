@@ -250,7 +250,7 @@ def main():
         print("-" * 50)
         # Use an item that exists in your P21 - adjust as needed
         result = session.change_data_v2(window_id, [
-            {"TabName": "TABPAGE_1", "FieldName": "item_id", "Value": "CBCALHN"}
+            {"TabName": "TABPAGE_1", "FieldName": "item_id", "Value": "WIDGET-001"}
         ])
         print(f"  Status: {result.get('Status')}")
         if result.get("Status") != 1:

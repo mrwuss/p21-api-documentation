@@ -117,19 +117,19 @@ def main():
         {
             "description": f"BULK-TEST-{timestamp}-A",
             "supplier_id": 10,
-            "product_group": "FA5",
+            "product_group": "MISC",
             "multiplier": 0.70
         },
         {
             "description": f"BULK-TEST-{timestamp}-B",
             "supplier_id": 10,
-            "product_group": "FA5",
+            "product_group": "MISC",
             "multiplier": 0.75
         },
         {
             "description": f"BULK-TEST-{timestamp}-C",
             "supplier_id": 10,
-            "product_group": "FA5",
+            "product_group": "MISC",
             "multiplier": 0.80
         }
     ]

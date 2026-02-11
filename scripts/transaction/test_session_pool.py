@@ -102,7 +102,7 @@ class SessionPoolTester:
                                     {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
                                     {"Name": "company_id", "Value": "ACME"},
                                     {"Name": "supplier_id", "Value": 10.0},
-                                    {"Name": "product_group_id", "Value": "FA5"},
+                                    {"Name": "product_group_id", "Value": "MISC"},
                                     {"Name": "description", "Value": f"SESSION-TEST-{datetime.now().strftime('%H%M%S%f')}"},
                                     {"Name": "pricing_method_cd", "Value": "Source"},
                                     {"Name": "source_price_cd", "Value": "Supplier List Price"},
