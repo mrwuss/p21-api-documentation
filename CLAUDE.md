@@ -17,7 +17,7 @@ This project provides developer-focused documentation for Prophet 21's integrati
 | **OData** | Read-only data access via standard OData protocol | Quick reads, reporting, lookups | Working |
 | **Transaction API** | Stateless bulk data manipulation | Bulk creates, external integrations | Working |
 | **Interactive API** | Stateful window interactions with business logic | Complex workflows, validation needed | Working |
-| **Entity API** | Simple CRUD on business objects | Basic record operations | **Not working** (Dec 2025) |
+| **Entity API** | CRUD on domain objects (customer, vendor, contact, address) | Simple record operations on 4 entities | Working (`/api/entity/`) |
 
 ---
 

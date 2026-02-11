@@ -15,7 +15,7 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 | Read data quickly | **OData** | Standard protocol, efficient queries |
 | Bulk create records | **Transaction API** | Stateless, supports batching |
 | Complex business workflows | **Interactive API** | Full business logic, validation |
-| Simple CRUD operations | ~~Entity API~~ | **Not working** - use Interactive API |
+| Simple CRUD (customers, vendors, contacts, addresses) | **Entity API** | Stateless, domain objects |
 | Update existing records | **Interactive API** | Reliable field-level updates |
 | Handle response dialogs | **Interactive API** | Only API with dialog handling |
 
@@ -23,20 +23,19 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 
 ## API Comparison
 
-| Feature | OData | Transaction | Interactive | Entity* |
-|---------|-------|-------------|-------------|---------|
-| **Read Data** | Excellent | Limited | Good | N/A |
-| **Create Data** | No | Excellent | Good | N/A |
-| **Update Data** | No | Limited** | Excellent | N/A |
-| **Delete Data** | No | No | Via UI | N/A |
-| **Bulk Operations** | Yes (read) | Yes | No | N/A |
-| **Business Logic** | No | Partial | Full | N/A |
-| **Session Required** | No | No | Yes | N/A |
-| **Stateful** | No | No | Yes | N/A |
+| Feature | OData | Transaction | Interactive | Entity |
+|---------|-------|-------------|-------------|--------|
+| **Read Data** | Excellent | Limited | Good | Good (4 entities) |
+| **Create Data** | No | Excellent | Good | Good (4 entities) |
+| **Update Data** | No | Limited* | Excellent | Good (4 entities) |
+| **Delete Data** | No | No | Via UI | Via flag |
+| **Bulk Operations** | Yes (read) | Yes | No | No |
+| **Business Logic** | No | Partial | Full | No |
+| **Session Required** | No | No | Yes | No |
+| **Stateful** | No | No | Yes | No |
 | **Response Dialogs** | N/A | N/A | Yes | N/A |
 
-*Entity API is currently non-functional (Dec 2025) - see [Entity API](05-Entity-API.md)
-**Transaction API updates have known issues - see [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
+*Transaction API updates have known issues - see [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
 
 ---
 
@@ -157,33 +156,32 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 
 ## Entity API
 
-> **Warning: Currently Non-Functional**
->
-> As of December 2025, the Entity API is not working. Use **Interactive API** for CRUD operations instead. This section is preserved for reference in case Epicor fixes the API in a future release.
-
 ### Best For
-- Simple CRUD on business objects
-- Quick single-record operations
-- When you know the entity structure
+- Customer, vendor, contact, and address CRUD
+- Quick single-record operations on supported entities
+- B2B integrations needing domain object models
 
 ### Characteristics
-- **Entity-based** - works with P21 business objects
-- **Simple CRUD** - create, read, update, delete
-- **Less overhead** - simpler than Interactive API
-- **Object-oriented** - works with entity instances
+- **Entity-based** - works with P21 domain objects (not raw table rows)
+- **Simple CRUD** - create, read, update via REST
+- **Stateless** - no session management required
+- **Limited scope** - only 4 entities: customers, vendors, contacts, addresses
+- **Composite keys** - customers/vendors use `{CompanyId}_{Id}` format
 
 ### Use When
-- ~~Simple single-record operations~~ **Not currently working**
-- ~~You prefer object-based access~~ **Use Interactive API instead**
-- ~~Transaction or Interactive API is overkill~~
+- You need CRUD on customers, vendors, contacts, or addresses
+- You want cleaner domain objects than raw OData table rows
+- You prefer stateless REST over Interactive API session management
 
 ### Don't Use When
-- **Always** - API is currently non-functional
+- You need orders, items, invoices, POs, or other entities (not available)
+- You need bulk operations (use Transaction API)
+- You need full business logic validation (use Interactive API)
 
 ### Example Use Cases
-- ~~Look up single customer~~ → Use OData or Interactive API
-- ~~Update a specific field~~ → Use Interactive API
-- ~~Simple record creation~~ → Use Transaction or Interactive API
+- Look up customer with address: `GET /api/entity/customers/IFPG_10?extendedproperties=CustomerAddress`
+- Search vendors: `GET /api/entity/vendors/?$query=startswith(VendorName, 'Parker')`
+- Get contact details: `GET /api/entity/contacts/1`
 
 ---
 
