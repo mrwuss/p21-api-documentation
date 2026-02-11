@@ -565,80 +565,279 @@ resp = client.put(
 
 ---
 
-## Template Fields
+## Template Fields (Complete Reference)
 
-Use the `/new` endpoint to discover all available fields for each entity.
+Every field for each entity is listed below, sourced directly from the `/new` template endpoints. Extended properties (nested objects) are listed separately from data fields.
 
 ### Customer Template (102 fields)
 
-Key fields and their types from `GET /api/entity/customers/new`:
+Complete field list from `GET /api/entity/customers/new`:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `CompanyId` | string | `""` | Company identifier (e.g., "ACME") |
-| `CustomerId` | null | `null` | Auto-assigned on create |
-| `CustomerName` | string | `""` | Customer name |
-| `SalesrepId` | string | `""` | Default sales rep |
-| `TermsId` | string | `""` | Payment terms |
-| `CreditStatus` | string | `""` | Credit status (GOOD, HOLD, etc.) |
-| `CreditLimit` | null | `null` | Credit limit amount |
-| `Taxable` | string | `""` | Y/N taxable flag |
-| `CurrencyId` | null | `null` | Currency |
-| `CustomerType` | string | `""` | Customer type code |
-| `Delete` | bool | `false` | Delete flag |
-| `WebEnabledFlag` | string | `"N"` | Web access flag |
-| `UserDefinedFields` | object | `{}` | UDF container |
-| `ObjectName` | string | `"customer"` | Entity type |
+**Extended Properties (null by default, populate via `extendedproperties` parameter):**
+
+| # | Field | Type | Default |
+|---|-------|------|---------|
+| 1 | `CustomerAddress` | null | null |
+| 2 | `CustomerEDITransactions` | null | null |
+| 3 | `CustomerSalesreps` | null | null |
+| 4 | `CustomerTerms` | null | null |
+| 5 | `CustomerDealerTypes` | null | null |
+| 6 | `CustomerRestrictedClasses` | null | null |
+| 7 | `CustomerContacts` | null | null |
+| 8 | `CustomerShipTos` | null | null |
+| 9 | `CustomerPriceLibraries` | null | null |
+
+**Data Fields:**
+
+| # | Field | Type | Default |
+|---|-------|------|---------|
+| 10 | `CompanyId` | string | `""` |
+| 11 | `CustomerId` | null | null |
+| 12 | `CustomerName` | string | `""` |
+| 13 | `SalesrepId` | string | `""` |
+| 14 | `TermsId` | string | `""` |
+| 15 | `CodRequiredFlag` | string | `""` |
+| 16 | `GenerateFinanceCharges` | string | `""` |
+| 17 | `FcCycle` | string | `""` |
+| 18 | `MinimumFinanceCharge` | null | null |
+| 19 | `FinanceChargeShipToId` | null | null |
+| 20 | `FcGraceDays` | null | null |
+| 21 | `FcPercentage` | null | null |
+| 22 | `LastFcDate` | null | null |
+| 23 | `CreditStatus` | string | `""` |
+| 24 | `CreditLimit` | null | null |
+| 25 | `CreditLimitPerOrder` | null | null |
+| 26 | `CreditLimitCheckAtShipment` | string | `""` |
+| 27 | `OverrideRevenueByItem` | string | `""` |
+| 28 | `OrderAcknowledgments` | string | `""` |
+| 29 | `PoNoRequired` | string | `""` |
+| 30 | `LimitMaxShipmentsPerOrder` | null | null |
+| 31 | `MinimumOrderDollarAmount` | null | null |
+| 32 | `PickTicketType` | string | `""` |
+| 33 | `DefaultDisposition` | string | `""` |
+| 34 | `BillToContactId` | string | `""` |
+| 35 | `InvoicePrintQty` | int | `1` |
+| 36 | `GenerateCustomerStatements` | string | `""` |
+| 37 | `Taxable` | string | `""` |
+| 38 | `StatementBalance` | string | `"O"` |
+| 39 | `SicCode` | null | null |
+| 40 | `Class1id` | string | `""` |
+| 41 | `Class2id` | string | `""` |
+| 42 | `Class3id` | string | `""` |
+| 43 | `Class4id` | string | `""` |
+| 44 | `Class5id` | string | `""` |
+| 45 | `StateSalesTaxExemptionNo` | string | `""` |
+| 46 | `StateExciseTaxExemptionNo` | string | `""` |
+| 47 | `FederalExemptionNumber` | string | `""` |
+| 48 | `OtherExemptionNumber` | string | `""` |
+| 49 | `SecurityInfo` | string | `""` |
+| 50 | `InterchgReceiverId` | string | `""` |
+| 51 | `InternationalSAN` | string | `""` |
+| 52 | `TradingPartnerName` | string | `""` |
+| 53 | `PrintPricesOnPackinglist` | string | `""` |
+| 54 | `InvoiceBatchNumber` | null | null |
+| 55 | `StatementBatchNumber` | null | null |
+| 56 | `JobPricing` | string | `"N"` |
+| 57 | `DefaultRebateLocationId` | null | null |
+| 58 | `CurrencyId` | null | null |
+| 59 | `OverrideProfitLimit` | string | `""` |
+| 60 | `MinimumOrderLineProfit` | null | null |
+| 61 | `MaximumOrderLineProfit` | null | null |
+| 62 | `MinimumOrderProfit` | null | null |
+| 63 | `MaximumOrderProfit` | null | null |
+| 64 | `DateAcctOpened` | null | null |
+| 65 | `PrintPackinglistInShipping` | string | `""` |
+| 66 | `InclNonAllocOnTixText` | string | `""` |
+| 67 | `ExcludeCanceldFromPickTix` | string | `""` |
+| 68 | `InclNonAllocOnListText` | string | `""` |
+| 69 | `ExcludeCanceldFromPackList` | string | `""` |
+| 70 | `AlwaysUseJobPrice` | string | `""` |
+| 71 | `AllowNonJobItem` | string | `""` |
+| 72 | `PromptForNonJobItem` | string | `""` |
+| 73 | `AllowExceedJobQty` | string | `""` |
+| 74 | `PrintLotAttribOnInvoice` | string | `""` |
+| 75 | `PrintLotAttribOnPacklist` | string | `""` |
+| 76 | `OverTolerancePercentage` | null | null |
+| 77 | `UnderTolerancePercentage` | null | null |
+| 78 | `CustomerType` | string | `""` |
+| 79 | `LeadSourceId` | string | `""` |
+| 80 | `UseAllContracts` | string | `""` |
+| 81 | `JobNumberRequired` | string | `""` |
+| 82 | `PromiseDateBuffer` | null | null |
+| 83 | `FreightChargeId` | string | `""` |
+| 84 | `OrderPriorityId` | string | `""` |
+| 85 | `UseSystemUPSHandlingCharge` | string | `""` |
+| 86 | `UpsHandlingCharge` | null | null |
+| 87 | `DaysOverdueForCreditHold` | null | null |
+| 88 | `Delete` | bool | `false` |
+| 89 | `SendOutsideUseDocs` | string | `"N"` |
+| 90 | `SendOutsideUsePrint` | string | `"N"` |
+| 91 | `SendOutsideUseFax` | string | `"N"` |
+| 92 | `SendOutsideUseEmail` | string | `"N"` |
+| 93 | `LegacyId` | string | `""` |
+| 94 | `PricingMethod` | string | `""` |
+| 95 | `RequirePaymentUponReleaseOfItems` | bool | `false` |
+| 96 | `CreditLimitUsed` | null | null |
+| 97 | `CreditLimitAvailable` | null | null |
+| 98 | `CorporateCreditLimit` | null | null |
+| 99 | `CorporateCreditLimitAvailable` | null | null |
+| 100 | `WebEnabledFlag` | string | `"N"` |
+| 101 | `UserDefinedFields` | object | `{}` |
+| 102 | `ObjectName` | string | `"customer"` |
 
 ### Vendor Template (50 fields)
 
-Key fields from `GET /api/entity/vendors/new`:
+Complete field list from `GET /api/entity/vendors/new`:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `CompanyId` | string | `""` | Company identifier |
-| `VendorId` | null | `null` | Auto-assigned on create |
-| `VendorName` | string | `""` | Vendor name |
-| `DefaultTermsId` | string | `""` | Payment terms |
-| `ApAccountNo` | string | `""` | AP account number |
-| `Incorporated` | string | `"N"` | Incorporated flag |
-| `Default1099Type` | int | `7` | 1099 type |
-| `TrackRebates` | string | `""` | Rebate tracking |
-| `Delete` | bool | `false` | Delete flag |
+**Extended Properties (null by default, populate via `extendedproperties` parameter):**
+
+| # | Field | Type | Default |
+|---|-------|------|---------|
+| 1 | `VendorSuppliers` | null | null |
+| 2 | `VendorAddress` | null | null |
+| 3 | `VendorPurchaseAccounts` | null | null |
+| 4 | `VendorContract` | null | null |
+
+**Data Fields:**
+
+| # | Field | Type | Default |
+|---|-------|------|---------|
+| 5 | `CompanyId` | string | `""` |
+| 6 | `VendorName` | string | `""` |
+| 7 | `CurrencyId` | null | null |
+| 8 | `CurrencyDesc` | string | `""` |
+| 9 | `ApAccountNo` | string | `""` |
+| 10 | `DefaultTermsId` | string | `""` |
+| 11 | `DefaultInvoiceDesc` | string | `""` |
+| 12 | `AlwaysTakeTerms` | string | `""` |
+| 13 | `JobIdRequired` | string | `"N"` |
+| 14 | `Class1id` | string | `""` |
+| 15 | `Class2id` | string | `""` |
+| 16 | `Class3id` | string | `""` |
+| 17 | `Class4id` | string | `""` |
+| 18 | `Class5id` | string | `""` |
+| 19 | `Incorporated` | string | `"N"` |
+| 20 | `Default1099Type` | int | `7` |
+| 21 | `SecurityInfo` | string | `""` |
+| 22 | `InterchgReceiverId` | string | `""` |
+| 23 | `IntlSan` | string | `""` |
+| 24 | `DefaultPayFreightTo` | string | `"V"` |
+| 25 | `GeneralLiabExpirationDate` | null | null |
+| 26 | `WorkersCompExpirationDate` | null | null |
+| 27 | `TradingPartnerName` | string | `""` |
+| 28 | `VendorId` | null | null |
+| 29 | `TrackRebates` | string | `""` |
+| 30 | `RebateAccountNo` | string | `""` |
+| 31 | `RebateAllowanceAccountNo` | string | `""` |
+| 32 | `AttorneyFeeFlag` | string | `""` |
+| 33 | `Irs1099State1` | string | `""` |
+| 34 | `Irs1099State1IdNo` | string | `""` |
+| 35 | `Irs1099State2` | string | `""` |
+| 36 | `Irs1099State2IdNo` | string | `""` |
+| 37 | `CommissionReceivableAcct` | string | `""` |
+| 38 | `CommissionRevenueAcct` | string | `""` |
+| 39 | `CommissionAllowanceAcct` | string | `""` |
+| 40 | `WarrantyReceivableAcct` | string | `""` |
+| 41 | `WarrantyRevenueAcct` | string | `""` |
+| 42 | `WarrantyAllowanceAcct` | string | `""` |
+| 43 | `VendorTypeDesc` | string | `""` |
+| 44 | `IntrastatFlag` | string | `""` |
+| 45 | `ConsignmentCountry` | string | `""` |
+| 46 | `EuMemberFlag` | string | `"N"` |
+| 47 | `Delete` | bool | `false` |
+| 48 | `LegacyId` | string | `""` |
+| 49 | `UserDefinedFields` | object | `{}` |
+| 50 | `ObjectName` | string | `"vendor"` |
 
 ### Contact Template (40 fields)
 
-Key fields from `GET /api/entity/contacts/new`:
+Complete field list from `GET /api/entity/contacts/new`:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `Salutation` | string | Salutation |
-| `FirstName` | string | First name |
-| `LastName` | string | Last name |
-| `Title` | string | Job title |
-| `AddressId` | null | Associated address ID |
-| `DirectPhone` | string | Direct phone number |
-| `EmailAddress` | string | Email address |
-| `Id` | null | Auto-assigned on create |
+**Extended Properties (null by default, populate via `extendedproperties` parameter):**
 
-### Address Template
+| # | Field | Type | Default |
+|---|-------|------|---------|
+| 1 | `ContactDocuments` | null | null |
+| 2 | `ContactLeadSources` | null | null |
+| 3 | `ContactLinks` | null | null |
+| 4 | `ContactLists` | null | null |
+| 5 | `ContactSalesreps` | null | null |
 
-> **Known Issue:** `GET /api/entity/addresses/new` returns a **500 error**. Use an existing address as a reference instead.
+**Data Fields:**
 
-Key fields from address records:
+| # | Field | Type | Default |
+|---|-------|------|---------|
+| 6 | `Salutation` | string | `""` |
+| 7 | `FirstName` | string | `""` |
+| 8 | `Mi` | string | `""` |
+| 9 | `LastName` | string | `""` |
+| 10 | `Title` | string | `""` |
+| 11 | `AddressId` | null | null |
+| 12 | `Mailstop` | string | `""` |
+| 13 | `NoOfCycleDays` | null | null |
+| 14 | `Comments` | string | `""` |
+| 15 | `DirectPhone` | string | `""` |
+| 16 | `PhoneExt` | string | `""` |
+| 17 | `DirectFax` | string | `""` |
+| 18 | `FaxExt` | string | `""` |
+| 19 | `Beeper` | string | `""` |
+| 20 | `Cellular` | string | `""` |
+| 21 | `Class1id` | string | `""` |
+| 22 | `Class2id` | string | `""` |
+| 23 | `Class3id` | string | `""` |
+| 24 | `Class4id` | string | `""` |
+| 25 | `Class5id` | string | `""` |
+| 26 | `HomeAddress1` | string | `""` |
+| 27 | `HomeAddress2` | string | `""` |
+| 28 | `HomePhone` | string | `""` |
+| 29 | `HomeFax` | string | `""` |
+| 30 | `HomeEmailAddress` | string | `""` |
+| 31 | `Birthday` | null | null |
+| 32 | `Anniversary` | null | null |
+| 33 | `EmailAddress` | string | `""` |
+| 34 | `Url` | string | `""` |
+| 35 | `CellularExt` | string | `""` |
+| 36 | `Id` | string | `""` |
+| 37 | `DeleteFlag` | string | `"N"` |
+| 38 | `LoginId` | string | `""` |
+| 39 | `UserDefinedFields` | object | `{}` |
+| 40 | `ObjectName` | string | `"contacts"` |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `CorpAddressId` | int | Corporate address ID |
-| `AddressId` | int | Address ID |
-| `Name` | string | Address name |
-| `MailAddress1` | string | Mailing address line 1 |
-| `MailCity` | string | Mailing city |
-| `MailState` | string | Mailing state |
-| `MailPostalCode` | string | Mailing postal code |
-| `MailCountry` | string | Mailing country |
-| `PhysAddress1` | string | Physical address line 1 |
-| `CentralPhoneNumber` | string | Main phone |
+### Address Fields (27 fields)
+
+> **Known Issue:** `GET /api/entity/addresses/new` returns a **500 error**. The field list below is from an existing address record (`GET /api/entity/addresses/10`).
+
+Complete field list:
+
+| # | Field | Type | Description |
+|---|-------|------|-------------|
+| 1 | `CorpAddressId` | int | Corporate address ID |
+| 2 | `MailAddress1` | string | Mailing address line 1 |
+| 3 | `MailAddress2` | string | Mailing address line 2 |
+| 4 | `MailAddress3` | string | Mailing address line 3 |
+| 5 | `MailCity` | string | Mailing city |
+| 6 | `MailState` | string | Mailing state |
+| 7 | `MailPostalCode` | string | Mailing postal code |
+| 8 | `MailCountry` | string | Mailing country |
+| 9 | `CentralPhoneNumber` | string | Main phone number |
+| 10 | `CentralFaxNumber` | string | Main fax number |
+| 11 | `Alternative1099Name` | string | Alternative name for 1099 |
+| 12 | `NameControl` | string | Name control |
+| 13 | `PhysAddress1` | string | Physical address line 1 |
+| 14 | `PhysAddress2` | string | Physical address line 2 |
+| 15 | `PhysAddress3` | string | Physical address line 3 |
+| 16 | `PhysCity` | string | Physical city |
+| 17 | `PhysState` | string | Physical state |
+| 18 | `PhysPostalCode` | string | Physical postal code |
+| 19 | `PhysCountry` | string | Physical country |
+| 20 | `Incorporated` | string | Incorporated flag (Y/N) |
+| 21 | `EmailAddress` | string | Email address |
+| 22 | `Url` | string | Website URL |
+| 23 | `AddressId` | int | Address ID (key) |
+| 24 | `Name` | string | Address/company name |
+| 25 | `PhysCounty` | string | Physical county |
+| 26 | `UserDefinedFields` | object | UDF container |
+| 27 | `ObjectName` | string | Always `"address"` |
 
 ---
 
