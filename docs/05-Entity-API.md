@@ -44,10 +44,10 @@ https://{hostname}/api/entity/{resource}
 ```
 
 Examples:
-- `https://p21.ifpusa.com/api/entity/customers`
-- `https://p21.ifpusa.com/api/entity/vendors`
-- `https://p21.ifpusa.com/api/entity/contacts`
-- `https://p21.ifpusa.com/api/entity/addresses`
+- `https://play.p21server.com/api/entity/customers`
+- `https://play.p21server.com/api/entity/vendors`
+- `https://play.p21server.com/api/entity/contacts`
+- `https://play.p21server.com/api/entity/addresses`
 
 > **Warning:** Older documentation (including Epicor SDK reference guides) may show category-based URLs like `/api/sales/customers` or `/api/inventory/parts`. These **do not work** as Entity API endpoints. Always use `/api/entity/`.
 
@@ -69,11 +69,11 @@ Only four entities are available via the Entity API:
 Customers and Vendors require a **composite key** combining `CompanyId` and the entity ID, separated by an underscore:
 
 ```
-/api/entity/customers/IFPG_10          # CompanyId=IFPG, CustomerId=10
-/api/entity/vendors/IFPG_28485        # CompanyId=IFPG, VendorId=28485
+/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
+/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485
 ```
 
-- `CompanyId` is a **string** (e.g., `"IFPG"`), not numeric
+- `CompanyId` is a **string** (e.g., `"ACME"`), not numeric
 - Using just the numeric ID (e.g., `/customers/10`) returns 404
 - The underscore can be URL-encoded (`%5F`) if needed
 
@@ -121,8 +121,8 @@ client = httpx.Client(follow_redirects=True, ...)
 Include the Bearer token in the Authorization header:
 
 ```http
-GET /api/entity/customers/IFPG_10 HTTP/1.1
-Host: p21.ifpusa.com
+GET /api/entity/customers/ACME_10 HTTP/1.1
+Host: play.p21server.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -147,16 +147,16 @@ When using Consumer Key authentication with the Entity API:
 
 **Single record by key:**
 ```http
-GET /api/entity/customers/IFPG_10
+GET /api/entity/customers/ACME_10
 Accept: application/json
 ```
 
 **Response:**
 ```json
 {
-    "CompanyId": "IFPG",
+    "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "IFP Motion Solutions Inc.",
+    "CustomerName": "ABC Supply Company",
     "SalesrepId": "1100",
     "TermsId": "1",
     "CreditStatus": "GOOD",
@@ -185,7 +185,7 @@ POST /api/entity/customers
 Content-Type: application/json
 
 {
-    "CompanyId": "IFPG",
+    "CompanyId": "ACME",
     "CustomerName": "New Customer Inc.",
     "SalesrepId": "1100",
     "TermsId": "1",
@@ -199,11 +199,11 @@ Content-Type: application/json
 Include the composite key in the URL:
 
 ```http
-PUT /api/entity/customers/IFPG_10
+PUT /api/entity/customers/ACME_10
 Content-Type: application/json
 
 {
-    "CompanyId": "IFPG",
+    "CompanyId": "ACME",
     "CustomerId": 10,
     "CustomerName": "Updated Name"
 }
@@ -214,11 +214,11 @@ Content-Type: application/json
 Per the SDK, set the `Delete` field to `true` on an update:
 
 ```http
-PUT /api/entity/customers/IFPG_10
+PUT /api/entity/customers/ACME_10
 Content-Type: application/json
 
 {
-    "CompanyId": "IFPG",
+    "CompanyId": "ACME",
     "CustomerId": 10,
     "Delete": true
 }
@@ -259,7 +259,7 @@ GET /api/entity/customers/?$query=startswith(CustomerName, 'Parker')
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `eq` | Equal | `CompanyId eq 'IFPG'` |
+| `eq` | Equal | `CompanyId eq 'ACME'` |
 | `ne` | Not equal | `LastName ne null` |
 | `gt` | Greater than | `CreditLimit gt 1000` |
 | `ge` | Greater than or equal | `CreditLimit ge 1000` |
@@ -278,7 +278,7 @@ GET /api/entity/customers/?$query=startswith(CustomerName, 'Parker')
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `startswith` | Starts with | `startswith(CustomerName, 'IFP')` |
+| `startswith` | Starts with | `startswith(CustomerName, 'ABC')` |
 | `endswith` | Ends with | `endswith(CustomerName, 'Inc.')` |
 | `substringof` | Contains | `substringof('Parker', VendorName)` |
 
@@ -286,13 +286,13 @@ GET /api/entity/customers/?$query=startswith(CustomerName, 'Parker')
 
 ```
 # Find customers by name prefix (returned 7 results)
-GET /api/entity/customers/?$query=startswith(CustomerName, 'IFP')
+GET /api/entity/customers/?$query=startswith(CustomerName, 'ABC')
 
 # Find vendors by name prefix (returned 6 results)
-GET /api/entity/vendors/?$query=startswith(VendorName, 'Parker')
+GET /api/entity/vendors/?$query=startswith(VendorName, 'ABC')
 
 # Filter by company
-GET /api/entity/customers/?$query=CompanyId eq 'IFPG'
+GET /api/entity/customers/?$query=CompanyId eq 'ACME'
 ```
 
 ---
@@ -303,12 +303,12 @@ Include related/nested data using the `extendedproperties` parameter:
 
 **All nested objects:**
 ```
-GET /api/entity/customers/IFPG_10?extendedproperties=*
+GET /api/entity/customers/ACME_10?extendedproperties=*
 ```
 
 **Specific nested object:**
 ```
-GET /api/entity/customers/IFPG_10?extendedproperties=CustomerAddress
+GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 ```
 
 ### Available Extended Properties by Entity
@@ -340,25 +340,25 @@ GET /api/entity/customers/IFPG_10?extendedproperties=CustomerAddress
 ### Example: Customer with Address
 
 ```http
-GET /api/entity/customers/IFPG_10?extendedproperties=CustomerAddress
+GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 ```
 
 ```json
 {
-    "CompanyId": "IFPG",
+    "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "IFP Motion Solutions Inc.",
+    "CustomerName": "ABC Supply Company",
     "CustomerAddress": {
         "CorpAddressId": 10,
-        "MailAddress1": "1620 Blairs Ferry Road NE",
-        "MailCity": "Cedar Rapids",
-        "MailState": "IA",
-        "MailPostalCode": "52402",
+        "MailAddress1": "123 Industrial Parkway",
+        "MailCity": "Springfield",
+        "MailState": "IL",
+        "MailPostalCode": "62701",
         "MailCountry": "USA",
-        "CentralPhoneNumber": "319-395-0005",
-        "PhysAddress1": "1620 Blairs Ferry Road NE",
-        "PhysCity": "Cedar Rapids",
-        "PhysState": "IA"
+        "CentralPhoneNumber": "555-555-1234",
+        "PhysAddress1": "123 Industrial Parkway",
+        "PhysCity": "Springfield",
+        "PhysState": "IL"
     }
 }
 ```
@@ -389,9 +389,9 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
 
 ```json
 {
-    "CompanyId": "IFPG",
+    "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "IFP Motion Solutions Inc.",
+    "CustomerName": "ABC Supply Company",
     "SalesrepId": "1100",
     "CreditStatus": "GOOD",
     "UserDefinedFields": {},
@@ -404,14 +404,14 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
 ```json
 [
     {
-        "CompanyId": "IFPG",
+        "CompanyId": "ACME",
         "CustomerId": 10,
-        "CustomerName": "IFP Motion Solutions Inc."
+        "CustomerName": "ABC Supply Company"
     },
     {
-        "CompanyId": "IFPG",
+        "CompanyId": "ACME",
         "CustomerId": 20,
-        "CustomerName": "IFP Motion Solutions Inc."
+        "CustomerName": "ABC Supply Company"
     }
 ]
 ```
@@ -427,7 +427,7 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
     "InnerException": null,
     "LogId": "...",
     "StackTrace": "...",
-    "UserId": "jscarbrough"
+    "UserId": "api_user"
 }
 ```
 
@@ -457,7 +457,7 @@ XML response example (ping):
 ```python
 import httpx
 
-base_url = "https://p21.ifpusa.com"
+base_url = "https://play.p21server.com"
 
 # Get token
 token_resp = httpx.post(
@@ -490,23 +490,23 @@ print(resp.json())  # {"ResponseMessage": "success"}
 ### Get Single Customer
 
 ```python
-resp = client.get(f"{base_url}/api/entity/customers/IFPG_10")
+resp = client.get(f"{base_url}/api/entity/customers/ACME_10")
 customer = resp.json()
 print(f"{customer['CustomerId']}: {customer['CustomerName']}")
-# 10: IFP Motion Solutions Inc.
+# 10: ABC Supply Company
 ```
 
 ### Get Customer with Extended Properties
 
 ```python
 resp = client.get(
-    f"{base_url}/api/entity/customers/IFPG_10",
+    f"{base_url}/api/entity/customers/ACME_10",
     params={"extendedproperties": "CustomerAddress"},
 )
 customer = resp.json()
 addr = customer["CustomerAddress"]
 print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
-# Cedar Rapids, IA 52402
+# Springfield, IL 62701
 ```
 
 ### Query Customers
@@ -514,7 +514,7 @@ print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
 ```python
 resp = client.get(
     f"{base_url}/api/entity/customers/",
-    params={"$query": "startswith(CustomerName, 'IFP')"},
+    params={"$query": "startswith(CustomerName, 'ABC')"},
 )
 customers = resp.json()
 print(f"Found {len(customers)} customers")
@@ -528,7 +528,7 @@ for c in customers:
 resp = client.get(f"{base_url}/api/entity/contacts/1")
 contact = resp.json()
 print(f"{contact['FirstName']} {contact['LastName']}")
-# Don Kaas
+# John Smith
 ```
 
 ### Create Customer
@@ -538,7 +538,7 @@ print(f"{contact['FirstName']} {contact['LastName']}")
 template = client.get(f"{base_url}/api/entity/customers/new").json()
 
 # Fill required fields
-template["CompanyId"] = "IFPG"
+template["CompanyId"] = "ACME"
 template["CustomerName"] = "New Customer Inc."
 template["SalesrepId"] = "1100"
 template["TermsId"] = "1"
@@ -554,9 +554,9 @@ resp = client.post(
 
 ```python
 resp = client.put(
-    f"{base_url}/api/entity/customers/IFPG_10",
+    f"{base_url}/api/entity/customers/ACME_10",
     json={
-        "CompanyId": "IFPG",
+        "CompanyId": "ACME",
         "CustomerId": 10,
         "CustomerName": "Updated Customer Name",
     },
@@ -575,7 +575,7 @@ Key fields and their types from `GET /api/entity/customers/new`:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `CompanyId` | string | `""` | Company identifier (e.g., "IFPG") |
+| `CompanyId` | string | `""` | Company identifier (e.g., "ACME") |
 | `CustomerId` | null | `null` | Auto-assigned on create |
 | `CustomerName` | string | `""` | Customer name |
 | `SalesrepId` | string | `""` | Default sales rep |
@@ -648,14 +648,14 @@ Key fields from address records:
 |-------|-------|----------|
 | 307 Redirect | List endpoint without trailing slash | Add trailing slash or enable `follow_redirects` |
 | 401 Unauthorized | Invalid/expired token | Refresh token |
-| 404 "No resources found" | Wrong key format or record doesn't exist | Use composite key (`IFPG_10`) for customers/vendors |
+| 404 "No resources found" | Wrong key format or record doesn't exist | Use composite key (`ACME_10`) for customers/vendors |
 | 404 HTML page | Endpoint doesn't exist | Verify you're using `/api/entity/` base path |
 | 500 Server Error | Internal error (e.g., addresses `/new`) | Try a different approach or entity |
 
 ### Common Mistakes
 
 1. **Wrong URL pattern** - Use `/api/entity/customers`, NOT `/api/sales/customers`
-2. **Simple ID for customers** - Use `IFPG_10`, NOT just `10`
+2. **Simple ID for customers** - Use `ACME_10`, NOT just `10`
 3. **Missing redirect handling** - List endpoints return 307, must follow redirect
 4. **Confusing VendorId with supplier_id** - These are different database tables
 5. **Expecting orders/items/parts** - Only 4 entities exist (customers, vendors, contacts, addresses)

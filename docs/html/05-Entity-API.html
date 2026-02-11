@@ -196,10 +196,10 @@
 </code></pre></div>
 
 <p>Examples:
-- <code>https://p21.ifpusa.com/api/entity/customers</code>
-- <code>https://p21.ifpusa.com/api/entity/vendors</code>
-- <code>https://p21.ifpusa.com/api/entity/contacts</code>
-- <code>https://p21.ifpusa.com/api/entity/addresses</code></p>
+- <code>https://play.p21server.com/api/entity/customers</code>
+- <code>https://play.p21server.com/api/entity/vendors</code>
+- <code>https://play.p21server.com/api/entity/contacts</code>
+- <code>https://play.p21server.com/api/entity/addresses</code></p>
 <blockquote>
 <p><strong>Warning:</strong> Older documentation (including Epicor SDK reference guides) may show category-based URLs like <code>/api/sales/customers</code> or <code>/api/inventory/parts</code>. These <strong>do not work</strong> as Entity API endpoints. Always use <code>/api/entity/</code>.</p>
 </blockquote>
@@ -244,12 +244,12 @@
 </table>
 <h3 id="composite-keys">Composite Keys</h3>
 <p>Customers and Vendors require a <strong>composite key</strong> combining <code>CompanyId</code> and the entity ID, separated by an underscore:</p>
-<div class="highlight"><pre><span></span><code>/api/entity/customers/IFPG_10          # CompanyId=IFPG, CustomerId=10
-/api/entity/vendors/IFPG_28485        # CompanyId=IFPG, VendorId=28485
+<div class="highlight"><pre><span></span><code>/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
+/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485
 </code></pre></div>
 
 <ul>
-<li><code>CompanyId</code> is a <strong>string</strong> (e.g., <code>"IFPG"</code>), not numeric</li>
+<li><code>CompanyId</code> is a <strong>string</strong> (e.g., <code>"ACME"</code>), not numeric</li>
 <li>Using just the numeric ID (e.g., <code>/customers/10</code>) returns 404</li>
 <li>The underscore can be URL-encoded (<code>%5F</code>) if needed</li>
 </ul>
@@ -320,8 +320,8 @@
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
-<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/entity/customers/IFPG_10</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-<span class="na">Host</span><span class="o">:</span> <span class="l">p21.ifpusa.com</span>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/entity/customers/ACME_10</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
@@ -355,15 +355,15 @@
 <h2 id="crud-operations">CRUD Operations</h2>
 <h3 id="read-get">Read (GET)</h3>
 <p><strong>Single record by key:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/IFPG_10</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ACME_10</span>
 <span class="err">Accept: application/json</span>
 </code></pre></div>
 
 <p><strong>Response:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFPG&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFP Motion Solutions Inc.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1100&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;TermsId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
@@ -392,7 +392,7 @@
 <span class="err">Content-Type: application/json</span>
 
 <span class="err">{</span>
-<span class="err">    &quot;CompanyId&quot;: &quot;IFPG&quot;,</span>
+<span class="err">    &quot;CompanyId&quot;: &quot;ACME&quot;,</span>
 <span class="err">    &quot;CustomerName&quot;: &quot;New Customer Inc.&quot;,</span>
 <span class="err">    &quot;SalesrepId&quot;: &quot;1100&quot;,</span>
 <span class="err">    &quot;TermsId&quot;: &quot;1&quot;,</span>
@@ -403,11 +403,11 @@
 
 <h3 id="update-put">Update (PUT)</h3>
 <p>Include the composite key in the URL:</p>
-<div class="highlight"><pre><span></span><code><span class="err">PUT /api/entity/customers/IFPG_10</span>
+<div class="highlight"><pre><span></span><code><span class="err">PUT /api/entity/customers/ACME_10</span>
 <span class="err">Content-Type: application/json</span>
 
 <span class="err">{</span>
-<span class="err">    &quot;CompanyId&quot;: &quot;IFPG&quot;,</span>
+<span class="err">    &quot;CompanyId&quot;: &quot;ACME&quot;,</span>
 <span class="err">    &quot;CustomerId&quot;: 10,</span>
 <span class="err">    &quot;CustomerName&quot;: &quot;Updated Name&quot;</span>
 <span class="err">}</span>
@@ -415,11 +415,11 @@
 
 <h3 id="delete">Delete</h3>
 <p>Per the SDK, set the <code>Delete</code> field to <code>true</code> on an update:</p>
-<div class="highlight"><pre><span></span><code><span class="err">PUT /api/entity/customers/IFPG_10</span>
+<div class="highlight"><pre><span></span><code><span class="err">PUT /api/entity/customers/ACME_10</span>
 <span class="err">Content-Type: application/json</span>
 
 <span class="err">{</span>
-<span class="err">    &quot;CompanyId&quot;: &quot;IFPG&quot;,</span>
+<span class="err">    &quot;CompanyId&quot;: &quot;ACME&quot;,</span>
 <span class="err">    &quot;CustomerId&quot;: 10,</span>
 <span class="err">    &quot;Delete&quot;: true</span>
 <span class="err">}</span>
@@ -462,7 +462,7 @@
 <tr>
 <td><code>eq</code></td>
 <td>Equal</td>
-<td><code>CompanyId eq 'IFPG'</code></td>
+<td><code>CompanyId eq 'ACME'</code></td>
 </tr>
 <tr>
 <td><code>ne</code></td>
@@ -531,7 +531,7 @@
 <tr>
 <td><code>startswith</code></td>
 <td>Starts with</td>
-<td><code>startswith(CustomerName, 'IFP')</code></td>
+<td><code>startswith(CustomerName, 'ABC')</code></td>
 </tr>
 <tr>
 <td><code>endswith</code></td>
@@ -547,24 +547,24 @@
 </table>
 <h3 id="verified-query-examples">Verified Query Examples</h3>
 <div class="highlight"><pre><span></span><code># Find customers by name prefix (returned 7 results)
-GET /api/entity/customers/?$query=startswith(CustomerName, &#39;IFP&#39;)
+GET /api/entity/customers/?$query=startswith(CustomerName, &#39;ABC&#39;)
 
 # Find vendors by name prefix (returned 6 results)
-GET /api/entity/vendors/?$query=startswith(VendorName, &#39;Parker&#39;)
+GET /api/entity/vendors/?$query=startswith(VendorName, &#39;ABC&#39;)
 
 # Filter by company
-GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
+GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 </code></pre></div>
 
 <hr />
 <h2 id="extended-properties">Extended Properties</h2>
 <p>Include related/nested data using the <code>extendedproperties</code> parameter:</p>
 <p><strong>All nested objects:</strong></p>
-<div class="highlight"><pre><span></span><code>GET /api/entity/customers/IFPG_10?extendedproperties=*
+<div class="highlight"><pre><span></span><code>GET /api/entity/customers/ACME_10?extendedproperties=*
 </code></pre></div>
 
 <p><strong>Specific nested object:</strong></p>
-<div class="highlight"><pre><span></span><code>GET /api/entity/customers/IFPG_10?extendedproperties=CustomerAddress
+<div class="highlight"><pre><span></span><code>GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 </code></pre></div>
 
 <h3 id="available-extended-properties-by-entity">Available Extended Properties by Entity</h3>
@@ -590,24 +590,24 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 - <code>ContactLists</code> - Mailing list membership
 - <code>ContactSalesreps</code> - Assigned sales reps</p>
 <h3 id="example-customer-with-address">Example: Customer with Address</h3>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/IFPG_10?extendedproperties=CustomerAddress</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress</span>
 </code></pre></div>
 
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFPG&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFP Motion Solutions Inc.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerAddress&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CorpAddressId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1620 Blairs Ferry Road NE&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailPostalCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;52402&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Industrial Parkway&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Springfield&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IL&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailPostalCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;62701&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;MailCountry&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;USA&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CentralPhoneNumber&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;319-395-0005&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;PhysAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1620 Blairs Ferry Road NE&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;PhysCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;PhysState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CentralPhoneNumber&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;555-555-1234&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Industrial Parkway&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Springfield&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IL&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -631,9 +631,9 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <h2 id="response-format">Response Format</h2>
 <h3 id="single-record">Single Record</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFPG&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFP Motion Solutions Inc.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1100&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;UserDefinedFields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
@@ -644,14 +644,14 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <h3 id="collection-listquery">Collection (List/Query)</h3>
 <div class="highlight"><pre><span></span><code><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFPG&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFP Motion Solutions Inc.&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFPG&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFP Motion Solutions Inc.&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">]</span>
 </code></pre></div>
@@ -665,7 +665,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;LogId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;StackTrace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jscarbrough&quot;</span>
+<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api_user&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
@@ -687,7 +687,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <h3 id="setup">Setup</h3>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
-<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://p21.ifpusa.com&quot;</span>
+<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
 
 <span class="c1"># Get token</span>
 <span class="n">token_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
@@ -716,27 +716,27 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 </code></pre></div>
 
 <h3 id="get-single-customer">Get Single Customer</h3>
-<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/IFPG_10&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">)</span>
 <span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="c1"># 10: IFP Motion Solutions Inc.</span>
+<span class="c1"># 10: ABC Supply Company</span>
 </code></pre></div>
 
 <h3 id="get-customer-with-extended-properties">Get Customer with Extended Properties</h3>
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/IFPG_10&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">,</span>
     <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;CustomerAddress&quot;</span><span class="p">},</span>
 <span class="p">)</span>
 <span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="n">addr</span> <span class="o">=</span> <span class="n">customer</span><span class="p">[</span><span class="s2">&quot;CustomerAddress&quot;</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailCity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailState&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailPostalCode&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="c1"># Cedar Rapids, IA 52402</span>
+<span class="c1"># Springfield, IL 62701</span>
 </code></pre></div>
 
 <h3 id="query-customers">Query Customers</h3>
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/&quot;</span><span class="p">,</span>
-    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;startswith(CustomerName, &#39;IFP&#39;)&quot;</span><span class="p">},</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;startswith(CustomerName, &#39;ABC&#39;)&quot;</span><span class="p">},</span>
 <span class="p">)</span>
 <span class="n">customers</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">customers</span><span class="p">)</span><span class="si">}</span><span class="s2"> customers&quot;</span><span class="p">)</span>
@@ -748,7 +748,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/contacts/1&quot;</span><span class="p">)</span>
 <span class="n">contact</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;FirstName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;LastName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="c1"># Don Kaas</span>
+<span class="c1"># John Smith</span>
 </code></pre></div>
 
 <h3 id="create-customer">Create Customer</h3>
@@ -756,7 +756,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <span class="n">template</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/new&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
 <span class="c1"># Fill required fields</span>
-<span class="n">template</span><span class="p">[</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;IFPG&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>
 <span class="n">template</span><span class="p">[</span><span class="s2">&quot;CustomerName&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;New Customer Inc.&quot;</span>
 <span class="n">template</span><span class="p">[</span><span class="s2">&quot;SalesrepId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1100&quot;</span>
 <span class="n">template</span><span class="p">[</span><span class="s2">&quot;TermsId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
@@ -770,9 +770,9 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 
 <h3 id="update-customer">Update Customer</h3>
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/IFPG_10&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">,</span>
     <span class="n">json</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;CompanyId&quot;</span><span class="p">:</span> <span class="s2">&quot;IFPG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CompanyId&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
         <span class="s2">&quot;CustomerId&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
         <span class="s2">&quot;CustomerName&quot;</span><span class="p">:</span> <span class="s2">&quot;Updated Customer Name&quot;</span><span class="p">,</span>
     <span class="p">},</span>
@@ -798,7 +798,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <td><code>CompanyId</code></td>
 <td>string</td>
 <td><code>""</code></td>
-<td>Company identifier (e.g., "IFPG")</td>
+<td>Company identifier (e.g., "ACME")</td>
 </tr>
 <tr>
 <td><code>CustomerId</code></td>
@@ -1091,7 +1091,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <tr>
 <td>404 "No resources found"</td>
 <td>Wrong key format or record doesn't exist</td>
-<td>Use composite key (<code>IFPG_10</code>) for customers/vendors</td>
+<td>Use composite key (<code>ACME_10</code>) for customers/vendors</td>
 </tr>
 <tr>
 <td>404 HTML page</td>
@@ -1108,7 +1108,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;IFPG&#39;
 <h3 id="common-mistakes">Common Mistakes</h3>
 <ol>
 <li><strong>Wrong URL pattern</strong> - Use <code>/api/entity/customers</code>, NOT <code>/api/sales/customers</code></li>
-<li><strong>Simple ID for customers</strong> - Use <code>IFPG_10</code>, NOT just <code>10</code></li>
+<li><strong>Simple ID for customers</strong> - Use <code>ACME_10</code>, NOT just <code>10</code></li>
 <li><strong>Missing redirect handling</strong> - List endpoints return 307, must follow redirect</li>
 <li><strong>Confusing VendorId with supplier_id</strong> - These are different database tables</li>
 <li><strong>Expecting orders/items/parts</strong> - Only 4 entities exist (customers, vendors, contacts, addresses)</li>
