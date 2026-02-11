@@ -44,10 +44,10 @@ https://{hostname}/api/entity/{resource}
 ```
 
 Examples:
-- `https://p21.p21server.com/api/entity/customers`
-- `https://p21.p21server.com/api/entity/vendors`
-- `https://p21.p21server.com/api/entity/contacts`
-- `https://p21.p21server.com/api/entity/addresses`
+- `https://play.p21server.com/api/entity/customers`
+- `https://play.p21server.com/api/entity/vendors`
+- `https://play.p21server.com/api/entity/contacts`
+- `https://play.p21server.com/api/entity/addresses`
 
 > **Warning:** Older documentation (including Epicor SDK reference guides) may show category-based URLs like `/api/sales/customers` or `/api/inventory/parts`. These **do not work** as Entity API endpoints. Always use `/api/entity/`.
 
@@ -122,7 +122,7 @@ Include the Bearer token in the Authorization header:
 
 ```http
 GET /api/entity/customers/ACME_10 HTTP/1.1
-Host: p21.p21server.com
+Host: play.p21server.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -278,7 +278,7 @@ GET /api/entity/customers/?$query=startswith(CustomerName, 'Parker')
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `startswith` | Starts with | `startswith(CustomerName, 'IFP')` |
+| `startswith` | Starts with | `startswith(CustomerName, 'ABC')` |
 | `endswith` | Ends with | `endswith(CustomerName, 'Inc.')` |
 | `substringof` | Contains | `substringof('Parker', VendorName)` |
 
@@ -286,10 +286,10 @@ GET /api/entity/customers/?$query=startswith(CustomerName, 'Parker')
 
 ```
 # Find customers by name prefix (returned 7 results)
-GET /api/entity/customers/?$query=startswith(CustomerName, 'IFP')
+GET /api/entity/customers/?$query=startswith(CustomerName, 'ABC')
 
 # Find vendors by name prefix (returned 6 results)
-GET /api/entity/vendors/?$query=startswith(VendorName, 'Parker')
+GET /api/entity/vendors/?$query=startswith(VendorName, 'ABC')
 
 # Filter by company
 GET /api/entity/customers/?$query=CompanyId eq 'ACME'
@@ -350,15 +350,15 @@ GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
     "CustomerName": "ABC Supply Company",
     "CustomerAddress": {
         "CorpAddressId": 10,
-        "MailAddress1": "1620 Blairs Ferry Road NE",
-        "MailCity": "Cedar Rapids",
-        "MailState": "IA",
-        "MailPostalCode": "52402",
+        "MailAddress1": "123 Industrial Parkway",
+        "MailCity": "Springfield",
+        "MailState": "IL",
+        "MailPostalCode": "62701",
         "MailCountry": "USA",
-        "CentralPhoneNumber": "319-395-0005",
-        "PhysAddress1": "1620 Blairs Ferry Road NE",
-        "PhysCity": "Cedar Rapids",
-        "PhysState": "IA"
+        "CentralPhoneNumber": "555-555-1234",
+        "PhysAddress1": "123 Industrial Parkway",
+        "PhysCity": "Springfield",
+        "PhysState": "IL"
     }
 }
 ```
@@ -427,7 +427,7 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
     "InnerException": null,
     "LogId": "...",
     "StackTrace": "...",
-    "UserId": "mrwuss"
+    "UserId": "api_user"
 }
 ```
 
@@ -457,7 +457,7 @@ XML response example (ping):
 ```python
 import httpx
 
-base_url = "https://p21.p21server.com"
+base_url = "https://play.p21server.com"
 
 # Get token
 token_resp = httpx.post(
@@ -506,7 +506,7 @@ resp = client.get(
 customer = resp.json()
 addr = customer["CustomerAddress"]
 print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
-# Cedar Rapids, IA 52402
+# Springfield, IL 62701
 ```
 
 ### Query Customers
@@ -514,7 +514,7 @@ print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
 ```python
 resp = client.get(
     f"{base_url}/api/entity/customers/",
-    params={"$query": "startswith(CustomerName, 'IFP')"},
+    params={"$query": "startswith(CustomerName, 'ABC')"},
 )
 customers = resp.json()
 print(f"Found {len(customers)} customers")
@@ -528,7 +528,7 @@ for c in customers:
 resp = client.get(f"{base_url}/api/entity/contacts/1")
 contact = resp.json()
 print(f"{contact['FirstName']} {contact['LastName']}")
-# Don Kaas
+# John Smith
 ```
 
 ### Create Customer

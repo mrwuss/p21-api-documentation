@@ -196,10 +196,10 @@
 </code></pre></div>
 
 <p>Examples:
-- <code>https://p21.p21server.com/api/entity/customers</code>
-- <code>https://p21.p21server.com/api/entity/vendors</code>
-- <code>https://p21.p21server.com/api/entity/contacts</code>
-- <code>https://p21.p21server.com/api/entity/addresses</code></p>
+- <code>https://play.p21server.com/api/entity/customers</code>
+- <code>https://play.p21server.com/api/entity/vendors</code>
+- <code>https://play.p21server.com/api/entity/contacts</code>
+- <code>https://play.p21server.com/api/entity/addresses</code></p>
 <blockquote>
 <p><strong>Warning:</strong> Older documentation (including Epicor SDK reference guides) may show category-based URLs like <code>/api/sales/customers</code> or <code>/api/inventory/parts</code>. These <strong>do not work</strong> as Entity API endpoints. Always use <code>/api/entity/</code>.</p>
 </blockquote>
@@ -321,7 +321,7 @@
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
 <div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/entity/customers/ACME_10</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-<span class="na">Host</span><span class="o">:</span> <span class="l">p21.p21server.com</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
@@ -531,7 +531,7 @@
 <tr>
 <td><code>startswith</code></td>
 <td>Starts with</td>
-<td><code>startswith(CustomerName, 'IFP')</code></td>
+<td><code>startswith(CustomerName, 'ABC')</code></td>
 </tr>
 <tr>
 <td><code>endswith</code></td>
@@ -547,10 +547,10 @@
 </table>
 <h3 id="verified-query-examples">Verified Query Examples</h3>
 <div class="highlight"><pre><span></span><code># Find customers by name prefix (returned 7 results)
-GET /api/entity/customers/?$query=startswith(CustomerName, &#39;IFP&#39;)
+GET /api/entity/customers/?$query=startswith(CustomerName, &#39;ABC&#39;)
 
 # Find vendors by name prefix (returned 6 results)
-GET /api/entity/vendors/?$query=startswith(VendorName, &#39;Parker&#39;)
+GET /api/entity/vendors/?$query=startswith(VendorName, &#39;ABC&#39;)
 
 # Filter by company
 GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
@@ -599,15 +599,15 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerAddress&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CorpAddressId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1620 Blairs Ferry Road NE&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MailPostalCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;52402&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Industrial Parkway&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Springfield&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IL&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailPostalCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;62701&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;MailCountry&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;USA&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CentralPhoneNumber&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;319-395-0005&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;PhysAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1620 Blairs Ferry Road NE&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;PhysCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;PhysState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CentralPhoneNumber&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;555-555-1234&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Industrial Parkway&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Springfield&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IL&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -665,7 +665,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;LogId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;StackTrace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mrwuss&quot;</span>
+<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api_user&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
@@ -687,7 +687,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <h3 id="setup">Setup</h3>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
-<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://p21.p21server.com&quot;</span>
+<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
 
 <span class="c1"># Get token</span>
 <span class="n">token_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
@@ -730,13 +730,13 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="n">addr</span> <span class="o">=</span> <span class="n">customer</span><span class="p">[</span><span class="s2">&quot;CustomerAddress&quot;</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailCity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailState&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailPostalCode&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="c1"># Cedar Rapids, IA 52402</span>
+<span class="c1"># Springfield, IL 62701</span>
 </code></pre></div>
 
 <h3 id="query-customers">Query Customers</h3>
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/&quot;</span><span class="p">,</span>
-    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;startswith(CustomerName, &#39;IFP&#39;)&quot;</span><span class="p">},</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;startswith(CustomerName, &#39;ABC&#39;)&quot;</span><span class="p">},</span>
 <span class="p">)</span>
 <span class="n">customers</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">customers</span><span class="p">)</span><span class="si">}</span><span class="s2"> customers&quot;</span><span class="p">)</span>
@@ -748,7 +748,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/contacts/1&quot;</span><span class="p">)</span>
 <span class="n">contact</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;FirstName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;LastName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="c1"># Don Kaas</span>
+<span class="c1"># John Smith</span>
 </code></pre></div>
 
 <h3 id="create-customer">Create Customer</h3>
