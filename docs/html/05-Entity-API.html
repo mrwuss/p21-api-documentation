@@ -162,208 +162,293 @@
 </blockquote>
 <hr />
 <blockquote>
-<p><strong>Warning: API Currently Non-Functional</strong></p>
-<p>As of December 2025, the Entity API is <strong>not working</strong> in P21 environments. Requests to Entity API endpoints return errors or unexpected results. This documentation is preserved for reference, as Epicor may fix this API in a future release.</p>
-<p><strong>Recommended alternatives:</strong>
-- <strong>OData API</strong> - For read-only queries (<a href="02-OData-API.html">docs</a>)
-- <strong>Transaction API</strong> - For bulk data operations (<a href="03-Transaction-API.html">docs</a>)
-- <strong>Interactive API</strong> - For stateful CRUD with business logic (<a href="04-Interactive-API.html">docs</a>)</p>
+<p><strong>Status Update (February 2026):</strong> The Entity API is <strong>functional</strong>. Previous reports of it being non-functional were due to incorrect endpoint URLs. The correct base path is <code>/api/entity/</code>, not <code>/api/sales/</code> or <code>/api/inventory/</code>.</p>
 </blockquote>
 <hr />
 <h2 id="overview">Overview</h2>
-<p>The Entity API is a <strong>stateless REST</strong> API for simple CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models for straightforward data manipulation.</p>
+<p>The Entity API is a <strong>stateless REST</strong> API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports only <strong>four entities</strong>: Customer, Vendor, Contact, and Address.</p>
 <h3 id="key-characteristics">Key Characteristics</h3>
 <ul>
 <li><strong>Stateless</strong> - No session management required</li>
-<li><strong>Entity-based</strong> - Works with domain objects (Customer, Order, etc.)</li>
-<li><strong>Simple CRUD</strong> - Get, Create, Update, Delete operations</li>
-<li><strong>Query support</strong> - Filter results with query syntax</li>
-<li><strong>Extended properties</strong> - Include related data in responses</li>
+<li><strong>Entity-based</strong> - Works with domain objects (not raw table rows)</li>
+<li><strong>CRUD operations</strong> - Get, Create, Update via REST</li>
+<li><strong>Query support</strong> - Filter with <code>$query</code> parameter</li>
+<li><strong>Extended properties</strong> - Include related/nested data in responses</li>
+<li><strong>User Defined Fields</strong> - UDF support when enabled in admin</li>
+<li><strong>Dual format</strong> - Supports both JSON and XML (<code>Accept</code> header)</li>
 </ul>
 <h3 id="when-to-use">When to Use</h3>
 <ul>
-<li>Simple lookups and queries</li>
-<li>Basic CRUD operations</li>
-<li>B2B integrations</li>
-<li>When you need cleaner domain object models</li>
+<li>Customer, vendor, contact, or address lookups</li>
+<li>Basic CRUD on the 4 supported entities</li>
+<li>B2B integrations needing domain object models</li>
+<li>When you want cleaner data shapes than raw OData table rows</li>
+</ul>
+<h3 id="limitations">Limitations</h3>
+<ul>
+<li><strong>Only 4 entities</strong> - No orders, items, invoices, POs, or other business objects</li>
+<li><strong>No inventory/sales entities</strong> - Use Transaction or Interactive API for those</li>
+<li><strong>Limited coverage</strong> - For broad data access, use OData (read) or Transaction API (write)</li>
 </ul>
 <hr />
 <h2 id="base-url">Base URL</h2>
-<p>The Entity API uses the main P21 API base URL:</p>
-<div class="highlight"><pre><span></span><code>https://{hostname}/api/{category}/{entity}
+<div class="highlight"><pre><span></span><code>https://{hostname}/api/entity/{resource}
 </code></pre></div>
 
 <p>Examples:
-- <code>https://play.p21server.com/api/sales/customers</code>
-- <code>https://play.p21server.com/api/sales/orders</code>
-- <code>https://play.p21server.com/api/inventory/parts</code></p>
+- <code>https://p21.p21server.com/api/entity/customers</code>
+- <code>https://p21.p21server.com/api/entity/vendors</code>
+- <code>https://p21.p21server.com/api/entity/contacts</code>
+- <code>https://p21.p21server.com/api/entity/addresses</code></p>
+<blockquote>
+<p><strong>Warning:</strong> Older documentation (including Epicor SDK reference guides) may show category-based URLs like <code>/api/sales/customers</code> or <code>/api/inventory/parts</code>. These <strong>do not work</strong> as Entity API endpoints. Always use <code>/api/entity/</code>.</p>
+</blockquote>
 <hr />
-<h2 id="common-endpoints">Common Endpoints</h2>
-<h3 id="sales">Sales</h3>
+<h2 id="available-entities">Available Entities</h2>
+<p>Only four entities are available via the Entity API:</p>
 <table>
 <thead>
 <tr>
+<th>Entity</th>
 <th>Endpoint</th>
+<th>Key Format</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Customers</strong></td>
+<td><code>/api/entity/customers</code></td>
+<td><code>{CompanyId}_{CustomerId}</code></td>
+<td>102</td>
+</tr>
+<tr>
+<td><strong>Vendors</strong></td>
+<td><code>/api/entity/vendors</code></td>
+<td><code>{CompanyId}_{VendorId}</code></td>
+<td>50</td>
+</tr>
+<tr>
+<td><strong>Contacts</strong></td>
+<td><code>/api/entity/contacts</code></td>
+<td><code>{Id}</code> (simple numeric)</td>
+<td>40</td>
+</tr>
+<tr>
+<td><strong>Addresses</strong></td>
+<td><code>/api/entity/addresses</code></td>
+<td><code>{AddressId}</code> (simple numeric)</td>
+<td>27</td>
+</tr>
+</tbody>
+</table>
+<h3 id="composite-keys">Composite Keys</h3>
+<p>Customers and Vendors require a <strong>composite key</strong> combining <code>CompanyId</code> and the entity ID, separated by an underscore:</p>
+<div class="highlight"><pre><span></span><code>/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
+/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485
+</code></pre></div>
+
+<ul>
+<li><code>CompanyId</code> is a <strong>string</strong> (e.g., <code>"ACME"</code>), not numeric</li>
+<li>Using just the numeric ID (e.g., <code>/customers/10</code>) returns 404</li>
+<li>The underscore can be URL-encoded (<code>%5F</code>) if needed</li>
+</ul>
+<p>Contacts and Addresses use <strong>simple numeric IDs</strong>:</p>
+<div class="highlight"><pre><span></span><code>/api/entity/contacts/1
+/api/entity/addresses/10
+</code></pre></div>
+
+<h3 id="vendor-id-vs-supplier-id">Vendor ID vs Supplier ID</h3>
+<p>The Entity API <code>VendorId</code> is <strong>not the same</strong> as the OData <code>supplier_id</code>. These come from different database tables. To find the correct <code>VendorId</code>, query vendors through the Entity API or check the <code>vendor</code> table via OData.</p>
+<hr />
+<h2 id="endpoints-per-entity">Endpoints Per Entity</h2>
+<p>Each entity supports the same set of endpoints:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>/api/sales/customers</code></td>
-<td>Customer records</td>
+<td><code>GET</code></td>
+<td><code>/api/entity/{resource}/ping</code></td>
+<td>Health check</td>
 </tr>
 <tr>
-<td><code>/api/sales/customers/{id}</code></td>
-<td>Single customer</td>
+<td><code>GET</code></td>
+<td><code>/api/entity/{resource}/new</code></td>
+<td>Get blank template</td>
 </tr>
 <tr>
-<td><code>/api/sales/orders</code></td>
-<td>Sales orders</td>
+<td><code>GET</code></td>
+<td><code>/api/entity/{resource}/{key}</code></td>
+<td>Get single record</td>
 </tr>
 <tr>
-<td><code>/api/sales/orders/{id}</code></td>
-<td>Single order</td>
+<td><code>GET</code></td>
+<td><code>/api/entity/{resource}/</code></td>
+<td>List all records (trailing slash required)</td>
 </tr>
 <tr>
-<td><code>/api/sales/invoices</code></td>
-<td>Invoices</td>
+<td><code>GET</code></td>
+<td><code>/api/entity/{resource}/?$query=...</code></td>
+<td>Query with filter</td>
 </tr>
 <tr>
-<td><code>/api/sales/quotes</code></td>
-<td>Quotes</td>
+<td><code>POST</code></td>
+<td><code>/api/entity/{resource}</code></td>
+<td>Create (no key in body)</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/entity/{resource}/{key}</code></td>
+<td>Update (key in URL)</td>
 </tr>
 </tbody>
 </table>
-<h3 id="inventory">Inventory</h3>
-<table>
-<thead>
-<tr>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>/api/inventory/parts</code></td>
-<td>Inventory items</td>
-</tr>
-<tr>
-<td><code>/api/inventory/parts/{id}</code></td>
-<td>Single item</td>
-</tr>
-<tr>
-<td><code>/api/inventory/warehouses</code></td>
-<td>Warehouses</td>
-</tr>
-<tr>
-<td><code>/api/inventory/locations</code></td>
-<td>Locations</td>
-</tr>
-</tbody>
-</table>
-<h3 id="purchasing">Purchasing</h3>
-<table>
-<thead>
-<tr>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>/api/purchasing/suppliers</code></td>
-<td>Suppliers</td>
-</tr>
-<tr>
-<td><code>/api/purchasing/purchaseorders</code></td>
-<td>Purchase orders</td>
-</tr>
-</tbody>
-</table>
-<h3 id="other">Other</h3>
-<table>
-<thead>
-<tr>
-<th>Endpoint</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>/api/contacts</code></td>
-<td>Contacts</td>
-</tr>
-<tr>
-<td><code>/api/addresses</code></td>
-<td>Addresses</td>
-</tr>
-</tbody>
-</table>
+<h3 id="trailing-slash-on-list-endpoints">Trailing Slash on List Endpoints</h3>
+<p>List endpoints (<code>GET /api/entity/customers</code>) return a <strong>307 redirect</strong> to the same URL with a trailing slash (<code>/api/entity/customers/</code>). Configure your HTTP client to follow redirects:</p>
+<div class="highlight"><pre><span></span><code><span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> Be cautious with unfiltered list queries. The customers endpoint returned 19,896 records, contacts returned 58,639. Always use <code>$query</code> to filter when possible.</p>
+</blockquote>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
-<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/sales/customers</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/entity/customers/ACME_10</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">p21.p21server.com</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
 
 <p>See <a href="00-Authentication.html">Authentication</a> for token generation.</p>
+<h3 id="consumer-key-behavior">Consumer Key Behavior</h3>
+<p>When using Consumer Key authentication with the Entity API:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No username</td>
+<td>Uses default P21 user (admin from <code>Web.config</code>)</td>
+</tr>
+<tr>
+<td>With AD username</td>
+<td>Include domain (e.g., <code>emea\user.name</code>)</td>
+</tr>
+<tr>
+<td>With SQL username</td>
+<td>Use plain username (e.g., <code>admin</code>)</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="crud-operations">CRUD Operations</h2>
+<h3 id="read-get">Read (GET)</h3>
+<p><strong>Single record by key:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ACME_10</span>
+<span class="err">Accept: application/json</span>
+</code></pre></div>
+
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1100&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;TermsId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CreditLimit&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Taxable&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CurrencyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;COM&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerAddress&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerContacts&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerShipTos&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserDefinedFields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<span class="w">    </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> Nested objects (CustomerAddress, CustomerContacts, etc.) are <code>null</code> by default. Use <code>extendedproperties</code> to populate them.</p>
+</blockquote>
 <h3 id="create-post">Create (POST)</h3>
-<p>To create a new record:</p>
 <ol>
-<li>Get a template: <code>GET /api/sales/customers/new</code></li>
-<li>Fill in the required fields</li>
-<li>POST the object: <code>POST /api/sales/customers</code></li>
+<li>Get a template: <code>GET /api/entity/customers/new</code></li>
+<li>Fill in required fields</li>
+<li>POST without key fields (absence of key = insert)</li>
 </ol>
-<p><strong>Key Point</strong>: The absence of key fields indicates a new record.</p>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/sales/customers</span>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/entity/customers</span>
 <span class="err">Content-Type: application/json</span>
 
 <span class="err">{</span>
-<span class="err">    &quot;CustomerName&quot;: &quot;New Customer&quot;,</span>
-<span class="err">    &quot;Address1&quot;: &quot;123 Main St&quot;,</span>
-<span class="err">    &quot;City&quot;: &quot;Anytown&quot;,</span>
-<span class="err">    &quot;State&quot;: &quot;IA&quot;</span>
+<span class="err">    &quot;CompanyId&quot;: &quot;ACME&quot;,</span>
+<span class="err">    &quot;CustomerName&quot;: &quot;New Customer Inc.&quot;,</span>
+<span class="err">    &quot;SalesrepId&quot;: &quot;1100&quot;,</span>
+<span class="err">    &quot;TermsId&quot;: &quot;1&quot;,</span>
+<span class="err">    &quot;CodRequiredFlag&quot;: &quot;N&quot;,</span>
+<span class="err">    &quot;Taxable&quot;: &quot;Y&quot;</span>
 <span class="err">}</span>
 </code></pre></div>
 
-<h3 id="read-get">Read (GET)</h3>
-<p>Get all records:</p>
-<div class="highlight"><pre><span></span><code>GET /api/sales/customers
-</code></pre></div>
-
-<p>Get single record by ID:</p>
-<div class="highlight"><pre><span></span><code>GET /api/sales/customers/100198
-</code></pre></div>
-
-<h3 id="update-post">Update (POST)</h3>
-<p>To update an existing record:</p>
-<ol>
-<li>Include the key field(s) in the object</li>
-<li>POST the object</li>
-</ol>
-<p><strong>Key Point</strong>: The presence of key fields indicates an update.</p>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/sales/customers</span>
+<h3 id="update-put">Update (PUT)</h3>
+<p>Include the composite key in the URL:</p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT /api/entity/customers/ACME_10</span>
+<span class="err">Content-Type: application/json</span>
 
 <span class="err">{</span>
-<span class="err">    &quot;CustomerCode&quot;: 100198,</span>
+<span class="err">    &quot;CompanyId&quot;: &quot;ACME&quot;,</span>
+<span class="err">    &quot;CustomerId&quot;: 10,</span>
 <span class="err">    &quot;CustomerName&quot;: &quot;Updated Name&quot;</span>
 <span class="err">}</span>
 </code></pre></div>
 
-<h3 id="delete-delete">Delete (DELETE)</h3>
-<div class="highlight"><pre><span></span><code>DELETE /api/sales/customers/100198
+<h3 id="delete">Delete</h3>
+<p>Per the SDK, set the <code>Delete</code> field to <code>true</code> on an update:</p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT /api/entity/customers/ACME_10</span>
+<span class="err">Content-Type: application/json</span>
+
+<span class="err">{</span>
+<span class="err">    &quot;CompanyId&quot;: &quot;ACME&quot;,</span>
+<span class="err">    &quot;CustomerId&quot;: 10,</span>
+<span class="err">    &quot;Delete&quot;: true</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> Dedicated DELETE HTTP method is not documented in the SDK for any entity.</p>
+</blockquote>
+<hr />
+<h2 id="health-check-ping">Health Check (Ping)</h2>
+<p>Each entity has a <code>/ping</code> endpoint for verifying the service is running:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ping</span>
+</code></pre></div>
+
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ResponseMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;success&quot;</span>
+<span class="p">}</span>
 </code></pre></div>
 
 <hr />
 <h2 id="query-syntax">Query Syntax</h2>
-<p>Filter results using the <code>$query</code> parameter:</p>
-<div class="highlight"><pre><span></span><code>GET /api/sales/customers?$query=State eq &#39;NY&#39;
+<p>Filter results using the <code>$query</code> parameter on list endpoints:</p>
+<div class="highlight"><pre><span></span><code>GET /api/entity/customers/?$query=startswith(CustomerName, &#39;Parker&#39;)
 </code></pre></div>
 
+<blockquote>
+<p><strong>Remember:</strong> List endpoints redirect (307), so use a trailing slash or enable redirect following.</p>
+</blockquote>
 <h3 id="comparison-operators">Comparison Operators</h3>
 <table>
 <thead>
@@ -377,7 +462,7 @@
 <tr>
 <td><code>eq</code></td>
 <td>Equal</td>
-<td><code>LastName eq 'Brown'</code></td>
+<td><code>CompanyId eq 'ACME'</code></td>
 </tr>
 <tr>
 <td><code>ne</code></td>
@@ -419,17 +504,17 @@
 <tr>
 <td><code>and</code></td>
 <td>Logical AND</td>
-<td><code>CreditLimit ge 1000 and State eq 'CO'</code></td>
+<td><code>CreditLimit ge 1000 and CreditStatus eq 'GOOD'</code></td>
 </tr>
 <tr>
 <td><code>or</code></td>
 <td>Logical OR</td>
-<td><code>State eq 'CO' or State eq 'PA'</code></td>
+<td><code>CreditStatus eq 'GOOD' or CreditStatus eq 'HOLD'</code></td>
 </tr>
 <tr>
 <td><code>not</code></td>
 <td>Logical NOT</td>
-<td><code>not (CustomerCode eq 1)</code></td>
+<td><code>not (CustomerId eq 0)</code></td>
 </tr>
 </tbody>
 </table>
@@ -446,193 +531,542 @@
 <tr>
 <td><code>startswith</code></td>
 <td>Starts with</td>
-<td><code>startswith(CustomerName, 'ABC')</code></td>
+<td><code>startswith(CustomerName, 'IFP')</code></td>
 </tr>
 <tr>
 <td><code>endswith</code></td>
 <td>Ends with</td>
-<td><code>endswith(CustomerName, 'Inc')</code></td>
+<td><code>endswith(CustomerName, 'Inc.')</code></td>
 </tr>
 <tr>
 <td><code>substringof</code></td>
 <td>Contains</td>
-<td><code>substringof('copper', ItemDesc)</code></td>
+<td><code>substringof('Parker', VendorName)</code></td>
 </tr>
 </tbody>
 </table>
+<h3 id="verified-query-examples">Verified Query Examples</h3>
+<div class="highlight"><pre><span></span><code># Find customers by name prefix (returned 7 results)
+GET /api/entity/customers/?$query=startswith(CustomerName, &#39;IFP&#39;)
+
+# Find vendors by name prefix (returned 6 results)
+GET /api/entity/vendors/?$query=startswith(VendorName, &#39;Parker&#39;)
+
+# Filter by company
+GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
+</code></pre></div>
+
 <hr />
 <h2 id="extended-properties">Extended Properties</h2>
-<p>Include related data using the <code>extendedproperties</code> parameter:</p>
-<p>Get order with all related data:</p>
-<div class="highlight"><pre><span></span><code>GET /api/sales/orders/100999?extendedproperties=*
+<p>Include related/nested data using the <code>extendedproperties</code> parameter:</p>
+<p><strong>All nested objects:</strong></p>
+<div class="highlight"><pre><span></span><code>GET /api/entity/customers/ACME_10?extendedproperties=*
 </code></pre></div>
 
-<p>Get order with just line items:</p>
-<div class="highlight"><pre><span></span><code>GET /api/sales/orders/100999?extendedproperties=Lines
+<p><strong>Specific nested object:</strong></p>
+<div class="highlight"><pre><span></span><code>GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 </code></pre></div>
 
-<hr />
-<h2 id="async-operations">Async Operations</h2>
-<p>For long-running operations (orders, POs), use async endpoints:</p>
-<h3 id="submit-async">Submit Async</h3>
-<div class="highlight"><pre><span></span><code><span class="err">POST /api/sales/orders/async</span>
-<span class="err">Content-Type: application/json</span>
-
-<span class="err">{</span>
-<span class="err">    &quot;CustomerCode&quot;: 100198,</span>
-<span class="err">    &quot;Lines&quot;: [...]</span>
-<span class="err">}</span>
+<h3 id="available-extended-properties-by-entity">Available Extended Properties by Entity</h3>
+<p><strong>Customer:</strong>
+- <code>CustomerAddress</code> - Mailing and physical address
+- <code>CustomerEDITransactions</code> - EDI configuration
+- <code>CustomerSalesreps</code> - Assigned sales reps
+- <code>CustomerTerms</code> - Payment terms
+- <code>CustomerDealerTypes</code> - Dealer type assignments
+- <code>CustomerRestrictedClasses</code> - Restricted product classes
+- <code>CustomerContacts</code> - Associated contacts
+- <code>CustomerShipTos</code> - Ship-to addresses
+- <code>CustomerPriceLibraries</code> - Price library assignments</p>
+<p><strong>Vendor:</strong>
+- <code>VendorSuppliers</code> - Associated supplier records
+- <code>VendorAddress</code> - Mailing and physical address
+- <code>VendorPurchaseAccounts</code> - Purchase account configuration
+- <code>VendorContract</code> - Contract information</p>
+<p><strong>Contact:</strong>
+- <code>ContactDocuments</code> - Associated documents
+- <code>ContactLeadSources</code> - Lead source tracking
+- <code>ContactLinks</code> - Related entity links
+- <code>ContactLists</code> - Mailing list membership
+- <code>ContactSalesreps</code> - Assigned sales reps</p>
+<h3 id="example-customer-with-address">Example: Customer with Address</h3>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress</span>
 </code></pre></div>
 
-<p>Response:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Active&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<h3 id="check-status">Check Status</h3>
-<div class="highlight"><pre><span></span><code>GET /api/sales/orders/async?id=ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d
-</code></pre></div>
-
-<h3 id="with-callback">With Callback</h3>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;Content&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100198</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Lines&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;Callback&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;Url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://your-server.com/webhook&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ContentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/json&quot;</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerAddress&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;CorpAddressId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1620 Blairs Ferry Road NE&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailPostalCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;52402&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;MailCountry&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;USA&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CentralPhoneNumber&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;319-395-0005&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1620 Blairs Ferry Road NE&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cedar Rapids&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PhysState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <hr />
+<h2 id="user-defined-fields">User Defined Fields</h2>
+<p>Entity API supports User Defined Fields (UDFs) when enabled in the P21 middleware.</p>
+<h3 id="enabling-udfs">Enabling UDFs</h3>
+<ol>
+<li>Go to the Administration page: <code>https://{hostname}/docs/admin.aspx</code></li>
+<li>Toggle <strong>"User Defined Field Enabled Setting"</strong> to Enabled</li>
+<li>Click <strong>"Regenerate User Defined Fields"</strong> if fields are not appearing</li>
+</ol>
+<h3 id="udf-behavior">UDF Behavior</h3>
+<ul>
+<li>UDFs appear in the response under the <code>UserDefinedFields</code> property</li>
+<li>UDFs are subordinate to the parent entity (cannot be modified independently)</li>
+<li>When creating/updating, include UDF values in the <code>UserDefinedFields</code> object</li>
+</ul>
+<hr />
 <h2 id="response-format">Response Format</h2>
-<h3 id="success-response">Success Response</h3>
-<p>Single record:</p>
+<h3 id="single-record">Single Record</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100198</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Company&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Address1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Main St&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;City&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Anytown&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;State&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IA&quot;</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1100&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserDefinedFields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<span class="w">    </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Collection:</p>
+<h3 id="collection-listquery">Collection (List/Query)</h3>
 <div class="highlight"><pre><span></span><code><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100198</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Company&quot;</span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span><span class="nt">&quot;CustomerCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100199</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;XYZ Corp&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="p">]</span>
 </code></pre></div>
 
 <h3 id="error-response">Error Response</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;Message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The request is invalid.&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Errors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;CustomerName is required&quot;</span>
-<span class="w">    </span><span class="p">]</span>
+<span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-02-11T15:30:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Your query did not yield any results. No resources found for query string \&quot;GetById 100198\&quot;.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ResourceNotFoundException&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21SERVER&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LogId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;StackTrace&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mrwuss&quot;</span>
 <span class="p">}</span>
+</code></pre></div>
+
+<h3 id="content-types">Content Types</h3>
+<p>Both JSON and XML are supported. Set via the <code>Accept</code> header:</p>
+<div class="highlight"><pre><span></span><code><span class="err">Accept: application/json</span>
+<span class="err">Accept: application/xml</span>
+</code></pre></div>
+
+<p>XML response example (ping):</p>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;PingResponse&gt;</span>
+<span class="w">    </span><span class="nt">&lt;ResponseMessage&gt;</span>success<span class="nt">&lt;/ResponseMessage&gt;</span>
+<span class="nt">&lt;/PingResponse&gt;</span>
 </code></pre></div>
 
 <hr />
 <h2 id="python-examples">Python Examples</h2>
-<h3 id="basic-query">Basic Query</h3>
+<h3 id="setup">Setup</h3>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
-<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/customers&quot;</span><span class="p">,</span>
-    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;State eq &#39;NY&#39;&quot;</span><span class="p">},</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://p21.p21server.com&quot;</span>
+
+<span class="c1"># Get token</span>
+<span class="n">token_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;api_user&quot;</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;password&quot;</span><span class="p">},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="n">token</span> <span class="o">=</span> <span class="n">token_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
-<span class="n">customers</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-<span class="k">for</span> <span class="n">customer</span> <span class="ow">in</span> <span class="n">customers</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerCode&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-
-<h3 id="get-with-extended-properties">Get with Extended Properties</h3>
-<div class="highlight"><pre><span></span><code><span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/orders/100999&quot;</span><span class="p">,</span>
-    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;*&quot;</span><span class="p">},</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
-<span class="p">)</span>
-
-<span class="n">order</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Order: </span><span class="si">{</span><span class="n">order</span><span class="p">[</span><span class="s1">&#39;OrderNumber&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">order</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Lines&quot;</span><span class="p">,</span> <span class="p">[]):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;ItemId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">line</span><span class="p">[</span><span class="s1">&#39;Quantity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-
-<h3 id="create-record">Create Record</h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Get template</span>
-<span class="n">template</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/customers/new&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
-<span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-
-<span class="c1"># Fill required fields</span>
-<span class="n">template</span><span class="p">[</span><span class="s2">&quot;CustomerName&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;New Customer&quot;</span>
-<span class="n">template</span><span class="p">[</span><span class="s2">&quot;Address1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;123 Main St&quot;</span>
-<span class="n">template</span><span class="p">[</span><span class="s2">&quot;City&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Anytown&quot;</span>
-<span class="n">template</span><span class="p">[</span><span class="s2">&quot;State&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;IA&quot;</span>
-
-<span class="c1"># Create</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/sales/customers&quot;</span><span class="p">,</span>
+<span class="c1"># Create client (must follow redirects for list endpoints)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3 id="health-check">Health Check</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ping&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>  <span class="c1"># {&quot;ResponseMessage&quot;: &quot;success&quot;}</span>
+</code></pre></div>
+
+<h3 id="get-single-customer">Get Single Customer</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">)</span>
+<span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># 10: ABC Supply Company</span>
+</code></pre></div>
+
+<h3 id="get-customer-with-extended-properties">Get Customer with Extended Properties</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;CustomerAddress&quot;</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="n">addr</span> <span class="o">=</span> <span class="n">customer</span><span class="p">[</span><span class="s2">&quot;CustomerAddress&quot;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailCity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailState&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailPostalCode&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># Cedar Rapids, IA 52402</span>
+</code></pre></div>
+
+<h3 id="query-customers">Query Customers</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;startswith(CustomerName, &#39;IFP&#39;)&quot;</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">customers</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">customers</span><span class="p">)</span><span class="si">}</span><span class="s2"> customers&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">customers</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="s1">&#39;CompanyId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="s1">&#39;CustomerId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="get-contact">Get Contact</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/contacts/1&quot;</span><span class="p">)</span>
+<span class="n">contact</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;FirstName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;LastName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># Don Kaas</span>
+</code></pre></div>
+
+<h3 id="create-customer">Create Customer</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get template first</span>
+<span class="n">template</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/new&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># Fill required fields</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;CustomerName&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;New Customer Inc.&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;SalesrepId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1100&quot;</span>
+<span class="n">template</span><span class="p">[</span><span class="s2">&quot;TermsId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
+
+<span class="c1"># Create (POST without CustomerId = insert)</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers&quot;</span><span class="p">,</span>
     <span class="n">json</span><span class="o">=</span><span class="n">template</span><span class="p">,</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3 id="update-customer">Update Customer</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;CompanyId&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CustomerId&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s2">&quot;CustomerName&quot;</span><span class="p">:</span> <span class="s2">&quot;Updated Customer Name&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
 <span class="p">)</span>
 </code></pre></div>
 
 <hr />
-<h2 id="working-example-scripts">Working Example Scripts</h2>
-<p>See the <code>scripts/entity/</code> directory:</p>
+<h2 id="template-fields">Template Fields</h2>
+<p>Use the <code>/new</code> endpoint to discover all available fields for each entity.</p>
+<h3 id="customer-template-102-fields">Customer Template (102 fields)</h3>
+<p>Key fields and their types from <code>GET /api/entity/customers/new</code>:</p>
 <table>
 <thead>
 <tr>
-<th>Script</th>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>01_list_entities.py</code></td>
-<td>Discover available entities</td>
+<td><code>CompanyId</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Company identifier (e.g., "ACME")</td>
 </tr>
 <tr>
-<td><code>02_query_entity.py</code></td>
-<td>Query with filters</td>
+<td><code>CustomerId</code></td>
+<td>null</td>
+<td><code>null</code></td>
+<td>Auto-assigned on create</td>
 </tr>
 <tr>
-<td><code>03_create_entity.py</code></td>
-<td>Create a record</td>
+<td><code>CustomerName</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Customer name</td>
 </tr>
 <tr>
-<td><code>04_update_entity.py</code></td>
-<td>Update existing record</td>
+<td><code>SalesrepId</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Default sales rep</td>
+</tr>
+<tr>
+<td><code>TermsId</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Payment terms</td>
+</tr>
+<tr>
+<td><code>CreditStatus</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Credit status (GOOD, HOLD, etc.)</td>
+</tr>
+<tr>
+<td><code>CreditLimit</code></td>
+<td>null</td>
+<td><code>null</code></td>
+<td>Credit limit amount</td>
+</tr>
+<tr>
+<td><code>Taxable</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Y/N taxable flag</td>
+</tr>
+<tr>
+<td><code>CurrencyId</code></td>
+<td>null</td>
+<td><code>null</code></td>
+<td>Currency</td>
+</tr>
+<tr>
+<td><code>CustomerType</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Customer type code</td>
+</tr>
+<tr>
+<td><code>Delete</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Delete flag</td>
+</tr>
+<tr>
+<td><code>WebEnabledFlag</code></td>
+<td>string</td>
+<td><code>"N"</code></td>
+<td>Web access flag</td>
+</tr>
+<tr>
+<td><code>UserDefinedFields</code></td>
+<td>object</td>
+<td><code>{}</code></td>
+<td>UDF container</td>
+</tr>
+<tr>
+<td><code>ObjectName</code></td>
+<td>string</td>
+<td><code>"customer"</code></td>
+<td>Entity type</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="best-practices">Best Practices</h2>
-<ol>
-<li><strong>Use templates</strong> - Get <code>/new</code> before creating to see available fields</li>
-<li><strong>Query efficiently</strong> - Use <code>$query</code> to filter server-side</li>
-<li><strong>Extended properties sparingly</strong> - Only request related data when needed</li>
-<li><strong>Check for key fields</strong> - Include keys for updates, omit for creates</li>
-<li><strong>Handle async for orders</strong> - Large orders should use async endpoint</li>
-</ol>
+<h3 id="vendor-template-50-fields">Vendor Template (50 fields)</h3>
+<p>Key fields from <code>GET /api/entity/vendors/new</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CompanyId</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Company identifier</td>
+</tr>
+<tr>
+<td><code>VendorId</code></td>
+<td>null</td>
+<td><code>null</code></td>
+<td>Auto-assigned on create</td>
+</tr>
+<tr>
+<td><code>VendorName</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Vendor name</td>
+</tr>
+<tr>
+<td><code>DefaultTermsId</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Payment terms</td>
+</tr>
+<tr>
+<td><code>ApAccountNo</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>AP account number</td>
+</tr>
+<tr>
+<td><code>Incorporated</code></td>
+<td>string</td>
+<td><code>"N"</code></td>
+<td>Incorporated flag</td>
+</tr>
+<tr>
+<td><code>Default1099Type</code></td>
+<td>int</td>
+<td><code>7</code></td>
+<td>1099 type</td>
+</tr>
+<tr>
+<td><code>TrackRebates</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Rebate tracking</td>
+</tr>
+<tr>
+<td><code>Delete</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Delete flag</td>
+</tr>
+</tbody>
+</table>
+<h3 id="contact-template-40-fields">Contact Template (40 fields)</h3>
+<p>Key fields from <code>GET /api/entity/contacts/new</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Salutation</code></td>
+<td>string</td>
+<td>Salutation</td>
+</tr>
+<tr>
+<td><code>FirstName</code></td>
+<td>string</td>
+<td>First name</td>
+</tr>
+<tr>
+<td><code>LastName</code></td>
+<td>string</td>
+<td>Last name</td>
+</tr>
+<tr>
+<td><code>Title</code></td>
+<td>string</td>
+<td>Job title</td>
+</tr>
+<tr>
+<td><code>AddressId</code></td>
+<td>null</td>
+<td>Associated address ID</td>
+</tr>
+<tr>
+<td><code>DirectPhone</code></td>
+<td>string</td>
+<td>Direct phone number</td>
+</tr>
+<tr>
+<td><code>EmailAddress</code></td>
+<td>string</td>
+<td>Email address</td>
+</tr>
+<tr>
+<td><code>Id</code></td>
+<td>null</td>
+<td>Auto-assigned on create</td>
+</tr>
+</tbody>
+</table>
+<h3 id="address-template">Address Template</h3>
+<blockquote>
+<p><strong>Known Issue:</strong> <code>GET /api/entity/addresses/new</code> returns a <strong>500 error</strong>. Use an existing address as a reference instead.</p>
+</blockquote>
+<p>Key fields from address records:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CorpAddressId</code></td>
+<td>int</td>
+<td>Corporate address ID</td>
+</tr>
+<tr>
+<td><code>AddressId</code></td>
+<td>int</td>
+<td>Address ID</td>
+</tr>
+<tr>
+<td><code>Name</code></td>
+<td>string</td>
+<td>Address name</td>
+</tr>
+<tr>
+<td><code>MailAddress1</code></td>
+<td>string</td>
+<td>Mailing address line 1</td>
+</tr>
+<tr>
+<td><code>MailCity</code></td>
+<td>string</td>
+<td>Mailing city</td>
+</tr>
+<tr>
+<td><code>MailState</code></td>
+<td>string</td>
+<td>Mailing state</td>
+</tr>
+<tr>
+<td><code>MailPostalCode</code></td>
+<td>string</td>
+<td>Mailing postal code</td>
+</tr>
+<tr>
+<td><code>MailCountry</code></td>
+<td>string</td>
+<td>Mailing country</td>
+</tr>
+<tr>
+<td><code>PhysAddress1</code></td>
+<td>string</td>
+<td>Physical address line 1</td>
+</tr>
+<tr>
+<td><code>CentralPhoneNumber</code></td>
+<td>string</td>
+<td>Main phone</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
 <table>
@@ -645,63 +1079,101 @@
 </thead>
 <tbody>
 <tr>
+<td>307 Redirect</td>
+<td>List endpoint without trailing slash</td>
+<td>Add trailing slash or enable <code>follow_redirects</code></td>
+</tr>
+<tr>
 <td>401 Unauthorized</td>
 <td>Invalid/expired token</td>
 <td>Refresh token</td>
 </tr>
 <tr>
-<td>404 Not Found</td>
-<td>Entity/endpoint doesn't exist</td>
-<td>Check endpoint path, verify Entity API is enabled</td>
+<td>404 "No resources found"</td>
+<td>Wrong key format or record doesn't exist</td>
+<td>Use composite key (<code>ACME_10</code>) for customers/vendors</td>
 </tr>
 <tr>
-<td>400 Bad Request</td>
-<td>Invalid data</td>
-<td>Check required fields</td>
+<td>404 HTML page</td>
+<td>Endpoint doesn't exist</td>
+<td>Verify you're using <code>/api/entity/</code> base path</td>
 </tr>
 <tr>
-<td>"Field is required"</td>
-<td>Missing required field</td>
-<td>Check template for requirements</td>
+<td>500 Server Error</td>
+<td>Internal error (e.g., addresses <code>/new</code>)</td>
+<td>Try a different approach or entity</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Note</strong>: Entity API availability depends on P21 server configuration. Some endpoints may require specific licensing or middleware setup. Check your middleware documentation page for available endpoints.</p>
+<h3 id="common-mistakes">Common Mistakes</h3>
+<ol>
+<li><strong>Wrong URL pattern</strong> - Use <code>/api/entity/customers</code>, NOT <code>/api/sales/customers</code></li>
+<li><strong>Simple ID for customers</strong> - Use <code>ACME_10</code>, NOT just <code>10</code></li>
+<li><strong>Missing redirect handling</strong> - List endpoints return 307, must follow redirect</li>
+<li><strong>Confusing VendorId with supplier_id</strong> - These are different database tables</li>
+<li><strong>Expecting orders/items/parts</strong> - Only 4 entities exist (customers, vendors, contacts, addresses)</li>
+</ol>
 <hr />
-<h2 id="entity-api-vs-odata">Entity API vs OData</h2>
+<h2 id="entity-api-vs-other-apis">Entity API vs Other APIs</h2>
 <table>
 <thead>
 <tr>
 <th>Feature</th>
 <th>Entity API</th>
 <th>OData</th>
+<th>Transaction</th>
+<th>Interactive</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Operations</td>
-<td>Full CRUD</td>
+<td>CRUD</td>
 <td>Read-only</td>
+<td>Bulk CRUD</td>
+<td>Stateful CRUD</td>
+</tr>
+<tr>
+<td>Entities</td>
+<td>4 only</td>
+<td>Any table/view</td>
+<td>Many services</td>
+<td>Any P21 window</td>
 </tr>
 <tr>
 <td>Format</td>
 <td>Domain objects</td>
 <td>Table rows</td>
+<td>XML payloads</td>
+<td>Window fields</td>
+</tr>
+<tr>
+<td>Session</td>
+<td>Stateless</td>
+<td>Stateless</td>
+<td>Stateless</td>
+<td>Stateful</td>
 </tr>
 <tr>
 <td>Queries</td>
-<td><code>$query</code> parameter</td>
-<td>OData <code>$filter</code></td>
+<td><code>$query</code></td>
+<td><code>$filter</code> (OData)</td>
+<td>N/A</td>
+<td>N/A</td>
 </tr>
 <tr>
 <td>Extended data</td>
 <td><code>extendedproperties</code></td>
-<td>Not available</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>Tab navigation</td>
 </tr>
 <tr>
-<td>Use case</td>
-<td>Business objects</td>
-<td>Raw data access</td>
+<td>Best for</td>
+<td>Customer/vendor CRUD</td>
+<td>Reporting, lookups</td>
+<td>Bulk operations</td>
+<td>Complex workflows</td>
 </tr>
 </tbody>
 </table>
@@ -710,8 +1182,10 @@
 <ul>
 <li><a href="00-Authentication.html">Authentication</a></li>
 <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
-<li><a href="02-OData-API.html">OData API</a></li>
-<li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/entity/">scripts/entity/</a> - Working examples</li>
+<li><a href="02-OData-API.html">OData API</a> - For read-only queries on any table</li>
+<li><a href="03-Transaction-API.html">Transaction API</a> - For bulk data operations</li>
+<li><a href="04-Interactive-API.html">Interactive API</a> - For stateful CRUD with business logic</li>
+<li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/entity/">scripts/entity/</a> - Test scripts</li>
 </ul>
 
     <script>
