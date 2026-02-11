@@ -180,7 +180,7 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 
 ### Example Use Cases
 - Look up customer with address: `GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress`
-- Search vendors: `GET /api/entity/vendors/?$query=startswith(VendorName, 'Parker')`
+- Search vendors: `GET /api/entity/vendors/?$query=startswith(VendorName, 'ABC')`
 - Get contact details: `GET /api/entity/contacts/1`
 
 ---

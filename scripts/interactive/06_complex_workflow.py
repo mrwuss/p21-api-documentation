@@ -294,7 +294,7 @@ def main():
                 client,
                 description=f"WORKFLOW-{timestamp}-A",
                 supplier_id=10,
-                product_group="FA5",
+                product_group="MISC",
                 multiplier=0.75
             )
 

@@ -250,7 +250,7 @@ GET /api/entity/customers/ping
 Filter results using the `$query` parameter on list endpoints:
 
 ```
-GET /api/entity/customers/?$query=startswith(CustomerName, 'Parker')
+GET /api/entity/customers/?$query=startswith(CustomerName, 'ABC')
 ```
 
 > **Remember:** List endpoints redirect (307), so use a trailing slash or enable redirect following.
@@ -280,7 +280,7 @@ GET /api/entity/customers/?$query=startswith(CustomerName, 'Parker')
 |----------|-------------|---------|
 | `startswith` | Starts with | `startswith(CustomerName, 'ABC')` |
 | `endswith` | Ends with | `endswith(CustomerName, 'Inc.')` |
-| `substringof` | Contains | `substringof('Parker', VendorName)` |
+| `substringof` | Contains | `substringof('Supply', VendorName)` |
 
 ### Verified Query Examples
 

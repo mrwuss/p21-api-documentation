@@ -109,7 +109,7 @@ def main():
     payload = build_price_page_payload(
         description=description,
         supplier_id=10,  # A common test supplier
-        product_group="FA5",  # A common product group
+        product_group="MISC",  # A common product group
         multiplier=0.75
     )
 

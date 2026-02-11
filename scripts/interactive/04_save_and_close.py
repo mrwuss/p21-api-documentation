@@ -217,7 +217,7 @@ def main():
         result = create_price_page(
             session,
             supplier_id=10,
-            product_group="FA5",
+            product_group="MISC",
             description=description,
             multiplier=0.80
         )
