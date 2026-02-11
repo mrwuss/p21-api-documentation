@@ -162,11 +162,11 @@
 </blockquote>
 <hr />
 <h2 id="overview">Overview</h2>
-<p>The OData API provides <strong>read-only</strong> access to P21 data using the standard OData v4 protocol. It's the fastest way to query P21 tables and views.</p>
+<p>The OData API provides <strong>read-only</strong> access to P21 data using the OData v3 protocol. It's the fastest way to query P21 tables and views.</p>
 <h3 id="key-characteristics">Key Characteristics</h3>
 <ul>
 <li><strong>Read-only</strong> - Cannot create, update, or delete data</li>
-<li><strong>Standard protocol</strong> - OData v4 compatible</li>
+<li><strong>Standard protocol</strong> - OData v3</li>
 <li><strong>Direct access</strong> - Query any P21 table or view</li>
 <li><strong>Efficient</strong> - Supports filtering, pagination, field selection</li>
 <li><strong>No session</strong> - Simple request/response model</li>
@@ -205,6 +205,16 @@
 </code></pre></div>
 
 <p>See <a href="00-Authentication.html">Authentication</a> for token generation.</p>
+<h3 id="prerequisites-user-credential-auth-only">Prerequisites (User Credential Auth Only)</h3>
+<p>If you authenticate with <strong>User Credentials</strong> (username/password), a valid token alone is <strong>not enough</strong>. The P21 user must also have two permissions configured in the P21 Desktop Client:</p>
+<ol>
+<li><strong>User Maintenance</strong> → Application Security → <strong>"Allow OData API Service"</strong> = Yes</li>
+<li><strong>Role Maintenance</strong> → Dataservice Permission → <strong>Allow</strong> the specific tables/views being queried</li>
+</ol>
+<p>Without these, you'll get a <code>"You are not authorized to access API"</code> error even with a valid token.</p>
+<blockquote>
+<p><strong>Consumer Key</strong> authentication skips these requirements - access is controlled by the key's API scope instead. See <a href="00-Authentication.md#p21-permissions-user-credential-auth">Authentication - P21 Permissions</a> for full setup details and screenshots.</p>
+</blockquote>
 <hr />
 <h2 id="query-parameters">Query Parameters</h2>
 <p>All OData query parameters are prefixed with <code>$</code>.</p>
@@ -664,6 +674,11 @@ $filter=expiration_date ge 2025-12-28
 <td>Refresh token</td>
 </tr>
 <tr>
+<td>401/403 "Not authorized"</td>
+<td>Valid token but missing P21 permissions</td>
+<td>Enable "Allow OData API Service" in User Maintenance and grant table access in Role Maintenance → Dataservice Permission. See <a href="#prerequisites-user-credential-auth-only">Prerequisites</a></td>
+</tr>
+<tr>
 <td>404 Not Found</td>
 <td>Table doesn't exist, or unsupported function</td>
 <td>Verify table name; avoid <code>now()</code></td>
@@ -758,6 +773,19 @@ $filter=expiration_date ge 2025-12-28
         <span class="k">return</span> <span class="n">result</span>
 </code></pre></div>
 
+<hr />
+<h2 id="odata-schema-refresh">OData Schema Refresh</h2>
+<p>The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when <strong>new tables or views</strong> are added to the database, the OData service must be manually refreshed:</p>
+<ol>
+<li>Log in to the <strong>SOA Middleware</strong> home page (<code>https://{hostname}/api/admin</code>)</li>
+<li>Go to <strong>Administration</strong> from the menu</li>
+<li>Find the <strong>"Refresh OData API service"</strong> section</li>
+<li>Click <strong>"Refresh OData API service"</strong></li>
+</ol>
+<p><img alt="SOA Admin - Refresh OData API service" src="img/administration.jpg" /></p>
+<blockquote>
+<p><strong>Note:</strong> Schema changes from P21 application upgrades are handled automatically. Manual refresh is only needed for ad-hoc database changes between upgrades.</p>
+</blockquote>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

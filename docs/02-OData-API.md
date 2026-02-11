@@ -6,12 +6,12 @@
 
 ## Overview
 
-The OData API provides **read-only** access to P21 data using the standard OData v4 protocol. It's the fastest way to query P21 tables and views.
+The OData API provides **read-only** access to P21 data using the OData v3 protocol. It's the fastest way to query P21 tables and views.
 
 ### Key Characteristics
 
 - **Read-only** - Cannot create, update, or delete data
-- **Standard protocol** - OData v4 compatible
+- **Standard protocol** - OData v3
 - **Direct access** - Query any P21 table or view
 - **Efficient** - Supports filtering, pagination, field selection
 - **No session** - Simple request/response model
@@ -45,6 +45,17 @@ Accept: application/json
 ```
 
 See [Authentication](00-Authentication.md) for token generation.
+
+### Prerequisites (User Credential Auth Only)
+
+If you authenticate with **User Credentials** (username/password), a valid token alone is **not enough**. The P21 user must also have two permissions configured in the P21 Desktop Client:
+
+1. **User Maintenance** → Application Security → **"Allow OData API Service"** = Yes
+2. **Role Maintenance** → Dataservice Permission → **Allow** the specific tables/views being queried
+
+Without these, you'll get a `"You are not authorized to access API"` error even with a valid token.
+
+> **Consumer Key** authentication skips these requirements - access is controlled by the key's API scope instead. See [Authentication - P21 Permissions](00-Authentication.md#p21-permissions-user-credential-auth) for full setup details and screenshots.
 
 ---
 
@@ -446,6 +457,7 @@ def get_all_records(base_url, table, filter_expr=None, page_size=100):
 |-------|-------|----------|
 | 400 Bad Request | Invalid filter syntax | Check filter expression |
 | 401 Unauthorized | Invalid/expired token | Refresh token |
+| 401/403 "Not authorized" | Valid token but missing P21 permissions | Enable "Allow OData API Service" in User Maintenance and grant table access in Role Maintenance → Dataservice Permission. See [Prerequisites](#prerequisites-user-credential-auth-only) |
 | 404 Not Found | Table doesn't exist, or unsupported function | Verify table name; avoid `now()` |
 | 500 Server Error | Query too complex | Simplify query |
 
@@ -525,6 +537,21 @@ class P21OData:
         self._library_book_cache[library_id] = result
         return result
 ```
+
+---
+
+## OData Schema Refresh
+
+The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when **new tables or views** are added to the database, the OData service must be manually refreshed:
+
+1. Log in to the **SOA Middleware** home page (`https://{hostname}/api/admin`)
+2. Go to **Administration** from the menu
+3. Find the **"Refresh OData API service"** section
+4. Click **"Refresh OData API service"**
+
+![SOA Admin - Refresh OData API service](img/administration.jpg)
+
+> **Note:** Schema changes from P21 application upgrades are handled automatically. Manual refresh is only needed for ad-hoc database changes between upgrades.
 
 ---
 
