@@ -324,6 +324,8 @@
 </ul>
 </li>
 <li><a href="#endpoints-per-entity">Endpoints Per Entity</a><ul>
+<li><a href="#customers-vendors-contacts">Customers, Vendors, Contacts</a></li>
+<li><a href="#addresses-limited">Addresses (Limited)</a></li>
 <li><a href="#trailing-slash-on-list-endpoints">Trailing Slash on List Endpoints</a></li>
 </ul>
 </li>
@@ -332,10 +334,12 @@
 </ul>
 </li>
 <li><a href="#crud-operations">CRUD Operations</a><ul>
+<li><a href="#key-rule-presence-update-absence-insert">Key Rule: Presence = Update, Absence = Insert</a></li>
 <li><a href="#read-get">Read (GET)</a></li>
 <li><a href="#create-post">Create (POST)</a></li>
 <li><a href="#update-put">Update (PUT)</a></li>
 <li><a href="#delete">Delete</a></li>
+<li><a href="#address-limitations">Address Limitations</a></li>
 </ul>
 </li>
 <li><a href="#health-check-ping">Health Check (Ping)</a></li>
@@ -379,6 +383,16 @@
 <li><a href="#vendor-template-50-fields">Vendor Template (50 fields)</a></li>
 <li><a href="#contact-template-40-fields">Contact Template (40 fields)</a></li>
 <li><a href="#address-fields-27-fields">Address Fields (27 fields)</a></li>
+</ul>
+</li>
+<li><a href="#additional-endpoints">Additional Endpoints</a><ul>
+<li><a href="#soap-endpoints">SOAP Endpoints</a></li>
+<li><a href="#mobile-endpoints">Mobile Endpoints</a></li>
+<li><a href="#endpoint-discovery">Endpoint Discovery</a></li>
+</ul>
+</li>
+<li><a href="#error-codes">Error Codes</a><ul>
+<li><a href="#log-file-locations">Log File Locations</a></li>
 </ul>
 </li>
 <li><a href="#common-errors">Common Errors</a><ul>
@@ -502,7 +516,7 @@
 <p>The Entity API <code>VendorId</code> is <strong>not the same</strong> as the OData <code>supplier_id</code>. These come from different database tables. To find the correct <code>VendorId</code>, query vendors through the Entity API or check the <code>vendor</code> table via OData.</p>
 <hr />
 <h2 id="endpoints-per-entity">Endpoints Per Entity</h2>
-<p>Each entity supports the same set of endpoints:</p>
+<h3 id="customers-vendors-contacts">Customers, Vendors, Contacts</h3>
 <table>
 <thead>
 <tr>
@@ -549,6 +563,47 @@
 </tr>
 </tbody>
 </table>
+<h3 id="addresses-limited">Addresses (Limited)</h3>
+<p>Addresses have a <strong>reduced</strong> set of operations — no <code>/new</code> template and no update:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/entity/addresses/ping</code></td>
+<td>Health check</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/entity/addresses/{addressId}</code></td>
+<td>Get single address</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/entity/addresses/</code></td>
+<td>List all addresses</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/entity/addresses/?$query=...</code></td>
+<td>Query with filter</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/entity/addresses</code></td>
+<td>Create new address</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>No <code>/new</code> or PUT:</strong> The address resource does not define a template endpoint or an update method in the SDK interface. The <code>/new</code> endpoint returns 500 because it doesn't exist (not a bug). To update an address, use the Interactive API or direct SQL.</p>
+</blockquote>
 <h3 id="trailing-slash-on-list-endpoints">Trailing Slash on List Endpoints</h3>
 <p>List endpoints (<code>GET /api/entity/customers</code>) return a <strong>307 redirect</strong> to the same URL with a trailing slash (<code>/api/entity/customers/</code>). Configure your HTTP client to follow redirects:</p>
 <div class="highlight"><pre><span></span><code><span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
@@ -566,7 +621,7 @@
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
 
-<p>See <a href="00-Authentication.html">Authentication</a> for token generation.</p>
+<p>See <a href="00-Authentication.html">Authentication</a> for token generation. Per the SDK, tokens expire after <strong>24 hours</strong>.</p>
 <h3 id="consumer-key-behavior">Consumer Key Behavior</h3>
 <p>When using Consumer Key authentication with the Entity API:</p>
 <table>
@@ -593,6 +648,13 @@
 </table>
 <hr />
 <h2 id="crud-operations">CRUD Operations</h2>
+<h3 id="key-rule-presence-update-absence-insert">Key Rule: Presence = Update, Absence = Insert</h3>
+<p>The Entity API determines whether to insert or update based on whether key fields are present:</p>
+<ul>
+<li><strong>Key absent</strong> (e.g., <code>CustomerId</code> is null or omitted) → <strong>Insert</strong> (create new record, system generates ID)</li>
+<li><strong>Key present</strong> (e.g., <code>CustomerId: 10</code>) → <strong>Update</strong> (modify existing record)</li>
+</ul>
+<p>This applies to all entities. When creating, omit or null-out the ID field. When updating, include the key both in the URL and body.</p>
 <h3 id="read-get">Read (GET)</h3>
 <p><strong>Single record by key:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ACME_10</span>
@@ -668,6 +730,14 @@
 <blockquote>
 <p><strong>Note:</strong> Dedicated DELETE HTTP method is not documented in the SDK for any entity.</p>
 </blockquote>
+<h3 id="address-limitations">Address Limitations</h3>
+<p>The Address entity has a reduced API surface compared to other entities:</p>
+<ul>
+<li><strong>No <code>/new</code> template</strong> — <code>GET /api/entity/addresses/new</code> returns 500 (endpoint not implemented)</li>
+<li><strong>No PUT (update)</strong> — The SDK interface only defines <code>CreateAddress</code>, not <code>UpdateAddress</code></li>
+<li><strong>Create only</strong> — You can create and read addresses, but not update them via this API</li>
+</ul>
+<p>To update an existing address, use the Interactive API (Address Maintenance window) or direct SQL.</p>
 <hr />
 <h2 id="health-check-ping">Health Check (Ping)</h2>
 <p>Each entity has a <code>/ping</code> endpoint for verifying the service is running:</p>
@@ -2260,7 +2330,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 </table>
 <h3 id="address-fields-27-fields">Address Fields (27 fields)</h3>
 <blockquote>
-<p><strong>Known Issue:</strong> <code>GET /api/entity/addresses/new</code> returns a <strong>500 error</strong>. The field list below is from an existing address record (<code>GET /api/entity/addresses/10</code>).</p>
+<p><strong>Note:</strong> The Address resource does not have a <code>/new</code> template endpoint (this is by design, not a bug). The field list below is from an existing address record (<code>GET /api/entity/addresses/10</code>).</p>
 </blockquote>
 <p>Complete field list:</p>
 <table>
@@ -2434,6 +2504,150 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <td><code>ObjectName</code></td>
 <td>string</td>
 <td>Always <code>"address"</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="additional-endpoints">Additional Endpoints</h2>
+<h3 id="soap-endpoints">SOAP Endpoints</h3>
+<p>In addition to the REST endpoints documented above, the Entity API also exposes SOAP web services:</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Endpoint Pattern</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SOAP v1</td>
+<td><code>/api/entity/{Entity}Service</code></td>
+<td><code>/api/entity/CustomerService</code></td>
+</tr>
+<tr>
+<td>SOAP v2</td>
+<td><code>/api/entity/v2/{Entity}Service</code></td>
+<td><code>/api/entity/v2/CustomerService</code></td>
+</tr>
+</tbody>
+</table>
+<p>Available for: Customer, Vendor, Contact, Address. Use these if your integration platform prefers SOAP over REST.</p>
+<h3 id="mobile-endpoints">Mobile Endpoints</h3>
+<p>The P21 middleware also exposes mobile-specific entity endpoints with <strong>additional entities</strong> not available via the standard REST API:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Entity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mobile/entity/customers</code></td>
+<td>Customers</td>
+</tr>
+<tr>
+<td><code>mobile/entity/vendors</code></td>
+<td>Vendors</td>
+</tr>
+<tr>
+<td><code>mobile/entity/contacts</code></td>
+<td>Contacts</td>
+</tr>
+<tr>
+<td><code>mobile/entity/suppliers</code></td>
+<td>Suppliers (not in REST API)</td>
+</tr>
+<tr>
+<td><code>mobile/entity/users</code></td>
+<td>Users (not in REST API)</td>
+</tr>
+<tr>
+<td><code>mobile/entity/companies</code></td>
+<td>Companies (not in REST API)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The mobile endpoints are designed for the P21 mobile application. Their request/response format may differ from the REST API. Use with caution for custom integrations.</p>
+</blockquote>
+<h3 id="endpoint-discovery">Endpoint Discovery</h3>
+<p>You can browse all available Entity API endpoints from the P21 middleware home page:</p>
+<div class="highlight"><pre><span></span><code>https://{hostname}/docs/
+</code></pre></div>
+
+<p>This lists every registered endpoint including REST, SOAP, and mobile resources.</p>
+<hr />
+<h2 id="error-codes">Error Codes</h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200</td>
+<td>OK</td>
+<td>Request processed successfully</td>
+</tr>
+<tr>
+<td>202</td>
+<td>Accepted</td>
+<td>Async request acknowledged (for async endpoints)</td>
+</tr>
+<tr>
+<td>301</td>
+<td>Moved Permanently</td>
+<td>Resource moved — check <code>Location</code> header</td>
+</tr>
+<tr>
+<td>307</td>
+<td>Temporary Redirect</td>
+<td>List endpoint without trailing slash — follow redirect</td>
+</tr>
+<tr>
+<td>400</td>
+<td>Bad Request</td>
+<td>Invalid parameters or data — check server logs</td>
+</tr>
+<tr>
+<td>401</td>
+<td>Unauthorized</td>
+<td>Invalid token, expired token, or user marked as deleted in P21</td>
+</tr>
+<tr>
+<td>404</td>
+<td>Not Found</td>
+<td>Resource doesn't exist, wrong key format, or wrong URL pattern</td>
+</tr>
+<tr>
+<td>5xx</td>
+<td>Server Error</td>
+<td>Server-side error — check <code>p21soa.log</code> and <code>p21api.log</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="log-file-locations">Log File Locations</h3>
+<p>When troubleshooting 400/500 errors, check the server-side log files:</p>
+<table>
+<thead>
+<tr>
+<th>Log</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>p21soa.log</code></td>
+<td>P21 SOA Architecture (routing, auth, middleware)</td>
+</tr>
+<tr>
+<td><code>p21api.log</code></td>
+<td>P21 Core Business Logic (validation, data operations)</td>
 </tr>
 </tbody>
 </table>
