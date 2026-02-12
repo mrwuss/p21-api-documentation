@@ -3,47 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P21 API Authentication</title>
+    <title>P21 API Authentication - P21 API Documentation</title>
     <style>
-        @media print {
-            body {
-                font-size: 10pt;
-                padding: 0;
-                margin: 0;
-            }
-            h1 {
-                page-break-after: avoid;
-                margin-top: 0;
-            }
-            h2 {
-                page-break-after: avoid;
-                margin-top: 20pt;
-            }
-            h3 {
-                page-break-after: avoid;
-                margin-top: 15pt;
-            }
-            pre, table, blockquote {
-                page-break-inside: avoid;
-            }
-            p {
-                orphans: 3;
-                widows: 3;
-            }
-            .no-print { display: none; }
-            hr {
-                margin: 15pt 0;
-            }
-        }
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px;
+            margin: 0;
+            padding: 0;
             color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
             background: #fff;
+            min-height: 100vh;
         }
 
         h1 {
@@ -51,6 +139,7 @@
             border-bottom: 3px solid #1a5276;
             padding-bottom: 15px;
             margin-bottom: 30px;
+            margin-top: 0;
         }
 
         h2 {
@@ -63,6 +152,11 @@
         h3 {
             color: #2e86c1;
             margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
         }
 
         code {
@@ -131,6 +225,46 @@
             color: #2874a6;
         }
 
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
         /* Print button */
         .print-btn {
             position: fixed;
@@ -139,11 +273,12 @@
             background: #2874a6;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
         }
 
         .print-btn:hover {
@@ -152,11 +287,85 @@
     </style>
 </head>
 <body>
-    <button class="print-btn no-print" onclick="window.print()">
-        Print / Save as PDF
-    </button>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <strong>P21 API Docs</strong>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li class="active"><a href="00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="02-OData-API.html">OData API</a></li>
+        <li><a href="03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="05-Entity-API.html">Entity API</a></li>
+        <li><a href="06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#token-endpoints">Token Endpoints</a><ul>
+<li><a href="#v2-endpoint-recommended">V2 Endpoint (Recommended)</a></li>
+<li><a href="#v1-endpoint-deprecated">V1 Endpoint (Deprecated)</a></li>
+</ul>
+</li>
+<li><a href="#method-1-user-credentials">Method 1: User Credentials</a><ul>
+<li><a href="#v2-request-recommended">V2 Request (Recommended)</a></li>
+<li><a href="#v1-request-legacy">V1 Request (Legacy)</a></li>
+<li><a href="#python-example">Python Example</a></li>
+</ul>
+</li>
+<li><a href="#method-2-consumer-key">Method 2: Consumer Key</a><ul>
+<li><a href="#creating-a-consumer-key">Creating a Consumer Key</a></li>
+<li><a href="#request">Request</a></li>
+<li><a href="#api-specific-behavior">API-Specific Behavior</a></li>
+</ul>
+</li>
+<li><a href="#api-scopes">API Scopes</a><ul>
+<li><a href="#url-scopes">URL Scopes</a></li>
+<li><a href="#odata-table-scopes">OData Table Scopes</a></li>
+</ul>
+</li>
+<li><a href="#p21-permissions-user-credential-auth">P21 Permissions (User Credential Auth)</a><ul>
+<li><a href="#step-1-application-security">Step 1: Application Security</a></li>
+<li><a href="#step-2-role-level-dataservice-permissions">Step 2: Role-Level Dataservice Permissions</a></li>
+<li><a href="#permission-requirements-by-auth-method">Permission Requirements by Auth Method</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li><a href="#using-the-token">Using the Token</a><ul>
+<li><a href="#python-example_1">Python Example</a></li>
+</ul>
+</li>
+<li><a href="#token-expiration">Token Expiration</a><ul>
+<li><a href="#handling-expiration">Handling Expiration</a></li>
+</ul>
+</li>
+<li><a href="#ui-server-url">UI Server URL</a><ul>
+<li><a href="#python-example_2">Python Example</a></li>
+</ul>
+</li>
+<li><a href="#common-errors">Common Errors</a></li>
+<li><a href="#best-practices">Best Practices</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
 
-    <h1 id="p21-api-authentication">P21 API Authentication</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="p21-api-authentication">P21 API Authentication</h1>
 <blockquote>
 <p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
 </blockquote>
@@ -575,16 +784,47 @@
 <li><a href="06-Error-Handling.html">Error Handling</a></li>
 <li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/common/auth.py">scripts/common/auth.py</a> - Authentication module</li>
 </ul>
+    </main>
 
     <script>
-        // Add IDs to headers for TOC linking
-        document.querySelectorAll('h2, h3').forEach(function(header) {
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
             if (!header.id) {
                 header.id = header.textContent.toLowerCase()
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)/g, '');
             }
         });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
     </script>
 </body>
 </html>

@@ -3,47 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction API</title>
+    <title>Transaction API - P21 API Documentation</title>
     <style>
-        @media print {
-            body {
-                font-size: 10pt;
-                padding: 0;
-                margin: 0;
-            }
-            h1 {
-                page-break-after: avoid;
-                margin-top: 0;
-            }
-            h2 {
-                page-break-after: avoid;
-                margin-top: 20pt;
-            }
-            h3 {
-                page-break-after: avoid;
-                margin-top: 15pt;
-            }
-            pre, table, blockquote {
-                page-break-inside: avoid;
-            }
-            p {
-                orphans: 3;
-                widows: 3;
-            }
-            .no-print { display: none; }
-            hr {
-                margin: 15pt 0;
-            }
-        }
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px;
+            margin: 0;
+            padding: 0;
             color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
             background: #fff;
+            min-height: 100vh;
         }
 
         h1 {
@@ -51,6 +139,7 @@
             border-bottom: 3px solid #1a5276;
             padding-bottom: 15px;
             margin-bottom: 30px;
+            margin-top: 0;
         }
 
         h2 {
@@ -63,6 +152,11 @@
         h3 {
             color: #2e86c1;
             margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
         }
 
         code {
@@ -131,6 +225,46 @@
             color: #2874a6;
         }
 
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
         /* Print button */
         .print-btn {
             position: fixed;
@@ -139,11 +273,12 @@
             background: #2874a6;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
         }
 
         .print-btn:hover {
@@ -152,11 +287,93 @@
     </style>
 </head>
 <body>
-    <button class="print-btn no-print" onclick="window.print()">
-        Print / Save as PDF
-    </button>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <strong>P21 API Docs</strong>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="02-OData-API.html">OData API</a></li>
+        <li class="active"><a href="03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="05-Entity-API.html">Entity API</a></li>
+        <li><a href="06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a><ul>
+<li><a href="#key-characteristics">Key Characteristics</a></li>
+<li><a href="#when-to-use">When to Use</a></li>
+</ul>
+</li>
+<li><a href="#endpoints">Endpoints</a></li>
+<li><a href="#authentication">Authentication</a></li>
+<li><a href="#request-structure">Request Structure</a><ul>
+<li><a href="#transactionset">TransactionSet</a></li>
+<li><a href="#transactionset-fields">TransactionSet Fields</a></li>
+<li><a href="#transaction-fields">Transaction Fields</a></li>
+<li><a href="#dataelement-fields">DataElement Fields</a></li>
+<li><a href="#row-edit-fields">Row / Edit Fields</a></li>
+</ul>
+</li>
+<li><a href="#common-services">Common Services</a></li>
+<li><a href="#response-format">Response Format</a><ul>
+<li><a href="#success-response">Success Response</a></li>
+<li><a href="#error-response">Error Response</a></li>
+</ul>
+</li>
+<li><a href="#field-order-matters">Field Order Matters</a><ul>
+<li><a href="#example-salespricepage">Example: SalesPricePage</a></li>
+</ul>
+</li>
+<li><a href="#usecodevalues">UseCodeValues</a></li>
+<li><a href="#async-operations">Async Operations</a><ul>
+<li><a href="#submit-async-request">Submit Async Request</a></li>
+<li><a href="#check-status">Check Status</a></li>
+<li><a href="#with-callback">With Callback</a></li>
+</ul>
+</li>
+<li><a href="#commands-endpoint">Commands Endpoint</a><ul>
+<li><a href="#services-requiring-commands-endpoint">Services Requiring Commands Endpoint</a></li>
+</ul>
+</li>
+<li><a href="#special-scenarios">Special Scenarios</a><ul>
+<li><a href="#field-and-dataelement-ordering">Field and DataElement Ordering</a></li>
+</ul>
+</li>
+<li><a href="#examples">Examples</a><ul>
+<li><a href="#get-service-definition">Get Service Definition</a></li>
+<li><a href="#create-order">Create Order</a></li>
+</ul>
+</li>
+<li><a href="#python-examples">Python Examples</a></li>
+<li><a href="#known-issues">Known Issues</a><ul>
+<li><a href="#session-pool-contamination">Session Pool Contamination</a></li>
+</ul>
+</li>
+<li><a href="#best-practices">Best Practices</a></li>
+<li><a href="#common-errors">Common Errors</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
 
-    <h1 id="transaction-api">Transaction API</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="transaction-api">Transaction API</h1>
 <blockquote>
 <p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
 </blockquote>
@@ -197,17 +414,17 @@
 <tr>
 <td><code>/api/v2/services</code></td>
 <td>GET</td>
-<td>List available services</td>
+<td>List available services (optional <code>?type=</code> filter)</td>
 </tr>
 <tr>
 <td><code>/api/v2/definition/{name}</code></td>
 <td>GET</td>
-<td>Get service schema</td>
+<td>Get service schema and template</td>
 </tr>
 <tr>
 <td><code>/api/v2/defaults/{name}</code></td>
 <td>GET</td>
-<td>Get default values</td>
+<td>Get default values for a service</td>
 </tr>
 <tr>
 <td><code>/api/v2/transaction/get</code></td>
@@ -217,25 +434,33 @@
 <tr>
 <td><code>/api/v2/transaction</code></td>
 <td>POST</td>
-<td>Create or update records</td>
+<td>Create or update records (sync)</td>
 </tr>
 <tr>
 <td><code>/api/v2/transaction/async</code></td>
 <td>POST</td>
-<td>Async create/update</td>
+<td>Async create/update (returns RequestId)</td>
 </tr>
 <tr>
 <td><code>/api/v2/transaction/async/callback</code></td>
 <td>POST</td>
-<td>Async with callback</td>
+<td>Async with callback URL</td>
 </tr>
 <tr>
 <td><code>/api/v2/transaction/async?id={id}</code></td>
 <td>GET</td>
-<td>Check async status</td>
+<td>Check async request status</td>
+</tr>
+<tr>
+<td><code>/api/v2/commands</code></td>
+<td>POST</td>
+<td>Process special commands (see <a href="#commands-endpoint">Commands Endpoint</a>)</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Service Explorer:</strong> The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.</p>
+</blockquote>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
@@ -277,7 +502,82 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<h3 id="key-fields">Key Fields</h3>
+<h3 id="transactionset-fields">TransactionSet Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>Yes</td>
+<td>Service name (e.g., "Order", "SalesPricePage")</td>
+</tr>
+<tr>
+<td><code>UseCodeValues</code></td>
+<td>No</td>
+<td>If <code>true</code>, use code values; if <code>false</code> (default), use display values</td>
+</tr>
+<tr>
+<td><code>Transactions</code></td>
+<td>Yes</td>
+<td>Array of Transaction objects to process</td>
+</tr>
+<tr>
+<td><code>IgnoreDisabled</code></td>
+<td>No</td>
+<td>If <code>true</code>, skip disabled fields instead of erroring</td>
+</tr>
+<tr>
+<td><code>Query</code></td>
+<td>No</td>
+<td>Optional query filter for the service</td>
+</tr>
+<tr>
+<td><code>FieldMap</code></td>
+<td>No</td>
+<td>Optional field name mappings</td>
+</tr>
+<tr>
+<td><code>TransactionSplitMethod</code></td>
+<td>No</td>
+<td><code>"Standard"</code> (default) or <code>"NoSplit"</code></td>
+</tr>
+<tr>
+<td><code>Parameters</code></td>
+<td>No</td>
+<td>Additional service-specific parameters</td>
+</tr>
+</tbody>
+</table>
+<h3 id="transaction-fields">Transaction Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Status</code></td>
+<td><code>"New"</code> for create, <code>"Passed"</code> on success, <code>"Failed"</code> on error</td>
+</tr>
+<tr>
+<td><code>DataElements</code></td>
+<td>Array of tabs/sections in the window</td>
+</tr>
+<tr>
+<td><code>Documents</code></td>
+<td>Optional array of file attachments</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dataelement-fields">DataElement Fields</h3>
 <table>
 <thead>
 <tr>
@@ -288,31 +588,65 @@
 <tbody>
 <tr>
 <td><code>Name</code></td>
-<td>Service name (e.g., "Order", "SalesPricePage")</td>
-</tr>
-<tr>
-<td><code>UseCodeValues</code></td>
-<td>If <code>true</code>, use code values; if <code>false</code>, use display values</td>
-</tr>
-<tr>
-<td><code>Status</code></td>
-<td>Must be "New" for create operations</td>
-</tr>
-<tr>
-<td><code>DataElements</code></td>
-<td>Array of tabs/sections in the window</td>
+<td>Tab and table name (e.g., <code>"TABPAGE_1.order"</code>)</td>
 </tr>
 <tr>
 <td><code>Type</code></td>
-<td>"Form" for single record, "List" for multiple</td>
+<td><code>"Form"</code> for single record, <code>"List"</code> for grid/multiple rows</td>
 </tr>
 <tr>
 <td><code>Keys</code></td>
-<td>Key fields for List-type elements</td>
+<td>Key field names for List-type elements (used to identify rows)</td>
 </tr>
 <tr>
+<td><code>Rows</code></td>
+<td>Array of Row objects</td>
+</tr>
+</tbody>
+</table>
+<h3 id="row-edit-fields">Row / Edit Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
 <td><code>Edits</code></td>
-<td>Array of field name/value pairs</td>
+<td>Array of <code>{Name, Value}</code> pairs for field values</td>
+</tr>
+<tr>
+<td><code>RelativeDateEdits</code></td>
+<td>Array of date edits using relative offsets (e.g., "today + 30 days") instead of absolute dates</td>
+</tr>
+</tbody>
+</table>
+<p>Each <strong>Edit</strong> object supports:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>Yes</td>
+<td>Field name</td>
+</tr>
+<tr>
+<td><code>Value</code></td>
+<td>Yes</td>
+<td>Field value</td>
+</tr>
+<tr>
+<td><code>IgnoreIfEmpty</code></td>
+<td>No</td>
+<td>If <code>true</code>, skip this edit when Value is empty instead of sending a blank</td>
 </tr>
 </tbody>
 </table>
@@ -451,7 +785,10 @@
 <p><strong>Recommendation</strong>: Use <code>false</code> (display values) for better readability.</p>
 <hr />
 <h2 id="async-operations">Async Operations</h2>
-<p>For long-running operations, use the async endpoint:</p>
+<p>For long-running operations, use the async endpoint. Async requests run in a dedicated session (avoiding session pool contamination) but have a limited queue.</p>
+<blockquote>
+<p><strong>Queue capacity:</strong> The server defaults to only <strong>2 concurrent async requests</strong> (<code>AsyncRequests.QueueCapacity</code> in Web.config). Additional requests are queued and may time out under heavy load. Plan batch operations accordingly.</p>
+</blockquote>
 <h3 id="submit-async-request">Submit Async Request</h3>
 <div class="highlight"><pre><span></span><code>POST /api/v2/transaction/async
 </code></pre></div>
@@ -477,6 +814,9 @@
 </code></pre></div>
 
 <p>Status values: <code>Active</code>, <code>Complete</code>, <code>Failed</code></p>
+<blockquote>
+<p><strong>Note:</strong> The async POST returns HTTP <strong>202 Accepted</strong> (not 200) to indicate the request was queued successfully.</p>
+</blockquote>
 <h3 id="with-callback">With Callback</h3>
 <p>Use the callback endpoint to receive notification when complete:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -495,6 +835,93 @@
 <span class="p">}</span>
 </code></pre></div>
 
+<hr />
+<h2 id="commands-endpoint">Commands Endpoint</h2>
+<p>Some P21 services <strong>cannot</strong> use the standard <code>/api/v2/transaction</code> endpoint. These must use the commands endpoint instead:</p>
+<div class="highlight"><pre><span></span><code>POST /api/v2/commands
+</code></pre></div>
+
+<h3 id="services-requiring-commands-endpoint">Services Requiring Commands Endpoint</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TransferPalletShipping</code></td>
+<td>Pallet transfer shipping</td>
+</tr>
+<tr>
+<td><code>SupplierNotepad</code></td>
+<td>Supplier notes</td>
+</tr>
+<tr>
+<td><code>VendorNotepad</code></td>
+<td>Vendor notes</td>
+</tr>
+<tr>
+<td><code>ItemNotepad</code></td>
+<td>Item notes</td>
+</tr>
+<tr>
+<td><code>CustomerPartNumberNotes</code></td>
+<td>Customer part number notes</td>
+</tr>
+<tr>
+<td><code>RestateForeignCurrencyAccount</code></td>
+<td>Foreign currency restatement</td>
+</tr>
+<tr>
+<td><code>ServiceNoteTemplate</code></td>
+<td>Service note templates</td>
+</tr>
+<tr>
+<td><code>ReverseARPayment</code></td>
+<td>AR payment reversal</td>
+</tr>
+<tr>
+<td><code>VATReturnWorksheet</code></td>
+<td>VAT return processing</td>
+</tr>
+<tr>
+<td><code>SlabAdjustment</code></td>
+<td>Slab adjustments</td>
+</tr>
+<tr>
+<td><code>ContainerBuilding</code></td>
+<td>Container building</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Important:</strong> If you send these services to the standard <code>/transaction</code> endpoint, they will fail. Always check the service documentation or test with the Service Explorer to determine which endpoint to use.</p>
+</blockquote>
+<hr />
+<h2 id="special-scenarios">Special Scenarios</h2>
+<h3 id="field-and-dataelement-ordering">Field and DataElement Ordering</h3>
+<p>Some services require specific ordering of DataElements or Edits within a request. The API processes them sequentially, and some fields trigger validation or auto-population of other fields.</p>
+<p><strong>Credit Card Payment Orders:</strong>
+DataElements must appear in this order:
+1. Order header
+2. Items
+3. Remittances
+4. CC Transaction Response (<code>TP_CCTRANSACTIONRESPONSE.cctransactionresponse</code>)</p>
+<p><strong>Multiple Lot Items:</strong>
+When creating items with lot tracking, interleave item and lot DataElements:
+1. Item 1 → Lot 1
+2. Item 2 → Lot 2
+3. <em>(not: Item 1 → Item 2 → Lot 1 → Lot 2)</em></p>
+<p><strong>Task Creation with Dates:</strong>
+The <code>target_date</code> edit must appear before <code>start_date</code> in the Edits array (due to validation ordering).</p>
+<p><strong>SalesPricePage Fields:</strong>
+1. <code>price_page_type_cd</code> — triggers type-specific validation
+2. <code>company_id</code> — required before product group
+3. <code>product_group_id</code> or <code>discount_group_id</code>
+4. <code>supplier_id</code>
+5. Other fields...</p>
 <hr />
 <h2 id="examples">Examples</h2>
 <h3 id="get-service-definition">Get Service Definition</h3>
@@ -637,14 +1064,19 @@
 </thead>
 <tbody>
 <tr>
+<td>400 Bad Request</td>
+<td>Malformed request</td>
+<td>Check JSON structure</td>
+</tr>
+<tr>
 <td>401 Unauthorized</td>
 <td>Invalid/expired token</td>
 <td>Refresh token</td>
 </tr>
 <tr>
-<td>400 Bad Request</td>
-<td>Malformed request</td>
-<td>Check JSON structure</td>
+<td>202 Accepted</td>
+<td>Async request queued (not an error)</td>
+<td>Poll with GET <code>/async?id=</code> for status</td>
 </tr>
 <tr>
 <td>"Required field missing"</td>
@@ -654,12 +1086,17 @@
 <tr>
 <td>"Unexpected response window"</td>
 <td>Session pool dirty</td>
-<td>Retry or use async</td>
+<td>Retry or use async endpoint</td>
 </tr>
 <tr>
 <td>"Invalid value"</td>
 <td>Wrong dropdown value</td>
 <td>Use <code>UseCodeValues: false</code> with display values</td>
+</tr>
+<tr>
+<td>Service fails on <code>/transaction</code></td>
+<td>Service requires commands endpoint</td>
+<td>Use <code>/api/v2/commands</code> instead (see <a href="#commands-endpoint">Commands Endpoint</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -671,16 +1108,47 @@
 <li><a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></li>
 <li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/transaction/">scripts/transaction/</a> - Working examples</li>
 </ul>
+    </main>
 
     <script>
-        // Add IDs to headers for TOC linking
-        document.querySelectorAll('h2, h3').forEach(function(header) {
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
             if (!header.id) {
                 header.id = header.textContent.toLowerCase()
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)/g, '');
             }
         });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
     </script>
 </body>
 </html>
