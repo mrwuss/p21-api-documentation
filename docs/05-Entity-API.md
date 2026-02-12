@@ -92,7 +92,7 @@ The Entity API `VendorId` is **not the same** as the OData `supplier_id`. These 
 
 ## Endpoints Per Entity
 
-Each entity supports the same set of endpoints:
+### Customers, Vendors, Contacts
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -103,6 +103,20 @@ Each entity supports the same set of endpoints:
 | `GET` | `/api/entity/{resource}/?$query=...` | Query with filter |
 | `POST` | `/api/entity/{resource}` | Create (no key in body) |
 | `PUT` | `/api/entity/{resource}/{key}` | Update (key in URL) |
+
+### Addresses (Limited)
+
+Addresses have a **reduced** set of operations — no `/new` template and no update:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/entity/addresses/ping` | Health check |
+| `GET` | `/api/entity/addresses/{addressId}` | Get single address |
+| `GET` | `/api/entity/addresses/` | List all addresses |
+| `GET` | `/api/entity/addresses/?$query=...` | Query with filter |
+| `POST` | `/api/entity/addresses` | Create new address |
+
+> **No `/new` or PUT:** The address resource does not define a template endpoint or an update method in the SDK interface. The `/new` endpoint returns 500 because it doesn't exist (not a bug). To update an address, use the Interactive API or direct SQL.
 
 ### Trailing Slash on List Endpoints
 
@@ -127,7 +141,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
 
-See [Authentication](00-Authentication.md) for token generation.
+See [Authentication](00-Authentication.md) for token generation. Per the SDK, tokens expire after **24 hours**.
 
 ### Consumer Key Behavior
 
@@ -142,6 +156,15 @@ When using Consumer Key authentication with the Entity API:
 ---
 
 ## CRUD Operations
+
+### Key Rule: Presence = Update, Absence = Insert
+
+The Entity API determines whether to insert or update based on whether key fields are present:
+
+- **Key absent** (e.g., `CustomerId` is null or omitted) → **Insert** (create new record, system generates ID)
+- **Key present** (e.g., `CustomerId: 10`) → **Update** (modify existing record)
+
+This applies to all entities. When creating, omit or null-out the ID field. When updating, include the key both in the URL and body.
 
 ### Read (GET)
 
@@ -225,6 +248,16 @@ Content-Type: application/json
 ```
 
 > **Note:** Dedicated DELETE HTTP method is not documented in the SDK for any entity.
+
+### Address Limitations
+
+The Address entity has a reduced API surface compared to other entities:
+
+- **No `/new` template** — `GET /api/entity/addresses/new` returns 500 (endpoint not implemented)
+- **No PUT (update)** — The SDK interface only defines `CreateAddress`, not `UpdateAddress`
+- **Create only** — You can create and read addresses, but not update them via this API
+
+To update an existing address, use the Interactive API (Address Maintenance window) or direct SQL.
 
 ---
 
@@ -805,7 +838,7 @@ Complete field list from `GET /api/entity/contacts/new`:
 
 ### Address Fields (27 fields)
 
-> **Known Issue:** `GET /api/entity/addresses/new` returns a **500 error**. The field list below is from an existing address record (`GET /api/entity/addresses/10`).
+> **Note:** The Address resource does not have a `/new` template endpoint (this is by design, not a bug). The field list below is from an existing address record (`GET /api/entity/addresses/10`).
 
 Complete field list:
 
@@ -838,6 +871,70 @@ Complete field list:
 | 25 | `PhysCounty` | string | Physical county |
 | 26 | `UserDefinedFields` | object | UDF container |
 | 27 | `ObjectName` | string | Always `"address"` |
+
+---
+
+## Additional Endpoints
+
+### SOAP Endpoints
+
+In addition to the REST endpoints documented above, the Entity API also exposes SOAP web services:
+
+| Version | Endpoint Pattern | Example |
+|---------|-----------------|---------|
+| SOAP v1 | `/api/entity/{Entity}Service` | `/api/entity/CustomerService` |
+| SOAP v2 | `/api/entity/v2/{Entity}Service` | `/api/entity/v2/CustomerService` |
+
+Available for: Customer, Vendor, Contact, Address. Use these if your integration platform prefers SOAP over REST.
+
+### Mobile Endpoints
+
+The P21 middleware also exposes mobile-specific entity endpoints with **additional entities** not available via the standard REST API:
+
+| Endpoint | Entity |
+|----------|--------|
+| `mobile/entity/customers` | Customers |
+| `mobile/entity/vendors` | Vendors |
+| `mobile/entity/contacts` | Contacts |
+| `mobile/entity/suppliers` | Suppliers (not in REST API) |
+| `mobile/entity/users` | Users (not in REST API) |
+| `mobile/entity/companies` | Companies (not in REST API) |
+
+> **Note:** The mobile endpoints are designed for the P21 mobile application. Their request/response format may differ from the REST API. Use with caution for custom integrations.
+
+### Endpoint Discovery
+
+You can browse all available Entity API endpoints from the P21 middleware home page:
+
+```
+https://{hostname}/docs/
+```
+
+This lists every registered endpoint including REST, SOAP, and mobile resources.
+
+---
+
+## Error Codes
+
+| Code | Name | Description |
+|------|------|-------------|
+| 200 | OK | Request processed successfully |
+| 202 | Accepted | Async request acknowledged (for async endpoints) |
+| 301 | Moved Permanently | Resource moved — check `Location` header |
+| 307 | Temporary Redirect | List endpoint without trailing slash — follow redirect |
+| 400 | Bad Request | Invalid parameters or data — check server logs |
+| 401 | Unauthorized | Invalid token, expired token, or user marked as deleted in P21 |
+| 404 | Not Found | Resource doesn't exist, wrong key format, or wrong URL pattern |
+| 5xx | Server Error | Server-side error — check `p21soa.log` and `p21api.log` |
+
+### Log File Locations
+
+When troubleshooting 400/500 errors, check the server-side log files:
+
+| Log | Purpose |
+|-----|---------|
+| `p21soa.log` | P21 SOA Architecture (routing, auth, middleware) |
+| `p21api.log` | P21 Core Business Logic (validation, data operations) |
 
 ---
 
