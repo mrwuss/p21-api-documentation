@@ -614,8 +614,19 @@ $filter=expiration_date ge 2025-12-28
 </code></pre></div>
 
 <h3 id="pagination-helper">Pagination Helper</h3>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_all_records</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">page_size</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch all records with pagination.&quot;&quot;&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_all_records</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">page_size</span><span class="o">=</span><span class="mi">5000</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch all records with automatic pagination.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        base_url: OData service base URL.</span>
+<span class="sd">        table: Table name to query.</span>
+<span class="sd">        filter_expr: Optional OData $filter expression.</span>
+<span class="sd">        page_size: Records per request. Larger values mean fewer HTTP</span>
+<span class="sd">            round-trips, which is usually the biggest performance factor.</span>
+<span class="sd">            Use 5,000-25,000 for bulk/preload scenarios. Use 50-200</span>
+<span class="sd">            when paginating for a UI. There is no documented server-side</span>
+<span class="sd">            maximum -- 25,000 has been verified in production.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">skip</span> <span class="o">=</span> <span class="mi">0</span>
 
@@ -648,7 +659,7 @@ $filter=expiration_date ge 2025-12-28
 <li><strong>Always use $select</strong> - Only request fields you need</li>
 <li><strong>Add $filter early</strong> - Filter server-side, not client-side</li>
 <li><strong>Use $top for previews</strong> - Don't fetch all data unnecessarily</li>
-<li><strong>Paginate large results</strong> - Use $skip/$top for big datasets</li>
+<li><strong>Right-size your page size</strong> - Use large <code>$top</code> (5,000-25,000) for bulk/preload fetches; use small <code>$top</code> (50-200) for UI pagination. Round-trip overhead dwarfs payload size — see <a href="#page-size-guidance">Page Size Guidance</a></li>
 <li><strong>Escape strings properly</strong> - Double single quotes in values</li>
 <li><strong>Handle null values</strong> - Check for null in filters and responses</li>
 </ol>
@@ -701,13 +712,70 @@ $filter=expiration_date ge 2025-12-28
 </code></pre></div>
 
 <hr />
+<h2 id="page-size-guidance">Page Size Guidance</h2>
+<p>Each HTTP request carries overhead: TCP connection, authentication, query planning, and serialization. For large result sets, <strong>the number of round-trips is usually the biggest performance factor</strong>, not the response payload size.</p>
+<h3 id="choosing-a-page-size">Choosing a Page Size</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Recommended <code>$top</code></th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Preloading / caching / bulk export</td>
+<td>5,000 - 25,000</td>
+<td>Minimize HTTP round-trips; 1 request beats 22</td>
+</tr>
+<tr>
+<td>UI pagination (browsable tables)</td>
+<td>50 - 200</td>
+<td>Match what the user actually sees</td>
+</tr>
+<tr>
+<td>Unbounded queries (unknown size)</td>
+<td>1,000 - 5,000</td>
+<td>Balance round-trips vs memory</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>No documented server-side cap.</strong> The P21 SDK does not specify a maximum page size. The Web.config allows up to 100 MB responses. A <code>$top=25000</code> request has been verified working in production. Test with your dataset, but don't assume 100 is the right default.</p>
+</blockquote>
+<h3 id="real-world-impact">Real-World Impact</h3>
+<p>Fetching ~2,500 records with <code>$select</code> on a few columns:</p>
+<table>
+<thead>
+<tr>
+<th>Page Size</th>
+<th>Requests</th>
+<th>Wall Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100</td>
+<td>25</td>
+<td>~16s</td>
+</tr>
+<tr>
+<td>5,000</td>
+<td>1</td>
+<td>~1.7s</td>
+</tr>
+</tbody>
+</table>
+<p>The 10x improvement comes entirely from eliminating round-trip overhead.</p>
+<hr />
 <h2 id="performance-tips">Performance Tips</h2>
 <ul>
-<li>OData queries are fast (~100ms for simple queries)</li>
-<li>Complex filters may be slower</li>
-<li>Use views for pre-joined data</li>
-<li>Limit fields with $select</li>
-<li>Paginate large result sets</li>
+<li><strong>Minimize HTTP round-trips</strong> - This is the #1 factor. Use a large <code>$top</code> when you need all the data instead of looping with small pages</li>
+<li><strong>Always use $select</strong> - Only request fields you need; smaller payloads transfer faster</li>
+<li><strong>Filter server-side</strong> - Use <code>$filter</code> instead of fetching everything and filtering in code</li>
+<li>Use views for pre-joined data when available</li>
+<li>For UI-driven pagination, match page size to display needs (50-200 rows)</li>
 </ul>
 <h3 id="measured-performance">Measured Performance</h3>
 <table>
@@ -733,6 +801,11 @@ $filter=expiration_date ge 2025-12-28
 <td>Full table scan</td>
 <td>1000+</td>
 <td>~500ms</td>
+</tr>
+<tr>
+<td>Bulk fetch ($top=5000)</td>
+<td>2,500</td>
+<td>~1.7s</td>
 </tr>
 </tbody>
 </table>
