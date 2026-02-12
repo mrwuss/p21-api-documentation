@@ -228,12 +228,12 @@
 <td>Open a window</td>
 </tr>
 <tr>
-<td><code>/api/ui/interactive/v2/window</code></td>
+<td><code>/api/ui/interactive/v2/window?id={windowId}</code></td>
 <td>GET</td>
 <td>Get window state</td>
 </tr>
 <tr>
-<td><code>/api/ui/interactive/v2/window</code></td>
+<td><code>/api/ui/interactive/v2/window?id={windowId}</code></td>
 <td>DELETE</td>
 <td>Close window</td>
 </tr>
@@ -258,12 +258,12 @@
 <td>Save data</td>
 </tr>
 <tr>
-<td><code>/api/ui/interactive/v2/data</code></td>
+<td><code>/api/ui/interactive/v2/data?id={windowId}</code></td>
 <td>GET</td>
 <td>Get active data</td>
 </tr>
 <tr>
-<td><code>/api/ui/interactive/v2/data</code></td>
+<td><code>/api/ui/interactive/v2/data?id={windowId}</code></td>
 <td>DELETE</td>
 <td>Clear data</td>
 </tr>
@@ -286,6 +286,16 @@
 <td><code>/api/ui/interactive/v2/row</code></td>
 <td>PUT</td>
 <td>Change current row</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/rows/limits</code></td>
+<td>PUT</td>
+<td>Set active row limits</td>
+</tr>
+<tr>
+<td><code>/api/ui/interactive/v2/rows/selected</code></td>
+<td>POST</td>
+<td>Select multiple rows</td>
 </tr>
 <tr>
 <td><code>/api/ui/interactive/v2/tools</code></td>
@@ -383,7 +393,102 @@
 <span class="p">}</span>
 </code></pre></div>
 
+<h4 id="session-parameters-userparameters">Session Parameters (UserParameters)</h4>
+<p>The session creation body accepts these optional parameters:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SessionType</code></td>
+<td>string</td>
+<td><code>"User"</code></td>
+<td><code>User</code> (real user login), <code>Auto</code> (automated process), or <code>AutoInteractive</code> (automated without noninteractive API profile). Affects license consumption and behavior</td>
+</tr>
+<tr>
+<td><code>SessionTimeout</code></td>
+<td>int</td>
+<td>Server default (60s)</td>
+<td>Inactivity timeout in seconds before the session is cleaned up</td>
+</tr>
+<tr>
+<td><code>ResponseWindowHandlingEnabled</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>When <code>false</code>, response windows (dialogs) are auto-answered with the default response (usually "Yes"). Set to <code>true</code> if you need to inspect and handle dialogs yourself</td>
+</tr>
+<tr>
+<td><code>ClientPlatformApp</code></td>
+<td>string</td>
+<td>null</td>
+<td>Identifier for your application (useful for server-side logging)</td>
+</tr>
+<tr>
+<td><code>WorkstationID</code></td>
+<td>string</td>
+<td>null</td>
+<td>User-defined value to identify the PC or device initiating the session</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example with multiple parameters:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/sessio</span><span class="kc">ns</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;SessionType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Auto&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;SessionTimeout&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">120</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ClientPlatformApp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PricePageSync&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;WorkstationID&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INTEGRATION-01&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Session pool limits:</strong> The server has a finite pool of API instances (default: 5). If all instances are busy, new session requests will wait up to 60 seconds before timing out. See <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a> for configuration details and common issues.</p>
+</blockquote>
 <h3 id="2-open-window">2. Open Window</h3>
+<p>There are four ways to identify which window to open:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Field</th>
+<th>Example</th>
+<th>When to Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Service name</td>
+<td><code>ServiceName</code></td>
+<td><code>"SalesPricePage"</code></td>
+<td>Most reliable for multi-transaction windows (recommended)</td>
+</tr>
+<tr>
+<td>Menu title</td>
+<td><code>Title</code></td>
+<td><code>"Sales Price Page Entry"</code></td>
+<td>Matches the menu label text in P21</td>
+</tr>
+<tr>
+<td>Window name</td>
+<td><code>Name</code></td>
+<td><code>"w_sales_price_page"</code></td>
+<td>Internal window name (if known)</td>
+</tr>
+<tr>
+<td>Menu ID</td>
+<td><code>MenuId</code></td>
+<td><code>12345</code></td>
+<td>Numeric menu ID from P21</td>
+</tr>
+</tbody>
+</table>
 <div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/wi</span><span class="kc">n</span><span class="err">dow</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;ServiceName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SalesPricePage&quot;</span>
@@ -423,6 +528,35 @@
 <blockquote>
 <p><strong>Note:</strong> v2 uses <code>List</code> with <code>TabName</code>, while v1 uses <code>ChangeRequests</code> with <code>DataWindowName</code>. The <code>DatawindowName</code> field in v2 uses lowercase 'w'.</p>
 </blockquote>
+<h4 id="valuetype">ValueType</h4>
+<p>Each change request supports an optional <code>ValueType</code> field:</p>
+<table>
+<thead>
+<tr>
+<th>ValueType</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"Display"</code></td>
+<td>The value as it appears on screen (default if omitted)</td>
+</tr>
+<tr>
+<td><code>"Data"</code></td>
+<td>The raw data value (e.g., internal key instead of display text)</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10050&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ValueType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Data&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Most of the time you can omit <code>ValueType</code> — the default <code>Display</code> works for typical field changes. Use <code>Data</code> when you need to set a field by its internal key value rather than its display text.</p>
 <p><strong>v1 Format (Legacy):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/cha</span><span class="kc">n</span><span class="err">ge</span>
 <span class="p">{</span>
@@ -454,7 +588,7 @@
 </code></pre></div>
 
 <h3 id="5-close-window">5. Close Window</h3>
-<div class="highlight"><pre><span></span><code><span class="err">DELETE</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/wi</span><span class="kc">n</span><span class="err">dow?wi</span><span class="kc">n</span><span class="err">dowId=w_sales_price_page</span>
+<div class="highlight"><pre><span></span><code><span class="err">DELETE</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/wi</span><span class="kc">n</span><span class="err">dow?id=w_sales_price_page</span>
 </code></pre></div>
 
 <h3 id="6-end-session">6. End Session</h3>
@@ -521,16 +655,67 @@
 
 <hr />
 <h2 id="running-tools-buttons">Running Tools (Buttons)</h2>
-<p>Get available tools:</p>
-<div class="highlight"><pre><span></span><code>GET /api/ui/interactive/v1/tools?windowId=w_sales_price_page
+<p>Tools include all buttons and right-click (RMB) options available at any point in a session. They exist at three levels:</p>
+<ol>
+<li><strong>Window level</strong> — Ribbon buttons, window-level buttons</li>
+<li><strong>Datawindow level</strong> — Grid/form buttons, RMB options on a datawindow</li>
+<li><strong>Field level</strong> — Field-specific RMB options</li>
+</ol>
+<h3 id="get-available-tools">Get Available Tools</h3>
+<p>Query tools at different levels by specifying optional parameters:</p>
+<div class="highlight"><pre><span></span><code>GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page
+GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form
+GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form&amp;fieldName=description&amp;row=0
 </code></pre></div>
 
-<p>Run a tool:</p>
-<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">1</span><span class="err">/</span><span class="kc">t</span><span class="err">ools</span>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>windowId</code></td>
+<td>Yes</td>
+<td>Window ID</td>
+</tr>
+<tr>
+<td><code>dwName</code></td>
+<td>No</td>
+<td>Datawindow name — returns datawindow-level tools</td>
+</tr>
+<tr>
+<td><code>fieldName</code></td>
+<td>No</td>
+<td>Field name — returns field-level tools</td>
+</tr>
+<tr>
+<td><code>row</code></td>
+<td>No</td>
+<td>Row number — for grid-specific tools</td>
+</tr>
+</tbody>
+</table>
+<h3 id="run-a-tool">Run a Tool</h3>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">t</span><span class="err">ools</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cb_save&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;ToolText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Save&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>For datawindow or field-level tools, include the optional fields:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tool_name&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ToolText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Tool Label&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;form&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;description&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Row&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
 <span class="p">}</span>
 </code></pre></div>
 
@@ -944,6 +1129,243 @@
 </code></pre></div>
 
 <hr />
+<h2 id="data-structures-reference">Data Structures Reference</h2>
+<h3 id="result-object">Result Object</h3>
+<p>Every action returns a <code>Result</code> with these properties:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Status</code></td>
+<td>string</td>
+<td><code>Success</code>, <code>Failure</code>, <code>Blocked</code>, or <code>None</code></td>
+</tr>
+<tr>
+<td><code>Messages</code></td>
+<td>array</td>
+<td>List of messages triggered by the action</td>
+</tr>
+<tr>
+<td><code>Events</code></td>
+<td>array</td>
+<td>List of events that occurred (fields enabled/disabled, windows opened, keys generated, etc.)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Status values:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Success</code></td>
+<td>Action completed</td>
+<td>Continue to next step</td>
+</tr>
+<tr>
+<td><code>Failure</code></td>
+<td>Action failed</td>
+<td>Check <code>Messages</code> for details</td>
+</tr>
+<tr>
+<td><code>Blocked</code></td>
+<td>Session blocked by dialog</td>
+<td>Check <code>Events</code> for <code>windowopened</code>, handle the response window</td>
+</tr>
+<tr>
+<td><code>None</code></td>
+<td>No action needed</td>
+<td>Status couldn't be determined</td>
+</tr>
+</tbody>
+</table>
+<h3 id="messages">Messages</h3>
+<p>Each message has a <code>Text</code> and a <code>Type</code>:</p>
+<table>
+<thead>
+<tr>
+<th>MessageType</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Information</code></td>
+<td>Informational (no action needed)</td>
+</tr>
+<tr>
+<td><code>Warning</code></td>
+<td>Warning (may need attention)</td>
+</tr>
+<tr>
+<td><code>Error</code></td>
+<td>Error (action failed)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="events">Events</h3>
+<p>Events describe every discrete action the application took. Key event names:</p>
+<table>
+<thead>
+<tr>
+<th>Event Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>windowopened</code></td>
+<td>A response window was opened — <code>Data</code> contains the window ID</td>
+</tr>
+<tr>
+<td><code>keygenerated</code></td>
+<td>A new key was generated (e.g., new record ID on save)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Tip:</strong> For less granular information, query the full window state with <code>GET /api/ui/interactive/v2/window?id={windowId}</code> after an action instead of parsing individual events.</p>
+</blockquote>
+<h3 id="window-definition">Window Definition</h3>
+<p>When you open or GET a window, the response includes structural information:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Id</code></td>
+<td>Window GUID</td>
+</tr>
+<tr>
+<td><code>Title</code></td>
+<td>Window title</td>
+</tr>
+<tr>
+<td><code>TabPageList</code></td>
+<td>Array of tabs — each with <code>Name</code>, <code>Text</code>, and <code>Enabled</code></td>
+</tr>
+<tr>
+<td><code>Datawindows</code></td>
+<td>Map of datawindow definitions</td>
+</tr>
+</tbody>
+</table>
+<p>Each <strong>datawindow definition</strong> contains:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>Datawindow name (used in change/row requests)</td>
+</tr>
+<tr>
+<td><code>ParentPage</code></td>
+<td>Tab this datawindow belongs to</td>
+</tr>
+<tr>
+<td><code>Style</code></td>
+<td><code>List</code> (grid) or <code>Form</code></td>
+</tr>
+<tr>
+<td><code>Fields</code></td>
+<td>Map of field definitions</td>
+</tr>
+</tbody>
+</table>
+<p>Each <strong>field definition</strong> contains:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>Field name (used in change requests)</td>
+</tr>
+<tr>
+<td><code>Label</code></td>
+<td>Display label</td>
+</tr>
+<tr>
+<td><code>Enabled</code></td>
+<td>Whether the field is editable</td>
+</tr>
+<tr>
+<td><code>DataType</code></td>
+<td><code>Char</code>, <code>Long</code>, <code>Datetime</code>, <code>Decimal</code>, <code>Number</code>, or <code>Time</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="window-data">Window Data</h3>
+<p><code>GET /api/ui/interactive/v2/data?id={windowId}</code> returns data for each datawindow on the active surface:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>Datawindow name</td>
+</tr>
+<tr>
+<td><code>FullName</code></td>
+<td>Fully qualified name</td>
+</tr>
+<tr>
+<td><code>ActiveRow</code></td>
+<td>Currently selected row index</td>
+</tr>
+<tr>
+<td><code>TotalRows</code></td>
+<td>Number of rows</td>
+</tr>
+<tr>
+<td><code>Columns</code></td>
+<td>Array of column names</td>
+</tr>
+<tr>
+<td><code>Data</code></td>
+<td>Array of arrays — each inner array is a row of values</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="self-documenting-help-endpoints">Self-Documenting Help Endpoints</h2>
+<p>The API server exposes built-in help pages that list all available endpoints and their parameters:</p>
+<div class="highlight"><pre><span></span><code>https://{ui-server-host}/api/ui/interactive/sessions/help
+https://{ui-server-host}/ui/interactive/v1/help
+</code></pre></div>
+
+<blockquote>
+<p><strong>Tip:</strong> These are useful for discovering endpoints and verifying parameter names on your specific P21 version.</p>
+</blockquote>
+<hr />
 <h2 id="best-practices">Best Practices</h2>
 <ol>
 <li><strong>Always end sessions</strong> - Use context managers or try/finally</li>
@@ -951,8 +1373,9 @@
 <li><strong>Change tabs before fields</strong> - Tab selection required for REST</li>
 <li><strong>Find field names in P21</strong> - Use SQL Information dialog</li>
 <li><strong>Save before close</strong> - Unsaved changes are lost</li>
-<li><strong>Keep sessions short</strong> - Long sessions consume server resources</li>
+<li><strong>Keep sessions short</strong> - Long sessions consume server resources (pool default: 5 instances)</li>
 <li><strong>Log window IDs</strong> - Helps debugging</li>
+<li><strong>Use SessionType wisely</strong> - <code>Auto</code> for background processes, <code>User</code> for interactive integrations</li>
 </ol>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
@@ -1180,8 +1603,13 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;list&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Row&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
 </code></pre></div>
 
-<h3 id="get-window-data">Get Window Data</h3>
-<p><strong>v2:</strong> Use query parameter: <code>GET /api/ui/interactive/v2/data?id={windowId}</code></p>
+<h3 id="get-window-data-close-window">Get Window Data / Close Window</h3>
+<p><strong>v2:</strong> Use <code>?id=</code> query parameter:</p>
+<div class="highlight"><pre><span></span><code>GET /api/ui/interactive/v2/data?id={windowId}
+DELETE /api/ui/interactive/v2/window?id={windowId}
+DELETE /api/ui/interactive/v2/data?id={windowId}
+</code></pre></div>
+
 <hr />
 <h2 id="troubleshooting-v2-issues">Troubleshooting v2 Issues</h2>
 <table>
