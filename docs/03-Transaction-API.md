@@ -37,14 +37,17 @@ Then use the returned URL as base:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v2/services` | GET | List available services |
-| `/api/v2/definition/{name}` | GET | Get service schema |
-| `/api/v2/defaults/{name}` | GET | Get default values |
+| `/api/v2/services` | GET | List available services (optional `?type=` filter) |
+| `/api/v2/definition/{name}` | GET | Get service schema and template |
+| `/api/v2/defaults/{name}` | GET | Get default values for a service |
 | `/api/v2/transaction/get` | POST | Retrieve existing records |
-| `/api/v2/transaction` | POST | Create or update records |
-| `/api/v2/transaction/async` | POST | Async create/update |
-| `/api/v2/transaction/async/callback` | POST | Async with callback |
-| `/api/v2/transaction/async?id={id}` | GET | Check async status |
+| `/api/v2/transaction` | POST | Create or update records (sync) |
+| `/api/v2/transaction/async` | POST | Async create/update (returns RequestId) |
+| `/api/v2/transaction/async/callback` | POST | Async with callback URL |
+| `/api/v2/transaction/async?id={id}` | GET | Check async request status |
+| `/api/v2/commands` | POST | Process special commands (see [Commands Endpoint](#commands-endpoint)) |
+
+> **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
 ---
 
@@ -97,17 +100,50 @@ The main request body for create/update operations:
 }
 ```
 
-### Key Fields
+### TransactionSet Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `Name` | Yes | Service name (e.g., "Order", "SalesPricePage") |
+| `UseCodeValues` | No | If `true`, use code values; if `false` (default), use display values |
+| `Transactions` | Yes | Array of Transaction objects to process |
+| `IgnoreDisabled` | No | If `true`, skip disabled fields instead of erroring |
+| `Query` | No | Optional query filter for the service |
+| `FieldMap` | No | Optional field name mappings |
+| `TransactionSplitMethod` | No | `"Standard"` (default) or `"NoSplit"` |
+| `Parameters` | No | Additional service-specific parameters |
+
+### Transaction Fields
 
 | Field | Description |
 |-------|-------------|
-| `Name` | Service name (e.g., "Order", "SalesPricePage") |
-| `UseCodeValues` | If `true`, use code values; if `false`, use display values |
-| `Status` | Must be "New" for create operations |
+| `Status` | `"New"` for create, `"Passed"` on success, `"Failed"` on error |
 | `DataElements` | Array of tabs/sections in the window |
-| `Type` | "Form" for single record, "List" for multiple |
-| `Keys` | Key fields for List-type elements |
-| `Edits` | Array of field name/value pairs |
+| `Documents` | Optional array of file attachments |
+
+### DataElement Fields
+
+| Field | Description |
+|-------|-------------|
+| `Name` | Tab and table name (e.g., `"TABPAGE_1.order"`) |
+| `Type` | `"Form"` for single record, `"List"` for grid/multiple rows |
+| `Keys` | Key field names for List-type elements (used to identify rows) |
+| `Rows` | Array of Row objects |
+
+### Row / Edit Fields
+
+| Field | Description |
+|-------|-------------|
+| `Edits` | Array of `{Name, Value}` pairs for field values |
+| `RelativeDateEdits` | Array of date edits using relative offsets (e.g., "today + 30 days") instead of absolute dates |
+
+Each **Edit** object supports:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `Name` | Yes | Field name |
+| `Value` | Yes | Field value |
+| `IgnoreIfEmpty` | No | If `true`, skip this edit when Value is empty instead of sending a blank |
 
 ---
 
@@ -207,7 +243,9 @@ This setting controls how dropdown/checkbox values are interpreted:
 
 ## Async Operations
 
-For long-running operations, use the async endpoint:
+For long-running operations, use the async endpoint. Async requests run in a dedicated session (avoiding session pool contamination) but have a limited queue.
+
+> **Queue capacity:** The server defaults to only **2 concurrent async requests** (`AsyncRequests.QueueCapacity` in Web.config). Additional requests are queued and may time out under heavy load. Plan batch operations accordingly.
 
 ### Submit Async Request
 
@@ -243,6 +281,8 @@ Response:
 
 Status values: `Active`, `Complete`, `Failed`
 
+> **Note:** The async POST returns HTTP **202 Accepted** (not 200) to indicate the request was queued successfully.
+
 ### With Callback
 
 Use the callback endpoint to receive notification when complete:
@@ -263,6 +303,65 @@ Use the callback endpoint to receive notification when complete:
     }
 }
 ```
+
+---
+
+## Commands Endpoint
+
+Some P21 services **cannot** use the standard `/api/v2/transaction` endpoint. These must use the commands endpoint instead:
+
+```
+POST /api/v2/commands
+```
+
+### Services Requiring Commands Endpoint
+
+| Service | Purpose |
+|---------|---------|
+| `TransferPalletShipping` | Pallet transfer shipping |
+| `SupplierNotepad` | Supplier notes |
+| `VendorNotepad` | Vendor notes |
+| `ItemNotepad` | Item notes |
+| `CustomerPartNumberNotes` | Customer part number notes |
+| `RestateForeignCurrencyAccount` | Foreign currency restatement |
+| `ServiceNoteTemplate` | Service note templates |
+| `ReverseARPayment` | AR payment reversal |
+| `VATReturnWorksheet` | VAT return processing |
+| `SlabAdjustment` | Slab adjustments |
+| `ContainerBuilding` | Container building |
+
+> **Important:** If you send these services to the standard `/transaction` endpoint, they will fail. Always check the service documentation or test with the Service Explorer to determine which endpoint to use.
+
+---
+
+## Special Scenarios
+
+### Field and DataElement Ordering
+
+Some services require specific ordering of DataElements or Edits within a request. The API processes them sequentially, and some fields trigger validation or auto-population of other fields.
+
+**Credit Card Payment Orders:**
+DataElements must appear in this order:
+1. Order header
+2. Items
+3. Remittances
+4. CC Transaction Response (`TP_CCTRANSACTIONRESPONSE.cctransactionresponse`)
+
+**Multiple Lot Items:**
+When creating items with lot tracking, interleave item and lot DataElements:
+1. Item 1 → Lot 1
+2. Item 2 → Lot 2
+3. *(not: Item 1 → Item 2 → Lot 1 → Lot 2)*
+
+**Task Creation with Dates:**
+The `target_date` edit must appear before `start_date` in the Edits array (due to validation ordering).
+
+**SalesPricePage Fields:**
+1. `price_page_type_cd` — triggers type-specific validation
+2. `company_id` — required before product group
+3. `product_group_id` or `discount_group_id`
+4. `supplier_id`
+5. Other fields...
 
 ---
 
@@ -386,11 +485,13 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| 401 Unauthorized | Invalid/expired token | Refresh token |
 | 400 Bad Request | Malformed request | Check JSON structure |
+| 401 Unauthorized | Invalid/expired token | Refresh token |
+| 202 Accepted | Async request queued (not an error) | Poll with GET `/async?id=` for status |
 | "Required field missing" | Missing required field | Check definition for required fields |
-| "Unexpected response window" | Session pool dirty | Retry or use async |
+| "Unexpected response window" | Session pool dirty | Retry or use async endpoint |
 | "Invalid value" | Wrong dropdown value | Use `UseCodeValues: false` with display values |
+| Service fails on `/transaction` | Service requires commands endpoint | Use `/api/v2/commands` instead (see [Commands Endpoint](#commands-endpoint)) |
 
 ---
 
