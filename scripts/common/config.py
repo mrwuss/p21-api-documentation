@@ -14,14 +14,20 @@ from dotenv import load_dotenv
 class P21Config:
     """P21 API configuration."""
     base_url: str
-    username: str
-    password: str
+    username: str = ""
+    password: str = ""
+    consumer_key: str | None = None
     verify_ssl: bool = False
 
     @property
     def token_url(self) -> str:
-        """Token generation endpoint."""
+        """V1 token generation endpoint."""
         return f"{self.base_url}/api/security/token"
+
+    @property
+    def token_url_v2(self) -> str:
+        """V2 token generation endpoint (credentials in body)."""
+        return f"{self.base_url}/api/security/token/v2"
 
     @property
     def odata_url(self) -> str:
@@ -62,19 +68,20 @@ def load_config() -> P21Config:
     if env_file.exists():
         load_dotenv(env_file)
 
-    # Get required variables
+    # Get variables
     base_url = os.getenv("P21_BASE_URL")
-    username = os.getenv("P21_USERNAME")
-    password = os.getenv("P21_PASSWORD")
+    username = os.getenv("P21_USERNAME", "")
+    password = os.getenv("P21_PASSWORD", "")
+    consumer_key = os.getenv("P21_CONSUMER_KEY")
 
-    # Validate required variables
+    # Validate: need base_url always, and either consumer_key or username+password
     missing = []
     if not base_url:
         missing.append("P21_BASE_URL")
-    if not username:
-        missing.append("P21_USERNAME")
-    if not password:
-        missing.append("P21_PASSWORD")
+    if not consumer_key and not username:
+        missing.append("P21_USERNAME (or P21_CONSUMER_KEY)")
+    if not consumer_key and not password:
+        missing.append("P21_PASSWORD (or P21_CONSUMER_KEY)")
 
     if missing:
         raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
@@ -86,6 +93,7 @@ def load_config() -> P21Config:
         base_url=base_url.rstrip("/"),
         username=username,
         password=password,
+        consumer_key=consumer_key,
         verify_ssl=verify_ssl
     )
 
