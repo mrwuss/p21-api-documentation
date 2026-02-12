@@ -48,8 +48,8 @@ Then use the returned URL as base:
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/ui/interactive/v2/window` | POST | Open a window |
-| `/api/ui/interactive/v2/window` | GET | Get window state |
-| `/api/ui/interactive/v2/window` | DELETE | Close window |
+| `/api/ui/interactive/v2/window?id={windowId}` | GET | Get window state |
+| `/api/ui/interactive/v2/window?id={windowId}` | DELETE | Close window |
 
 ### Data Operations (v2 - Recommended)
 
@@ -58,12 +58,14 @@ Then use the returned URL as base:
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/ui/interactive/v2/data` | PUT | Save data |
-| `/api/ui/interactive/v2/data` | GET | Get active data |
-| `/api/ui/interactive/v2/data` | DELETE | Clear data |
+| `/api/ui/interactive/v2/data?id={windowId}` | GET | Get active data |
+| `/api/ui/interactive/v2/data?id={windowId}` | DELETE | Clear data |
 | `/api/ui/interactive/v2/change` | PUT | Change field values |
 | `/api/ui/interactive/v2/tab` | PUT | Change active tab |
 | `/api/ui/interactive/v2/row` | POST | Add a row |
 | `/api/ui/interactive/v2/row` | PUT | Change current row |
+| `/api/ui/interactive/v2/rows/limits` | PUT | Set active row limits |
+| `/api/ui/interactive/v2/rows/selected` | POST | Select multiple rows |
 | `/api/ui/interactive/v2/tools` | GET | Get available tools |
 | `/api/ui/interactive/v2/tools` | POST | Run a tool |
 
@@ -118,7 +120,43 @@ Response:
 }
 ```
 
+#### Session Parameters (UserParameters)
+
+The session creation body accepts these optional parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `SessionType` | string | `"User"` | `User` (real user login), `Auto` (automated process), or `AutoInteractive` (automated without noninteractive API profile). Affects license consumption and behavior |
+| `SessionTimeout` | int | Server default (60s) | Inactivity timeout in seconds before the session is cleaned up |
+| `ResponseWindowHandlingEnabled` | bool | `true` | When `false`, response windows (dialogs) are auto-answered with the default response (usually "Yes"). Set to `true` if you need to inspect and handle dialogs yourself |
+| `ClientPlatformApp` | string | null | Identifier for your application (useful for server-side logging) |
+| `WorkstationID` | string | null | User-defined value to identify the PC or device initiating the session |
+
+**Example with multiple parameters:**
+
+```json
+POST /api/ui/interactive/sessions
+{
+    "SessionType": "Auto",
+    "SessionTimeout": 120,
+    "ResponseWindowHandlingEnabled": false,
+    "ClientPlatformApp": "PricePageSync",
+    "WorkstationID": "INTEGRATION-01"
+}
+```
+
+> **Session pool limits:** The server has a finite pool of API instances (default: 5). If all instances are busy, new session requests will wait up to 60 seconds before timing out. See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for configuration details and common issues.
+
 ### 2. Open Window
+
+There are four ways to identify which window to open:
+
+| Method | Field | Example | When to Use |
+|--------|-------|---------|-------------|
+| Service name | `ServiceName` | `"SalesPricePage"` | Most reliable for multi-transaction windows (recommended) |
+| Menu title | `Title` | `"Sales Price Page Entry"` | Matches the menu label text in P21 |
+| Window name | `Name` | `"w_sales_price_page"` | Internal window name (if known) |
+| Menu ID | `MenuId` | `12345` | Numeric menu ID from P21 |
 
 ```json
 POST /api/ui/interactive/v2/window
@@ -164,6 +202,26 @@ PUT /api/ui/interactive/v2/change
 
 > **Note:** v2 uses `List` with `TabName`, while v1 uses `ChangeRequests` with `DataWindowName`. The `DatawindowName` field in v2 uses lowercase 'w'.
 
+#### ValueType
+
+Each change request supports an optional `ValueType` field:
+
+| ValueType | Description |
+|-----------|-------------|
+| `"Display"` | The value as it appears on screen (default if omitted) |
+| `"Data"` | The raw data value (e.g., internal key instead of display text) |
+
+```json
+{
+    "TabName": "FORM",
+    "FieldName": "supplier_id",
+    "Value": "10050",
+    "ValueType": "Data"
+}
+```
+
+Most of the time you can omit `ValueType` — the default `Display` works for typical field changes. Use `Data` when you need to set a field by its internal key value rather than its display text.
+
 **v1 Format (Legacy):**
 
 ```json
@@ -203,7 +261,7 @@ PUT /api/ui/interactive/v1/data
 ### 5. Close Window
 
 ```json
-DELETE /api/ui/interactive/v2/window?windowId=w_sales_price_page
+DELETE /api/ui/interactive/v2/window?id=w_sales_price_page
 ```
 
 ### 6. End Session
@@ -285,18 +343,50 @@ PUT /api/ui/interactive/v1/tab
 
 ## Running Tools (Buttons)
 
-Get available tools:
+Tools include all buttons and right-click (RMB) options available at any point in a session. They exist at three levels:
+
+1. **Window level** — Ribbon buttons, window-level buttons
+2. **Datawindow level** — Grid/form buttons, RMB options on a datawindow
+3. **Field level** — Field-specific RMB options
+
+### Get Available Tools
+
+Query tools at different levels by specifying optional parameters:
+
 ```
-GET /api/ui/interactive/v1/tools?windowId=w_sales_price_page
+GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page
+GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&dwName=form
+GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&dwName=form&fieldName=description&row=0
 ```
 
-Run a tool:
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `windowId` | Yes | Window ID |
+| `dwName` | No | Datawindow name — returns datawindow-level tools |
+| `fieldName` | No | Field name — returns field-level tools |
+| `row` | No | Row number — for grid-specific tools |
+
+### Run a Tool
+
 ```json
-POST /api/ui/interactive/v1/tools
+POST /api/ui/interactive/v2/tools
 {
     "WindowId": "w_sales_price_page",
     "ToolName": "cb_save",
     "ToolText": "Save"
+}
+```
+
+For datawindow or field-level tools, include the optional fields:
+
+```json
+{
+    "WindowId": "w_sales_price_page",
+    "ToolName": "tool_name",
+    "ToolText": "Tool Label",
+    "DatawindowName": "form",
+    "FieldName": "description",
+    "Row": 0
 }
 ```
 
@@ -674,6 +764,105 @@ class BookLookupCache:
 
 ---
 
+## Data Structures Reference
+
+### Result Object
+
+Every action returns a `Result` with these properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Status` | string | `Success`, `Failure`, `Blocked`, or `None` |
+| `Messages` | array | List of messages triggered by the action |
+| `Events` | array | List of events that occurred (fields enabled/disabled, windows opened, keys generated, etc.) |
+
+**Status values:**
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| `Success` | Action completed | Continue to next step |
+| `Failure` | Action failed | Check `Messages` for details |
+| `Blocked` | Session blocked by dialog | Check `Events` for `windowopened`, handle the response window |
+| `None` | No action needed | Status couldn't be determined |
+
+### Messages
+
+Each message has a `Text` and a `Type`:
+
+| MessageType | Description |
+|-------------|-------------|
+| `Information` | Informational (no action needed) |
+| `Warning` | Warning (may need attention) |
+| `Error` | Error (action failed) |
+
+### Events
+
+Events describe every discrete action the application took. Key event names:
+
+| Event Name | Description |
+|------------|-------------|
+| `windowopened` | A response window was opened — `Data` contains the window ID |
+| `keygenerated` | A new key was generated (e.g., new record ID on save) |
+
+> **Tip:** For less granular information, query the full window state with `GET /api/ui/interactive/v2/window?id={windowId}` after an action instead of parsing individual events.
+
+### Window Definition
+
+When you open or GET a window, the response includes structural information:
+
+| Property | Description |
+|----------|-------------|
+| `Id` | Window GUID |
+| `Title` | Window title |
+| `TabPageList` | Array of tabs — each with `Name`, `Text`, and `Enabled` |
+| `Datawindows` | Map of datawindow definitions |
+
+Each **datawindow definition** contains:
+
+| Property | Description |
+|----------|-------------|
+| `Name` | Datawindow name (used in change/row requests) |
+| `ParentPage` | Tab this datawindow belongs to |
+| `Style` | `List` (grid) or `Form` |
+| `Fields` | Map of field definitions |
+
+Each **field definition** contains:
+
+| Property | Description |
+|----------|-------------|
+| `Name` | Field name (used in change requests) |
+| `Label` | Display label |
+| `Enabled` | Whether the field is editable |
+| `DataType` | `Char`, `Long`, `Datetime`, `Decimal`, `Number`, or `Time` |
+
+### Window Data
+
+`GET /api/ui/interactive/v2/data?id={windowId}` returns data for each datawindow on the active surface:
+
+| Property | Description |
+|----------|-------------|
+| `Name` | Datawindow name |
+| `FullName` | Fully qualified name |
+| `ActiveRow` | Currently selected row index |
+| `TotalRows` | Number of rows |
+| `Columns` | Array of column names |
+| `Data` | Array of arrays — each inner array is a row of values |
+
+---
+
+## Self-Documenting Help Endpoints
+
+The API server exposes built-in help pages that list all available endpoints and their parameters:
+
+```
+https://{ui-server-host}/api/ui/interactive/sessions/help
+https://{ui-server-host}/ui/interactive/v1/help
+```
+
+> **Tip:** These are useful for discovering endpoints and verifying parameter names on your specific P21 version.
+
+---
+
 ## Best Practices
 
 1. **Always end sessions** - Use context managers or try/finally
@@ -681,8 +870,9 @@ class BookLookupCache:
 3. **Change tabs before fields** - Tab selection required for REST
 4. **Find field names in P21** - Use SQL Information dialog
 5. **Save before close** - Unsaved changes are lost
-6. **Keep sessions short** - Long sessions consume server resources
+6. **Keep sessions short** - Long sessions consume server resources (pool default: 5 instances)
 7. **Log window IDs** - Helps debugging
+8. **Use SessionType wisely** - `Auto` for background processes, `User` for interactive integrations
 
 ---
 
@@ -852,9 +1042,15 @@ async def select_row_safe(window: Window, row: int, datawindow_name: str):
 {"WindowId": "...", "DatawindowName": "list", "Row": 0}
 ```
 
-### Get Window Data
+### Get Window Data / Close Window
 
-**v2:** Use query parameter: `GET /api/ui/interactive/v2/data?id={windowId}`
+**v2:** Use `?id=` query parameter:
+
+```
+GET /api/ui/interactive/v2/data?id={windowId}
+DELETE /api/ui/interactive/v2/window?id={windowId}
+DELETE /api/ui/interactive/v2/data?id={windowId}
+```
 
 ---
 
