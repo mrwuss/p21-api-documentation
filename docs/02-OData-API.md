@@ -410,8 +410,19 @@ response = httpx.get(
 ### Pagination Helper
 
 ```python
-def get_all_records(base_url, table, filter_expr=None, page_size=100):
-    """Fetch all records with pagination."""
+def get_all_records(base_url, table, filter_expr=None, page_size=5000):
+    """Fetch all records with automatic pagination.
+
+    Args:
+        base_url: OData service base URL.
+        table: Table name to query.
+        filter_expr: Optional OData $filter expression.
+        page_size: Records per request. Larger values mean fewer HTTP
+            round-trips, which is usually the biggest performance factor.
+            Use 5,000-25,000 for bulk/preload scenarios. Use 50-200
+            when paginating for a UI. There is no documented server-side
+            maximum -- 25,000 has been verified in production.
+    """
     records = []
     skip = 0
 
@@ -445,7 +456,7 @@ def get_all_records(base_url, table, filter_expr=None, page_size=100):
 1. **Always use $select** - Only request fields you need
 2. **Add $filter early** - Filter server-side, not client-side
 3. **Use $top for previews** - Don't fetch all data unnecessarily
-4. **Paginate large results** - Use $skip/$top for big datasets
+4. **Right-size your page size** - Use large `$top` (5,000-25,000) for bulk/preload fetches; use small `$top` (50-200) for UI pagination. Round-trip overhead dwarfs payload size — see [Page Size Guidance](#page-size-guidance)
 5. **Escape strings properly** - Double single quotes in values
 6. **Handle null values** - Check for null in filters and responses
 
@@ -476,13 +487,40 @@ params = {"$filter": f"expiration_date ge {tomorrow}"}
 
 ---
 
+## Page Size Guidance
+
+Each HTTP request carries overhead: TCP connection, authentication, query planning, and serialization. For large result sets, **the number of round-trips is usually the biggest performance factor**, not the response payload size.
+
+### Choosing a Page Size
+
+| Scenario | Recommended `$top` | Why |
+|----------|---------------------|-----|
+| Preloading / caching / bulk export | 5,000 - 25,000 | Minimize HTTP round-trips; 1 request beats 22 |
+| UI pagination (browsable tables) | 50 - 200 | Match what the user actually sees |
+| Unbounded queries (unknown size) | 1,000 - 5,000 | Balance round-trips vs memory |
+
+> **No documented server-side cap.** The P21 SDK does not specify a maximum page size. The Web.config allows up to 100 MB responses. A `$top=25000` request has been verified working in production. Test with your dataset, but don't assume 100 is the right default.
+
+### Real-World Impact
+
+Fetching ~2,500 records with `$select` on a few columns:
+
+| Page Size | Requests | Wall Time |
+|-----------|----------|-----------|
+| 100 | 25 | ~16s |
+| 5,000 | 1 | ~1.7s |
+
+The 10x improvement comes entirely from eliminating round-trip overhead.
+
+---
+
 ## Performance Tips
 
-- OData queries are fast (~100ms for simple queries)
-- Complex filters may be slower
-- Use views for pre-joined data
-- Limit fields with $select
-- Paginate large result sets
+- **Minimize HTTP round-trips** - This is the #1 factor. Use a large `$top` when you need all the data instead of looping with small pages
+- **Always use $select** - Only request fields you need; smaller payloads transfer faster
+- **Filter server-side** - Use `$filter` instead of fetching everything and filtering in code
+- Use views for pre-joined data when available
+- For UI-driven pagination, match page size to display needs (50-200 rows)
 
 ### Measured Performance
 
@@ -491,6 +529,7 @@ params = {"$filter": f"expiration_date ge {tomorrow}"}
 | Simple table | 10 | ~100ms |
 | Filtered query | 160 | ~115ms |
 | Full table scan | 1000+ | ~500ms |
+| Bulk fetch ($top=5000) | 2,500 | ~1.7s |
 
 ### Avoiding N+1 Query Patterns
 
