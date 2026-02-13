@@ -10,7 +10,9 @@
 
 ## Overview
 
-The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports **five entities**: Customer, Vendor, Contact, Address, and Inventory (Parts).
+The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports **four entities**: Customer, Vendor, Contact, and Address.
+
+P21 also provides a related **Inventory REST API** at `/api/inventory/parts` that follows similar patterns but uses a different base path. Both are covered in this document.
 
 ### Key Characteristics
 
@@ -31,7 +33,8 @@ The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delet
 
 ### Limitations
 
-- **Only 5 entities** - No orders, invoices, POs, or other business objects.
+- **Only 4 entities** at `/api/entity/` - No orders, invoices, POs, or other business objects
+- **Inventory is separate** - Lives at `/api/inventory/parts`, not `/api/entity/`
 - **Limited coverage** - For broad data access, use OData (read) or Transaction API (write)
 
 ---
@@ -48,13 +51,13 @@ Examples:
 - `https://play.p21server.com/api/entity/contacts`
 - `https://play.p21server.com/api/entity/addresses`
 
-> **Warning:** Older documentation may show category-based URLs like `/api/sales/customers`. These **do not work** as Entity API endpoints. Always use `/api/entity/`. Note that Inventory is an exception and uses `/api/inventory/parts`.
+> **Warning:** Older documentation (including Epicor SDK reference guides) may show category-based URLs like `/api/sales/customers` or `/api/inventory/parts`. These **do not work** as Entity API endpoints. Always use `/api/entity/`. The Inventory REST API at `/api/inventory/parts` is a **separate API** documented [below](#inventory-rest-api).
 
 ---
 
 ## Available Entities
 
-**Five entities** are available via the Entity API (Inventory uses a different base path):
+Only four entities are available via the Entity API:
 
 | Entity | Endpoint | Key Format | Fields |
 |--------|----------|------------|--------|
@@ -62,7 +65,12 @@ Examples:
 | **Vendors** | `/api/entity/vendors` | `{CompanyId}_{VendorId}` | 50 |
 | **Contacts** | `/api/entity/contacts` | `{Id}` (simple numeric) | 40 |
 | **Addresses** | `/api/entity/addresses` | `{AddressId}` (simple numeric) | 27 |
-| **Inventory** | `/api/inventory/parts` | `{ItemId}` (string) | 100+ |
+
+Additionally, the **Inventory REST API** provides similar CRUD access to inventory items:
+
+| Entity | Endpoint | Key Format | Fields |
+|--------|----------|------------|--------|
+| **Inventory** | `/api/inventory/parts` | `{ItemId}` (string) | 60+ |
 
 ### Composite Keys
 
@@ -117,22 +125,6 @@ Addresses have a **reduced** set of operations — no `/new` template and no upd
 | `POST` | `/api/entity/addresses` | Create new address |
 
 > **No `/new` or PUT:** The address resource does not define a template endpoint or an update method in the SDK interface. The `/new` endpoint returns 500 because it doesn't exist (not a bug). To update an address, use the Interactive API or direct SQL.
-
-### Inventory (Parts)
-
-Inventory endpoints use the `/api/inventory/parts` base path.
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/inventory/parts` | Returns a schema object (List) |
-| `POST` | `/api/inventory/parts` | Insert a schema object |
-| `GET` | `/api/inventory/parts/{ItemId}` | Get single item schema |
-| `PUT` | `/api/inventory/parts/{ItemId}` | Update item schema |
-| `GET` | `/api/inventory/parts/{ItemId}/availability` | Get item availability |
-| `GET` | `/api/inventory/parts/{ItemId}/price` | Get item pricing |
-| `POST` | `/api/inventory/parts/itemsAvailability` | Get item availability (Batch) |
-| `POST` | `/api/inventory/parts/prices` | Get item pricing (Batch) |
-| `GET` | `/api/inventory/parts/ping` | Health check |
 
 ### Trailing Slash on List Endpoints
 
@@ -621,345 +613,6 @@ resp = client.post(
 resp.raise_for_status()
 ```
 
-### Get Inventory Item
-
-```python
-resp = client.get(f"{base_url}/api/inventory/parts/002.047")
-resp.raise_for_status()
-item = resp.json()
-print(f"{item['ItemId']}: {item['ItemDesc']}")
-# 002.047: M14 HEXAGON NUT CLASS 8
-```
-
-**Sample Response (No Extended Properties):**
-
-> **Captured from:** `GET /api/inventory/parts/002.047` (2026-02-13)
-
-```json
-{
-    "ItemId": "002.047",
-    "ItemDesc": "M14 HEXAGON NUT CLASS 8",
-    "Delete": "N",
-    "Weight": 0.0,
-    "NetWeight": 0.0,
-    "Cube": 0.0,
-    "CatchWeightIndicator": "Y",
-    "PurchasingWeight": 0.0,
-    "ClassId1": "",
-    "ClassId2": "",
-    "ClassId3": "",
-    "ClassId4": "",
-    "ClassId5": "",
-    "Serialized": "N",
-    "ShortCode": "",
-    "TrackLots": "N",
-    "Price1": 0.0,
-    "Price2": 0.0,
-    "Price3": 0.0,
-    "Price4": 0.0,
-    "Price5": 0.0,
-    "Price6": 0.0,
-    "Price7": 0.0,
-    "Price8": 0.0,
-    "Price9": 0.0,
-    "Price10": 0.0,
-    "DefaultSalesDiscountGroup": "D",
-    "DefaultPurchaseDiscGroup": "D",
-    "SalesPricingUnit": "1",
-    "SalesPricingUnitSize": 1.0,
-    "PurchasePricingUnit": "1",
-    "PurchasePricingUnitSize": 1.0,
-    "ExtendedDesc": "GEOMET FINISH",
-    "CommissionClassId": "",
-    "OtherChargeItem": "N",
-    "DefaultSellingUnit": "1",
-    "DefaultPurchasingUnit": "1",
-    "InvMastUid": 15,
-    "ItemTermsDiscountPct": 0.0,
-    "Keywords": "M14 HEXAGON NUT CLASS 8",
-    "BaseUnit": "1",
-    "CurrencyId": null,
-    "OverrideSpecificCosting": "N",
-    "ParkerProductCd": "",
-    "DefaultPriceFamilyId": "",
-    "CommodityCode": "",
-    "UseRevisionsFlag": "",
-    "RedemptionItemFlag": "N",
-    "RedemptionValue": 0.0,
-    "HazMat": false,
-    "InvoiceType": "",
-    "PickTicketType": "",
-    "Length": null,
-    "Width": null,
-    "Height": null,
-    "SalesTaxClass": "",
-    "SampleItemFlag": "N",
-    "SampleInvMastUid": null,
-    "SampleItemId": "",
-    "UserDefinedFields": {
-        "InvMastUdUid": 0,
-        "InvMastUid": 15,
-        "StockTypeExplained": null
-    },
-    "ObjectName": "inv_mast"
-}
-```
-
-### Get Inventory Item with Multiple Extended Properties
-
-```python
-resp = client.get(
-    f"{base_url}/api/inventory/parts/002.047",
-    params={"extendedproperties": "*"}
-)
-resp.raise_for_status()
-item = resp.json()
-
-# Access nested Locations list
-locations = item["Locations"]["list"]
-for loc in locations:
-    print(f"Loc: {loc['LocationId']}, Qty: {loc['QtyOnHand']}")
-```
-
-**Sample Response (`extendedproperties=*`):**
-
-```json
-{
-    "Locations": {
-        "list": [
-            {
-                "ItemId": "002047",
-                "LocationId": 13,
-                "QtyOnHand": 0.0,
-                "CompanyId": "13",
-                "GlAccountNo": "XXXX",
-                "RevenueAccountNo": "XXXX",
-                "CosAccountNo": "XXXX",
-                "Sellable": "Y",
-                "MovingAverageCost": 0.0,
-                "StandardCost": 0.0,
-                "ProtectedStockQty": null,
-                "InvMin": 0.0,
-                "InvMax": 0.0,
-                "SafetyStock": null,
-                "Stockable": "Y",
-                "ReplenishmentLocation": 13,
-                "ProductGroupId": "000",
-                "PurchaseClass": "",
-                "PurchaseDiscountGroup": "D",
-                "SalesDiscountGroup": "D",
-                "NoCharge": "N",
-                "Price1": 0.0,
-                "Price2": 0.0,
-                "Price3": 0.0,
-                "Price4": 0.0,
-                "Price5": 0.0,
-                "Price6": 0.0,
-                "Price7": 0.0,
-                "Price8": 0.0,
-                "Price9": 0.0,
-                "Price10": 0.0,
-                "ReplenishmentMethod": "Min/Max",
-                "TrackBins": "Y",
-                "DefaultInOe": "N",
-                "PeriodFirstStocked": 1,
-                "YearFirstStocked": 2025,
-                "UsageLock": "N",
-                "UsageLockPeriod": null,
-                "UsageLockYear": null,
-                "PrimaryBin": "NO BIN",
-                "TaxGroupId": "STDITEM",
-                "Requisition": "N",
-                "Buy": "Y",
-                "Make": "N",
-                "PeriodsToSupplyMin": 0,
-                "PeriodsToSupplyMax": 0,
-                "Discontinued": "N",
-                "AllowDsDiscontinuedItems": "N",
-                "AllowSpDiscontinuedItems": "N",
-                "SafetyStockType": null,
-                "ServiceLevelMeasure": null,
-                "ServiceLevelPctGoal": null,
-                "DemandPatternBehaviorCd": null,
-                "DemandPatternCd": null,
-                "PatternLikeInvMastUid": null,
-                "PatternLikeLocationId": null,
-                "BehavesLikeLockFlag": "",
-                "BehavesLikeLockPeriod": null,
-                "BehavesLikeLockYear": null,
-                "PutawayRank": "",
-                "MaxLiability": null,
-                "MaxTransferQty": null,
-                "PriceFamilyId": "",
-                "UserDefinedFields": {},
-                "Delete": "N",
-                "ObjectName": "inv_loc"
-            }
-        ]
-    },
-    "Suppliers": {
-        "list": [
-            {
-                "ItemId": "002.047",
-                "SupplierId": 10405,
-                "DivisionId": 10405,
-                "LeadTimeDays": 0,
-                "UpcCode": "",
-                "CatalogName": "",
-                "CatalogPage": "",
-                "Msds": "",
-                "SupplierPartNo": "",
-                "SupplierSortCode": "",
-                "ListPrice": 0.0,
-                "Cost": 0.0,
-                "ManufacturingClassId": "",
-                "InventorySupplierUid": 14,
-                "ContractNumber": "",
-                "FutureCost": null,
-                "EffectiveDate": null,
-                "MinimumPurchaseQty": 0.0,
-                "IncrementalPurchaseQty": 0.0,
-                "UserDefinedFields": {},
-                "ObjectName": "inventory_supplier"
-            }
-        ]
-    },
-    "UnitsOfMeasure": {
-        "list": [
-            {
-                "ItemId": "002.047",
-                "UnitOfMeasure": "1",
-                "UnitSize": 1.0,
-                "ItemUomUid": 30,
-                "UserDefinedFields": {},
-                "ObjectName": "item_uom"
-            },
-            {
-                "ItemId": "002.047",
-                "UnitOfMeasure": "100",
-                "UnitSize": 100.0,
-                "ItemUomUid": 31,
-                "UserDefinedFields": {},
-                "ObjectName": "item_uom"
-            },
-            {
-                "ItemId": "002.047",
-                "UnitOfMeasure": "1000",
-                "UnitSize": 1000.0,
-                "ItemUomUid": 32,
-                "UserDefinedFields": {},
-                "ObjectName": "item_uom"
-            }
-        ]
-    },
-    "LocationSuppliers": {
-        "list": [
-            {
-                "ItemId": "002047",
-                "InventorySupplierXLocUid": 14,
-                "LocationId": 13,
-                "PrimarySupplier": "Y",
-                "AverageLeadTime": 0,
-                "PublishedLeadTime": 0,
-                "SupplierId": 10405,
-                "LocListPrice": 0.0,
-                "LocCost": 0.0,
-                "LocContractNumber": "",
-                "OverrideVmiStatusFlag": "N",
-                "OverrideBegDate": null,
-                "OverrideEndDate": null,
-                "OverrideVmiStatus": null,
-                "FutureCost": null,
-                "EffectiveDate": null,
-                "UserDefinedFields": {},
-                "ObjectName": "inventory_supplier_x_loc"
-            }
-        ]
-    },
-    "Lot": null,
-    "LocationMSPs": {
-        "list": []
-    },
-    "Service": null,
-    "ServiceContracts": null,
-    "Notes": {
-        "list": []
-    },
-    "MSDS": null,
-    "RestrictedClasses": null,
-    "AltCodes": {
-        "list": []
-    },
-    "ItemId": "002.047",
-    "ItemDesc": "M14 HEXAGON NUT CLASS 8",
-    "Delete": "N",
-    "Weight": 0.0,
-    "NetWeight": 0.0,
-    "Cube": 0.0,
-    "CatchWeightIndicator": "Y",
-    "PurchasingWeight": 0.0,
-    "ClassId1": "",
-    "ClassId2": "",
-    "ClassId3": "",
-    "ClassId4": "",
-    "ClassId5": "",
-    "Serialized": "N",
-    "ShortCode": "",
-    "TrackLots": "N",
-    "Price1": 0.0,
-    "Price2": 0.0,
-    "Price3": 0.0,
-    "Price4": 0.0,
-    "Price5": 0.0,
-    "Price6": 0.0,
-    "Price7": 0.0,
-    "Price8": 0.0,
-    "Price9": 0.0,
-    "Price10": 0.0,
-    "DefaultSalesDiscountGroup": "D",
-    "DefaultPurchaseDiscGroup": "D",
-    "SalesPricingUnit": "1",
-    "SalesPricingUnitSize": 1.0,
-    "PurchasePricingUnit": "1",
-    "PurchasePricingUnitSize": 1.0,
-    "ExtendedDesc": "GEOMET FINISH",
-    "CommissionClassId": "",
-    "OtherChargeItem": "N",
-    "DefaultSellingUnit": "1",
-    "DefaultPurchasingUnit": "1",
-    "InvMastUid": 15,
-    "ItemTermsDiscountPct": 0.0,
-    "Keywords": "M14 HEXAGON NUT CLASS 8",
-    "BaseUnit": "1",
-    "CurrencyId": null,
-    "OverrideSpecificCosting": "N",
-    "ParkerProductCd": "",
-    "DefaultPriceFamilyId": "",
-    "CommodityCode": "",
-    "UseRevisionsFlag": "",
-    "RedemptionItemFlag": "N",
-    "RedemptionValue": 0.0,
-    "HazMat": false,
-    "InvoiceType": "",
-    "PickTicketType": "",
-    "Length": null,
-    "Width": null,
-    "Height": null,
-    "SalesTaxClass": "",
-    "SampleItemFlag": "N",
-    "SampleInvMastUid": null,
-    "SampleItemId": "",
-    "UserDefinedFields": {
-        "InvMastUdUid": 0,
-        "InvMastUid": 15,
-        "StockTypeExplained": null
-    },
-    "ObjectName": "inv_mast"
-}
-```
-
-> **Note:** The `ItemId` format often differs between the root object (`002.047`) and nested objects like Locations (`002047`). This reflects how the data is stored in different source tables (e.g., `inv_mast` vs `inv_loc`). Always handle both formats or sanitize the ID when correlating data.
-
 ### Update Customer
 
 ```python
@@ -1214,52 +867,6 @@ Complete field list from `GET /api/entity/contacts/new`:
 | 39 | `UserDefinedFields` | object | `{}` |
 | 40 | `ObjectName` | string | `"contacts"` |
 
-### Inventory Fields (Partial)
-
-Field list derived from `GET /api/inventory/parts/{ItemId}`.
-
-**Extended Properties (populate via `extendedproperties` parameter):**
-
-| Field | Description |
-|-------|-------------|
-| `Locations` | Warehouse stock levels and settings |
-| `Suppliers` | Supplier-specific data |
-| `UnitsOfMeasure` | UOMs and sizes |
-| `LocationSuppliers` | Supplier/Location intersections |
-| `Lot` | Lot information |
-| `LocationMSPs` | Pricing data |
-| `Service` | Service data |
-| `ServiceContracts` | Service contracts |
-| `Notes` | Notes |
-| `MSDS` | Safety data |
-| `RestrictedClasses` | Restrictions |
-| `AltCodes` | Alternative codes |
-
-**Data Fields:**
-
-| Field | Type | Example |
-|-------|------|---------|
-| `ItemId` | string | `"002.047"` |
-| `ItemDesc` | string | `"M14 HEXAGON NUT CLASS 8"` |
-| `ExtendedDesc` | string | `"GEOMET FINISH"` |
-| `Keywords` | string | `"M14 HEXAGON NUT CLASS 8"` |
-| `ShortCode` | string | `""` |
-| `ClassId1`...`ClassId5` | string | Classifications |
-| `Weight` | decimal | `0.0` |
-| `NetWeight` | decimal | `0.0` |
-| `Price1`...`Price10` | decimal | Base pricing structure |
-| `SalesPricingUnit` | string | `"1"` |
-| `SalesPricingUnitSize` | decimal | `1.0` |
-| `PurchasePricingUnit` | string | `"1"` |
-| `PurchasePricingUnitSize` | decimal | `1.0` |
-| `DefaultSellingUnit` | string | `"1"` |
-| `DefaultPurchasingUnit` | string | `"1"` |
-| `BaseUnit` | string | `"1"` |
-| `TrackLots` | string | `"N"` |
-| `Serialized` | string | `"N"` |
-| `UserDefinedFields` | object | UDFs |
-| `ObjectName` | string | `"inv_mast"` |
-
 ### Address Fields (27 fields)
 
 > **Note:** The Address resource does not have a `/new` template endpoint (this is by design, not a bug). The field list below is from an existing address record (`GET /api/entity/addresses/10`).
@@ -1378,7 +985,7 @@ When troubleshooting 400/500 errors, check the server-side log files:
 2. **Simple ID for customers** - Use `ACME_10`, NOT just `10`
 3. **Missing redirect handling** - List endpoints return 307, must follow redirect
 4. **Confusing VendorId with supplier_id** - These are different database tables
-5. **Expecting orders/invoices** - Only 5 entities exist (customers, vendors, contacts, addresses, inventory)
+5. **Expecting orders/items** - Only 4 entities exist at `/api/entity/` (customers, vendors, contacts, addresses). Inventory uses `/api/inventory/parts`
 
 ---
 
@@ -1387,12 +994,216 @@ When troubleshooting 400/500 errors, check the server-side log files:
 | Feature | Entity API | OData | Transaction | Interactive |
 |---------|------------|-------|-------------|-------------|
 | Operations | CRUD | Read-only | Bulk CRUD | Stateful CRUD |
-| Entities | 5 only | Any table/view | Many services | Any P21 window |
+| Entities | 4 (+Inventory) | Any table/view | Many services | Any P21 window |
 | Format | Domain objects | Table rows | XML payloads | Window fields |
 | Session | Stateless | Stateless | Stateless | Stateful |
 | Queries | `$query` | `$filter` (OData) | N/A | N/A |
 | Extended data | `extendedproperties` | N/A | N/A | Tab navigation |
 | Best for | Customer/vendor CRUD | Reporting, lookups | Bulk operations | Complex workflows |
+
+---
+
+## Inventory REST API
+
+> **Added February 2026** — Contributed by [@sibinfrancisaj](https://github.com/sibinfrancisaj), verified via live API testing.
+
+P21 provides a separate **Inventory REST API** at `/api/inventory/parts` that follows similar patterns to the Entity API but uses its own base path. This is **not** part of the Entity API at `/api/entity/`.
+
+### Base URL
+
+```
+https://{hostname}/api/inventory/parts
+```
+
+### Endpoints
+
+| Method | Path | Description | Verified |
+|--------|------|-------------|----------|
+| `GET` | `/api/inventory/parts/ping` | Health check | Yes |
+| `GET` | `/api/inventory/parts/{ItemId}` | Get single item | Yes |
+| `PUT` | `/api/inventory/parts/{ItemId}` | Update item | Not tested |
+| `POST` | `/api/inventory/parts` | Create item | Not tested |
+| `GET` | `/api/inventory/parts/{ItemId}/availability` | Item availability | Not tested |
+| `GET` | `/api/inventory/parts/{ItemId}/price` | Item pricing | Not tested |
+| `POST` | `/api/inventory/parts/itemsAvailability` | Batch availability | Not tested |
+| `POST` | `/api/inventory/parts/prices` | Batch pricing | Not tested |
+
+### Key Differences from Entity API
+
+| Feature | Entity API | Inventory API |
+|---------|-----------|---------------|
+| Base path | `/api/entity/{resource}` | `/api/inventory/parts` |
+| Key format | Composite (`ACME_10`) or numeric | String ItemId (`WIDGET-001`) |
+| `/new` template | Yes (customers, vendors, contacts) | **No** — "new" is treated as an item ID |
+| List endpoint | Works (returns 307 redirect) | **Hangs** without filtering — needs `$query` |
+| Not all records accessible | All records accessible | Some items return 404 despite existing in `inv_mast` |
+
+### Important Caveats
+
+1. **No `/new` template** — Unlike Entity API entities, `GET /api/inventory/parts/new` returns 404 ("No resources found for query string GetById new"). There is no template endpoint.
+
+2. **List endpoint hangs** — `GET /api/inventory/parts/` without a `$query` parameter attempts to load the entire inventory and times out. Always use a filter.
+
+3. **Not all items accessible** — Some items that exist in the `inv_mast` table (via OData) return 404 from this API. This may be related to item status or other criteria.
+
+4. **ItemId format inconsistency** — The root object may use dotted format (e.g., `WIDGET-001`) while nested `inv_loc` records may strip dots or formatting. Always handle both formats when correlating data.
+
+### Get Inventory Item
+
+```python
+resp = client.get(f"{base_url}/api/inventory/parts/WIDGET-001")
+resp.raise_for_status()
+item = resp.json()
+print(f"{item['ItemId']}: {item['ItemDesc']}")
+```
+
+**Sample Response:**
+
+```json
+{
+    "ItemId": "WIDGET-001",
+    "ItemDesc": "Standard Widget Assembly",
+    "Delete": "N",
+    "Weight": 0.0,
+    "NetWeight": 0.0,
+    "ClassId1": "",
+    "ClassId2": "",
+    "Serialized": "N",
+    "ShortCode": "",
+    "TrackLots": "N",
+    "Price1": 0.0,
+    "Price2": 0.0,
+    "ExtendedDesc": "",
+    "DefaultSellingUnit": "1",
+    "DefaultPurchasingUnit": "1",
+    "InvMastUid": 15,
+    "Keywords": "Standard Widget Assembly",
+    "BaseUnit": "1",
+    "UserDefinedFields": {},
+    "ObjectName": "inv_mast"
+}
+```
+
+> **Note:** Response truncated for brevity. Full response contains 60+ fields from the `inv_mast` table. Without `extendedproperties`, all child collections (Locations, Suppliers, etc.) are `null`.
+
+### Get Inventory Item with Extended Properties
+
+```python
+resp = client.get(
+    f"{base_url}/api/inventory/parts/WIDGET-001",
+    params={"extendedproperties": "*"}
+)
+resp.raise_for_status()
+item = resp.json()
+
+# Access nested Locations (inv_loc data)
+if item.get("Locations"):
+    for loc in item["Locations"]["list"]:
+        print(f"Loc: {loc['LocationId']}, Qty: {loc['QtyOnHand']}")
+```
+
+With `extendedproperties=*`, child collections are populated as `{"list": [...]}` objects:
+
+```json
+{
+    "Locations": {
+        "list": [
+            {
+                "ItemId": "WIDGET001",
+                "LocationId": 1,
+                "QtyOnHand": 0.0,
+                "CompanyId": "ACME",
+                "GlAccountNo": "1300-000",
+                "RevenueAccountNo": "4000-000",
+                "CosAccountNo": "5000-000",
+                "Sellable": "Y",
+                "Stockable": "Y",
+                "ProductGroupId": "MISC",
+                "MovingAverageCost": 0.0,
+                "StandardCost": 0.0,
+                "ReplenishmentMethod": "Min/Max",
+                "ObjectName": "inv_loc"
+            }
+        ]
+    },
+    "Suppliers": {
+        "list": [
+            {
+                "ItemId": "WIDGET-001",
+                "SupplierId": 10,
+                "SupplierPartNo": "",
+                "ListPrice": 0.0,
+                "Cost": 0.0,
+                "ObjectName": "inventory_supplier"
+            }
+        ]
+    },
+    "UnitsOfMeasure": {
+        "list": [
+            {
+                "ItemId": "WIDGET-001",
+                "UnitOfMeasure": "1",
+                "UnitSize": 1.0,
+                "ObjectName": "item_uom"
+            }
+        ]
+    },
+    "LocationSuppliers": { "list": [...] },
+    "Lot": null,
+    "LocationMSPs": { "list": [] },
+    "Service": null,
+    "ServiceContracts": null,
+    "Notes": { "list": [] },
+    "MSDS": null,
+    "RestrictedClasses": null,
+    "AltCodes": { "list": [] },
+    "ItemId": "WIDGET-001",
+    "ItemDesc": "Standard Widget Assembly",
+    "ObjectName": "inv_mast"
+}
+```
+
+> **Significant:** The `Locations` extended property returns full `inv_loc` records including GL accounts, product groups, costs, and all inventory location fields. This provides API access to `inv_loc` data that is not available through the Interactive or Transaction APIs.
+
+### Inventory Extended Properties
+
+| Property | ObjectName | Description |
+|----------|-----------|-------------|
+| `Locations` | `inv_loc` | Warehouse stock levels, GL accounts, costs, product groups |
+| `Suppliers` | `inventory_supplier` | Vendor/supplier information, costs, lead times |
+| `UnitsOfMeasure` | `item_uom` | UOM definitions and conversion factors |
+| `LocationSuppliers` | `inventory_supplier_x_loc` | Supplier-location specific data |
+| `Lot` | — | Lot tracking information |
+| `LocationMSPs` | `inv_loc_msp` | Location-specific pricing |
+| `Service` | — | Service-related data |
+| `ServiceContracts` | — | Linked service contracts |
+| `Notes` | — | Item notes |
+| `MSDS` | — | Material Safety Data Sheets |
+| `RestrictedClasses` | — | Class restrictions |
+| `AltCodes` | `alternate_code` | Alternate item codes |
+
+### Inventory Data Fields (Partial)
+
+Key fields from `GET /api/inventory/parts/{ItemId}` (maps to `inv_mast` table):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ItemId` | string | Item identifier |
+| `ItemDesc` | string | Item description |
+| `ExtendedDesc` | string | Extended description |
+| `Keywords` | string | Search keywords |
+| `ShortCode` | string | Short code |
+| `ClassId1`...`ClassId5` | string | Classification fields |
+| `Weight` / `NetWeight` | decimal | Item weight |
+| `Price1`...`Price10` | decimal | Base pricing structure |
+| `DefaultSellingUnit` | string | Default selling UOM |
+| `DefaultPurchasingUnit` | string | Default purchasing UOM |
+| `BaseUnit` | string | Base unit of measure |
+| `TrackLots` | string | Lot tracking flag (Y/N) |
+| `Serialized` | string | Serialized flag (Y/N) |
+| `InvMastUid` | int | Internal unique identifier |
+| `UserDefinedFields` | object | User-defined fields |
+| `ObjectName` | string | Always `"inv_mast"` |
 
 ---
 
