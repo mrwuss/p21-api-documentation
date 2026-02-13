@@ -66,8 +66,18 @@ Then use the returned URL as base:
 | `/api/ui/interactive/v2/row` | PUT | Change current row |
 | `/api/ui/interactive/v2/rows/limits` | PUT | Set active row limits |
 | `/api/ui/interactive/v2/rows/selected` | POST | Select multiple rows |
-| `/api/ui/interactive/v2/tools` | GET | Get available tools |
+| `/api/ui/interactive/v2/tools?windowId={windowId}` | GET | Get available tools |
 | `/api/ui/interactive/v2/tools` | POST | Run a tool |
+
+> **Query Parameter Inconsistency:** Most v2 endpoints use `?id=` for the window identifier, but the **tools endpoint uses `?windowId=`**. Verified by live testing:
+>
+> | Endpoint | Accepts `?id=` | Accepts `?windowId=` |
+> |----------|:-:|:-:|
+> | GET/DELETE `/v2/window` | **Yes** | No (422) |
+> | GET/DELETE `/v2/data` | **Yes** | No (400/422) |
+> | GET `/v2/tools` | No (500) | **Yes** |
+>
+> Using the wrong parameter returns an error — there is no fallback.
 
 ### Data Operations (v1 - Legacy)
 

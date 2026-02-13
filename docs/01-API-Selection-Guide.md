@@ -167,6 +167,7 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 - **Stateless** - no session management required
 - **Limited scope** - only 4 entities: customers, vendors, contacts, addresses
 - **Composite keys** - customers/vendors use `{CompanyId}_{Id}` format
+- **Address limitations** - Address entity has no `/new` template and no PUT/update (read and create only)
 
 ### Use When
 - You need CRUD on customers, vendors, contacts, or addresses

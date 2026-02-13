@@ -257,7 +257,7 @@ The Address entity has a reduced API surface compared to other entities:
 - **No PUT (update)** — The SDK interface only defines `CreateAddress`, not `UpdateAddress`
 - **Create only** — You can create and read addresses, but not update them via this API
 
-To update an existing address, use the Interactive API (Address Maintenance window) or direct SQL.
+To update an existing address, use the Interactive API (Address Maintenance window) or direct SQL. See [Error Handling - Entity API](06-Error-Handling.md#entity-api-errors) for the specific error codes these limitations produce.
 
 ---
 
