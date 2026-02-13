@@ -10,6 +10,7 @@ Two authentication methods are supported:
 See docs/00-Authentication.md for full documentation.
 """
 
+import re
 import httpx
 from typing import Optional
 
@@ -17,6 +18,35 @@ try:
     from .config import P21Config, load_config
 except ImportError:
     from config import P21Config, load_config
+
+
+def _parse_token_response(response: httpx.Response) -> dict:
+    """Parse token response, handling both JSON and XML formats.
+
+    Some P21 middleware instances return XML instead of JSON for token
+    endpoints. This tries JSON first, then falls back to XML regex parsing.
+    """
+    text = response.text
+    # Try JSON first
+    try:
+        data = response.json()
+        if isinstance(data, dict) and ("AccessToken" in data or "access_token" in data):
+            return data
+    except (ValueError, KeyError):
+        pass  # Not valid JSON or missing expected keys — fall back to XML
+
+    # Fall back to XML regex parsing (handles namespaces, BOM, control chars)
+    result = {}
+    for field in ("AccessToken", "TokenType", "ExpiresIn", "ExpiresInSeconds",
+                  "RefreshToken", "Scope", "SessionId", "ConsumerUid"):
+        match = re.search(rf"<{field}>([^<]*)</{field}>", text)
+        if match and match.group(1):
+            result[field] = match.group(1)
+
+    if "AccessToken" not in result:
+        raise ValueError(f"Could not parse AccessToken from response: {text[:500]}")
+
+    return result
 
 
 def get_token(
@@ -99,7 +129,7 @@ def get_token(
             )
 
         response.raise_for_status()
-        return response.json()
+        return _parse_token_response(response)
 
 
 def get_auth_headers(token: str) -> dict:
