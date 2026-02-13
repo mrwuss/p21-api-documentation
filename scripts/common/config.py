@@ -105,8 +105,10 @@ if __name__ == "__main__":
         print(f"Base URL: {config.base_url}")
         print(f"Username: {config.username}")
         print(f"Password: {'*' * len(config.password)}")
+        print(f"Consumer Key: {'set' if config.consumer_key else 'not set'}")
         print(f"Verify SSL: {config.verify_ssl}")
         print(f"Token URL: {config.token_url}")
+        print(f"Token URL V2: {config.token_url_v2}")
         print(f"OData URL: {config.odata_url}")
     except ValueError as e:
         print(f"Configuration error: {e}")

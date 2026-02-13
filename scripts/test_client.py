@@ -1,11 +1,17 @@
 """
 Verification test for the P21 API client.
 
+Requires environment variables (via .env file in project root):
+    P21_BASE_URL      - P21 server URL (e.g., https://play.p21server.com)
+    P21_USERNAME      - API username (optional if P21_CONSUMER_KEY is set)
+    P21_PASSWORD      - API password (optional if P21_CONSUMER_KEY is set)
+    P21_CONSUMER_KEY  - Consumer key for service account auth (optional)
+
 Tests:
-1. Authentication with consumer key + domain-qualified username
+1. Authentication (consumer key or user credentials)
 2. Transaction API: list services
 3. Interactive API: open/close session + Customer window
-4. OData API: query attempt (expected 401 — consumer key lacks OData scope)
+4. OData API: query attempt (may 401 if consumer key lacks OData scope)
 5. Entity API: ping
 """
 
@@ -29,10 +35,8 @@ def main():
     print("\n1. Authenticating...")
     try:
         client = P21Client.from_env()
-        token = client.authenticate()
-        print(f"   OK — Token: {token[:50]}...")
-        client._init_namespaces()
-        print(f"   UI Server: {client._ui_server}")
+        client.connect()
+        print(f"   OK — Token: {client._token[:50]}...")
     except Exception as e:
         print(f"   FAIL — {e}")
         return
