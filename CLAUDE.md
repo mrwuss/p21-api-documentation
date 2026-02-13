@@ -36,6 +36,7 @@ p21-api-documentation/
 │   ├── 07-Session-Pool-Troubleshooting.md
 │   ├── 08-SalesPricePage-Codes.md
 │   ├── 09-Batch-Processing-Patterns.md
+│   ├── 10-Changelog.md
 │   └── html/                    # Generated HTML versions
 │
 └── scripts/
