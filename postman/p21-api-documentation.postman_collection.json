@@ -38,7 +38,19 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set(\"TOKEN\", jsonData.AccessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Get UI Server URL",
@@ -113,7 +125,7 @@
                 "p21_view_invoice_hdr"
               ]
             },
-            "description": "Retreives simple invoice headers."
+            "description": "Retrieves simple invoice headers."
           },
           "response": []
         },
@@ -295,7 +307,19 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set(\"SESSION_ID\", jsonData.SessionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Open Window (e.g., Item Master)",
@@ -325,7 +349,19 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set(\"WINDOW_ID\", jsonData.WindowId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Change Data (Retrieve Item)",

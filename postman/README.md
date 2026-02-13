@@ -4,9 +4,9 @@ This directory contains a **Postman Collection** for the Prophet 21 APIs. It all
 
 ## 🚀 Getting Started
 
-1.  **Import:** Open Postman and click **Import** > **File** > Select `P21_API.postman_collection.json`.
+1.  **Import:** Open Postman and click **Import** > **File** > Select `p21-api-documentation.postman_collection.json`.
 2.  **Environment:** Create a Postman Environment with the following variables:
-    * `P21_BASE_URL` (e.g., `https://play.p21server.com`)
+    * `P21_BASE_URL` (e.g., `https://play-api.p21server.com`)
     * `P21_USERNAME`
     * `P21_PASSWORD`
     * `TOKEN` (Leave blank; auto-filled by scripts)
@@ -17,7 +17,7 @@ This directory contains a **Postman Collection** for the Prophet 21 APIs. It all
 
 Because Postman Collections are large JSON files, they can be difficult to merge if not handled correctly. Please follow this workflow:
 
-1.  **Import** the existing `P21_API.postman_collection.json` into your Postman.
+1.  **Import** the existing `p21-api-documentation.postman_collection.json` into your Postman.
 2.  **Make Changes:** Add requests, fix bugs, or improve documentation.
 3.  **Clean Up:** Before exporting, ensure you **remove any personal credentials** from the "Initial Value" column of your variables.
 4.  **Export:** Right-click the collection > **Export** > **Collection v2.1 (recommended)**.
