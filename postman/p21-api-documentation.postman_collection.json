@@ -1,0 +1,534 @@
+{
+  "info": {
+    "_postman_id": "457d010c-841f-40a7-a8aa-0a4988297a64",
+    "name": "p21-api-documentation",
+    "description": "[https://github.com/mrwuss/p21-api-documentation](https://github.com/mrwuss/p21-api-documentation)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "47200877",
+    "_collection_link": "https://go.postman.co/collection/47200877-457d010c-841f-40a7-a8aa-0a4988297a64?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "00. Authentication",
+      "item": [
+        {
+          "name": "Get Token (V2)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"username\": \"{{P21_USERNAME}}\",\r\n    \"password\": \"{{P21_PASSWORD}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/security/token/v2",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "security",
+                "token",
+                "v2"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get UI Server URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();\r",
+                  "pm.environment.set(\"UI_SERVER_URL\", jsonData.Url);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/ui/router/v1?urlType=external",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "router",
+                "v1"
+              ],
+              "query": [
+                {
+                  "key": "urlType",
+                  "value": "external"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Obtain the Bearer token and store it automatically.\n\nReference: [docs/00-Authentication.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/00-Authentication.md)"
+    },
+    {
+      "name": "01. OData API",
+      "item": [
+        {
+          "name": "Basic Table Query",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/odataservice/odata/table/p21_view_invoice_hdr",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "odataservice",
+                "odata",
+                "table",
+                "p21_view_invoice_hdr"
+              ]
+            },
+            "description": "Retreives simple invoice headers."
+          },
+          "response": []
+        },
+        {
+          "name": "Filtered Query",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$filter=customer_id eq '100'&$select=customer_id,customer_name,date_created",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "odataservice",
+                "odata",
+                "table",
+                "customer"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "customer_id eq '100'",
+                  "type": "text"
+                },
+                {
+                  "key": "$select",
+                  "value": "customer_id,customer_name,date_created",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pagination (Top/Skip)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/odataservice/odata/table/part?$top=10&$skip=20&$orderby=item_id desc",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "odataservice",
+                "odata",
+                "table",
+                "part"
+              ],
+              "query": [
+                {
+                  "key": "$top",
+                  "value": "10",
+                  "type": "text"
+                },
+                {
+                  "key": "$skip",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "$orderby",
+                  "value": "item_id desc",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Read-only data extraction.  \n**Reference:** [scripts/odata/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/odata)"
+    },
+    {
+      "name": "02. Transaction API",
+      "item": [
+        {
+          "name": "List Available Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/v2/services",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "services"
+              ]
+            },
+            "description": "Returns the list of all available import services (e.g., Sales Order, Customer)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Service Schema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/v2/services/SalesOrderImport",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "services",
+                "SalesOrderImport"
+              ]
+            },
+            "description": "Vital for knowing the exact field names required for the body."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Single Record (Example)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"TransactionSet\": {\r\n    \"Transactions\": [\r\n      {\r\n        \"id\": 1,\r\n        \"DataElements\": [\r\n          {\r\n            \"name\": \"Header\",\r\n            \"Rows\": [\r\n              {\r\n                \"Edits\": [\r\n                  {\"name\": \"order_no\", \"value\": \"\"},\r\n                  {\"name\": \"customer_id\", \"value\": \"1001\"}\r\n                ]\r\n              }\r\n            ]\r\n          }\r\n        ]\r\n      }\r\n    ]\r\n  }\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/v2/services/SalesOrderImport",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "services",
+                "SalesOrderImport"
+              ]
+            },
+            "description": "Tip: Use the structure found in `scripts/transaction/03_create_single.py`"
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Stateless imports (bulk data).\n\n**Reference:** [scripts/transaction/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/transaction)"
+    },
+    {
+      "name": "03. Interactive API",
+      "item": [
+        {
+          "name": "Open Session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"{{P21_USERNAME}}\", \"password\": \"{{P21_PASSWORD}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/v1/session",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "session"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Open Window (e.g., Item Master)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"windowName\": \"ItemMaster\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/v1/session/{{SESSION_ID}}/window",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "session",
+                "{{SESSION_ID}}",
+                "window"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Data (Retrieve Item)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"elements\": [\r\n    {\"name\": \"item_id\", \"value\": \"1001\", \"event\": \"onblur\"}\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/v1/session/{{SESSION_ID}}/window/{{WINDOW_ID}}/element",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "session",
+                "{{SESSION_ID}}",
+                "window",
+                "{{WINDOW_ID}}",
+                "element"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save & Close",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"save\": true}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/v1/session/{{SESSION_ID}}/window/{{WINDOW_ID}}",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "session",
+                "{{SESSION_ID}}",
+                "window",
+                "{{WINDOW_ID}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Stateful window simulation.\n\n**Reference:** [scripts/interactive/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/interactive)\n\n**Note:** These requests **must** be run in order because they share a stateful Session ID."
+    },
+    {
+      "name": "04. Entity API",
+      "item": [
+        {
+          "name": "List Entities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/v1/entities",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "entities"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Entity (e.g., Item)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/v1/entities/Item/1001",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "entities",
+                "Item",
+                "1001"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Entity",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"item_desc\": \"Updated Description via Postman\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/v1/entities/Item/1001",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "entities",
+                "Item",
+                "1001"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Simple CRUD operations.\n\n**Reference:** [scripts/entity/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/entity)"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "P21_BASE_URL",
+      "value": "",
+      "description": "https://play-api.p21server.com"
+    },
+    {
+      "key": "P21_USERNAME",
+      "value": "",
+      "description": "Your API user"
+    },
+    {
+      "key": "P21_PASSWORD",
+      "value": "",
+      "description": "Your API password"
+    },
+    {
+      "key": "TOKEN",
+      "value": "",
+      "description": "Leave blank; the Auth script will fill this"
+    },
+    {
+      "key": "UI_SERVER_URL",
+      "value": "",
+      "description": "Leave blank; the Interactive API script will fill this"
+    }
+  ]
+}
