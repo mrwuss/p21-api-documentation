@@ -547,6 +547,7 @@ client = httpx.Client(
 
 ```python
 resp = client.get(f"{base_url}/api/entity/customers/ping")
+resp.raise_for_status()
 print(resp.json())  # {"ResponseMessage": "success"}
 ```
 
@@ -554,6 +555,7 @@ print(resp.json())  # {"ResponseMessage": "success"}
 
 ```python
 resp = client.get(f"{base_url}/api/entity/customers/ACME_10")
+resp.raise_for_status()
 customer = resp.json()
 print(f"{customer['CustomerId']}: {customer['CustomerName']}")
 # 10: ABC Supply Company
@@ -566,6 +568,7 @@ resp = client.get(
     f"{base_url}/api/entity/customers/ACME_10",
     params={"extendedproperties": "CustomerAddress"},
 )
+resp.raise_for_status()
 customer = resp.json()
 addr = customer["CustomerAddress"]
 print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
@@ -579,6 +582,7 @@ resp = client.get(
     f"{base_url}/api/entity/customers/",
     params={"$query": "startswith(CustomerName, 'ABC')"},
 )
+resp.raise_for_status()
 customers = resp.json()
 print(f"Found {len(customers)} customers")
 for c in customers:
@@ -589,6 +593,7 @@ for c in customers:
 
 ```python
 resp = client.get(f"{base_url}/api/entity/contacts/1")
+resp.raise_for_status()
 contact = resp.json()
 print(f"{contact['FirstName']} {contact['LastName']}")
 # John Smith
@@ -598,7 +603,9 @@ print(f"{contact['FirstName']} {contact['LastName']}")
 
 ```python
 # Get template first
-template = client.get(f"{base_url}/api/entity/customers/new").json()
+resp = client.get(f"{base_url}/api/entity/customers/new")
+resp.raise_for_status()
+template = resp.json()
 
 # Fill required fields
 template["CompanyId"] = "ACME"
@@ -611,6 +618,7 @@ resp = client.post(
     f"{base_url}/api/entity/customers",
     json=template,
 )
+resp.raise_for_status()
 ```
 
 ### Get Inventory Item
@@ -963,6 +971,7 @@ resp = client.put(
         "CustomerName": "Updated Customer Name",
     },
 )
+resp.raise_for_status()
 ```
 
 ---
@@ -1238,7 +1247,6 @@ Field list derived from `GET /api/inventory/parts/{ItemId}`.
 | `ClassId1`...`ClassId5` | string | Classifications |
 | `Weight` | decimal | `0.0` |
 | `NetWeight` | decimal | `0.0` |
-| `Notes` | object | Extended property object |
 | `Price1`...`Price10` | decimal | Base pricing structure |
 | `SalesPricingUnit` | string | `"1"` |
 | `SalesPricingUnitSize` | decimal | `1.0` |
