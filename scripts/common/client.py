@@ -27,7 +27,6 @@ Usage (async):
 
 from __future__ import annotations
 
-import re
 import time
 import logging
 from dataclasses import dataclass, field
@@ -37,8 +36,10 @@ import httpx
 
 try:
     from .config import P21Config, load_config
+    from .auth import _parse_token_response
 except ImportError:
     from config import P21Config, load_config
+    from auth import _parse_token_response
 
 logger = logging.getLogger(__name__)
 
@@ -153,29 +154,7 @@ def get_opened_window_id(result: Result) -> str | None:
     return None
 
 
-def _parse_token_xml(text: str) -> dict:
-    """Parse token from XML response using regex (handles namespaces/BOM)."""
-    result = {}
-    for tag in ("AccessToken", "TokenType", "ExpiresIn", "ExpiresInSeconds",
-                "RefreshToken", "Scope", "SessionId", "ConsumerUid"):
-        match = re.search(rf"<{tag}>([^<]*)</{tag}>", text)
-        if match and match.group(1):
-            result[tag] = match.group(1)
-    return result
-
-
-def _parse_token_response(response: httpx.Response) -> dict:
-    """Parse token response, handling both JSON and XML formats."""
-    try:
-        data = response.json()
-        if isinstance(data, dict) and ("AccessToken" in data or "access_token" in data):
-            return data
-    except Exception:
-        pass
-    result = _parse_token_xml(response.text)
-    if "AccessToken" not in result:
-        raise ValueError(f"Could not parse AccessToken from response: {response.text[:500]}")
-    return result
+# _parse_token_response is imported from auth.py (single source of truth)
 
 
 # ---------------------------------------------------------------------------
@@ -241,7 +220,7 @@ class Window:
         """Clear current data (new record mode)."""
         resp = self._client.delete(
             f"{self._ui}/api/ui/interactive/v2/data",
-            params={"windowId": self.window_id},
+            params={"id": self.window_id},
         )
         return Result.from_response(resp)
 
@@ -281,7 +260,7 @@ class Window:
         """Close this window."""
         resp = self._client.delete(
             f"{self._ui}/api/ui/interactive/v2/window",
-            params={"windowId": self.window_id},
+            params={"id": self.window_id},
         )
         return Result.from_response(resp)
 
@@ -341,7 +320,7 @@ class AsyncWindow:
     async def clear_data(self) -> Result:
         resp = await self._client.delete(
             f"{self._ui}/api/ui/interactive/v2/data",
-            params={"windowId": self.window_id},
+            params={"id": self.window_id},
         )
         return Result.from_response(resp)
 
@@ -375,7 +354,7 @@ class AsyncWindow:
     async def close(self) -> Result:
         resp = await self._client.delete(
             f"{self._ui}/api/ui/interactive/v2/window",
-            params={"windowId": self.window_id},
+            params={"id": self.window_id},
         )
         return Result.from_response(resp)
 
@@ -387,12 +366,16 @@ class AsyncWindow:
 class InteractiveSession:
     """Sync interactive session (context manager)."""
 
-    def __init__(self, client: httpx.Client, ui_server: str):
+    def __init__(self, client: httpx.Client, ui_server: str,
+                 response_windows: bool = False):
         self._client = client
         self._ui = ui_server
         self._started = False
+        self._response_windows = response_windows
 
-    def start(self, response_windows: bool = False) -> dict:
+    def start(self, response_windows: bool | None = None) -> dict:
+        if response_windows is None:
+            response_windows = self._response_windows
         resp = self._client.post(
             f"{self._ui}/api/ui/interactive/sessions",
             json={"ResponseWindowHandlingEnabled": response_windows},
@@ -448,12 +431,16 @@ class InteractiveSession:
 class AsyncInteractiveSession:
     """Async interactive session (async context manager)."""
 
-    def __init__(self, client: httpx.AsyncClient, ui_server: str):
+    def __init__(self, client: httpx.AsyncClient, ui_server: str,
+                 response_windows: bool = False):
         self._client = client
         self._ui = ui_server
         self._started = False
+        self._response_windows = response_windows
 
-    async def start(self, response_windows: bool = False) -> dict:
+    async def start(self, response_windows: bool | None = None) -> dict:
+        if response_windows is None:
+            response_windows = self._response_windows
         resp = await self._client.post(
             f"{self._ui}/api/ui/interactive/sessions",
             json={"ResponseWindowHandlingEnabled": response_windows},
@@ -631,7 +618,7 @@ class InteractiveAPI:
 
     def session(self, response_windows: bool = False) -> InteractiveSession:
         """Return an InteractiveSession (use as context manager)."""
-        return InteractiveSession(self._client, self._ui)
+        return InteractiveSession(self._client, self._ui, response_windows=response_windows)
 
 
 class EntityAPI:
@@ -662,7 +649,16 @@ class EntityAPI:
         resp.raise_for_status()
         return resp.json()
 
+    # Resources that do not support /new or PUT (by design)
+    _NO_TEMPLATE = {"addresses"}
+    _NO_UPDATE = {"addresses"}
+
     def get_template(self, resource: str) -> dict:
+        if resource in self._NO_TEMPLATE:
+            raise ValueError(
+                f"Entity '{resource}' does not have a /new template endpoint. "
+                "Use customers, vendors, or contacts instead."
+            )
         resp = self._client.get(f"{self._url}/{resource}/new")
         resp.raise_for_status()
         return resp.json()
@@ -673,6 +669,11 @@ class EntityAPI:
         return resp.json()
 
     def update(self, resource: str, key: str, data: dict) -> dict:
+        if resource in self._NO_UPDATE:
+            raise ValueError(
+                f"Entity '{resource}' does not support PUT/update. "
+                "Use the Interactive API (Address Maintenance) or direct SQL."
+            )
         resp = self._client.put(f"{self._url}/{resource}/{key}", json=data)
         resp.raise_for_status()
         return resp.json()
@@ -793,7 +794,7 @@ class AsyncInteractiveAPI:
         self._ui = ui_server
 
     def session(self, response_windows: bool = False) -> AsyncInteractiveSession:
-        return AsyncInteractiveSession(self._client, self._ui)
+        return AsyncInteractiveSession(self._client, self._ui, response_windows=response_windows)
 
 
 class AsyncEntityAPI:
@@ -823,7 +824,15 @@ class AsyncEntityAPI:
         resp.raise_for_status()
         return resp.json()
 
+    _NO_TEMPLATE = EntityAPI._NO_TEMPLATE
+    _NO_UPDATE = EntityAPI._NO_UPDATE
+
     async def get_template(self, resource: str) -> dict:
+        if resource in self._NO_TEMPLATE:
+            raise ValueError(
+                f"Entity '{resource}' does not have a /new template endpoint. "
+                "Use customers, vendors, or contacts instead."
+            )
         resp = await self._client.get(f"{self._url}/{resource}/new")
         resp.raise_for_status()
         return resp.json()
@@ -834,6 +843,11 @@ class AsyncEntityAPI:
         return resp.json()
 
     async def update(self, resource: str, key: str, data: dict) -> dict:
+        if resource in self._NO_UPDATE:
+            raise ValueError(
+                f"Entity '{resource}' does not support PUT/update. "
+                "Use the Interactive API (Address Maintenance) or direct SQL."
+            )
         resp = await self._client.put(f"{self._url}/{resource}/{key}", json=data)
         resp.raise_for_status()
         return resp.json()

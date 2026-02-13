@@ -32,8 +32,8 @@ def _parse_token_response(response: httpx.Response) -> dict:
         data = response.json()
         if isinstance(data, dict) and ("AccessToken" in data or "access_token" in data):
             return data
-    except Exception:
-        pass
+    except (ValueError, KeyError):
+        pass  # Not valid JSON or missing expected keys — fall back to XML
 
     # Fall back to XML regex parsing (handles namespaces, BOM, control chars)
     result = {}
