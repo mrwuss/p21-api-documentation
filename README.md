@@ -7,7 +7,8 @@ Comprehensive documentation and working Python examples for all Prophet 21 integ
 ## Overview
 
 This repository provides developer-focused documentation for P21's four integration APIs. All content is based on official Epicor SDK documentation and verified working implementations.
-[https://mrwuss.github.io/p21-api-documentation/html/00-Authentication.html](Navigation friendly documenation)
+
+[HTML-Based Doc Navigation](https://mrwuss.github.io/p21-api-documentation/html/00-Authentication.html)
 ## APIs Covered
 
 | API | Purpose | Best For |
