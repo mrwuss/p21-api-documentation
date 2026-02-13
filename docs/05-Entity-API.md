@@ -617,6 +617,7 @@ resp = client.post(
 
 ```python
 resp = client.get(f"{base_url}/api/inventory/parts/002.047")
+resp.raise_for_status()
 item = resp.json()
 print(f"{item['ItemId']}: {item['ItemDesc']}")
 # 002.047: M14 HEXAGON NUT CLASS 8
@@ -624,20 +625,10 @@ print(f"{item['ItemId']}: {item['ItemDesc']}")
 
 **Sample Response (No Extended Properties):**
 
+> **Captured from:** `GET /api/inventory/parts/002.047` (2026-02-13)
+
 ```json
 {
-    "Locations": null,
-    "Suppliers": null,
-    "UnitsOfMeasure": null,
-    "LocationSuppliers": null,
-    "Lot": null,
-    "LocationMSPs": null,
-    "Service": null,
-    "ServiceContracts": null,
-    "Notes": null,
-    "MSDS": null,
-    "RestrictedClasses": null,
-    "AltCodes": null,
     "ItemId": "002.047",
     "ItemDesc": "M14 HEXAGON NUT CLASS 8",
     "Delete": "N",
@@ -713,6 +704,7 @@ resp = client.get(
     f"{base_url}/api/inventory/parts/002.047",
     params={"extendedproperties": "*"}
 )
+resp.raise_for_status()
 item = resp.json()
 
 # Access nested Locations list
@@ -957,6 +949,8 @@ for loc in locations:
     "ObjectName": "inv_mast"
 }
 ```
+
+> **Note:** The `ItemId` format often differs between the root object (`002.047`) and nested objects like Locations (`002047`). This reflects how the data is stored in different source tables (e.g., `inv_mast` vs `inv_loc`). Always handle both formats or sanitize the ID when correlating data.
 
 ### Update Customer
 
@@ -1220,7 +1214,7 @@ Field list derived from `GET /api/inventory/parts/{ItemId}`.
 | Field | Description |
 |-------|-------------|
 | `Locations` | Warehouse stock levels and settings |
-| `Suppliers` | Supplier specific data |
+| `Suppliers` | Supplier-specific data |
 | `UnitsOfMeasure` | UOMs and sizes |
 | `LocationSuppliers` | Supplier/Location intersections |
 | `Lot` | Lot information |
@@ -1244,7 +1238,7 @@ Field list derived from `GET /api/inventory/parts/{ItemId}`.
 | `ClassId1`...`ClassId5` | string | Classifications |
 | `Weight` | decimal | `0.0` |
 | `NetWeight` | decimal | `0.0` |
-| `Note` | string | `""` |
+| `Notes` | object | Extended property object |
 | `Price1`...`Price10` | decimal | Base pricing structure |
 | `SalesPricingUnit` | string | `"1"` |
 | `SalesPricingUnitSize` | decimal | `1.0` |
