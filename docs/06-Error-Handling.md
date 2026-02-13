@@ -72,6 +72,15 @@ This guide covers error handling across all P21 APIs, including HTTP status code
 }
 ```
 
+**XML Response Instead of JSON**
+
+Some middleware instances return XML instead of JSON for token endpoints. If your JSON parsing fails, check if the response body is XML:
+```xml
+<TokenResponse><AccessToken>eyJ...</AccessToken><ExpiresIn>86400</ExpiresIn></TokenResponse>
+```
+
+**Solution**: Use a dual-format parser that tries JSON first, then falls back to XML regex parsing. See [Authentication - XML Token Responses](00-Authentication.md#xml-token-responses).
+
 ### Token Troubleshooting
 
 | Issue | Solution |
@@ -80,6 +89,7 @@ This guide covers error handling across all P21 APIs, including HTTP status code
 | Token expired | Refresh token or re-authenticate |
 | Consumer key invalid | Check API Console for correct key |
 | Missing scope | Add required API scope to consumer key |
+| JSON parse fails on token response | Middleware may return XML — use dual-format parser |
 
 ---
 
@@ -175,6 +185,10 @@ Always check `Summary.Failed` even on HTTP 200 responses.
 
 **Solution**: Check the service definition for required fields and order.
 
+**Service Fails on `/transaction` Endpoint**
+
+Some services silently fail or return errors when sent to `/api/v2/transaction`. These services must use `/api/v2/commands` instead. See [Transaction API - Commands Endpoint](03-Transaction-API.md#commands-endpoint) for the full list of affected services.
+
 ### Session Pool Contamination
 
 ```json
@@ -241,6 +255,18 @@ When a response window opens, the API returns:
 
 **Solution**: Handle the response window before continuing.
 
+### 422 / 400 - Wrong Query Parameter
+
+```json
+{
+    "ErrorMessage": "Window ID was not provided"
+}
+```
+
+**Cause**: Using `?windowId=` on an endpoint that expects `?id=`, or vice versa. The v2 API is inconsistent — most endpoints use `?id=` but the tools endpoint uses `?windowId=`.
+
+**Solution**: See [Interactive API - Query Parameter Inconsistency](04-Interactive-API.md#data-operations-v2---recommended) for the correct parameter per endpoint.
+
 ### Field Not Found
 
 ```json
@@ -269,6 +295,23 @@ When a response window opens, the API returns:
 - Entity requires specific licensing
 
 **Solution**: Check middleware home page for available endpoints.
+
+### 405 - Method Not Allowed (Address Updates)
+
+Addresses do not support PUT/update operations. Attempting to update an address returns:
+```
+HTTP 405 Method Not Allowed
+```
+
+This is **by design** — the Address entity has a reduced API surface. See [Entity API - Address Limitations](05-Entity-API.md#address-limitations).
+
+### 500 - Address Template Not Available
+
+```
+GET /api/entity/addresses/new → 500 Internal Server Error
+```
+
+The Address entity does not have a `/new` template endpoint. This is by design — use the Customer or Vendor template endpoints to see address fields within their extended properties.
 
 ### Validation Errors
 
@@ -411,13 +454,17 @@ def check_token_expiry(token: str):
 | Issue | API | Solution |
 |-------|-----|----------|
 | 401 on every request | All | Check token, re-authenticate |
-| 307 Redirect | All | Add `follow_redirects=True` |
+| 307 Redirect | Entity | Add `follow_redirects=True` (list endpoints) |
 | Request timeout | All | Increase timeout, check network |
 | "Unexpected window" | Transaction | Use async endpoint, add delays |
 | Session expired | Interactive | Start new session |
 | "Blocked" status | Interactive | Handle response window |
+| 422 "Window ID not provided" | Interactive | Use `?id=` not `?windowId=` (except tools) |
 | 404 on table | OData | Verify table name |
 | 404 on entity | Entity | Check if Entity API enabled |
+| 405 on address update | Entity | Address has no PUT — by design |
+| 500 on address `/new` | Entity | Address has no template — by design |
+| XML instead of JSON (token) | Auth | Use dual-format parser |
 | Validation errors | All | Check required fields |
 
 ---

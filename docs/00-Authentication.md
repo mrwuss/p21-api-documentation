@@ -341,6 +341,56 @@ def get_ui_server_url(base_url: str, token: str) -> str:
 
 ---
 
+## XML Token Responses
+
+Some P21 middleware instances return **XML instead of JSON** for token endpoints, even when `Accept: application/json` is set. This typically occurs with certain middleware versions or configurations.
+
+### Example XML Response
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<TokenResponse>
+    <AccessToken>eyJhbGciOiJSUzI1NiIs...</AccessToken>
+    <TokenType>Bearer</TokenType>
+    <ExpiresIn>86400</ExpiresIn>
+    <RefreshToken>dGhpcyBpcyBhIHNhbXBsZQ...</RefreshToken>
+</TokenResponse>
+```
+
+> **Note:** The XML response uses `ExpiresIn` while the JSON response uses `ExpiresInSeconds`. Both represent the token lifetime in seconds.
+
+### Handling Both Formats
+
+```python
+import re
+
+def parse_token_response(response: httpx.Response) -> dict:
+    """Parse token response, handling both JSON and XML formats."""
+    # Try JSON first
+    try:
+        data = response.json()
+        if isinstance(data, dict) and "AccessToken" in data:
+            return data
+    except (ValueError, KeyError):
+        pass
+
+    # Fall back to XML regex parsing
+    text = response.text
+    result = {}
+    for field in ("AccessToken", "TokenType", "ExpiresIn",
+                  "ExpiresInSeconds", "RefreshToken"):
+        match = re.search(rf"<{field}>([^<]*)</{field}>", text)
+        if match and match.group(1):
+            result[field] = match.group(1)
+
+    if "AccessToken" not in result:
+        raise ValueError(f"Could not parse token from response: {text[:500]}")
+
+    return result
+```
+
+---
+
 ## Common Errors
 
 | HTTP Code | Cause | Solution |
@@ -350,6 +400,7 @@ def get_ui_server_url(base_url: str, token: str) -> str:
 | 401 | Invalid consumer key | Verify key in SOA Admin |
 | 403 | Scope restriction | Check consumer key scope |
 | 404 | Wrong endpoint | Use `/api/security/token` or `/api/security/token/v2` |
+| 200 (XML body) | Middleware returning XML instead of JSON | Use dual-format parser (see [XML Token Responses](#xml-token-responses)) |
 
 ---
 
@@ -357,10 +408,11 @@ def get_ui_server_url(base_url: str, token: str) -> str:
 
 1. **Use V2 endpoint** for new integrations
 2. **Store credentials securely** - use environment variables, not code
-3. **Handle token expiration** - refresh before expiry
+3. **Handle token expiration** - refresh 5 minutes before expiry to avoid failed requests
 4. **Use consumer keys** for service accounts
 5. **Restrict scopes** to minimum required access
 6. **Disable SSL verification** only in development (`verify=False`)
+7. **Handle both JSON and XML** token responses for maximum middleware compatibility
 
 ---
 
@@ -369,3 +421,4 @@ def get_ui_server_url(base_url: str, token: str) -> str:
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Error Handling](06-Error-Handling.md)
 - [scripts/common/auth.py](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/common/auth.py) - Authentication module
+- [scripts/common/client.py](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/common/client.py) - Reusable P21 API client with auto token refresh

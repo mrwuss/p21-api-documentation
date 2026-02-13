@@ -532,7 +532,7 @@
 <td>Select multiple rows</td>
 </tr>
 <tr>
-<td><code>/api/ui/interactive/v2/tools</code></td>
+<td><code>/api/ui/interactive/v2/tools?windowId={windowId}</code></td>
 <td>GET</td>
 <td>Get available tools</td>
 </tr>
@@ -543,6 +543,36 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Query Parameter Inconsistency:</strong> Most v2 endpoints use <code>?id=</code> for the window identifier, but the <strong>tools endpoint uses <code>?windowId=</code></strong>. Verified by live testing:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th style="text-align: center;">Accepts <code>?id=</code></th>
+<th style="text-align: center;">Accepts <code>?windowId=</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET/DELETE <code>/v2/window</code></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;">No (422)</td>
+</tr>
+<tr>
+<td>GET/DELETE <code>/v2/data</code></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;">No (400/422)</td>
+</tr>
+<tr>
+<td>GET <code>/v2/tools</code></td>
+<td style="text-align: center;">No (500)</td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Using the wrong parameter returns an error — there is no fallback.</p>
+</blockquote>
 <h3 id="data-operations-v1-legacy">Data Operations (v1 - Legacy)</h3>
 <table>
 <thead>

@@ -338,11 +338,14 @@
 <li><a href="#interactive-api-errors">Interactive API Errors</a><ul>
 <li><a href="#session-errors">Session Errors</a></li>
 <li><a href="#window-errors">Window Errors</a></li>
+<li><a href="#422-400-wrong-query-parameter">422 / 400 - Wrong Query Parameter</a></li>
 <li><a href="#field-not-found">Field Not Found</a></li>
 </ul>
 </li>
 <li><a href="#entity-api-errors">Entity API Errors</a><ul>
 <li><a href="#404-endpoint-not-found">404 - Endpoint Not Found</a></li>
+<li><a href="#405-method-not-allowed-address-updates">405 - Method Not Allowed (Address Updates)</a></li>
+<li><a href="#500-address-template-not-available">500 - Address Template Not Available</a></li>
 <li><a href="#validation-errors">Validation Errors</a></li>
 </ul>
 </li>
@@ -513,6 +516,12 @@
 <span class="p">}</span>
 </code></pre></div>
 
+<p><strong>XML Response Instead of JSON</strong></p>
+<p>Some middleware instances return XML instead of JSON for token endpoints. If your JSON parsing fails, check if the response body is XML:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;TokenResponse&gt;&lt;AccessToken&gt;</span>eyJ...<span class="nt">&lt;/AccessToken&gt;&lt;ExpiresIn&gt;</span>86400<span class="nt">&lt;/ExpiresIn&gt;&lt;/TokenResponse&gt;</span>
+</code></pre></div>
+
+<p><strong>Solution</strong>: Use a dual-format parser that tries JSON first, then falls back to XML regex parsing. See <a href="00-Authentication.html#xml-token-responses">Authentication - XML Token Responses</a>.</p>
 <h3 id="token-troubleshooting">Token Troubleshooting</h3>
 <table>
 <thead>
@@ -537,6 +546,10 @@
 <tr>
 <td>Missing scope</td>
 <td>Add required API scope to consumer key</td>
+</tr>
+<tr>
+<td>JSON parse fails on token response</td>
+<td>Middleware may return XML — use dual-format parser</td>
 </tr>
 </tbody>
 </table>
@@ -612,6 +625,8 @@
 </code></pre></div>
 
 <p><strong>Solution</strong>: Check the service definition for required fields and order.</p>
+<p><strong>Service Fails on <code>/transaction</code> Endpoint</strong></p>
+<p>Some services silently fail or return errors when sent to <code>/api/v2/transaction</code>. These services must use <code>/api/v2/commands</code> instead. See <a href="03-Transaction-API.html#commands-endpoint">Transaction API - Commands Endpoint</a> for the full list of affected services.</p>
 <h3 id="session-pool-contamination">Session Pool Contamination</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -659,6 +674,14 @@ Default timeout is typically 6 minutes of inactivity.</p>
 </code></pre></div>
 
 <p><strong>Solution</strong>: Handle the response window before continuing.</p>
+<h3 id="422-400-wrong-query-parameter">422 / 400 - Wrong Query Parameter</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Window ID was not provided&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Cause</strong>: Using <code>?windowId=</code> on an endpoint that expects <code>?id=</code>, or vice versa. The v2 API is inconsistent — most endpoints use <code>?id=</code> but the tools endpoint uses <code>?windowId=</code>.</p>
+<p><strong>Solution</strong>: See <a href="04-Interactive-API.html#data-operations-v2---recommended">Interactive API - Query Parameter Inconsistency</a> for the correct parameter per endpoint.</p>
 <h3 id="field-not-found">Field Not Found</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Field &#39;invalid_field&#39; not found in datawindow &#39;d_form&#39;&quot;</span>
@@ -679,6 +702,17 @@ Default timeout is typically 6 minutes of inactivity.</p>
 - Wrong endpoint path
 - Entity requires specific licensing</p>
 <p><strong>Solution</strong>: Check middleware home page for available endpoints.</p>
+<h3 id="405-method-not-allowed-address-updates">405 - Method Not Allowed (Address Updates)</h3>
+<p>Addresses do not support PUT/update operations. Attempting to update an address returns:</p>
+<div class="highlight"><pre><span></span><code>HTTP 405 Method Not Allowed
+</code></pre></div>
+
+<p>This is <strong>by design</strong> — the Address entity has a reduced API surface. See <a href="05-Entity-API.html#address-limitations">Entity API - Address Limitations</a>.</p>
+<h3 id="500-address-template-not-available">500 - Address Template Not Available</h3>
+<div class="highlight"><pre><span></span><code>GET /api/entity/addresses/new → 500 Internal Server Error
+</code></pre></div>
+
+<p>The Address entity does not have a <code>/new</code> template endpoint. This is by design — use the Customer or Vendor template endpoints to see address fields within their extended properties.</p>
 <h3 id="validation-errors">Validation Errors</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;Message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The request is invalid.&quot;</span><span class="p">,</span>
@@ -812,8 +846,8 @@ Default timeout is typically 6 minutes of inactivity.</p>
 </tr>
 <tr>
 <td>307 Redirect</td>
-<td>All</td>
-<td>Add <code>follow_redirects=True</code></td>
+<td>Entity</td>
+<td>Add <code>follow_redirects=True</code> (list endpoints)</td>
 </tr>
 <tr>
 <td>Request timeout</td>
@@ -836,6 +870,11 @@ Default timeout is typically 6 minutes of inactivity.</p>
 <td>Handle response window</td>
 </tr>
 <tr>
+<td>422 "Window ID not provided"</td>
+<td>Interactive</td>
+<td>Use <code>?id=</code> not <code>?windowId=</code> (except tools)</td>
+</tr>
+<tr>
 <td>404 on table</td>
 <td>OData</td>
 <td>Verify table name</td>
@@ -844,6 +883,21 @@ Default timeout is typically 6 minutes of inactivity.</p>
 <td>404 on entity</td>
 <td>Entity</td>
 <td>Check if Entity API enabled</td>
+</tr>
+<tr>
+<td>405 on address update</td>
+<td>Entity</td>
+<td>Address has no PUT — by design</td>
+</tr>
+<tr>
+<td>500 on address <code>/new</code></td>
+<td>Entity</td>
+<td>Address has no template — by design</td>
+</tr>
+<tr>
+<td>XML instead of JSON (token)</td>
+<td>Auth</td>
+<td>Use dual-format parser</td>
 </tr>
 <tr>
 <td>Validation errors</td>
