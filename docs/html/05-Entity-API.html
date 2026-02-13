@@ -401,6 +401,17 @@
 </ul>
 </li>
 <li><a href="#entity-api-vs-other-apis">Entity API vs Other APIs</a></li>
+<li><a href="#inventory-rest-api">Inventory REST API</a><ul>
+<li><a href="#base-url_1">Base URL</a></li>
+<li><a href="#endpoints">Endpoints</a></li>
+<li><a href="#key-differences-from-entity-api">Key Differences from Entity API</a></li>
+<li><a href="#important-caveats">Important Caveats</a></li>
+<li><a href="#get-inventory-item">Get Inventory Item</a></li>
+<li><a href="#get-inventory-item-with-extended-properties">Get Inventory Item with Extended Properties</a></li>
+<li><a href="#inventory-extended-properties">Inventory Extended Properties</a></li>
+<li><a href="#inventory-data-fields-partial">Inventory Data Fields (Partial)</a></li>
+</ul>
+</li>
 <li><a href="#related">Related</a></li>
 </ul>
 </div>
@@ -421,7 +432,8 @@
 </blockquote>
 <hr />
 <h2 id="overview">Overview</h2>
-<p>The Entity API is a <strong>stateless REST</strong> API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports only <strong>four entities</strong>: Customer, Vendor, Contact, and Address.</p>
+<p>The Entity API is a <strong>stateless REST</strong> API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports <strong>four entities</strong>: Customer, Vendor, Contact, and Address.</p>
+<p>P21 also provides a related <strong>Inventory REST API</strong> at <code>/api/inventory/parts</code> that follows similar patterns but uses a different base path. Both are covered in this document.</p>
 <h3 id="key-characteristics">Key Characteristics</h3>
 <ul>
 <li><strong>Stateless</strong> - No session management required</li>
@@ -441,8 +453,8 @@
 </ul>
 <h3 id="limitations">Limitations</h3>
 <ul>
-<li><strong>Only 4 entities</strong> - No orders, items, invoices, POs, or other business objects</li>
-<li><strong>No inventory/sales entities</strong> - Use Transaction or Interactive API for those</li>
+<li><strong>Only 4 entities</strong> at <code>/api/entity/</code> - No orders, invoices, POs, or other business objects</li>
+<li><strong>Inventory is separate</strong> - Lives at <code>/api/inventory/parts</code>, not <code>/api/entity/</code></li>
 <li><strong>Limited coverage</strong> - For broad data access, use OData (read) or Transaction API (write)</li>
 </ul>
 <hr />
@@ -456,7 +468,7 @@
 - <code>https://play.p21server.com/api/entity/contacts</code>
 - <code>https://play.p21server.com/api/entity/addresses</code></p>
 <blockquote>
-<p><strong>Warning:</strong> Older documentation (including Epicor SDK reference guides) may show category-based URLs like <code>/api/sales/customers</code> or <code>/api/inventory/parts</code>. These <strong>do not work</strong> as Entity API endpoints. Always use <code>/api/entity/</code>.</p>
+<p><strong>Warning:</strong> Older documentation (including Epicor SDK reference guides) may show category-based URLs like <code>/api/sales/customers</code> or <code>/api/inventory/parts</code>. These <strong>do not work</strong> as Entity API endpoints. Always use <code>/api/entity/</code>. The Inventory REST API at <code>/api/inventory/parts</code> is a <strong>separate API</strong> documented <a href="#inventory-rest-api">below</a>.</p>
 </blockquote>
 <hr />
 <h2 id="available-entities">Available Entities</h2>
@@ -494,6 +506,25 @@
 <td><code>/api/entity/addresses</code></td>
 <td><code>{AddressId}</code> (simple numeric)</td>
 <td>27</td>
+</tr>
+</tbody>
+</table>
+<p>Additionally, the <strong>Inventory REST API</strong> provides similar CRUD access to inventory items:</p>
+<table>
+<thead>
+<tr>
+<th>Entity</th>
+<th>Endpoint</th>
+<th>Key Format</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Inventory</strong></td>
+<td><code>/api/inventory/parts</code></td>
+<td><code>{ItemId}</code> (string)</td>
+<td>60+</td>
 </tr>
 </tbody>
 </table>
@@ -894,6 +925,19 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 - <code>VendorAddress</code> - Mailing and physical address
 - <code>VendorPurchaseAccounts</code> - Purchase account configuration
 - <code>VendorContract</code> - Contract information</p>
+<p><strong>Inventory:</strong>
+- <code>Locations</code> - Warehouse location stock data
+- <code>Suppliers</code> - Vendor/supplier information
+- <code>UnitsOfMeasure</code> - UOM definitions and conversion factors
+- <code>LocationSuppliers</code> - Supplier-location specific data
+- <code>Lot</code> - Lot tracking information
+- <code>LocationMSPs</code> - Location specific pricing
+- <code>Service</code> - Service related data
+- <code>ServiceContracts</code> - linked service contracts
+- <code>Notes</code> - Item notes
+- <code>MSDS</code> - Material Safety Data Sheets
+- <code>RestrictedClasses</code> - Class restrictions
+- <code>AltCodes</code> - Alternate item codes</p>
 <p><strong>Contact:</strong>
 - <code>ContactDocuments</code> - Associated documents
 - <code>ContactLeadSources</code> - Lead source tracking
@@ -1023,11 +1067,13 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 
 <h3 id="health-check">Health Check</h3>
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ping&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>  <span class="c1"># {&quot;ResponseMessage&quot;: &quot;success&quot;}</span>
 </code></pre></div>
 
 <h3 id="get-single-customer">Get Single Customer</h3>
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="c1"># 10: ABC Supply Company</span>
@@ -1038,6 +1084,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/ACME_10&quot;</span><span class="p">,</span>
     <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;CustomerAddress&quot;</span><span class="p">},</span>
 <span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="n">addr</span> <span class="o">=</span> <span class="n">customer</span><span class="p">[</span><span class="s2">&quot;CustomerAddress&quot;</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailCity&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailState&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;MailPostalCode&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1049,6 +1096,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/&quot;</span><span class="p">,</span>
     <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$query&quot;</span><span class="p">:</span> <span class="s2">&quot;startswith(CustomerName, &#39;ABC&#39;)&quot;</span><span class="p">},</span>
 <span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">customers</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">customers</span><span class="p">)</span><span class="si">}</span><span class="s2"> customers&quot;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">customers</span><span class="p">:</span>
@@ -1057,6 +1105,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 
 <h3 id="get-contact">Get Contact</h3>
 <div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/contacts/1&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">contact</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;FirstName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">contact</span><span class="p">[</span><span class="s1">&#39;LastName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="c1"># John Smith</span>
@@ -1064,7 +1113,9 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 
 <h3 id="create-customer">Create Customer</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Get template first</span>
-<span class="n">template</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/new&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers/new&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">template</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
 <span class="c1"># Fill required fields</span>
 <span class="n">template</span><span class="p">[</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>
@@ -1077,6 +1128,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/entity/customers&quot;</span><span class="p">,</span>
     <span class="n">json</span><span class="o">=</span><span class="n">template</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 </code></pre></div>
 
 <h3 id="update-customer">Update Customer</h3>
@@ -1088,6 +1140,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
         <span class="s2">&quot;CustomerName&quot;</span><span class="p">:</span> <span class="s2">&quot;Updated Customer Name&quot;</span><span class="p">,</span>
     <span class="p">},</span>
 <span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 </code></pre></div>
 
 <hr />
@@ -2696,7 +2749,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <li><strong>Simple ID for customers</strong> - Use <code>ACME_10</code>, NOT just <code>10</code></li>
 <li><strong>Missing redirect handling</strong> - List endpoints return 307, must follow redirect</li>
 <li><strong>Confusing VendorId with supplier_id</strong> - These are different database tables</li>
-<li><strong>Expecting orders/items/parts</strong> - Only 4 entities exist (customers, vendors, contacts, addresses)</li>
+<li><strong>Expecting orders/items</strong> - Only 4 entities exist at <code>/api/entity/</code> (customers, vendors, contacts, addresses). Inventory uses <code>/api/inventory/parts</code></li>
 </ol>
 <hr />
 <h2 id="entity-api-vs-other-apis">Entity API vs Other APIs</h2>
@@ -2720,7 +2773,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 </tr>
 <tr>
 <td>Entities</td>
-<td>4 only</td>
+<td>4 (+Inventory)</td>
 <td>Any table/view</td>
 <td>Many services</td>
 <td>Any P21 window</td>
@@ -2759,6 +2812,405 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 <td>Reporting, lookups</td>
 <td>Bulk operations</td>
 <td>Complex workflows</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="inventory-rest-api">Inventory REST API</h2>
+<blockquote>
+<p><strong>Added February 2026</strong> — Contributed by <a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>, verified via live API testing.</p>
+</blockquote>
+<p>P21 provides a separate <strong>Inventory REST API</strong> at <code>/api/inventory/parts</code> that follows similar patterns to the Entity API but uses its own base path. This is <strong>not</strong> part of the Entity API at <code>/api/entity/</code>.</p>
+<h3 id="base-url_1">Base URL</h3>
+<div class="highlight"><pre><span></span><code>https://{hostname}/api/inventory/parts
+</code></pre></div>
+
+<h3 id="endpoints">Endpoints</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Description</th>
+<th>Verified</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/ping</code></td>
+<td>Health check</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/{ItemId}</code></td>
+<td>Get single item</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/inventory/parts/{ItemId}</code></td>
+<td>Update item</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inventory/parts</code></td>
+<td>Create item</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/{ItemId}/availability</code></td>
+<td>Item availability</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/{ItemId}/price</code></td>
+<td>Item pricing</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inventory/parts/itemsAvailability</code></td>
+<td>Batch availability</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inventory/parts/prices</code></td>
+<td>Batch pricing</td>
+<td>Not tested</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-differences-from-entity-api">Key Differences from Entity API</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Entity API</th>
+<th>Inventory API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base path</td>
+<td><code>/api/entity/{resource}</code></td>
+<td><code>/api/inventory/parts</code></td>
+</tr>
+<tr>
+<td>Key format</td>
+<td>Composite (<code>ACME_10</code>) or numeric</td>
+<td>String ItemId (<code>WIDGET-001</code>)</td>
+</tr>
+<tr>
+<td><code>/new</code> template</td>
+<td>Yes (customers, vendors, contacts)</td>
+<td><strong>No</strong> — "new" is treated as an item ID</td>
+</tr>
+<tr>
+<td>List endpoint</td>
+<td>Works (returns 307 redirect)</td>
+<td><strong>Hangs</strong> without filtering — needs <code>$query</code></td>
+</tr>
+<tr>
+<td>Not all records accessible</td>
+<td>All records accessible</td>
+<td>Some items return 404 despite existing in <code>inv_mast</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="important-caveats">Important Caveats</h3>
+<ol>
+<li>
+<p><strong>No <code>/new</code> template</strong> — Unlike Entity API entities, <code>GET /api/inventory/parts/new</code> returns 404 ("No resources found for query string GetById new"). There is no template endpoint.</p>
+</li>
+<li>
+<p><strong>List endpoint hangs</strong> — <code>GET /api/inventory/parts/</code> without a <code>$query</code> parameter attempts to load the entire inventory and times out. Always use a filter.</p>
+</li>
+<li>
+<p><strong>Not all items accessible</strong> — Some items that exist in the <code>inv_mast</code> table (via OData) return 404 from this API. This may be related to item status or other criteria.</p>
+</li>
+<li>
+<p><strong>ItemId format inconsistency</strong> — The root object may use dotted format (e.g., <code>WIDGET-001</code>) while nested <code>inv_loc</code> records may strip dots or formatting. Always handle both formats when correlating data.</p>
+</li>
+</ol>
+<h3 id="get-inventory-item">Get Inventory Item</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;ItemId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;ItemDesc&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Sample Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ItemDesc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Delete&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Weight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;NetWeight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ClassId1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ClassId2&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Serialized&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShortCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;TrackLots&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Price1&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Price2&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ExtendedDesc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DefaultSellingUnit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DefaultPurchasingUnit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InvMastUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Keywords&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;BaseUnit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserDefinedFields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<span class="w">    </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inv_mast&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> Response truncated for brevity. Full response contains 60+ fields from the <code>inv_mast</code> table. Without <code>extendedproperties</code>, all child collections (Locations, Suppliers, etc.) are <code>null</code>.</p>
+</blockquote>
+<h3 id="get-inventory-item-with-extended-properties">Get Inventory Item with Extended Properties</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;*&quot;</span><span class="p">}</span>
+<span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># Access nested Locations (inv_loc data)</span>
+<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Locations&quot;</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;Locations&quot;</span><span class="p">][</span><span class="s2">&quot;list&quot;</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loc: </span><span class="si">{</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;LocationId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Qty: </span><span class="si">{</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;QtyOnHand&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>With <code>extendedproperties=*</code>, child collections are populated as <code>{"list": [...]}</code> objects:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Locations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET001&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;LocationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;QtyOnHand&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;GlAccountNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1300-000&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;RevenueAccountNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4000-000&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;CosAccountNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5000-000&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Sellable&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Stockable&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ProductGroupId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MISC&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;MovingAverageCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;StandardCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ReplenishmentMethod&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Min/Max&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inv_loc&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Suppliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;SupplierId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;SupplierPartNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ListPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inventory_supplier&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;UnitsOfMeasure&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;UnitOfMeasure&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;UnitSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_uom&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;LocationSuppliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Lot&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LocationMSPs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Service&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ServiceContracts&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Notes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;MSDS&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RestrictedClasses&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;AltCodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ItemDesc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inv_mast&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Significant:</strong> The <code>Locations</code> extended property returns full <code>inv_loc</code> records including GL accounts, product groups, costs, and all inventory location fields. This provides API access to <code>inv_loc</code> data that is not available through the Interactive or Transaction APIs.</p>
+</blockquote>
+<h3 id="inventory-extended-properties">Inventory Extended Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>ObjectName</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Locations</code></td>
+<td><code>inv_loc</code></td>
+<td>Warehouse stock levels, GL accounts, costs, product groups</td>
+</tr>
+<tr>
+<td><code>Suppliers</code></td>
+<td><code>inventory_supplier</code></td>
+<td>Vendor/supplier information, costs, lead times</td>
+</tr>
+<tr>
+<td><code>UnitsOfMeasure</code></td>
+<td><code>item_uom</code></td>
+<td>UOM definitions and conversion factors</td>
+</tr>
+<tr>
+<td><code>LocationSuppliers</code></td>
+<td><code>inventory_supplier_x_loc</code></td>
+<td>Supplier-location specific data</td>
+</tr>
+<tr>
+<td><code>Lot</code></td>
+<td>—</td>
+<td>Lot tracking information</td>
+</tr>
+<tr>
+<td><code>LocationMSPs</code></td>
+<td><code>inv_loc_msp</code></td>
+<td>Location-specific pricing</td>
+</tr>
+<tr>
+<td><code>Service</code></td>
+<td>—</td>
+<td>Service-related data</td>
+</tr>
+<tr>
+<td><code>ServiceContracts</code></td>
+<td>—</td>
+<td>Linked service contracts</td>
+</tr>
+<tr>
+<td><code>Notes</code></td>
+<td>—</td>
+<td>Item notes</td>
+</tr>
+<tr>
+<td><code>MSDS</code></td>
+<td>—</td>
+<td>Material Safety Data Sheets</td>
+</tr>
+<tr>
+<td><code>RestrictedClasses</code></td>
+<td>—</td>
+<td>Class restrictions</td>
+</tr>
+<tr>
+<td><code>AltCodes</code></td>
+<td><code>alternate_code</code></td>
+<td>Alternate item codes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="inventory-data-fields-partial">Inventory Data Fields (Partial)</h3>
+<p>Key fields from <code>GET /api/inventory/parts/{ItemId}</code> (maps to <code>inv_mast</code> table):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ItemId</code></td>
+<td>string</td>
+<td>Item identifier</td>
+</tr>
+<tr>
+<td><code>ItemDesc</code></td>
+<td>string</td>
+<td>Item description</td>
+</tr>
+<tr>
+<td><code>ExtendedDesc</code></td>
+<td>string</td>
+<td>Extended description</td>
+</tr>
+<tr>
+<td><code>Keywords</code></td>
+<td>string</td>
+<td>Search keywords</td>
+</tr>
+<tr>
+<td><code>ShortCode</code></td>
+<td>string</td>
+<td>Short code</td>
+</tr>
+<tr>
+<td><code>ClassId1</code>...<code>ClassId5</code></td>
+<td>string</td>
+<td>Classification fields</td>
+</tr>
+<tr>
+<td><code>Weight</code> / <code>NetWeight</code></td>
+<td>decimal</td>
+<td>Item weight</td>
+</tr>
+<tr>
+<td><code>Price1</code>...<code>Price10</code></td>
+<td>decimal</td>
+<td>Base pricing structure</td>
+</tr>
+<tr>
+<td><code>DefaultSellingUnit</code></td>
+<td>string</td>
+<td>Default selling UOM</td>
+</tr>
+<tr>
+<td><code>DefaultPurchasingUnit</code></td>
+<td>string</td>
+<td>Default purchasing UOM</td>
+</tr>
+<tr>
+<td><code>BaseUnit</code></td>
+<td>string</td>
+<td>Base unit of measure</td>
+</tr>
+<tr>
+<td><code>TrackLots</code></td>
+<td>string</td>
+<td>Lot tracking flag (Y/N)</td>
+</tr>
+<tr>
+<td><code>Serialized</code></td>
+<td>string</td>
+<td>Serialized flag (Y/N)</td>
+</tr>
+<tr>
+<td><code>InvMastUid</code></td>
+<td>int</td>
+<td>Internal unique identifier</td>
+</tr>
+<tr>
+<td><code>UserDefinedFields</code></td>
+<td>object</td>
+<td>User-defined fields</td>
+</tr>
+<tr>
+<td><code>ObjectName</code></td>
+<td>string</td>
+<td>Always <code>"inv_mast"</code></td>
 </tr>
 </tbody>
 </table>

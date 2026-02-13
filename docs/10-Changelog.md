@@ -10,6 +10,7 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ## 2026-02-13
 
+- **docs:** Add Inventory REST API documentation to Entity API guide — verified endpoints, caveats, extended properties — *Sibin Francis ([@sibinfrancisaj](https://github.com/sibinfrancisaj))* via [PR #23](https://github.com/mrwuss/p21-api-documentation/pull/23)
 - **fix:** Disable Jekyll rendering and add root URL redirect to HTML docs — *@mrwuss*
 
 ## 2026-02-12
@@ -78,6 +79,7 @@ All notable changes to this documentation project are listed below, grouped by d
 |-------------|--------|---------------|
 | @mrwuss | [@mrwuss](https://github.com/mrwuss) | Project creator, all documentation, HTML generation, maintenance |
 | Claude Jones | [@RadAJones](https://github.com/RadAJones) | Reusable P21 API client with sync/async support ([PR #16](https://github.com/mrwuss/p21-api-documentation/pull/16)) |
+| Sibin Francis | [@sibinfrancisaj](https://github.com/sibinfrancisaj) | Inventory REST API documentation ([PR #23](https://github.com/mrwuss/p21-api-documentation/pull/23)) |
 
 ---
 
