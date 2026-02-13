@@ -10,7 +10,7 @@
 
 ## Overview
 
-The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports only **four entities**: Customer, Vendor, Contact, and Address.
+The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports **five entities**: Customer, Vendor, Contact, Address, and Inventory (Parts).
 
 ### Key Characteristics
 
@@ -31,8 +31,7 @@ The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delet
 
 ### Limitations
 
-- **Only 4 entities** - No orders, items, invoices, POs, or other business objects
-- **No inventory/sales entities** - Use Transaction or Interactive API for those
+- **Only 5 entities** - No orders, invoices, POs, or other business objects.
 - **Limited coverage** - For broad data access, use OData (read) or Transaction API (write)
 
 ---
@@ -49,13 +48,13 @@ Examples:
 - `https://play.p21server.com/api/entity/contacts`
 - `https://play.p21server.com/api/entity/addresses`
 
-> **Warning:** Older documentation (including Epicor SDK reference guides) may show category-based URLs like `/api/sales/customers` or `/api/inventory/parts`. These **do not work** as Entity API endpoints. Always use `/api/entity/`.
+> **Warning:** Older documentation may show category-based URLs like `/api/sales/customers`. These **do not work** as Entity API endpoints. Always use `/api/entity/`. Note that Inventory is an exception and uses `/api/inventory/parts`.
 
 ---
 
 ## Available Entities
 
-Only four entities are available via the Entity API:
+**Five entities** are available via the Entity API (Inventory uses a different base path):
 
 | Entity | Endpoint | Key Format | Fields |
 |--------|----------|------------|--------|
@@ -63,6 +62,7 @@ Only four entities are available via the Entity API:
 | **Vendors** | `/api/entity/vendors` | `{CompanyId}_{VendorId}` | 50 |
 | **Contacts** | `/api/entity/contacts` | `{Id}` (simple numeric) | 40 |
 | **Addresses** | `/api/entity/addresses` | `{AddressId}` (simple numeric) | 27 |
+| **Inventory** | `/api/inventory/parts` | `{ItemId}` (string) | 100+ |
 
 ### Composite Keys
 
@@ -117,6 +117,22 @@ Addresses have a **reduced** set of operations — no `/new` template and no upd
 | `POST` | `/api/entity/addresses` | Create new address |
 
 > **No `/new` or PUT:** The address resource does not define a template endpoint or an update method in the SDK interface. The `/new` endpoint returns 500 because it doesn't exist (not a bug). To update an address, use the Interactive API or direct SQL.
+
+### Inventory (Parts)
+
+Inventory endpoints use the `/api/inventory/parts` base path.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/inventory/parts` | Returns a schema object (List) |
+| `POST` | `/api/inventory/parts` | Insert a schema object |
+| `GET` | `/api/inventory/parts/{ItemId}` | Get single item schema |
+| `PUT` | `/api/inventory/parts/{ItemId}` | Update item schema |
+| `GET` | `/api/inventory/parts/{ItemId}/availability` | Get item availability |
+| `GET` | `/api/inventory/parts/{ItemId}/price` | Get item pricing |
+| `POST` | `/api/inventory/parts/itemsAvailability` | Get item availability (Batch) |
+| `POST` | `/api/inventory/parts/prices` | Get item pricing (Batch) |
+| `GET` | `/api/inventory/parts/ping` | Health check |
 
 ### Trailing Slash on List Endpoints
 
@@ -363,6 +379,20 @@ GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 - `VendorPurchaseAccounts` - Purchase account configuration
 - `VendorContract` - Contract information
 
+**Inventory:**
+- `Locations` - Warehouse location stock data
+- `Suppliers` - Vendor/supplier information
+- `UnitsOfMeasure` - UOM definitions and conversion factors
+- `LocationSuppliers` - Supplier-location specific data
+- `Lot` - Lot tracking information
+- `LocationMSPs` - Location specific pricing
+- `Service` - Service related data
+- `ServiceContracts` - linked service contracts
+- `Notes` - Item notes
+- `MSDS` - Material Safety Data Sheets
+- `RestrictedClasses` - Class restrictions
+- `AltCodes` - Alternate item codes
+
 **Contact:**
 - `ContactDocuments` - Associated documents
 - `ContactLeadSources` - Lead source tracking
@@ -581,6 +611,351 @@ resp = client.post(
     f"{base_url}/api/entity/customers",
     json=template,
 )
+```
+
+### Get Inventory Item
+
+```python
+resp = client.get(f"{base_url}/api/inventory/parts/002.047")
+item = resp.json()
+print(f"{item['ItemId']}: {item['ItemDesc']}")
+# 002.047: M14 HEXAGON NUT CLASS 8
+```
+
+**Sample Response (No Extended Properties):**
+
+```json
+{
+    "Locations": null,
+    "Suppliers": null,
+    "UnitsOfMeasure": null,
+    "LocationSuppliers": null,
+    "Lot": null,
+    "LocationMSPs": null,
+    "Service": null,
+    "ServiceContracts": null,
+    "Notes": null,
+    "MSDS": null,
+    "RestrictedClasses": null,
+    "AltCodes": null,
+    "ItemId": "002.047",
+    "ItemDesc": "M14 HEXAGON NUT CLASS 8",
+    "Delete": "N",
+    "Weight": 0.0,
+    "NetWeight": 0.0,
+    "Cube": 0.0,
+    "CatchWeightIndicator": "Y",
+    "PurchasingWeight": 0.0,
+    "ClassId1": "",
+    "ClassId2": "",
+    "ClassId3": "",
+    "ClassId4": "",
+    "ClassId5": "",
+    "Serialized": "N",
+    "ShortCode": "",
+    "TrackLots": "N",
+    "Price1": 0.0,
+    "Price2": 0.0,
+    "Price3": 0.0,
+    "Price4": 0.0,
+    "Price5": 0.0,
+    "Price6": 0.0,
+    "Price7": 0.0,
+    "Price8": 0.0,
+    "Price9": 0.0,
+    "Price10": 0.0,
+    "DefaultSalesDiscountGroup": "D",
+    "DefaultPurchaseDiscGroup": "D",
+    "SalesPricingUnit": "1",
+    "SalesPricingUnitSize": 1.0,
+    "PurchasePricingUnit": "1",
+    "PurchasePricingUnitSize": 1.0,
+    "ExtendedDesc": "GEOMET FINISH",
+    "CommissionClassId": "",
+    "OtherChargeItem": "N",
+    "DefaultSellingUnit": "1",
+    "DefaultPurchasingUnit": "1",
+    "InvMastUid": 15,
+    "ItemTermsDiscountPct": 0.0,
+    "Keywords": "M14 HEXAGON NUT CLASS 8",
+    "BaseUnit": "1",
+    "CurrencyId": null,
+    "OverrideSpecificCosting": "N",
+    "ParkerProductCd": "",
+    "DefaultPriceFamilyId": "",
+    "CommodityCode": "",
+    "UseRevisionsFlag": "",
+    "RedemptionItemFlag": "N",
+    "RedemptionValue": 0.0,
+    "HazMat": false,
+    "InvoiceType": "",
+    "PickTicketType": "",
+    "Length": null,
+    "Width": null,
+    "Height": null,
+    "SalesTaxClass": "",
+    "SampleItemFlag": "N",
+    "SampleInvMastUid": null,
+    "SampleItemId": "",
+    "UserDefinedFields": {
+        "InvMastUdUid": 0,
+        "InvMastUid": 15,
+        "StockTypeExplained": null
+    },
+    "ObjectName": "inv_mast"
+}
+```
+
+### Get Inventory Item with Multiple Extended Properties
+
+```python
+resp = client.get(
+    f"{base_url}/api/inventory/parts/002.047",
+    params={"extendedproperties": "*"}
+)
+item = resp.json()
+
+# Access nested Locations list
+locations = item["Locations"]["list"]
+for loc in locations:
+    print(f"Loc: {loc['LocationId']}, Qty: {loc['QtyOnHand']}")
+```
+
+**Sample Response (`extendedproperties=*`):**
+
+```json
+{
+    "Locations": {
+        "list": [
+            {
+                "ItemId": "002047",
+                "LocationId": 13,
+                "QtyOnHand": 0.0,
+                "CompanyId": "13",
+                "GlAccountNo": "XXXX",
+                "RevenueAccountNo": "XXXX",
+                "CosAccountNo": "XXXX",
+                "Sellable": "Y",
+                "MovingAverageCost": 0.0,
+                "StandardCost": 0.0,
+                "ProtectedStockQty": null,
+                "InvMin": 0.0,
+                "InvMax": 0.0,
+                "SafetyStock": null,
+                "Stockable": "Y",
+                "ReplenishmentLocation": 13,
+                "ProductGroupId": "000",
+                "PurchaseClass": "",
+                "PurchaseDiscountGroup": "D",
+                "SalesDiscountGroup": "D",
+                "NoCharge": "N",
+                "Price1": 0.0,
+                "Price2": 0.0,
+                "Price3": 0.0,
+                "Price4": 0.0,
+                "Price5": 0.0,
+                "Price6": 0.0,
+                "Price7": 0.0,
+                "Price8": 0.0,
+                "Price9": 0.0,
+                "Price10": 0.0,
+                "ReplenishmentMethod": "Min/Max",
+                "TrackBins": "Y",
+                "DefaultInOe": "N",
+                "PeriodFirstStocked": 1,
+                "YearFirstStocked": 2025,
+                "UsageLock": "N",
+                "UsageLockPeriod": null,
+                "UsageLockYear": null,
+                "PrimaryBin": "NO BIN",
+                "TaxGroupId": "STDITEM",
+                "Requisition": "N",
+                "Buy": "Y",
+                "Make": "N",
+                "PeriodsToSupplyMin": 0,
+                "PeriodsToSupplyMax": 0,
+                "Discontinued": "N",
+                "AllowDsDiscontinuedItems": "N",
+                "AllowSpDiscontinuedItems": "N",
+                "SafetyStockType": null,
+                "ServiceLevelMeasure": null,
+                "ServiceLevelPctGoal": null,
+                "DemandPatternBehaviorCd": null,
+                "DemandPatternCd": null,
+                "PatternLikeInvMastUid": null,
+                "PatternLikeLocationId": null,
+                "BehavesLikeLockFlag": "",
+                "BehavesLikeLockPeriod": null,
+                "BehavesLikeLockYear": null,
+                "PutawayRank": "",
+                "MaxLiability": null,
+                "MaxTransferQty": null,
+                "PriceFamilyId": "",
+                "UserDefinedFields": {},
+                "Delete": "N",
+                "ObjectName": "inv_loc"
+            }
+        ]
+    },
+    "Suppliers": {
+        "list": [
+            {
+                "ItemId": "002.047",
+                "SupplierId": 10405,
+                "DivisionId": 10405,
+                "LeadTimeDays": 0,
+                "UpcCode": "",
+                "CatalogName": "",
+                "CatalogPage": "",
+                "Msds": "",
+                "SupplierPartNo": "",
+                "SupplierSortCode": "",
+                "ListPrice": 0.0,
+                "Cost": 0.0,
+                "ManufacturingClassId": "",
+                "InventorySupplierUid": 14,
+                "ContractNumber": "",
+                "FutureCost": null,
+                "EffectiveDate": null,
+                "MinimumPurchaseQty": 0.0,
+                "IncrementalPurchaseQty": 0.0,
+                "UserDefinedFields": {},
+                "ObjectName": "inventory_supplier"
+            }
+        ]
+    },
+    "UnitsOfMeasure": {
+        "list": [
+            {
+                "ItemId": "002.047",
+                "UnitOfMeasure": "1",
+                "UnitSize": 1.0,
+                "ItemUomUid": 30,
+                "UserDefinedFields": {},
+                "ObjectName": "item_uom"
+            },
+            {
+                "ItemId": "002.047",
+                "UnitOfMeasure": "100",
+                "UnitSize": 100.0,
+                "ItemUomUid": 31,
+                "UserDefinedFields": {},
+                "ObjectName": "item_uom"
+            },
+            {
+                "ItemId": "002.047",
+                "UnitOfMeasure": "1000",
+                "UnitSize": 1000.0,
+                "ItemUomUid": 32,
+                "UserDefinedFields": {},
+                "ObjectName": "item_uom"
+            }
+        ]
+    },
+    "LocationSuppliers": {
+        "list": [
+            {
+                "ItemId": "002047",
+                "InventorySupplierXLocUid": 14,
+                "LocationId": 13,
+                "PrimarySupplier": "Y",
+                "AverageLeadTime": 0,
+                "PublishedLeadTime": 0,
+                "SupplierId": 10405,
+                "LocListPrice": 0.0,
+                "LocCost": 0.0,
+                "LocContractNumber": "",
+                "OverrideVmiStatusFlag": "N",
+                "OverrideBegDate": null,
+                "OverrideEndDate": null,
+                "OverrideVmiStatus": null,
+                "FutureCost": null,
+                "EffectiveDate": null,
+                "UserDefinedFields": {},
+                "ObjectName": "inventory_supplier_x_loc"
+            }
+        ]
+    },
+    "Lot": null,
+    "LocationMSPs": {
+        "list": []
+    },
+    "Service": null,
+    "ServiceContracts": null,
+    "Notes": {
+        "list": []
+    },
+    "MSDS": null,
+    "RestrictedClasses": null,
+    "AltCodes": {
+        "list": []
+    },
+    "ItemId": "002.047",
+    "ItemDesc": "M14 HEXAGON NUT CLASS 8",
+    "Delete": "N",
+    "Weight": 0.0,
+    "NetWeight": 0.0,
+    "Cube": 0.0,
+    "CatchWeightIndicator": "Y",
+    "PurchasingWeight": 0.0,
+    "ClassId1": "",
+    "ClassId2": "",
+    "ClassId3": "",
+    "ClassId4": "",
+    "ClassId5": "",
+    "Serialized": "N",
+    "ShortCode": "",
+    "TrackLots": "N",
+    "Price1": 0.0,
+    "Price2": 0.0,
+    "Price3": 0.0,
+    "Price4": 0.0,
+    "Price5": 0.0,
+    "Price6": 0.0,
+    "Price7": 0.0,
+    "Price8": 0.0,
+    "Price9": 0.0,
+    "Price10": 0.0,
+    "DefaultSalesDiscountGroup": "D",
+    "DefaultPurchaseDiscGroup": "D",
+    "SalesPricingUnit": "1",
+    "SalesPricingUnitSize": 1.0,
+    "PurchasePricingUnit": "1",
+    "PurchasePricingUnitSize": 1.0,
+    "ExtendedDesc": "GEOMET FINISH",
+    "CommissionClassId": "",
+    "OtherChargeItem": "N",
+    "DefaultSellingUnit": "1",
+    "DefaultPurchasingUnit": "1",
+    "InvMastUid": 15,
+    "ItemTermsDiscountPct": 0.0,
+    "Keywords": "M14 HEXAGON NUT CLASS 8",
+    "BaseUnit": "1",
+    "CurrencyId": null,
+    "OverrideSpecificCosting": "N",
+    "ParkerProductCd": "",
+    "DefaultPriceFamilyId": "",
+    "CommodityCode": "",
+    "UseRevisionsFlag": "",
+    "RedemptionItemFlag": "N",
+    "RedemptionValue": 0.0,
+    "HazMat": false,
+    "InvoiceType": "",
+    "PickTicketType": "",
+    "Length": null,
+    "Width": null,
+    "Height": null,
+    "SalesTaxClass": "",
+    "SampleItemFlag": "N",
+    "SampleInvMastUid": null,
+    "SampleItemId": "",
+    "UserDefinedFields": {
+        "InvMastUdUid": 0,
+        "InvMastUid": 15,
+        "StockTypeExplained": null
+    },
+    "ObjectName": "inv_mast"
+}
 ```
 
 ### Update Customer
@@ -836,6 +1211,53 @@ Complete field list from `GET /api/entity/contacts/new`:
 | 39 | `UserDefinedFields` | object | `{}` |
 | 40 | `ObjectName` | string | `"contacts"` |
 
+### Inventory Fields (Partial)
+
+Field list derived from `GET /api/inventory/parts/{ItemId}`.
+
+**Extended Properties (populate via `extendedproperties` parameter):**
+
+| Field | Description |
+|-------|-------------|
+| `Locations` | Warehouse stock levels and settings |
+| `Suppliers` | Supplier specific data |
+| `UnitsOfMeasure` | UOMs and sizes |
+| `LocationSuppliers` | Supplier/Location intersections |
+| `Lot` | Lot information |
+| `LocationMSPs` | Pricing data |
+| `Service` | Service data |
+| `ServiceContracts` | Service contracts |
+| `Notes` | Notes |
+| `MSDS` | Safety data |
+| `RestrictedClasses` | Restrictions |
+| `AltCodes` | Alternative codes |
+
+**Data Fields:**
+
+| Field | Type | Example |
+|-------|------|---------|
+| `ItemId` | string | `"002.047"` |
+| `ItemDesc` | string | `"M14 HEXAGON NUT CLASS 8"` |
+| `ExtendedDesc` | string | `"GEOMET FINISH"` |
+| `Keywords` | string | `"M14 HEXAGON NUT CLASS 8"` |
+| `ShortCode` | string | `""` |
+| `ClassId1`...`ClassId5` | string | Classifications |
+| `Weight` | decimal | `0.0` |
+| `NetWeight` | decimal | `0.0` |
+| `Note` | string | `""` |
+| `Price1`...`Price10` | decimal | Base pricing structure |
+| `SalesPricingUnit` | string | `"1"` |
+| `SalesPricingUnitSize` | decimal | `1.0` |
+| `PurchasePricingUnit` | string | `"1"` |
+| `PurchasePricingUnitSize` | decimal | `1.0` |
+| `DefaultSellingUnit` | string | `"1"` |
+| `DefaultPurchasingUnit` | string | `"1"` |
+| `BaseUnit` | string | `"1"` |
+| `TrackLots` | string | `"N"` |
+| `Serialized` | string | `"N"` |
+| `UserDefinedFields` | object | UDFs |
+| `ObjectName` | string | `"inv_mast"` |
+
 ### Address Fields (27 fields)
 
 > **Note:** The Address resource does not have a `/new` template endpoint (this is by design, not a bug). The field list below is from an existing address record (`GET /api/entity/addresses/10`).
@@ -954,7 +1376,7 @@ When troubleshooting 400/500 errors, check the server-side log files:
 2. **Simple ID for customers** - Use `ACME_10`, NOT just `10`
 3. **Missing redirect handling** - List endpoints return 307, must follow redirect
 4. **Confusing VendorId with supplier_id** - These are different database tables
-5. **Expecting orders/items/parts** - Only 4 entities exist (customers, vendors, contacts, addresses)
+5. **Expecting orders/invoices** - Only 5 entities exist (customers, vendors, contacts, addresses, inventory)
 
 ---
 
@@ -963,7 +1385,7 @@ When troubleshooting 400/500 errors, check the server-side log files:
 | Feature | Entity API | OData | Transaction | Interactive |
 |---------|------------|-------|-------------|-------------|
 | Operations | CRUD | Read-only | Bulk CRUD | Stateful CRUD |
-| Entities | 4 only | Any table/view | Many services | Any P21 window |
+| Entities | 5 only | Any table/view | Many services | Any P21 window |
 | Format | Domain objects | Table rows | XML payloads | Window fields |
 | Session | Stateless | Stateless | Stateless | Stateful |
 | Queries | `$query` | `$filter` (OData) | N/A | N/A |
