@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <strong>P21 API Docs</strong>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="02-OData-API.html">OData API</a></li>
+        <li><a href="03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="05-Entity-API.html">Entity API</a></li>
+        <li><a href="06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li class="active"><a href="10-Changelog.html">Changelog</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#2026-02-13">2026-02-13</a></li>
+<li><a href="#2026-02-12">2026-02-12</a></li>
+<li><a href="#2026-02-11">2026-02-11</a></li>
+<li><a href="#2026-02-09">2026-02-09</a></li>
+<li><a href="#2026-01-20">2026-01-20</a></li>
+<li><a href="#2026-01-19">2026-01-19</a></li>
+<li><a href="#2026-01-02">2026-01-02</a></li>
+<li><a href="#2025-12-27">2025-12-27</a></li>
+<li><a href="#2025-12-26">2025-12-26</a></li>
+<li><a href="#2025-12-25-initial-release">2025-12-25 — Initial Release</a></li>
+<li><a href="#contributors">Contributors</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="changelog">Changelog</h1>
+<blockquote>
+<p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
+</blockquote>
+<hr />
+<p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
+<hr />
+<h2 id="2026-02-13">2026-02-13</h2>
+<ul>
+<li><strong>fix:</strong> Disable Jekyll rendering and add root URL redirect to HTML docs — <em>@mrwuss</em></li>
+</ul>
+<h2 id="2026-02-12">2026-02-12</h2>
+<ul>
+<li><strong>feat:</strong> Add reusable P21 API client (<code>scripts/common/client.py</code>) with sync/async support, namespace helpers for all 4 APIs, and auto token refresh — <em>Claude Jones (<a href="https://github.com/RadAJones">@RadAJones</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/16">PR #16</a></li>
+<li><strong>fix:</strong> Address CodeRabbit + live API testing feedback on client — duplicate parser removal, query param fixes (<code>?id=</code> vs <code>?windowId=</code>), entity address guards, response window forwarding — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add XML token responses section, query parameter testing results, and cross-reference updates across Auth, Interactive, Entity, and Error Handling docs — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Fix Entity API address limitations, add SOAP/mobile endpoints and error codes — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> Add sidebar navigation with page index and on-page table of contents to all HTML docs — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Expand Transaction API with commands endpoint, async limits, and special scenarios — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Expand Interactive API with session params, data structures, and missing endpoints — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Fix OData pagination guidance — page size defaults and performance — <em>@mrwuss</em></li>
+</ul>
+<h2 id="2026-02-11">2026-02-11</h2>
+<ul>
+<li><strong>docs:</strong> Add complete field listings for all Entity API templates — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Rewrite Entity API docs based on verified live testing — confirmed working, composite keys, address limitations — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add OData Dataservice Permissions prerequisites and fix OData version (v3, not v4) — <em>@mrwuss</em></li>
+</ul>
+<h2 id="2026-02-09">2026-02-09</h2>
+<ul>
+<li><strong>docs:</strong> Add production learnings from 700+ bulk Interactive API operations — session batching, error recovery, page expiration patterns — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/11">PR #11</a></li>
+</ul>
+<h2 id="2026-01-20">2026-01-20</h2>
+<ul>
+<li><strong>docs:</strong> Add Interactive API v1 vs v2 differences — endpoint comparison, migration guide — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/9">PR #9</a></li>
+<li><strong>chore:</strong> Cleanup repo — reorganize HTML to <code>docs/html/</code>, fix broken paths, restore Known Issues — <em>@mrwuss</em></li>
+</ul>
+<h2 id="2026-01-19">2026-01-19</h2>
+<ul>
+<li><strong>docs:</strong> Add working endpoint for responding to P21 dialogs — <em>@mrwuss</em></li>
+</ul>
+<h2 id="2026-01-02">2026-01-02</h2>
+<ul>
+<li><strong>docs:</strong> Add row selection bug workaround and <code>inv_loc</code> example for Interactive API — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add Interactive API v1 vs v2 differences — <em>@mrwuss</em></li>
+</ul>
+<h2 id="2025-12-27">2025-12-27</h2>
+<ul>
+<li><strong>docs:</strong> Add lessons learned from Cube Writer project — session pool contamination patterns — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/8">PR #8</a></li>
+</ul>
+<h2 id="2025-12-26">2025-12-26</h2>
+<ul>
+<li><strong>docs:</strong> Add disclaimer to all documentation pages — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add SalesPricePage dropdown codes reference — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/1">PR #1</a></li>
+</ul>
+<h2 id="2025-12-25-initial-release">2025-12-25 — Initial Release</h2>
+<ul>
+<li><strong>feat:</strong> Initial project setup with full documentation for all 4 P21 APIs — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Authentication — token endpoints (V1/V2), credentials vs consumer keys, API scopes, token refresh</li>
+<li><strong>docs:</strong> API Selection Guide — decision flowchart and comparison table</li>
+<li><strong>docs:</strong> OData API — query syntax, filtering, pagination, example scripts</li>
+<li><strong>docs:</strong> Transaction API — service discovery, bulk operations, async patterns, example scripts</li>
+<li><strong>docs:</strong> Interactive API — session management, window operations, response handling, example scripts</li>
+<li><strong>docs:</strong> Entity API — CRUD operations on customers, vendors, contacts, addresses</li>
+<li><strong>docs:</strong> Error Handling — HTTP status codes, API-specific errors, Python patterns</li>
+<li><strong>feat:</strong> GitHub Pages support with card-based landing page</li>
+<li><strong>feat:</strong> HTML generation script with print/PDF support</li>
+<li><strong>feat:</strong> Community contribution templates (CONTRIBUTING.md, issue templates)</li>
+</ul>
+<hr />
+<h2 id="contributors">Contributors</h2>
+<table>
+<thead>
+<tr>
+<th>Contributor</th>
+<th>GitHub</th>
+<th>Contributions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>@mrwuss</td>
+<td><a href="https://github.com/mrwuss">@mrwuss</a></td>
+<td>Project creator, all documentation, HTML generation, maintenance</td>
+</tr>
+<tr>
+<td>Claude Jones</td>
+<td><a href="https://github.com/RadAJones">@RadAJones</a></td>
+<td>Reusable P21 API client with sync/async support (<a href="https://github.com/mrwuss/p21-api-documentation/pull/16">PR #16</a>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="https://github.com/mrwuss/p21-api-documentation">GitHub Repository</a></li>
+<li><a href="00-Authentication.html">Authentication</a></li>
+<li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
+</ul>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+    </script>
+</body>
+</html>
