@@ -1,19 +1,25 @@
 # P21 API Postman Collection
 
-This directory contains a **Postman Collection** for the Prophet 21 APIs. It allows developers to test OData, Transaction, and Interactive endpoints immediately without writing Python code.
+This directory contains a **Postman Collection** for the Prophet 21 APIs. It allows developers to test OData, Transaction, Interactive, and Entity endpoints immediately without writing Python code.
 
-## 🚀 Getting Started
+## Getting Started
 
 1.  **Import:** Open Postman and click **Import** > **File** > Select `p21-api-documentation.postman_collection.json`.
-2.  **Environment:** Create a Postman Environment with the following variables:
-    * `P21_BASE_URL` (e.g., `https://play-api.p21server.com`)
+2.  **Configure Variables:** Click the collection name, go to the **Variables** tab, and fill in:
+    * `P21_BASE_URL` (e.g., `https://play.p21server.com`)
     * `P21_USERNAME`
     * `P21_PASSWORD`
-    * `TOKEN` (Leave blank; auto-filled by scripts)
-    * `UI_SERVER_URL` (Leave blank; auto-filled by scripts)
-3.  **Run:** Start with the **00. Authentication** folder to generate your tokens.
+    * All other variables (`TOKEN`, `UI_SERVER_URL`, `SESSION_ID`, `WINDOW_ID`) are auto-filled by test scripts.
+3.  **Run:** Start with the **00. Authentication** folder to generate your token and UI Server URL.
 
-## 🤝 How to Contribute
+## Important Notes
+
+- **Run Auth first** - Most endpoints require the TOKEN and UI_SERVER_URL variables, which are set automatically when you run the Authentication requests.
+- **Transaction and Interactive APIs** use the UI Server URL (auto-captured), not the base P21 URL.
+- **Interactive API requests must run in order** - they share a stateful session. Always end your session when done.
+- **Entity API** only supports 4 entities: customers, vendors, contacts, addresses. Uses composite keys for customers/vendors (e.g., `ACME_10`).
+
+## How to Contribute
 
 Because Postman Collections are large JSON files, they can be difficult to merge if not handled correctly. Please follow this workflow:
 
