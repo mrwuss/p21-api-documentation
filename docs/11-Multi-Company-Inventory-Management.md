@@ -125,8 +125,8 @@ Add the new company configuration to the arrays. Do **not** remove existing entr
             },
             {
                 "ItemId": "002.047",
-                "LocationId": 18,       <-- NEW LOCATION
-                "CompanyId": "18",      <-- NEW COMPANY
+                "LocationId": 18,
+                "CompanyId": "18",
                 "GlAccountNo": "14100",
                 "RevenueAccountNo": "34100",
                 "CosAccountNo": "44100",
@@ -145,7 +145,7 @@ Add the new company configuration to the arrays. Do **not** remove existing entr
             },
             {
                 "ItemId": "002.047",
-                "SupplierId": 18,       <-- NEW SUPPLIER
+                "SupplierId": 18,
                 "DivisionId": 18,
                 "LeadTimeDays": 5,
                 "ObjectName": "inventory_supplier"
