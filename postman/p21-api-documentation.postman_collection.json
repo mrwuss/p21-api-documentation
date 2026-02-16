@@ -1,0 +1,686 @@
+{
+  "info": {
+    "_postman_id": "457d010c-841f-40a7-a8aa-0a4988297a64",
+    "name": "p21-api-documentation",
+    "description": "[https://github.com/mrwuss/p21-api-documentation](https://github.com/mrwuss/p21-api-documentation)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "47200877",
+    "_collection_link": "https://go.postman.co/collection/47200877-457d010c-841f-40a7-a8aa-0a4988297a64?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "00. Authentication",
+      "item": [
+        {
+          "name": "Get Token (V2)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"username\": \"{{P21_USERNAME}}\",\r\n    \"password\": \"{{P21_PASSWORD}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/security/token/v2",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "security",
+                "token",
+                "v2"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"TOKEN\", jsonData.AccessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get UI Server URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();\r",
+                  "pm.collectionVariables.set(\"UI_SERVER_URL\", jsonData.Url);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/ui/router/v1?urlType=external",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "router",
+                "v1"
+              ],
+              "query": [
+                {
+                  "key": "urlType",
+                  "value": "external"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Obtain the Bearer token and store it automatically.\n\nReference: [docs/00-Authentication.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/00-Authentication.md)"
+    },
+    {
+      "name": "01. OData API",
+      "item": [
+        {
+          "name": "Basic Table Query",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$top=10",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "odataservice",
+                "odata",
+                "table",
+                "customer"
+              ],
+              "query": [
+                {
+                  "key": "$top",
+                  "value": "10",
+                  "type": "text"
+                }
+              ]
+            },
+            "description": "Retrieves first 10 customers from the customer table."
+          },
+          "response": []
+        },
+        {
+          "name": "Filtered Query",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$filter=customer_id eq '100'&$select=customer_id,customer_name,date_created",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "odataservice",
+                "odata",
+                "table",
+                "customer"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "customer_id eq '100'",
+                  "type": "text"
+                },
+                {
+                  "key": "$select",
+                  "value": "customer_id,customer_name,date_created",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pagination (Top/Skip)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/odataservice/odata/table/part?$top=10&$skip=20&$orderby=item_id desc",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "odataservice",
+                "odata",
+                "table",
+                "part"
+              ],
+              "query": [
+                {
+                  "key": "$top",
+                  "value": "10",
+                  "type": "text"
+                },
+                {
+                  "key": "$skip",
+                  "value": "20",
+                  "type": "text"
+                },
+                {
+                  "key": "$orderby",
+                  "value": "item_id desc",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Read-only data extraction via OData v3.\n\n**Reference:** [docs/02-OData-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/02-OData-API.md)"
+    },
+    {
+      "name": "02. Transaction API",
+      "item": [
+        {
+          "name": "List Available Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/v2/services",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "services"
+              ]
+            },
+            "description": "Returns the list of all available import services (e.g., Order, SalesPricePage, Customer). Requires UI Server URL from Authentication step."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Service Definition",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/v2/definition/Order",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "definition",
+                "Order"
+              ]
+            },
+            "description": "Returns the schema/template for a service. Vital for knowing the exact field names and DataElement structure required for the request body."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Single Record (Example)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"Name\": \"Order\",\r\n  \"UseCodeValues\": false,\r\n  \"Transactions\": [\r\n    {\r\n      \"Status\": \"New\",\r\n      \"DataElements\": [\r\n        {\r\n          \"Name\": \"FORM.form\",\r\n          \"Type\": \"Form\",\r\n          \"Keys\": [],\r\n          \"Rows\": [\r\n            {\r\n              \"Edits\": [\r\n                {\"Name\": \"order_no\", \"Value\": \"\"},\r\n                {\"Name\": \"customer_id\", \"Value\": \"1001\"}\r\n              ],\r\n              \"RelativeDateEdits\": []\r\n            }\r\n          ]\r\n        }\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/v2/transaction",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "transaction"
+              ]
+            },
+            "description": "Posts to /api/v2/transaction (not to /services). The Name field in the body identifies the service. See scripts/transaction/03_create_single.py for a working example."
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Stateless imports (bulk data). All Transaction API requests use the **UI Server URL**, not the base P21 URL.\n\n**Reference:** [docs/03-Transaction-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/03-Transaction-API.md)"
+    },
+    {
+      "name": "03. Interactive API",
+      "item": [
+        {
+          "name": "Open Session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"ResponseWindowHandlingEnabled\": false\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/ui/interactive/sessions/",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "interactive",
+                "sessions",
+                ""
+              ]
+            },
+            "description": "Creates a new Interactive API session. Auth is via Bearer token in the header (inherited from collection), NOT credentials in the body."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"SESSION_ID\", jsonData.Id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Open Window (e.g., Sales Price Page)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"ServiceName\": \"SalesPricePage\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/window",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "interactive",
+                "v2",
+                "window"
+              ]
+            },
+            "description": "Opens a window by ServiceName, Title, Name, or MenuId. ServiceName is most reliable."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"WINDOW_ID\", jsonData.WindowId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change Field Value",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"WindowId\": \"{{WINDOW_ID}}\",\r\n  \"List\": [\r\n    {\r\n      \"TabName\": \"FORM\",\r\n      \"FieldName\": \"description\",\r\n      \"Value\": \"Test Description\",\r\n      \"DatawindowName\": \"form\"\r\n    }\r\n  ]\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/change",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "interactive",
+                "v2",
+                "change"
+              ]
+            },
+            "description": "Changes field values using v2 format. Uses List array with TabName, FieldName, Value, and DatawindowName (lowercase 'w')."
+          },
+          "response": []
+        },
+        {
+          "name": "Save Data",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "\"{{WINDOW_ID}}\"",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/data",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "interactive",
+                "v2",
+                "data"
+              ]
+            },
+            "description": "Saves the current window data. IMPORTANT: v2 expects just the WindowId string as the body, NOT wrapped in an object."
+          },
+          "response": []
+        },
+        {
+          "name": "Close Window",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/window?id={{WINDOW_ID}}",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "interactive",
+                "v2",
+                "window"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{WINDOW_ID}}"
+                }
+              ]
+            },
+            "description": "Closes the window. Uses ?id= query parameter (not ?windowId=)."
+          },
+          "response": []
+        },
+        {
+          "name": "End Session",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{UI_SERVER_URL}}/api/ui/interactive/sessions/",
+              "host": [
+                "{{UI_SERVER_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui",
+                "interactive",
+                "sessions",
+                ""
+              ]
+            },
+            "description": "Ends the current session. Always call this when done to free server resources."
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** Stateful window simulation. All requests use the **UI Server URL**.\n\n**Reference:** [docs/04-Interactive-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/04-Interactive-API.md)\n\n**Note:** These requests **must** be run in order because they share a stateful session. Always end your session when done."
+    },
+    {
+      "name": "04. Entity API",
+      "item": [
+        {
+          "name": "Ping (Health Check)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/entity/customers/ping",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "entity",
+                "customers",
+                "ping"
+              ]
+            },
+            "description": "Health check for the Entity API. Returns {\"ResponseMessage\": \"success\"} if working."
+          },
+          "response": []
+        },
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/entity/customers/",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "entity",
+                "customers",
+                ""
+              ]
+            },
+            "description": "Lists all customers. NOTE: Trailing slash is required on list endpoints (without it you get a 307 redirect)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer by Key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/entity/customers/ACME_10",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "entity",
+                "customers",
+                "ACME_10"
+              ]
+            },
+            "description": "Gets a single customer. Customers and vendors use composite keys: {CompanyId}_{Id} (e.g., ACME_10). Update the key to match your environment."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Customer (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"CustomerName\": \"Updated Name via Postman\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/entity/customers/ACME_10",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "entity",
+                "customers",
+                "ACME_10"
+              ]
+            },
+            "description": "Updates a customer. Entity API uses PUT (not PATCH). Key goes in URL. Only 4 entities available: customers, vendors, contacts, addresses."
+          },
+          "response": []
+        },
+        {
+          "name": "List Vendors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{P21_BASE_URL}}/api/entity/vendors/",
+              "host": [
+                "{{P21_BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "entity",
+                "vendors",
+                ""
+              ]
+            },
+            "description": "Lists all vendors. Note: Entity API VendorId is NOT the same as OData supplier_id."
+          },
+          "response": []
+        }
+      ],
+      "description": "**Goal:** CRUD operations on domain objects. Only 4 entities available: customers, vendors, contacts, addresses.\n\nBase URL: `/api/entity/{resource}` (NOT `/api/v1/entities/`)\n\n**Reference:** [docs/05-Entity-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/05-Entity-API.md)"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "P21_BASE_URL",
+      "value": "",
+      "description": "e.g., https://play.p21server.com"
+    },
+    {
+      "key": "P21_USERNAME",
+      "value": "",
+      "description": "Your API user"
+    },
+    {
+      "key": "P21_PASSWORD",
+      "value": "",
+      "description": "Your API password"
+    },
+    {
+      "key": "TOKEN",
+      "value": "",
+      "description": "Leave blank; auto-filled by Get Token script"
+    },
+    {
+      "key": "UI_SERVER_URL",
+      "value": "",
+      "description": "Leave blank; auto-filled by Get UI Server URL script"
+    },
+    {
+      "key": "SESSION_ID",
+      "value": "",
+      "description": "Leave blank; auto-filled by Open Session script"
+    },
+    {
+      "key": "WINDOW_ID",
+      "value": "",
+      "description": "Leave blank; auto-filled by Open Window script"
+    }
+  ]
+}
