@@ -67,6 +67,7 @@ This documentation is available online via GitHub Pages:
 ### Troubleshooting
 - [Error Handling](docs/06-Error-Handling.md) - HTTP codes, error responses
 - [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md) - Intermittent failures
+- [Multi-Company Inventory](docs/11-Multi-Company-Inventory-Management.md) - Handling "Item ID already exists" errors
 
 ### Reference
 - [SalesPricePage Dropdown Codes](docs/08-SalesPricePage-Codes.md) - Valid values for price page fields
