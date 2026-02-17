@@ -18,6 +18,7 @@ This project provides developer-focused documentation for Prophet 21's integrati
 | **Transaction API** | Stateless bulk data manipulation | Bulk creates, external integrations | Working |
 | **Interactive API** | Stateful window interactions with business logic | Complex workflows, validation needed | Working |
 | **Entity API** | CRUD on domain objects (customer, vendor, contact, address) | Simple record operations on 4 entities | Working (`/api/entity/`) |
+| **Inventory REST API** | CRUD on inventory items, multi-company workflows | Item reads, appending locations/suppliers | Working (`/api/inventory/parts`) |
 
 ---
 
@@ -37,6 +38,7 @@ p21-api-documentation/
 │   ├── 08-SalesPricePage-Codes.md
 │   ├── 09-Batch-Processing-Patterns.md
 │   ├── 10-Changelog.md
+│   ├── 11-Inventory-REST-API.md
 │   └── html/                    # Generated HTML versions
 │
 └── scripts/
@@ -114,39 +116,36 @@ All documentation is derived from:
 
 ---
 
-### No Direct inv_loc Write Access (February 2026)
+### inv_loc Write Access — Partially Resolved (February 2026)
 
-**Problem**: There is no API that allows direct **updates** to `inv_loc` records without going through the Item window.
+**Appending new `inv_loc` records** (resolved):
+- The **Inventory REST API** `PUT /api/inventory/parts/{ItemId}` can append new `inv_loc` and `inventory_supplier` records
+- Use the GET → Append → PUT pattern: retrieve item with `extendedproperties=*`, add new Location/Supplier to the lists, PUT back
+- P21 validates appended records through full business logic (company validation, GL account checks)
+- See [Inventory REST API docs](docs/11-Inventory-REST-API.md) for details
 
-**Reading inv_loc Data** (resolved February 2026):
-- The **Inventory REST API** at `/api/inventory/parts/{itemId}?extendedproperties=*` returns full `inv_loc` data including GL accounts, product groups, and costs
+**Reading `inv_loc` data** (resolved):
+- `GET /api/inventory/parts/{ItemId}?extendedproperties=*` returns full `inv_loc` data including GL accounts, product groups, and costs
 - OData also provides read access to `inv_loc` table
-- See Entity API docs → Inventory REST API section for details
 
-**Writing inv_loc Data** (still unresolved):
+**Updating existing `inv_loc` fields** (still unresolved):
 
 | API | Result |
 |-----|--------|
 | **Interactive API (Item window)** | GL account fields on TABPAGE_24 are **read-only** - cannot be modified |
 | **Transaction API** | No `InvLoc` service exists. Item service returns 500 errors for inv_loc updates |
-| **Inventory REST API** | Read-only for inv_loc data (via extended properties) — no PUT/POST for inv_loc fields |
-
-**Transaction API Findings**:
-- No `InvLoc`, `InventoryLocation`, or `ItemLocation` service exists
-- The `Item` service definition shows `inv_loc_detail` and `inv_loc_accounts` DataElements, but they are designed for **creating** new items, not updating existing inv_loc records
-- Attempting to update existing inv_loc via Transaction API returns `NullReferenceException`
-- Async endpoint gets stuck on status "Active" indefinitely
+| **Inventory REST API** | Can append new records, but modifying fields on existing `inv_loc` records not verified |
 
 **Impact**: Cannot programmatically:
-1. Change `product_group_id` without triggering GL account dialog
+1. Change `product_group_id` on existing locations without triggering GL account dialog
 2. Restore GL accounts after they've been changed by the dialog
-3. Update inv_loc fields independently of the Item window
+3. Update individual fields on existing `inv_loc` records
 
-**Potential Workarounds** (not verified):
-1. **Direct SQL** - Update inv_loc table directly (bypasses business logic, use with caution)
-2. **Epicor Support** - Request response window endpoint documentation
-3. **Custom P21 Development** - Create a custom window/service for inv_loc updates
+**Workarounds**:
+1. **Inventory REST API** - Can append new `inv_loc` records (multi-company workflows)
+2. **Direct SQL** - Update `inv_loc` table directly (bypasses business logic, use with caution)
+3. **Epicor Support** - Request response window endpoint documentation
 
 ---
 
-*Last updated: 2026-02-12*
+*Last updated: 2026-02-17*
