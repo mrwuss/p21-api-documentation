@@ -12,7 +12,7 @@
 
 The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports **four entities**: Customer, Vendor, Contact, and Address.
 
-P21 also provides a related **Inventory REST API** at `/api/inventory/parts` that follows similar patterns but uses a different base path. Both are covered in this document.
+P21 also provides a separate **Inventory REST API** at `/api/inventory/parts` — see [Inventory REST API](11-Inventory-REST-API.md) for full documentation.
 
 ### Key Characteristics
 
@@ -34,7 +34,7 @@ P21 also provides a related **Inventory REST API** at `/api/inventory/parts` tha
 ### Limitations
 
 - **Only 4 entities** at `/api/entity/` - No orders, invoices, POs, or other business objects
-- **Inventory is separate** - Lives at `/api/inventory/parts`, not `/api/entity/`
+- **Inventory is separate** - Lives at `/api/inventory/parts`, not `/api/entity/` (see [Inventory REST API](11-Inventory-REST-API.md))
 - **Limited coverage** - For broad data access, use OData (read) or Transaction API (write)
 
 ---
@@ -51,7 +51,7 @@ Examples:
 - `https://play.p21server.com/api/entity/contacts`
 - `https://play.p21server.com/api/entity/addresses`
 
-> **Warning:** Older documentation (including Epicor SDK reference guides) may show category-based URLs like `/api/sales/customers` or `/api/inventory/parts`. These **do not work** as Entity API endpoints. Always use `/api/entity/`. The Inventory REST API at `/api/inventory/parts` is a **separate API** documented [below](#inventory-rest-api).
+> **Warning:** Older documentation (including Epicor SDK reference guides) may show category-based URLs like `/api/sales/customers` or `/api/inventory/parts`. These **do not work** as Entity API endpoints. Always use `/api/entity/`. The Inventory REST API at `/api/inventory/parts` is a **separate API** documented in [Inventory REST API](11-Inventory-REST-API.md).
 
 ---
 
@@ -66,11 +66,7 @@ Only four entities are available via the Entity API:
 | **Contacts** | `/api/entity/contacts` | `{Id}` (simple numeric) | 40 |
 | **Addresses** | `/api/entity/addresses` | `{AddressId}` (simple numeric) | 27 |
 
-Additionally, the **Inventory REST API** provides similar CRUD access to inventory items:
-
-| Entity | Endpoint | Key Format | Fields |
-|--------|----------|------------|--------|
-| **Inventory** | `/api/inventory/parts` | `{ItemId}` (string) | 60+ |
+Additionally, the **[Inventory REST API](11-Inventory-REST-API.md)** provides CRUD access to inventory items at `/api/inventory/parts`.
 
 ### Composite Keys
 
@@ -985,7 +981,7 @@ When troubleshooting 400/500 errors, check the server-side log files:
 2. **Simple ID for customers** - Use `ACME_10`, NOT just `10`
 3. **Missing redirect handling** - List endpoints return 307, must follow redirect
 4. **Confusing VendorId with supplier_id** - These are different database tables
-5. **Expecting orders/items** - Only 4 entities exist at `/api/entity/` (customers, vendors, contacts, addresses). Inventory uses `/api/inventory/parts`
+5. **Expecting orders/items** - Only 4 entities exist at `/api/entity/` (customers, vendors, contacts, addresses). Inventory uses `/api/inventory/parts` (see [Inventory REST API](11-Inventory-REST-API.md))
 
 ---
 
@@ -994,216 +990,12 @@ When troubleshooting 400/500 errors, check the server-side log files:
 | Feature | Entity API | OData | Transaction | Interactive |
 |---------|------------|-------|-------------|-------------|
 | Operations | CRUD | Read-only | Bulk CRUD | Stateful CRUD |
-| Entities | 4 (+Inventory) | Any table/view | Many services | Any P21 window |
+| Entities | 4 (see also [Inventory REST API](11-Inventory-REST-API.md)) | Any table/view | Many services | Any P21 window |
 | Format | Domain objects | Table rows | XML payloads | Window fields |
 | Session | Stateless | Stateless | Stateless | Stateful |
 | Queries | `$query` | `$filter` (OData) | N/A | N/A |
 | Extended data | `extendedproperties` | N/A | N/A | Tab navigation |
 | Best for | Customer/vendor CRUD | Reporting, lookups | Bulk operations | Complex workflows |
-
----
-
-## Inventory REST API
-
-> **Added February 2026** — Contributed by [@sibinfrancisaj](https://github.com/sibinfrancisaj), verified via live API testing.
-
-P21 provides a separate **Inventory REST API** at `/api/inventory/parts` that follows similar patterns to the Entity API but uses its own base path. This is **not** part of the Entity API at `/api/entity/`.
-
-### Base URL
-
-```
-https://{hostname}/api/inventory/parts
-```
-
-### Endpoints
-
-| Method | Path | Description | Verified |
-|--------|------|-------------|----------|
-| `GET` | `/api/inventory/parts/ping` | Health check | Yes |
-| `GET` | `/api/inventory/parts/{ItemId}` | Get single item | Yes |
-| `PUT` | `/api/inventory/parts/{ItemId}` | Update item | Not tested |
-| `POST` | `/api/inventory/parts` | Create item | Not tested |
-| `GET` | `/api/inventory/parts/{ItemId}/availability` | Item availability | Not tested |
-| `GET` | `/api/inventory/parts/{ItemId}/price` | Item pricing | Not tested |
-| `POST` | `/api/inventory/parts/itemsAvailability` | Batch availability | Not tested |
-| `POST` | `/api/inventory/parts/prices` | Batch pricing | Not tested |
-
-### Key Differences from Entity API
-
-| Feature | Entity API | Inventory API |
-|---------|-----------|---------------|
-| Base path | `/api/entity/{resource}` | `/api/inventory/parts` |
-| Key format | Composite (`ACME_10`) or numeric | String ItemId (`WIDGET-001`) |
-| `/new` template | Yes (customers, vendors, contacts) | **No** — "new" is treated as an item ID |
-| List endpoint | Works (returns 307 redirect) | **Hangs** without filtering — needs `$query` |
-| Not all records accessible | All records accessible | Some items return 404 despite existing in `inv_mast` |
-
-### Important Caveats
-
-1. **No `/new` template** — Unlike Entity API entities, `GET /api/inventory/parts/new` returns 404 ("No resources found for query string GetById new"). There is no template endpoint.
-
-2. **List endpoint hangs** — `GET /api/inventory/parts/` without a `$query` parameter attempts to load the entire inventory and times out. Always use a filter.
-
-3. **Not all items accessible** — Some items that exist in the `inv_mast` table (via OData) return 404 from this API. This may be related to item status or other criteria.
-
-4. **ItemId format inconsistency** — The root object may use dotted format (e.g., `WIDGET-001`) while nested `inv_loc` records may strip dots or formatting. Always handle both formats when correlating data.
-
-### Get Inventory Item
-
-```python
-resp = client.get(f"{base_url}/api/inventory/parts/WIDGET-001")
-resp.raise_for_status()
-item = resp.json()
-print(f"{item['ItemId']}: {item['ItemDesc']}")
-```
-
-**Sample Response:**
-
-```json
-{
-    "ItemId": "WIDGET-001",
-    "ItemDesc": "Standard Widget Assembly",
-    "Delete": "N",
-    "Weight": 0.0,
-    "NetWeight": 0.0,
-    "ClassId1": "",
-    "ClassId2": "",
-    "Serialized": "N",
-    "ShortCode": "",
-    "TrackLots": "N",
-    "Price1": 0.0,
-    "Price2": 0.0,
-    "ExtendedDesc": "",
-    "DefaultSellingUnit": "1",
-    "DefaultPurchasingUnit": "1",
-    "InvMastUid": 15,
-    "Keywords": "Standard Widget Assembly",
-    "BaseUnit": "1",
-    "UserDefinedFields": {},
-    "ObjectName": "inv_mast"
-}
-```
-
-> **Note:** Response truncated for brevity. Full response contains 60+ fields from the `inv_mast` table. Without `extendedproperties`, all child collections (Locations, Suppliers, etc.) are `null`.
-
-### Get Inventory Item with Extended Properties
-
-```python
-resp = client.get(
-    f"{base_url}/api/inventory/parts/WIDGET-001",
-    params={"extendedproperties": "*"}
-)
-resp.raise_for_status()
-item = resp.json()
-
-# Access nested Locations (inv_loc data)
-if item.get("Locations"):
-    for loc in item["Locations"]["list"]:
-        print(f"Loc: {loc['LocationId']}, Qty: {loc['QtyOnHand']}")
-```
-
-With `extendedproperties=*`, child collections are populated as `{"list": [...]}` objects:
-
-```json
-{
-    "Locations": {
-        "list": [
-            {
-                "ItemId": "WIDGET001",
-                "LocationId": 1,
-                "QtyOnHand": 0.0,
-                "CompanyId": "ACME",
-                "GlAccountNo": "1300-000",
-                "RevenueAccountNo": "4000-000",
-                "CosAccountNo": "5000-000",
-                "Sellable": "Y",
-                "Stockable": "Y",
-                "ProductGroupId": "MISC",
-                "MovingAverageCost": 0.0,
-                "StandardCost": 0.0,
-                "ReplenishmentMethod": "Min/Max",
-                "ObjectName": "inv_loc"
-            }
-        ]
-    },
-    "Suppliers": {
-        "list": [
-            {
-                "ItemId": "WIDGET-001",
-                "SupplierId": 10,
-                "SupplierPartNo": "",
-                "ListPrice": 0.0,
-                "Cost": 0.0,
-                "ObjectName": "inventory_supplier"
-            }
-        ]
-    },
-    "UnitsOfMeasure": {
-        "list": [
-            {
-                "ItemId": "WIDGET-001",
-                "UnitOfMeasure": "1",
-                "UnitSize": 1.0,
-                "ObjectName": "item_uom"
-            }
-        ]
-    },
-    "LocationSuppliers": { "list": [...] },
-    "Lot": null,
-    "LocationMSPs": { "list": [] },
-    "Service": null,
-    "ServiceContracts": null,
-    "Notes": { "list": [] },
-    "MSDS": null,
-    "RestrictedClasses": null,
-    "AltCodes": { "list": [] },
-    "ItemId": "WIDGET-001",
-    "ItemDesc": "Standard Widget Assembly",
-    "ObjectName": "inv_mast"
-}
-```
-
-> **Significant:** The `Locations` extended property returns full `inv_loc` records including GL accounts, product groups, costs, and all inventory location fields. This provides API access to `inv_loc` data that is not available through the Interactive or Transaction APIs.
-
-### Inventory Extended Properties
-
-| Property | ObjectName | Description |
-|----------|-----------|-------------|
-| `Locations` | `inv_loc` | Warehouse stock levels, GL accounts, costs, product groups |
-| `Suppliers` | `inventory_supplier` | Vendor/supplier information, costs, lead times |
-| `UnitsOfMeasure` | `item_uom` | UOM definitions and conversion factors |
-| `LocationSuppliers` | `inventory_supplier_x_loc` | Supplier-location specific data |
-| `Lot` | — | Lot tracking information |
-| `LocationMSPs` | `inv_loc_msp` | Location-specific pricing |
-| `Service` | — | Service-related data |
-| `ServiceContracts` | — | Linked service contracts |
-| `Notes` | — | Item notes |
-| `MSDS` | — | Material Safety Data Sheets |
-| `RestrictedClasses` | — | Class restrictions |
-| `AltCodes` | `alternate_code` | Alternate item codes |
-
-### Inventory Data Fields (Partial)
-
-Key fields from `GET /api/inventory/parts/{ItemId}` (maps to `inv_mast` table):
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `ItemId` | string | Item identifier |
-| `ItemDesc` | string | Item description |
-| `ExtendedDesc` | string | Extended description |
-| `Keywords` | string | Search keywords |
-| `ShortCode` | string | Short code |
-| `ClassId1`...`ClassId5` | string | Classification fields |
-| `Weight` / `NetWeight` | decimal | Item weight |
-| `Price1`...`Price10` | decimal | Base pricing structure |
-| `DefaultSellingUnit` | string | Default selling UOM |
-| `DefaultPurchasingUnit` | string | Default purchasing UOM |
-| `BaseUnit` | string | Base unit of measure |
-| `TrackLots` | string | Lot tracking flag (Y/N) |
-| `Serialized` | string | Serialized flag (Y/N) |
-| `InvMastUid` | int | Internal unique identifier |
-| `UserDefinedFields` | object | User-defined fields |
-| `ObjectName` | string | Always `"inv_mast"` |
 
 ---
 
@@ -1214,4 +1006,5 @@ Key fields from `GET /api/inventory/parts/{ItemId}` (maps to `inv_mast` table):
 - [OData API](02-OData-API.md) - For read-only queries on any table
 - [Transaction API](03-Transaction-API.md) - For bulk data operations
 - [Interactive API](04-Interactive-API.md) - For stateful CRUD with business logic
+- [Inventory REST API](11-Inventory-REST-API.md) - Inventory CRUD at `/api/inventory/parts`
 - [scripts/entity/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/entity/) - Test scripts

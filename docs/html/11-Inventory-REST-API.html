@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory REST API - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <strong>P21 API Docs</strong>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="02-OData-API.html">OData API</a></li>
+        <li><a href="03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="05-Entity-API.html">Entity API</a></li>
+        <li><a href="06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="10-Changelog.html">Changelog</a></li>
+        <li class="active"><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a><ul>
+<li><a href="#when-to-use">When to Use</a></li>
+<li><a href="#limitations">Limitations</a></li>
+</ul>
+</li>
+<li><a href="#base-url">Base URL</a></li>
+<li><a href="#endpoints">Endpoints</a></li>
+<li><a href="#comparison-with-entity-api">Comparison with Entity API</a></li>
+<li><a href="#reading-items">Reading Items</a><ul>
+<li><a href="#basic-get">Basic GET</a></li>
+<li><a href="#get-with-extended-properties">GET with Extended Properties</a></li>
+<li><a href="#extended-properties-reference">Extended Properties Reference</a></li>
+<li><a href="#data-fields-partial">Data Fields (Partial)</a></li>
+</ul>
+</li>
+<li><a href="#writing-items">Writing Items</a><ul>
+<li><a href="#put-update-existing-item">PUT — Update Existing Item</a></li>
+<li><a href="#post-create-new-item">POST — Create New Item</a></li>
+</ul>
+</li>
+<li><a href="#multi-company-inventory-workflow">Multi-Company Inventory Workflow</a><ul>
+<li><a href="#the-pattern-get-append-put">The Pattern: GET → Append → PUT</a></li>
+<li><a href="#step-1-get-the-item">Step 1: GET the Item</a></li>
+<li><a href="#step-2-append-new-company-data">Step 2: Append New Company Data</a></li>
+<li><a href="#step-3-put-the-updated-payload">Step 3: PUT the Updated Payload</a></li>
+<li><a href="#verified-error-messages">Verified Error Messages</a></li>
+</ul>
+</li>
+<li><a href="#common-issues">Common Issues</a><ul>
+<li><a href="#1-item-id-already-exists">1. "Item ID already exists"</a></li>
+<li><a href="#2-account-doesnt-exist-for-company">2. "Account doesn't exist for company"</a></li>
+<li><a href="#3-uom-handling">3. UOM Handling</a></li>
+</ul>
+</li>
+<li><a href="#automation-example">Automation Example</a><ul>
+<li><a href="#batch-processing-tips">Batch Processing Tips</a></li>
+</ul>
+</li>
+<li><a href="#known-limitations">Known Limitations</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="inventory-rest-api">Inventory REST API</h1>
+<blockquote>
+<p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
+</blockquote>
+<hr />
+<blockquote>
+<p><strong>Added February 2026</strong> — Originally contributed by <a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>. PUT/POST behavior verified via live API testing.</p>
+</blockquote>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>P21 provides an <strong>Inventory REST API</strong> at <code>/api/inventory/parts</code> for CRUD operations on inventory items (<code>inv_mast</code>). This is a <strong>separate API</strong> from the <a href="05-Entity-API.html">Entity API</a> at <code>/api/entity/</code> — it uses its own base path and has different behavior.</p>
+<p>The Inventory REST API is significant because it provides:
+- <strong>Read access</strong> to <code>inv_loc</code> (inventory location) records via extended properties
+- <strong>Write access</strong> to append new <code>inv_loc</code> and <code>inventory_supplier</code> records via PUT
+- Direct item-level CRUD without sessions or stateful workflows</p>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li>Reading inventory item details including location-specific data (GL accounts, costs, stock levels)</li>
+<li>Adding existing items to new companies/locations (multi-company workflows)</li>
+<li>Creating new inventory items</li>
+<li>Checking item availability and pricing</li>
+</ul>
+<h3 id="limitations">Limitations</h3>
+<ul>
+<li><strong>No <code>/new</code> template</strong> — <code>GET /api/inventory/parts/new</code> returns 404</li>
+<li><strong>List endpoint hangs</strong> — <code>GET /api/inventory/parts/</code> without <code>$query</code> tries to load all items and times out</li>
+<li><strong>Not all items accessible</strong> — Some items in <code>inv_mast</code> (via OData) return 404 from this API</li>
+<li><strong>Cannot update existing <code>inv_loc</code> fields</strong> — You can append new location records but not modify fields on existing ones (see <a href="#known-limitations">Known Limitations</a>)</li>
+</ul>
+<hr />
+<h2 id="base-url">Base URL</h2>
+<div class="highlight"><pre><span></span><code>https://{hostname}/api/inventory/parts
+</code></pre></div>
+
+<p>Example: <code>https://play.p21server.com/api/inventory/parts</code></p>
+<hr />
+<h2 id="endpoints">Endpoints</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Description</th>
+<th>Verified</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/ping</code></td>
+<td>Health check</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/{ItemId}</code></td>
+<td>Get single item</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/inventory/parts/{ItemId}</code></td>
+<td>Update item (append locations/suppliers)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inventory/parts</code></td>
+<td>Create new item</td>
+<td>Yes (error for duplicates)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/{ItemId}/availability</code></td>
+<td>Item availability</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/parts/{ItemId}/price</code></td>
+<td>Item pricing</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inventory/parts/itemsAvailability</code></td>
+<td>Batch availability</td>
+<td>Not tested</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inventory/parts/prices</code></td>
+<td>Batch pricing</td>
+<td>Not tested</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="comparison-with-entity-api">Comparison with Entity API</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Entity API</th>
+<th>Inventory REST API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base path</td>
+<td><code>/api/entity/{resource}</code></td>
+<td><code>/api/inventory/parts</code></td>
+</tr>
+<tr>
+<td>Key format</td>
+<td>Composite (<code>ACME_10</code>) or numeric</td>
+<td>String ItemId (<code>WIDGET-001</code>)</td>
+</tr>
+<tr>
+<td><code>/new</code> template</td>
+<td>Yes (customers, vendors, contacts)</td>
+<td><strong>No</strong> — "new" is treated as an item ID</td>
+</tr>
+<tr>
+<td>List endpoint</td>
+<td>Works (returns 307 redirect)</td>
+<td><strong>Hangs</strong> without filtering — needs <code>$query</code></td>
+</tr>
+<tr>
+<td>Record accessibility</td>
+<td>All records accessible</td>
+<td>Some items return 404 despite existing in <code>inv_mast</code></td>
+</tr>
+<tr>
+<td>Write support</td>
+<td>PUT for updates</td>
+<td>PUT for updates, POST for creates</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="reading-items">Reading Items</h2>
+<h3 id="basic-get">Basic GET</h3>
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;ItemId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;ItemDesc&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>Sample Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ItemDesc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Delete&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Weight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;NetWeight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ClassId1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ClassId2&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Serialized&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShortCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;TrackLots&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Price1&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Price2&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ExtendedDesc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DefaultSellingUnit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DefaultPurchasingUnit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InvMastUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Keywords&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;BaseUnit&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserDefinedFields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<span class="w">    </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inv_mast&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> Response truncated for brevity. Full response contains 60+ fields from the <code>inv_mast</code> table. Without <code>extendedproperties</code>, all child collections (Locations, Suppliers, etc.) are <code>null</code>.</p>
+</blockquote>
+<h3 id="get-with-extended-properties">GET with Extended Properties</h3>
+<p>Use <code>extendedproperties</code> to include child collections (<code>inv_loc</code>, <code>inventory_supplier</code>, etc.):</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/parts/WIDGET-001?extendedproperties=*</span>
+<span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>
+</code></pre></div>
+
+<p>Or fetch only what you need:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure</span>
+<span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;*&quot;</span><span class="p">}</span>
+<span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># Access nested Locations (inv_loc data)</span>
+<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Locations&quot;</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;Locations&quot;</span><span class="p">][</span><span class="s2">&quot;list&quot;</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loc: </span><span class="si">{</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;LocationId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Qty: </span><span class="si">{</span><span class="n">loc</span><span class="p">[</span><span class="s1">&#39;QtyOnHand&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>With <code>extendedproperties=*</code>, child collections are populated as <code>{"list": [...]}</code> objects:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ItemDesc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InvMastUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">15</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inv_mast&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Locations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET001&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;LocationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;QtyOnHand&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;GlAccountNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1300-000&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;RevenueAccountNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4000-000&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;CosAccountNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5000-000&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Sellable&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Stockable&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ProductGroupId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MISC&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;MovingAverageCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;StandardCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ReplenishmentMethod&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Min/Max&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inv_loc&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Suppliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;SupplierId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;SupplierPartNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ListPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inventory_supplier&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;UnitsOfMeasure&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;UnitOfMeasure&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;UnitSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;ObjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_uom&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;LocationSuppliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Lot&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LocationMSPs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Service&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ServiceContracts&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Notes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;MSDS&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RestrictedClasses&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;AltCodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Significant:</strong> The <code>Locations</code> extended property returns full <code>inv_loc</code> records including GL accounts, product groups, costs, and all inventory location fields. This provides read access to <code>inv_loc</code> data that is difficult to obtain through other APIs.</p>
+</blockquote>
+<h3 id="extended-properties-reference">Extended Properties Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>ObjectName</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Locations</code></td>
+<td><code>inv_loc</code></td>
+<td>Warehouse stock levels, GL accounts, costs, product groups</td>
+</tr>
+<tr>
+<td><code>Suppliers</code></td>
+<td><code>inventory_supplier</code></td>
+<td>Vendor/supplier information, costs, lead times</td>
+</tr>
+<tr>
+<td><code>UnitsOfMeasure</code></td>
+<td><code>item_uom</code></td>
+<td>UOM definitions and conversion factors</td>
+</tr>
+<tr>
+<td><code>LocationSuppliers</code></td>
+<td><code>inventory_supplier_x_loc</code></td>
+<td>Supplier-location specific data</td>
+</tr>
+<tr>
+<td><code>Lot</code></td>
+<td>—</td>
+<td>Lot tracking information</td>
+</tr>
+<tr>
+<td><code>LocationMSPs</code></td>
+<td><code>inv_loc_msp</code></td>
+<td>Location-specific pricing</td>
+</tr>
+<tr>
+<td><code>Service</code></td>
+<td>—</td>
+<td>Service-related data</td>
+</tr>
+<tr>
+<td><code>ServiceContracts</code></td>
+<td>—</td>
+<td>Linked service contracts</td>
+</tr>
+<tr>
+<td><code>Notes</code></td>
+<td>—</td>
+<td>Item notes</td>
+</tr>
+<tr>
+<td><code>MSDS</code></td>
+<td>—</td>
+<td>Material Safety Data Sheets</td>
+</tr>
+<tr>
+<td><code>RestrictedClasses</code></td>
+<td>—</td>
+<td>Class restrictions</td>
+</tr>
+<tr>
+<td><code>AltCodes</code></td>
+<td><code>alternate_code</code></td>
+<td>Alternate item codes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="data-fields-partial">Data Fields (Partial)</h3>
+<p>Key fields from <code>GET /api/inventory/parts/{ItemId}</code> (maps to <code>inv_mast</code> table):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ItemId</code></td>
+<td>string</td>
+<td>Item identifier</td>
+</tr>
+<tr>
+<td><code>ItemDesc</code></td>
+<td>string</td>
+<td>Item description</td>
+</tr>
+<tr>
+<td><code>ExtendedDesc</code></td>
+<td>string</td>
+<td>Extended description</td>
+</tr>
+<tr>
+<td><code>Keywords</code></td>
+<td>string</td>
+<td>Search keywords</td>
+</tr>
+<tr>
+<td><code>ShortCode</code></td>
+<td>string</td>
+<td>Short code</td>
+</tr>
+<tr>
+<td><code>ClassId1</code>...<code>ClassId5</code></td>
+<td>string</td>
+<td>Classification fields</td>
+</tr>
+<tr>
+<td><code>Weight</code> / <code>NetWeight</code></td>
+<td>decimal</td>
+<td>Item weight</td>
+</tr>
+<tr>
+<td><code>Price1</code>...<code>Price10</code></td>
+<td>decimal</td>
+<td>Base pricing structure</td>
+</tr>
+<tr>
+<td><code>DefaultSellingUnit</code></td>
+<td>string</td>
+<td>Default selling UOM</td>
+</tr>
+<tr>
+<td><code>DefaultPurchasingUnit</code></td>
+<td>string</td>
+<td>Default purchasing UOM</td>
+</tr>
+<tr>
+<td><code>BaseUnit</code></td>
+<td>string</td>
+<td>Base unit of measure</td>
+</tr>
+<tr>
+<td><code>TrackLots</code></td>
+<td>string</td>
+<td>Lot tracking flag (Y/N)</td>
+</tr>
+<tr>
+<td><code>Serialized</code></td>
+<td>string</td>
+<td>Serialized flag (Y/N)</td>
+</tr>
+<tr>
+<td><code>InvMastUid</code></td>
+<td>int</td>
+<td>Internal unique identifier</td>
+</tr>
+<tr>
+<td><code>UserDefinedFields</code></td>
+<td>object</td>
+<td>User-defined fields</td>
+</tr>
+<tr>
+<td><code>ObjectName</code></td>
+<td>string</td>
+<td>Always <code>"inv_mast"</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="writing-items">Writing Items</h2>
+<h3 id="put-update-existing-item">PUT — Update Existing Item</h3>
+<p><code>PUT /api/inventory/parts/{ItemId}</code> accepts the full item payload and processes changes including appended child records (Locations, Suppliers).</p>
+<p><strong>Verified behavior:</strong>
+- Sending back the same data unchanged returns 200 (idempotent)
+- Appending new <code>inv_loc</code> records in <code>Locations.list</code> triggers P21 business logic validation (company validation, GL account checks)
+- Invalid data produces descriptive P21 error messages</p>
+<h3 id="post-create-new-item">POST — Create New Item</h3>
+<p><code>POST /api/inventory/parts</code> creates a new inventory item. If the <code>ItemId</code> already exists, P21 returns an error:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/inventory/parts</span>
+<span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>
+<span class="err">Content-Type: application/json</span>
+
+<span class="err">{</span>
+<span class="err">    &quot;ItemId&quot;: &quot;WIDGET-001&quot;,</span>
+<span class="err">    &quot;ItemDesc&quot;: &quot;Standard Widget Assembly&quot;</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<p><strong>Error Response (duplicate item):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error updating WIDGET-001: Error updating inv_mast: The proposed item ID already exists in the database.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Common.Exceptions.Prophet21Exception&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>This happens because <code>inv_mast</code> (Inventory Master) is the global definition of the item. The <code>ItemId</code> must be unique across all companies. Company-specific data lives in <code>inv_loc</code> and <code>inventory_supplier</code>, which are child records of <code>inv_mast</code>.</p>
+<hr />
+<h2 id="multi-company-inventory-workflow">Multi-Company Inventory Workflow</h2>
+<blockquote>
+<p>Contributed by <a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>. Append mechanism verified via live API testing (February 2026).</p>
+</blockquote>
+<p>In a multi-company P21 environment, inventory items are shared across companies but require distinct configuration (Locations, Suppliers, GL accounts) for each company. Since <code>ItemId</code> is globally unique, you cannot <code>POST</code> an existing item to add it to a new company — you must <strong>append</strong> the new company's data to the existing item via <code>PUT</code>.</p>
+<h3 id="the-pattern-get-append-put">The Pattern: GET → Append → PUT</h3>
+<ol>
+<li><strong>GET</strong> the existing item with <code>extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure</code></li>
+<li><strong>Append</strong> new Location and Supplier objects to the existing <code>list</code> arrays</li>
+<li><strong>PUT</strong> the updated payload back to the API</li>
+</ol>
+<h3 id="step-1-get-the-item">Step 1: GET the Item</h3>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure</span>
+<span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>
+</code></pre></div>
+
+<h3 id="step-2-append-new-company-data">Step 2: Append New Company Data</h3>
+<p>Add the new company's Location and Supplier records to the existing arrays. <strong>Do not remove existing entries</strong> — include all original records plus the new ones.</p>
+<h3 id="step-3-put-the-updated-payload">Step 3: PUT the Updated Payload</h3>
+<div class="highlight"><pre><span></span><code><span class="err">PUT /api/inventory/parts/WIDGET-001</span>
+<span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>
+<span class="err">Content-Type: application/json</span>
+
+<span class="err">{</span>
+<span class="err">    &quot;ItemId&quot;: &quot;WIDGET-001&quot;,</span>
+<span class="err">    &quot;InvMastUid&quot;: 15,</span>
+<span class="err">    &quot;ItemDesc&quot;: &quot;Standard Widget Assembly&quot;,</span>
+<span class="err">    &quot;ObjectName&quot;: &quot;inv_mast&quot;,</span>
+<span class="err">    &quot;Locations&quot;: {</span>
+<span class="err">        &quot;list&quot;: [</span>
+<span class="err">            {</span>
+<span class="err">                &quot;ItemId&quot;: &quot;WIDGET-001&quot;,</span>
+<span class="err">                &quot;LocationId&quot;: 1,</span>
+<span class="err">                &quot;CompanyId&quot;: &quot;ACME&quot;,</span>
+<span class="err">                &quot;ObjectName&quot;: &quot;inv_loc&quot;</span>
+<span class="err">            },</span>
+<span class="err">            {</span>
+<span class="err">                &quot;ItemId&quot;: &quot;WIDGET-001&quot;,</span>
+<span class="err">                &quot;LocationId&quot;: 2,</span>
+<span class="err">                &quot;CompanyId&quot;: &quot;ACME-WEST&quot;,</span>
+<span class="err">                &quot;GlAccountNo&quot;: &quot;1300-000&quot;,</span>
+<span class="err">                &quot;RevenueAccountNo&quot;: &quot;4000-000&quot;,</span>
+<span class="err">                &quot;CosAccountNo&quot;: &quot;5000-000&quot;,</span>
+<span class="err">                &quot;Sellable&quot;: &quot;Y&quot;,</span>
+<span class="err">                &quot;Stockable&quot;: &quot;Y&quot;,</span>
+<span class="err">                &quot;ObjectName&quot;: &quot;inv_loc&quot;</span>
+<span class="err">            }</span>
+<span class="err">        ]</span>
+<span class="err">    },</span>
+<span class="err">    &quot;Suppliers&quot;: {</span>
+<span class="err">        &quot;list&quot;: [</span>
+<span class="err">            {</span>
+<span class="err">                &quot;ItemId&quot;: &quot;WIDGET-001&quot;,</span>
+<span class="err">                &quot;SupplierId&quot;: 10,</span>
+<span class="err">                &quot;ObjectName&quot;: &quot;inventory_supplier&quot;</span>
+<span class="err">            },</span>
+<span class="err">            {</span>
+<span class="err">                &quot;ItemId&quot;: &quot;WIDGET-001&quot;,</span>
+<span class="err">                &quot;SupplierId&quot;: 20,</span>
+<span class="err">                &quot;DivisionId&quot;: 2,</span>
+<span class="err">                &quot;LeadTimeDays&quot;: 5,</span>
+<span class="err">                &quot;ObjectName&quot;: &quot;inventory_supplier&quot;</span>
+<span class="err">            }</span>
+<span class="err">        ]</span>
+<span class="err">    }</span>
+<span class="err">}</span>
+</code></pre></div>
+
+<p>On success, the API returns the updated item object (HTTP 200).</p>
+<h3 id="verified-error-messages">Verified Error Messages</h3>
+<p>These errors confirm the API processes appended records through P21 business logic:</p>
+<p><strong>Invalid company:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error updating WIDGET-001: Error updating inv_mast: The company \&quot;FAKE99\&quot; could not be retrieved. - Potential reasons: 1)The company does not exist. 2)The company has been deleted.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Common.Exceptions.Prophet21Exception&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Invalid GL account for company:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error updating WIDGET-001: Error updating inv_mast: This account doesn&#39;t exist for company ACME-WEST.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Common.Exceptions.Prophet21Exception&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>These errors prove the API is actively processing the appended Location records — validating the CompanyId and GL accounts against P21's chart of accounts.</p>
+<hr />
+<h2 id="common-issues">Common Issues</h2>
+<h3 id="1-item-id-already-exists">1. "Item ID already exists"</h3>
+<p><strong>Cause:</strong> Using <code>POST</code> for an item that already exists in <code>inv_mast</code>.</p>
+<p><strong>Fix:</strong> Use the GET → Append → PUT workflow described above.</p>
+<h3 id="2-account-doesnt-exist-for-company">2. "Account doesn't exist for company"</h3>
+<p><strong>Cause:</strong> The <code>GlAccountNo</code>, <code>RevenueAccountNo</code>, or <code>CosAccountNo</code> in your new Location record is not valid for the target company.</p>
+<p><strong>Fix:</strong> Look up valid GL accounts for the target company before constructing the Location payload.</p>
+<h3 id="3-uom-handling">3. UOM Handling</h3>
+<p>Units of Measure (<code>UnitsOfMeasure</code>) are defined at the <code>inv_mast</code> level and shared across all companies. You typically do not need to add company-specific UOMs — standard units like "EA", "BOX", etc. apply globally. Ensure existing UOMs are included in your PUT payload.</p>
+<hr />
+<h2 id="automation-example">Automation Example</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">API</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">process_item</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_location</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">new_supplier</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add an existing item to a new company/location via GET -&gt; Append -&gt; PUT.&quot;&quot;&quot;</span>
+
+    <span class="c1"># 1. Check if item exists</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">API</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;Locations,Suppliers&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">current_item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">httpx</span><span class="o">.</span><span class="n">HTTPStatusError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span><span class="p">:</span>
+            <span class="c1"># Item doesn&#39;t exist — create it with POST</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ItemId&quot;</span><span class="p">:</span> <span class="n">item_id</span><span class="p">,</span> <span class="o">**</span><span class="n">new_location</span><span class="p">,</span> <span class="o">**</span><span class="n">new_supplier</span><span class="p">}</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">API</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="k">raise</span>
+
+    <span class="c1"># 2. Check if company/location already linked</span>
+    <span class="n">existing_companies</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">loc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">current_item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Locations&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">new_location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="n">existing_companies</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Item </span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2"> already linked to </span><span class="si">{</span><span class="n">new_location</span><span class="p">[</span><span class="s1">&#39;CompanyId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">current_item</span>
+
+    <span class="c1"># 3. Append new records</span>
+    <span class="n">current_item</span><span class="p">[</span><span class="s2">&quot;Locations&quot;</span><span class="p">][</span><span class="s2">&quot;list&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_location</span><span class="p">)</span>
+    <span class="n">current_item</span><span class="p">[</span><span class="s2">&quot;Suppliers&quot;</span><span class="p">][</span><span class="s2">&quot;list&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_supplier</span><span class="p">)</span>
+
+    <span class="c1"># 4. PUT updated payload</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">API</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">current_item</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</code></pre></div>
+
+<h3 id="batch-processing-tips">Batch Processing Tips</h3>
+<p>For large datasets (thousands of items):</p>
+<ol>
+<li><strong>Batch size</strong> — Process items in chunks (e.g., 500–1000) to avoid overwhelming the API</li>
+<li><strong>Concurrency</strong> — Use multiple workers if the API permits, but be cautious of <code>inv_mast</code> table locking</li>
+<li><strong>Error logging</strong> — Log failures with item IDs and error messages for manual review</li>
+<li><strong>Retry logic</strong> — P21 may return transient lock errors; retry with a short delay (1–2 seconds)</li>
+</ol>
+<hr />
+<h2 id="known-limitations">Known Limitations</h2>
+<ol>
+<li>
+<p><strong>Append only, not update</strong> — You can append new <code>inv_loc</code> records to an item, but modifying fields on <em>existing</em> <code>inv_loc</code> records via this API has not been verified. For updating existing location fields (GL accounts, product group, etc.), the Interactive API Item window or direct SQL may be required.</p>
+</li>
+<li>
+<p><strong>No <code>/new</code> template</strong> — Unlike the Entity API, there is no template endpoint. You must know the required fields for POST.</p>
+</li>
+<li>
+<p><strong>List endpoint performance</strong> — Always use <code>$query</code> filtering. The unfiltered list endpoint attempts to load all inventory and times out.</p>
+</li>
+<li>
+<p><strong>Item accessibility</strong> — Some items that exist in <code>inv_mast</code> (visible via OData) return 404 from this API. This may be related to item status or configuration.</p>
+</li>
+</ol>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="05-Entity-API.html">Entity API</a> — CRUD for customers, vendors, contacts, addresses</li>
+<li><a href="00-Authentication.html">Authentication</a> — Token generation</li>
+<li><a href="01-API-Selection-Guide.html">API Selection Guide</a> — Which API to use when</li>
+<li><a href="02-OData-API.html">OData API</a> — Read-only queries on any table including <code>inv_mast</code> and <code>inv_loc</code></li>
+<li><a href="06-Error-Handling.html">Error Handling</a> — Common P21 error patterns</li>
+</ul>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+    </script>
+</body>
+</html>
