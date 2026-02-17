@@ -227,7 +227,7 @@ UOMs are typically defined at the `inv_mast` level, meaning they are shared acro
 
 If the UOMs are global:
 *   Ensure they are present in your PUT payload.
-*   You don't need to add "Company 18" specific UOMs if they are just standard "EA", "BOX", etc.
+*   You don't need to add Company 18-specific UOMs if they are just standard "EA", "BOX", etc.
 
 ### 2. "Account doesn't exist for company" Error
 ```json
