@@ -21,6 +21,9 @@ When you have an item (e.g., `1001`) already set up for Company A, and you want 
 ### Fails: POST Request
 ```http
 POST /api/inventory/parts
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
   "ItemId": "1001",
   "CompanyId": "CompanyB",
@@ -70,10 +73,12 @@ Retrieve the item including all its related tables.
 **Request:**
 ```http
 GET /api/inventory/parts/002.047?extendedproperties=*
+Authorization: Bearer <ACCESS_TOKEN>
 ```
 *Optimized Request (fetch only what you need):*
 ```http
 GET /api/inventory/parts/002.047?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure
+Authorization: Bearer <ACCESS_TOKEN>
 ```
 
 **Response (Simplified):**
@@ -162,9 +167,52 @@ Send the updated payload back to the server.
 **Request:**
 ```http
 PUT /api/inventory/parts/002.047
+Authorization: Bearer <token>
 Content-Type: application/json
 
-{ ... JSON payload from Step 2 ... }
+{
+    "ItemId": "002.047",
+    "InvMastUid": 15,
+    "ItemDesc": "M14 HEXAGON NUT CLASS 8",
+    "ObjectName": "inv_mast",
+    "Locations": {
+        "list": [
+            {
+                "ItemId": "002.047",
+                "LocationId": 13,
+                "CompanyId": "13",
+                "ObjectName": "inv_loc"
+            },
+            {
+                "ItemId": "002.047",
+                "LocationId": 18,
+                "CompanyId": "18",
+                "GlAccountNo": "14100",
+                "RevenueAccountNo": "34100",
+                "CosAccountNo": "44100",
+                "Sellable": "Y",
+                "Stockable": "Y",
+                "ObjectName": "inv_loc"
+            }
+        ]
+    },
+    "Suppliers": {
+        "list": [
+            {
+                "ItemId": "002.047",
+                "SupplierId": 13,
+                "ObjectName": "inventory_supplier"
+            },
+            {
+                "ItemId": "002.047",
+                "SupplierId": 18,
+                "DivisionId": 18,
+                "LeadTimeDays": 5,
+                "ObjectName": "inventory_supplier"
+            }
+        ]
+    }
+}
 ```
 
 **Response:**
@@ -185,7 +233,7 @@ If the UOMs are global:
 ```json
 "ErrorMessage": "Error updating 002.047: Error updating inv_mast: This account doesn't exist for company 18."
 ```
-**Cause:** You are trying to adding a Location Record that references a GL Account (e.g., `GlAccountNo`, `RevenueAccountNo`) that is not valid for the new Company (Company 18).
+**Cause:** You are trying to add a Location Record that references a GL Account (e.g., `GlAccountNo`, `RevenueAccountNo`) that is not valid for the new Company (Company 18-specific).
 **Fix:** Ensure you are mapping the correct GL Accounts for the specific Company ID you are adding.
 
 ### 3. Large Dataset Automation
@@ -199,23 +247,38 @@ If you have 50k+ items to update:
 ## Example: Automation Logic (Pseudo-code)
 
 ```python
-def process_item(item_id, new_company_data):
+import httpx
+
+def process_item(client: httpx.Client, item_id: str, new_company_data: dict):
     # 1. Check if item exists
     try:
-        current_item = api.get(f"/api/inventory/parts/{item_id}?extendedproperties=Locations,Suppliers")
-    except 404:
-        # Item doesn't exist globaly - CREATE IT
-        return api.post("/api/inventory/parts", new_company_data)
+        response = client.get(f"/api/inventory/parts/{item_id}?extendedproperties=Locations,Suppliers")
+        response.raise_for_status()
+        current_item = response.json()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            # Item doesn't exist globally - CREATE IT
+            response = client.post("/api/inventory/parts", json=new_company_data)
+            response.raise_for_status()
+            return response.json()
+        raise
 
     # 2. Item exists - APPEND new data
     # Check if this company/location already exists to avoid duplicates
+    # Implementation of company_already_linked depends on your data structure
     if company_already_linked(current_item, new_company_data['CompanyId']):
-        return "Already Linked"
+        print(f"Item {item_id} already linked to company.")
+        return
 
-    # Append new records
-    current_item['Locations']['list'].append(new_company_data['Location'])
-    current_item['Suppliers']['list'].append(new_company_data['Supplier'])
+    # Append new records using the JSON bodies
+    # Ensure 'Location' and 'Supplier' in new_company_data are correctly formatted P21 objects
+    if 'Location' in new_company_data:
+        current_item['Locations']['list'].append(new_company_data['Location'])
+    if 'Supplier' in new_company_data:
+        current_item['Suppliers']['list'].append(new_company_data['Supplier'])
     
     # 3. UPDATE
-    return api.put(f"/api/inventory/parts/{item_id}", current_item)
+    response = client.put(f"/api/inventory/parts/{item_id}", json=current_item)
+    response.raise_for_status()
+    return response.json()
 ```
