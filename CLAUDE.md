@@ -114,18 +114,22 @@ All documentation is derived from:
 
 ---
 
-### No Direct inv_loc API Access (January 2026)
+### No Direct inv_loc Write Access (February 2026)
 
-**Problem**: There is no API that allows direct updates to `inv_loc` records without going through the Item window.
+**Problem**: There is no API that allows direct **updates** to `inv_loc` records without going through the Item window.
 
-**APIs Tested**:
+**Reading inv_loc Data** (resolved February 2026):
+- The **Inventory REST API** at `/api/inventory/parts/{itemId}?extendedproperties=*` returns full `inv_loc` data including GL accounts, product groups, and costs
+- OData also provides read access to `inv_loc` table
+- See Entity API docs → Inventory REST API section for details
+
+**Writing inv_loc Data** (still unresolved):
 
 | API | Result |
 |-----|--------|
 | **Interactive API (Item window)** | GL account fields on TABPAGE_24 are **read-only** - cannot be modified |
 | **Transaction API** | No `InvLoc` service exists. Item service returns 500 errors for inv_loc updates |
-| **OData API** | Read-only - no write support |
-| **Entity API** | Not working (Dec 2025) |
+| **Inventory REST API** | Read-only for inv_loc data (via extended properties) — no PUT/POST for inv_loc fields |
 
 **Transaction API Findings**:
 - No `InvLoc`, `InventoryLocation`, or `ItemLocation` service exists
@@ -145,4 +149,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-12*
