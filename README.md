@@ -17,6 +17,7 @@ This repository provides developer-focused documentation for P21's four integrat
 | [Transaction API](docs/03-Transaction-API.md) | Stateless bulk data manipulation | Bulk creates, external integrations |
 | [Interactive API](docs/04-Interactive-API.md) | Stateful window interactions with business logic | Complex workflows, validation |
 | [Entity API](docs/05-Entity-API.md) | Simple CRUD on business objects | Basic record operations |
+| [Inventory REST API](docs/11-Inventory-REST-API.md) | Inventory item CRUD, multi-company workflows | Item reads, appending locations/suppliers |
 
 ## Quick Start
 
@@ -63,6 +64,7 @@ This documentation is available online via GitHub Pages:
 - [Transaction API](docs/03-Transaction-API.md) - Service discovery, bulk operations
 - [Interactive API](docs/04-Interactive-API.md) - Sessions, windows, workflows
 - [Entity API](docs/05-Entity-API.md) - Entity CRUD operations
+- [Inventory REST API](docs/11-Inventory-REST-API.md) - Inventory CRUD, multi-company workflows
 
 ### Troubleshooting
 - [Error Handling](docs/06-Error-Handling.md) - HTTP codes, error responses

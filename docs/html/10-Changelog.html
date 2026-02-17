@@ -305,6 +305,7 @@
         <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
         <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
         <li class="active"><a href="10-Changelog.html">Changelog</a></li>
+        <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -312,6 +313,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-02-17">2026-02-17</a></li>
 <li><a href="#2026-02-16">2026-02-16</a></li>
 <li><a href="#2026-02-13">2026-02-13</a></li>
 <li><a href="#2026-02-12">2026-02-12</a></li>
@@ -341,6 +343,11 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-02-17">2026-02-17</h2>
+<ul>
+<li><strong>docs:</strong> Add standalone Inventory REST API documentation — moved from Entity API doc, added verified PUT/POST behavior, multi-company inventory workflow (GET → Append → PUT), error examples, automation patterns — <em>Sibin Francis (<a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/25">PR #25</a>, verified and restructured by <em>@mrwuss</em></li>
+<li><strong>fix:</strong> Update inv_loc write access known issue — PUT can append new inv_loc records via Inventory REST API (partially resolved)</li>
+</ul>
 <h2 id="2026-02-16">2026-02-16</h2>
 <ul>
 <li><strong>feat:</strong> Add Postman Collection for all P21 APIs — pre-configured requests for Auth, OData, Transaction, Interactive, and Entity APIs with auto-capture test scripts — <em>NextTWis (<a href="https://github.com/NextTWis">@NextTWis</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/24">PR #24</a></li>

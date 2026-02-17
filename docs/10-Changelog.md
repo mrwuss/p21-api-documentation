@@ -8,6 +8,11 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-02-17
+
+- **docs:** Add standalone Inventory REST API documentation — moved from Entity API doc, added verified PUT/POST behavior, multi-company inventory workflow (GET → Append → PUT), error examples, automation patterns — *Sibin Francis ([@sibinfrancisaj](https://github.com/sibinfrancisaj))* via [PR #25](https://github.com/mrwuss/p21-api-documentation/pull/25), verified and restructured by *@mrwuss*
+- **fix:** Update inv_loc write access known issue — PUT can append new inv_loc records via Inventory REST API (partially resolved)
+
 ## 2026-02-16
 
 - **feat:** Add Postman Collection for all P21 APIs — pre-configured requests for Auth, OData, Transaction, Interactive, and Entity APIs with auto-capture test scripts — *NextTWis ([@NextTWis](https://github.com/NextTWis))* via [PR #24](https://github.com/mrwuss/p21-api-documentation/pull/24)
