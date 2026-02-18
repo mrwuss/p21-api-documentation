@@ -478,6 +478,147 @@ def convert_md_to_html(md_file: Path) -> Path:
     return html_file
 
 
+def generate_index_page():
+    """Generate index.html using the same sidebar template as other pages."""
+    # Page descriptions for the landing page content
+    page_info = {
+        "00-Authentication": ("Authentication", "Token generation, credentials vs consumer keys, V1 and V2 endpoints, and token refresh patterns."),
+        "01-API-Selection-Guide": ("API Selection Guide", "Decision tree and comparison table to help you choose the right API for your use case."),
+        "02-OData-API": ("OData API", "Query any P21 table using standard OData v3 protocol. Filtering, pagination, and complex queries.", "READ"),
+        "03-Transaction-API": ("Transaction API", "Stateless bulk operations for creating and updating records. Service discovery and async operations.", "WRITE"),
+        "04-Interactive-API": ("Interactive API", "Stateful window interactions with full business logic. Sessions, windows, and response handling.", "READ/WRITE"),
+        "05-Entity-API": ("Entity API", "Simple REST operations on customers, vendors, contacts, and addresses.", "CRUD"),
+        "06-Error-Handling": ("Error Handling", "HTTP status codes, API-specific errors, Python error handling patterns, and debugging tips."),
+        "07-Session-Pool-Troubleshooting": ("Session Pool Issues", "Diagnosing and fixing Transaction API session pool contamination and related problems."),
+        "08-SalesPricePage-Codes": ("SalesPricePage Codes", "Dropdown code mappings for the Sales Price Page window in the Interactive API."),
+        "09-Batch-Processing-Patterns": ("Batch Processing Patterns", "Production patterns for bulk operations: session batching, error recovery, and async client."),
+        "10-Changelog": ("Changelog", "Complete history of changes, additions, and contributors to this documentation project."),
+        "11-Inventory-REST-API": ("Inventory REST API", "Inventory item CRUD and multi-company workflows. Read inv_loc data, append locations and suppliers.", "CRUD"),
+    }
+
+    # Build sections
+    getting_started = ["00-Authentication", "01-API-Selection-Guide"]
+    api_reference = ["02-OData-API", "03-Transaction-API", "04-Interactive-API", "05-Entity-API", "11-Inventory-REST-API"]
+    troubleshooting = ["06-Error-Handling", "07-Session-Pool-Troubleshooting", "08-SalesPricePage-Codes", "09-Batch-Processing-Patterns", "10-Changelog"]
+
+    def make_card(stem):
+        info = page_info.get(stem, (stem, ""))
+        title = info[0]
+        desc = info[1]
+        badge = info[2] if len(info) > 2 else None
+        badge_html = ""
+        if badge:
+            badge_class = "badge-read" if badge == "READ" else "badge-write" if badge == "WRITE" else "badge-both"
+            badge_html = f' <span class="badge {badge_class}">{badge}</span>'
+        return f"""<a href="{stem}.html" class="index-card">
+            <h3>{title}{badge_html}</h3>
+            <p>{desc}</p>
+        </a>"""
+
+    cards_getting_started = "\n".join(make_card(s) for s in getting_started)
+    cards_api = "\n".join(make_card(s) for s in api_reference)
+    cards_troubleshooting = "\n".join(make_card(s) for s in troubleshooting)
+
+    content = f"""
+<h1 id="p21-api-documentation">P21 API Documentation</h1>
+<p class="index-subtitle">Comprehensive guides and examples for Epicor Prophet 21 APIs</p>
+<blockquote>
+<strong>Disclaimer:</strong> This is unofficial, community-created documentation.
+It is not affiliated with, endorsed by, or supported by Epicor Software Corporation.
+All trademarks are property of their respective owners. Use at your own risk.
+</blockquote>
+
+<h2 id="getting-started">Getting Started</h2>
+<div class="index-grid">
+{cards_getting_started}
+</div>
+
+<h2 id="api-reference">API Reference</h2>
+<div class="index-grid">
+{cards_api}
+</div>
+
+<h2 id="troubleshooting-reference">Troubleshooting &amp; Reference</h2>
+<div class="index-grid">
+{cards_troubleshooting}
+</div>
+
+<hr>
+<p style="text-align: center; color: #666;">
+<a href="https://github.com/mrwuss/p21-api-documentation">View on GitHub</a>
+</p>
+
+<style>
+.index-subtitle {{
+    font-size: 1.15em;
+    color: #555;
+    margin-top: -20px;
+    margin-bottom: 30px;
+}}
+.index-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+}}
+.index-card {{
+    display: block;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}}
+.index-card:hover {{
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #2874a6;
+}}
+.index-card h3 {{
+    color: #1a5276;
+    margin: 0 0 8px 0;
+    font-size: 1.1em;
+    border: none;
+    padding: 0;
+}}
+.index-card p {{
+    color: #666;
+    margin: 0;
+    font-size: 0.9em;
+    line-height: 1.5;
+}}
+.badge {{
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 0.7em;
+    font-weight: bold;
+    margin-left: 6px;
+    vertical-align: middle;
+}}
+.badge-read {{ background: #3498db; color: white; }}
+.badge-write {{ background: #e74c3c; color: white; }}
+.badge-both {{ background: #9b59b6; color: white; }}
+</style>
+"""
+
+    # Build ToC for the index page
+    toc_html = """<ul>
+<li><a href="#getting-started">Getting Started</a></li>
+<li><a href="#api-reference">API Reference</a></li>
+<li><a href="#troubleshooting-reference">Troubleshooting &amp; Reference</a></li>
+</ul>"""
+
+    sidebar_html = build_sidebar_html("__index__", toc_html)
+    full_html = get_html_template("Home", sidebar_html, content)
+
+    index_file = HTML_DIR / "index.html"
+    index_file.write_text(full_html, encoding="utf-8")
+    return index_file
+
+
 def convert_all_docs():
     """Convert all markdown files in docs/ to HTML."""
     global PAGE_INDEX
@@ -496,7 +637,11 @@ def convert_all_docs():
         html_file = convert_md_to_html(md_file)
         print(f"  -> {html_file.name}")
 
-    print(f"\nGenerated {len(md_files)} HTML files in docs/html/")
+    # Generate index page
+    index_file = generate_index_page()
+    print(f"\nGenerated index: {index_file.name}")
+
+    print(f"\nGenerated {len(md_files) + 1} HTML files in docs/html/")
     print("\nTo create PDF:")
     print("  1. Open the HTML file in a browser")
     print("  2. Click 'Print / Save as PDF' button")
