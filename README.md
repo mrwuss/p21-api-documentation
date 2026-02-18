@@ -6,9 +6,10 @@ Comprehensive documentation and working Python examples for all Prophet 21 integ
 
 ## Overview
 
-This repository provides developer-focused documentation for P21's four integration APIs. All content is based on official Epicor SDK documentation and verified working implementations.
+This repository provides developer-focused documentation for P21's integration APIs. All content is based on official Epicor SDK documentation and verified working implementations.
 
-[HTML-Based Doc Navigation](https://mrwuss.github.io/p21-api-documentation/html/00-Authentication.html)
+**[View Online Documentation](https://mrwuss.github.io/p21-api-documentation/html/)**
+
 ## APIs Covered
 
 | API | Purpose | Best For |
@@ -37,14 +38,6 @@ cp .env.example .env
 python scripts/odata/01_basic_query.py
 ```
 
-## Online Documentation
-
-This documentation is available online via GitHub Pages:
-
-**[View Documentation](https://mrwuss.github.io/p21-api-documentation/html/)**
-
----
-
 ## Documentation
 
 ### Getting Started
@@ -64,6 +57,8 @@ This documentation is available online via GitHub Pages:
 
 ### Reference
 - [SalesPricePage Dropdown Codes](docs/08-SalesPricePage-Codes.md) - Valid values for price page fields
+- [Batch Processing Patterns](docs/09-Batch-Processing-Patterns.md) - Production batch operation patterns
+- [Changelog](docs/10-Changelog.md) - All changes and contributors
 
 ## Example Scripts
 
