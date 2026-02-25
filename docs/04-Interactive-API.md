@@ -298,26 +298,36 @@ To find the correct field and datawindow names:
 
 Response windows (dialogs) can pop up during operations. When this happens:
 
-1. The result will have `Status: "Blocked"`
+1. The result will have `Status: 3` (Blocked)
 2. Check the `Events` array for `windowopened`
 3. Get the new window ID from the event data
-4. Handle the response window
-5. Close it to resume the original operation
+4. Handle the response window (interact with it like any other window)
+5. Close/dismiss it to resume the original operation
+
+> **Status codes** match the `ResultStatus` enum in `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
+> `None=0, Success=1, Failure=2, Blocked=3`.
+> The API returns Status as an integer. String values (`"Success"`, `"Failure"`, `"Blocked"`) may appear in some contexts — handle both.
 
 Example response with blocked status:
 ```json
 {
-    "Status": "Blocked",
+    "Status": 3,
     "Events": [
         {
             "Name": "windowopened",
-            "Data": {
-                "WindowId": "w_response_123"
-            }
+            "Data": [
+                { "Key": "windowid", "Value": "w_response_123" }
+            ]
         }
     ]
 }
 ```
+
+> **Note:** The `Events[].Data` field has two possible formats depending on P21 version:
+> - **Dict format:** `{"WindowId": "..."}`
+> - **KV-list format:** `[{"Key": "windowid", "Value": "..."}]`
+>
+> Handle both in your parsing code.
 
 ---
 

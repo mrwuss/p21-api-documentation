@@ -112,7 +112,18 @@ All documentation is derived from:
 - `DELETE /api/ui/interactive/v2/window?button=No` → 400
 - `POST /api/ui/interactive/v2/button` → 404
 
-**Status**: Unresolved. Need to contact Epicor support for response window endpoint documentation or alternative approach.
+**Workaround (February 2026)**: For non-message-box response windows (e.g., `w_popup_processing_msg`, `w_email_response`), discover available buttons via `GET /api/ui/interactive/v2/tools?windowId={id}` and click them via `POST /api/ui/interactive/v2/tools`. This works for post-save document link popups. Message box dialogs (`w_message`) remain unresolved.
+
+### Interactive API - ResultStatus Enum (February 2026)
+
+**Official status codes** from `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
+```
+None=0, Success=1, Failure=2, Blocked=3
+```
+
+**Important**: Status `2` is **Failure**, not Blocked. Earlier versions of `09-Batch-Processing-Patterns.md` incorrectly mapped `2=Blocked, 3=Dialog` — this has been corrected.
+
+The API returns Status as integers. String values (`"Success"`, `"Failure"`, `"Blocked"`) may appear in some serialization contexts — handle both.
 
 ---
 
