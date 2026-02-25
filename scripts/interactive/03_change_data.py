@@ -1,13 +1,17 @@
 """
-Interactive API - Change Data
+Interactive API - Change Data (v2)
 
-Demonstrates changing field values in P21 windows.
+Demonstrates changing field values in P21 windows using the v2 API.
 
 To change data you need:
 1. Window ID (from opening the window)
-2. DataWindow name (from SQL Information dialog in P21)
-3. Field name (column name from SQL Information)
-4. New value
+2. Tab name (tab page containing the field)
+3. DataWindow name (from SQL Information dialog in P21)
+4. Field name (column name from SQL Information)
+5. New value
+
+IMPORTANT: As of P21 25.2, DatawindowName is REQUIRED in change requests.
+The 3-parameter form (TabName + FieldName + Value) no longer works.
 
 Usage:
     python scripts/interactive/03_change_data.py
@@ -16,6 +20,7 @@ Usage:
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import httpx
@@ -28,7 +33,7 @@ warnings.filterwarnings("ignore")
 
 
 class InteractiveSession:
-    """Helper class for Interactive API operations."""
+    """Helper class for Interactive API v2 operations."""
 
     def __init__(self, ui_server_url: str, headers: dict, verify_ssl: bool):
         self.ui_server_url = ui_server_url
@@ -69,22 +74,25 @@ class InteractiveSession:
 
     def change_data(self, window_id: str, changes: list) -> dict:
         """
-        Change field values in a window.
+        Change field values in a window using v2 API.
 
         Args:
             window_id: The window ID
-            changes: List of dicts with DataWindowName, FieldName, Value
+            changes: List of dicts with TabName, DatawindowName, FieldName, Value
+
+        Note:
+            DatawindowName is REQUIRED in P21 25.2+. Always include it.
 
         Returns:
-            API response
+            API response with Status (int), Messages, Events
         """
         payload = {
             "WindowId": window_id,
-            "ChangeRequests": changes
+            "List": changes
         }
 
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/change",
+            f"{self.ui_server_url}/api/ui/interactive/v2/change",
             headers=self.headers,
             json=payload
         )
@@ -92,16 +100,11 @@ class InteractiveSession:
         return response.json()
 
     def change_tab(self, window_id: str, tab_name: str) -> dict:
-        """Switch to a different tab."""
-        payload = {
-            "WindowId": window_id,
-            "PagePath": {"PageName": tab_name}
-        }
-
+        """Switch to a different tab using v2 API."""
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/tab",
+            f"{self.ui_server_url}/api/ui/interactive/v2/tab",
             headers=self.headers,
-            json=payload
+            json={"WindowId": window_id, "PageName": tab_name}
         )
         response.raise_for_status()
         return response.json()
@@ -109,7 +112,7 @@ class InteractiveSession:
     def get_data(self, window_id: str) -> dict:
         """Get the current data from a window."""
         response = self.client.get(
-            f"{self.ui_server_url}/api/ui/interactive/v1/data",
+            f"{self.ui_server_url}/api/ui/interactive/v2/data",
             params={"windowId": window_id},
             headers=self.headers
         )
@@ -118,7 +121,7 @@ class InteractiveSession:
 
 
 def main():
-    print("Interactive API - Change Data")
+    print("Interactive API - Change Data (v2)")
     print("=" * 60)
 
     config = load_config()
@@ -142,53 +145,56 @@ def main():
         window_id = window_data["WindowId"]
         print(f"  Window ID: {window_id}")
 
-        # Example 1: Change a single field
+        # Example 1: Change a single field (v2 format with DatawindowName)
         print("\n3. Changing single field:")
         print("-" * 50)
 
         result = session.change_data(window_id, [
             {
-                "DataWindowName": "d_form",
+                "TabName": "FORM",
+                "DatawindowName": "form",
                 "FieldName": "price_page_type_cd",
                 "Value": "Supplier / Product Group"
             }
         ])
         print(f"  Changed price_page_type_cd")
-        print(f"  Status: {result.get('Status', 'Unknown')}")
+        print(f"  Status: {result.get('Status')} (1=Success, 2=Failure)")
 
-        # Example 2: Change multiple fields
+        # Example 2: Change multiple fields in one request
         print("\n4. Changing multiple fields:")
         print("-" * 50)
 
         timestamp = datetime.now().strftime("%H%M%S")
         changes = [
-            {"DataWindowName": "d_form", "FieldName": "company_id", "Value": "ACME"},
-            {"DataWindowName": "d_form", "FieldName": "supplier_id", "Value": "10"},
-            {"DataWindowName": "d_form", "FieldName": "product_group_id", "Value": "MISC"},
-            {"DataWindowName": "d_form", "FieldName": "description", "Value": f"IAPI-TEST-{timestamp}"},
+            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "company_id", "Value": "ACME"},
+            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "supplier_id", "Value": "10"},
+            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "product_group_id", "Value": "MISC"},
+            {"TabName": "FORM", "DatawindowName": "form", "FieldName": "description", "Value": f"IAPI-TEST-{timestamp}"},
         ]
 
         result = session.change_data(window_id, changes)
         print(f"  Changed {len(changes)} fields")
-        print(f"  Status: {result.get('Status', 'Unknown')}")
+        print(f"  Status: {result.get('Status')}")
 
         # Show what was changed
         for change in changes:
             print(f"    {change['FieldName']}: {change['Value']}")
 
-        # Example 3: Change tab and then change fields
+        # Example 3: Change tab and then change fields on new tab
         print("\n5. Changing to VALUES tab:")
         print("-" * 50)
 
         result = session.change_tab(window_id, "VALUES")
         print(f"  Tab changed to VALUES")
+        print(f"  Status: {result.get('Status')}")
 
         # Change fields on new tab
         result = session.change_data(window_id, [
-            {"DataWindowName": "d_values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"DataWindowName": "d_values", "FieldName": "calculation_value1", "Value": "0.75"},
+            {"TabName": "VALUES", "DatawindowName": "d_values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
+            {"TabName": "VALUES", "DatawindowName": "d_values", "FieldName": "calculation_value1", "Value": "0.75"},
         ])
         print(f"  Changed calculation fields")
+        print(f"  Status: {result.get('Status')}")
 
         # Get current data
         print("\n6. Getting current window data:")
@@ -212,20 +218,22 @@ def main():
         try:
             session.close_window(window_id)
             print("  Window closed")
-        except:
+        except Exception:
             pass
         try:
             session.end()
             print("  Session ended")
-        except:
+        except Exception:
             pass
 
     print("\n" + "=" * 60)
     print("Change data examples complete!")
-    print("\nTo find field names in P21:")
+    print("\nTo find field and datawindow names in P21:")
     print("1. Right-click on field in P21 web client")
     print("2. Select Help > SQL Information")
     print("3. Note the DataWindow and Column names")
+    print("\nIMPORTANT: As of P21 25.2, DatawindowName is required")
+    print("in all change requests (3-param form no longer works).")
 
 
 if __name__ == "__main__":
