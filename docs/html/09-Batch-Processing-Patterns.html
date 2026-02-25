@@ -570,8 +570,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Load the page by UID</span>
     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span>
-        <span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;price_page_uid&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">price_page_uid</span><span class="p">),</span>
-        <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span>
+        <span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;form&quot;</span><span class="p">,</span> <span class="s2">&quot;price_page_uid&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">price_page_uid</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load page </span><span class="si">{</span><span class="n">price_page_uid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">messages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -579,8 +578,7 @@
 
     <span class="c1"># Set the expiration date</span>
     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">window</span><span class="o">.</span><span class="n">change_data</span><span class="p">(</span>
-        <span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;expiration_date&quot;</span><span class="p">,</span> <span class="n">expiration_date</span><span class="p">,</span>
-        <span class="n">datawindow_name</span><span class="o">=</span><span class="s2">&quot;form&quot;</span>
+        <span class="s2">&quot;FORM&quot;</span><span class="p">,</span> <span class="s2">&quot;form&quot;</span><span class="p">,</span> <span class="s2">&quot;expiration_date&quot;</span><span class="p">,</span> <span class="n">expiration_date</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to set expiration date: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">messages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -740,19 +738,24 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">change_data</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">tab_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">datawindow_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">datawindow_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Result</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Change a single field value.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Change a single field value.</span>
+
+<span class="sd">        Note: datawindow_name is required in P21 25.2+. Window data</span>
+<span class="sd">        structures changed so the server can no longer auto-resolve</span>
+<span class="sd">        the target datawindow from TabName alone.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="p">,</span>
             <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[</span>
                 <span class="p">{</span>
                     <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="n">tab_name</span><span class="p">,</span>
+                    <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">datawindow_name</span><span class="p">,</span>
                     <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="n">field_name</span><span class="p">,</span>
                     <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
-                    <span class="o">**</span><span class="p">({</span><span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">datawindow_name</span><span class="p">}</span> <span class="k">if</span> <span class="n">datawindow_name</span> <span class="k">else</span> <span class="p">{}),</span>
                 <span class="p">}</span>
             <span class="p">],</span>
         <span class="p">}</span>
@@ -766,18 +769,17 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Change multiple field values in a single request.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            changes: List of dicts with keys: tab_name, field_name, value,</span>
-<span class="sd">                     and optionally datawindow_name</span>
+<span class="sd">            changes: List of dicts with keys: tab_name, datawindow_name,</span>
+<span class="sd">                     field_name, value</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="p">,</span>
             <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[</span>
                 <span class="p">{</span>
                     <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">&quot;tab_name&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">&quot;datawindow_name&quot;</span><span class="p">],</span>
                     <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">&quot;field_name&quot;</span><span class="p">],</span>
                     <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">],</span>
-                    <span class="o">**</span><span class="p">({</span><span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">c</span><span class="p">[</span><span class="s2">&quot;datawindow_name&quot;</span><span class="p">]}</span>
-                       <span class="k">if</span> <span class="s2">&quot;datawindow_name&quot;</span> <span class="ow">in</span> <span class="n">c</span> <span class="k">else</span> <span class="p">{}),</span>
                 <span class="p">}</span>
                 <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">changes</span>
             <span class="p">],</span>

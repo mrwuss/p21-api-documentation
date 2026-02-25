@@ -793,6 +793,7 @@
 
 <blockquote>
 <p><strong>Note:</strong> v2 uses <code>List</code> with <code>TabName</code>, while v1 uses <code>ChangeRequests</code> with <code>DataWindowName</code>. The <code>DatawindowName</code> field in v2 uses lowercase 'w'.</p>
+<p><strong>P21 25.2+ Breaking Change:</strong> <code>DatawindowName</code> is now effectively <strong>required</strong> for v2 change requests. The 3-parameter form (TabName + FieldName + Value) stopped working after the 25.2 upgrade — you must include <code>DatawindowName</code> as the 4th field. This affects multiple windows including Item, PO Receiving Group, Delivery List, and Group Pick Ticket. Window data structures changed in 25.2 so the server can no longer auto-resolve the target datawindow from TabName alone. <strong>Always include <code>DatawindowName</code> in change requests.</strong></p>
 </blockquote>
 <h4 id="valuetype">ValueType</h4>
 <p>Each change request supports an optional <code>ValueType</code> field:</p>
@@ -1819,7 +1820,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <tr>
 <td><strong>Change field ref</strong></td>
 <td><code>DataWindowName</code> (capital W)</td>
-<td><code>TabName</code> + optional <code>DatawindowName</code> (lowercase w)</td>
+<td><code>TabName</code> + <code>DatawindowName</code> (lowercase w) — <strong>required in 25.2+</strong></td>
 </tr>
 <tr>
 <td><strong>Save</strong></td>

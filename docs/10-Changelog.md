@@ -14,6 +14,7 @@ All notable changes to this documentation project are listed below, grouped by d
 - **docs:** Update Data Structures Reference to show integer status types with numeric values
 - **docs:** Document `/tools` endpoint workaround for non-message-box response windows — `GET /tools` discovers buttons, `POST /tools` clicks them (verified on `w_inventory_scan_lookup`)
 - **docs:** Update Event Data format documentation — confirmed KV-list format `[{"Key": "...", "Value": "..."}]`
+- **fix:** Document P21 25.2 breaking change — `DatawindowName` now required in Interactive API change requests (3-parameter `ChangeData` method no longer works, must use 4-parameter form). Affects Item, PO Receiving Group, Delivery List, Group Pick Ticket, and likely other windows. Updated all code examples and batch processing patterns. Source: community forum reports.
 
 ## 2026-02-17
 
