@@ -80,6 +80,8 @@ python scripts/odata/01_basic_query.py
 - `scripts/interactive/02_open_window.py` - Window operations
 - `scripts/interactive/03_change_data.py` - Field manipulation
 - `scripts/interactive/04_save_and_close.py` - Save workflow
+- `scripts/interactive/05_response_windows.py` - Dialog handling and response windows
+- `scripts/interactive/06_complex_workflow.py` - Multi-step workflows
 
 ### Entity API
 - `scripts/entity/01_list_entities.py` - Discover entities

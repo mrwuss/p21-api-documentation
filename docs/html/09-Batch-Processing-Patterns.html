@@ -655,7 +655,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">Result</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Parsed result from an Interactive API response.&quot;&quot;&quot;</span>
 
-    <span class="n">status_code</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># 0=Failure, 1=Success, 2=Blocked, 3=Dialog</span>
+    <span class="n">status_code</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># 0=None, 1=Success, 2=Failure, 3=Blocked</span>
     <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">events</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
@@ -663,15 +663,23 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_response</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">response_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Result&quot;</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse an API response dict into a Result.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parse an API response dict into a Result.</span>
+
+<span class="sd">        Status codes match the official ResultStatus enum from</span>
+<span class="sd">        P21.UI.Service.Model.Interactive.V2.ResultWrapper:</span>
+<span class="sd">            None=0, Success=1, Failure=2, Blocked=3</span>
+
+<span class="sd">        The API may return Status as an integer (1, 2, 3) or a string</span>
+<span class="sd">        (&quot;Success&quot;, &quot;Failure&quot;, &quot;Blocked&quot;) depending on context.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">status</span> <span class="o">=</span> <span class="n">response_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
-        <span class="c1"># Status codes: 0=Failure, 1=Success, 2=Blocked, 3=Dialog</span>
+        <span class="c1"># Official ResultStatus enum: None=0, Success=1, Failure=2, Blocked=3</span>
         <span class="n">status_code</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;Failure&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;None&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
             <span class="s2">&quot;Success&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="s2">&quot;Blocked&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-            <span class="s2">&quot;Dialog&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="s2">&quot;Failure&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s2">&quot;Blocked&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
         <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">status</span>
 
         <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
