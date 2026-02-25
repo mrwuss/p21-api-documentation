@@ -34,6 +34,10 @@ When creating or modifying price pages, fields must be set in a specific order. 
 
 ### Example: Creating a Price Page
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Step 1: Set page type FIRST - this determines available fields
 await window.change_data("FORM", "price_page_type_cd",
@@ -73,6 +77,86 @@ await window.change_data("VALUES", "calculation_value1", "0.85", datawindow_name
 result = await window.save_data()
 ```
 
+**C#**
+
+```csharp
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+// Helper to send a change_data request to the Interactive API v2
+async Task ChangeDataAsync(HttpClient client, string baseUrl, string windowId,
+    string tabName, string datawindowName, string fieldName, string value)
+{
+    var payload = new JObject
+    {
+        ["TabName"] = tabName,
+        ["DatawindowName"] = datawindowName,
+        ["FieldName"] = fieldName,
+        ["Value"] = value
+    };
+    var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+    var resp = await client.PutAsync(
+        $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", content);
+    resp.EnsureSuccessStatusCode();
+}
+
+// Step 1: Set page type FIRST - this determines available fields
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "price_page_type_cd", "Supplier / Product Group");
+
+// Step 2: Set company_id BEFORE product_group_id
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "company_id", "ACME");
+
+// Step 3: Set product group
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "product_group_id", "HVAC");
+
+// Step 4: Set supplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "supplier_id", "10050");
+
+// Step 5: Set description
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "description", "P2-L5-10050-HVAC-WHOLESALE");
+
+// Step 6-7: Set pricing method and source
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "pricing_method_cd", "Source");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "source_price_cd", "Supplier List Price");
+
+// Step 8: Set dates
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "effective_date", "2025-01-01");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "expiration_date", "2030-12-31");
+
+// Step 9: Switch to VALUES tab
+var tabPayload = new JObject { ["TabName"] = "VALUES" };
+var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
+await client.PutAsync(
+    $"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+
+// Step 10-11: Set calculation method and value
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_method_cd", "Multiplier");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value1", "0.85");
+
+// Save
+var saveResp = await client.PostAsync(
+    $"{baseUrl}/api/ui/interactive/v2/save?id={windowId}", null);
+saveResp.EnsureSuccessStatusCode();
+var result = JObject.Parse(await saveResp.Content.ReadAsStringAsync());
+```
+
+<!-- /tabs -->
+
 ### Why Order Matters
 
 - Setting `product_group_id` before `price_page_type_cd` will fail validation
@@ -96,6 +180,10 @@ The `calculation_method_cd` field on the VALUES tab controls how pricing calcula
 
 **Usage Example:**
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Correct - use display value
 window.change_data("VALUES", "calculation_method_cd", "Mark Up", datawindow_name="values")
@@ -103,6 +191,26 @@ window.change_data("VALUES", "calculation_method_cd", "Mark Up", datawindow_name
 # Incorrect - do not use code
 window.change_data("VALUES", "calculation_method_cd", "229", datawindow_name="values")
 ```
+
+**C#**
+
+```csharp
+// Correct - use display value
+var payload = new JObject
+{
+    ["TabName"] = "VALUES",
+    ["DatawindowName"] = "values",
+    ["FieldName"] = "calculation_method_cd",
+    ["Value"] = "Mark Up"
+};
+var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", content);
+
+// Incorrect - do not use code
+// ["Value"] = "229"  // This will NOT work
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -193,6 +301,10 @@ These codes were discovered by:
 3. Reading the resulting code from window state
 4. Verifying against live database records
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Example discovery code
 window = api.open_window(service_name="SalesPricePage")
@@ -206,6 +318,56 @@ result = window.change_data("VALUES", "calculation_method_cd", "Mark Up", datawi
 state = window.get_state()
 # Extract calculation_method_cd from state['Data']
 ```
+
+**C#**
+
+```csharp
+// Example discovery code — open window and load a price page
+var openResp = await client.PostAsync(
+    $"{baseUrl}/api/ui/interactive/v2/window?serviceName=SalesPricePage", null);
+var openResult = JObject.Parse(await openResp.Content.ReadAsStringAsync());
+var windowId = openResult["WindowId"]?.ToString();
+
+// Load a specific price page
+var changePayload = new JObject
+{
+    ["TabName"] = "FORM",
+    ["DatawindowName"] = "form",
+    ["FieldName"] = "price_page_uid",
+    ["Value"] = "45556"
+};
+var changeContent = new StringContent(
+    changePayload.ToString(), Encoding.UTF8, "application/json");
+await client.PutAsync(
+    $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", changeContent);
+
+// Switch to VALUES tab
+var tabPayload = new JObject { ["TabName"] = "VALUES" };
+var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
+await client.PutAsync(
+    $"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+
+// Try setting a display value
+var markUpPayload = new JObject
+{
+    ["TabName"] = "VALUES",
+    ["DatawindowName"] = "values",
+    ["FieldName"] = "calculation_method_cd",
+    ["Value"] = "Mark Up"
+};
+var markUpContent = new StringContent(
+    markUpPayload.ToString(), Encoding.UTF8, "application/json");
+var result = await client.PutAsync(
+    $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", markUpContent);
+
+// Read back the code from window state
+var stateResp = await client.GetAsync(
+    $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}");
+var state = JObject.Parse(await stateResp.Content.ReadAsStringAsync());
+// Extract calculation_method_cd from state["Data"]
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -223,6 +385,10 @@ Price pages support up to 15 calculation values and 14 break quantities for quan
 
 ### Example: Setting Up Price Breaks
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Base multiplier: 0.85 for qty 1+
 await window.change_data("VALUES", "calculation_value1", "0.85", datawindow_name="values")
@@ -239,6 +405,34 @@ await window.change_data("VALUES", "calculation_value3", "0.78", datawindow_name
 await window.change_data("VALUES", "break3", "100", datawindow_name="values")
 await window.change_data("VALUES", "calculation_value4", "0.75", datawindow_name="values")
 ```
+
+**C#**
+
+```csharp
+// Base multiplier: 0.85 for qty 1+
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value1", "0.85");
+
+// Price break at qty 6: 0.82 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "break1", "6");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value2", "0.82");
+
+// Price break at qty 25: 0.78 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "break2", "25");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value3", "0.78");
+
+// Price break at qty 100: 0.75 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "break3", "100");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value4", "0.75");
+```
+
+<!-- /tabs -->
 
 ### Mapping
 
@@ -277,6 +471,10 @@ Discount group pages use `discount_group_id` instead of `product_group_id`. The 
 
 ### Example: Creating a Discount Group Page
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Step 1: Set page type to Discount Group
 await window.change_data("FORM", "price_page_type_cd",
@@ -294,9 +492,37 @@ await window.change_data("FORM", "supplier_id", "10050", datawindow_name="form")
 # Steps 5-11: Same as product group pages...
 ```
 
+**C#**
+
+```csharp
+// Step 1: Set page type to Discount Group
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "price_page_type_cd", "Supplier / Discount Group");
+
+// Step 2: Company ID first
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "company_id", "ACME");
+
+// Step 3: Discount group (NOT product_group_id)
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "discount_group_id", "DG001");
+
+// Step 4: Supplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "supplier_id", "10050");
+
+// Steps 5-11: Same as product group pages...
+```
+
+<!-- /tabs -->
+
 ### OData Queries for Both Page Types
 
 When querying price pages, check both `product_group_id` and `discount_group_id`:
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 # Get ALL active pages for a supplier (both types)
@@ -312,6 +538,25 @@ params = {
     ),
 }
 ```
+
+**C#**
+
+```csharp
+// Get ALL active pages for a supplier (both types)
+var filter = $"supplier_id eq {supplierId} " +
+    "and row_status_flag eq 704 " +
+    "and (product_group_id ne null or discount_group_id ne null)";
+var select = "price_page_uid,description,price_page_type_cd," +
+    "product_group_id,discount_group_id,supplier_id";
+
+var queryUrl = $"{baseUrl}/api/dataaccess/v1/table/sales_price_page" +
+    $"?$filter={Uri.EscapeDataString(filter)}&$select={Uri.EscapeDataString(select)}";
+var resp = await client.GetAsync(queryUrl);
+resp.EnsureSuccessStatusCode();
+var data = JObject.Parse(await resp.Content.ReadAsStringAsync());
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -329,6 +574,10 @@ Dollar-based breaks require additional fields on the VALUES tab:
 | `totaling_basis_cd` | Supplier List Price | 200 | Use supplier list price as the dollar total basis |
 
 ### Example: Dollar-Based Breaks
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 # Switch to VALUES tab
@@ -370,6 +619,56 @@ await window.change_data("VALUES", "calculation_value5", "0.72",
                          datawindow_name="values")
 ```
 
+**C#**
+
+```csharp
+// Switch to VALUES tab
+var tabPayload = new JObject { ["TabName"] = "VALUES" };
+var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+
+// Set calculation method
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_method_cd", "Multiplier");
+
+// Configure dollar-based totaling
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "totaling_method_cd", "Discount Group");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "totaling_basis_cd", "Supplier List Price");
+
+// Set dollar-based breaks (total order value thresholds)
+// $0-$4,999: 0.85 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value1", "0.85");
+
+// $5,000-$9,999: 0.82 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "break1", "5000");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value2", "0.82");
+
+// $10,000-$14,999: 0.78 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "break2", "10000");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value3", "0.78");
+
+// $15,000-$19,999: 0.75 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "break3", "15000");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value4", "0.75");
+
+// $20,000+: 0.72 multiplier
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "break4", "20000");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_value5", "0.72");
+```
+
+<!-- /tabs -->
+
 ### Quantity vs Dollar Breaks Comparison
 
 | Aspect | Quantity Breaks | Dollar Breaks |
@@ -388,6 +687,10 @@ The COSTS tab is a separate tab on the SalesPricePage window that controls **com
 
 ### Accessing the COSTS Tab
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Switch to COSTS tab
 await window.select_tab("COSTS")
@@ -401,9 +704,32 @@ await window.change_data("COSTS", "commission_cost_value1", "1.01",
                          datawindow_name="costs")
 ```
 
+**C#**
+
+```csharp
+// Switch to COSTS tab
+var tabPayload = new JObject { ["TabName"] = "COSTS" };
+var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+
+// Set commission cost calculation method
+await ChangeDataAsync(client, baseUrl, windowId,
+    "COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier");
+
+// Set commission cost value (1.01 = pass-through costing with 1% margin)
+await ChangeDataAsync(client, baseUrl, windowId,
+    "COSTS", "costs", "commission_cost_value1", "1.01");
+```
+
+<!-- /tabs -->
+
 ### Common Pattern: Pass-Through Costing
 
 For pages where commission cost should simply pass through at cost:
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 await window.select_tab("COSTS")
@@ -412,6 +738,21 @@ await window.change_data("COSTS", "commission_cost_calc_method_cd", "Multiplier"
 await window.change_data("COSTS", "commission_cost_value1", "1.01",
                          datawindow_name="costs")
 ```
+
+**C#**
+
+```csharp
+var tabPayload = new JObject { ["TabName"] = "COSTS" };
+var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+
+await ChangeDataAsync(client, baseUrl, windowId,
+    "COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier");
+await ChangeDataAsync(client, baseUrl, windowId,
+    "COSTS", "costs", "commission_cost_value1", "1.01");
+```
+
+<!-- /tabs -->
 
 ### Commission Cost Codes (Different from VALUES Tab)
 

@@ -227,6 +227,7 @@ The most common pattern:
 
 ### Example: Price Page Management
 
+<!-- tabs -->
 ```python
 # Read existing pages - OData (fast)
 pages = odata.get_price_pages(supplier_id=10050)
@@ -239,6 +240,25 @@ with interactive.open_window("SalesPricePage") as window:
     window.change_data("calculation_value1", "0.55")
     window.save()
 ```
+
+```csharp
+// Read existing pages - OData (fast)
+var pages = await client.OData.QueryAsync("sales_price_page",
+    filter: "supplier_id eq 10050");
+
+// Create new pages - Transaction API (bulk, fast)
+var result = await client.Transaction.CreateAsync(newPagesPayload);
+
+// Update existing page - Interactive API (reliable)
+await using var session = client.Interactive.CreateSession();
+await session.StartAsync();
+var window = await session.OpenWindowAsync("SalesPricePage");
+await window.ChangeDataAsync("FORM", "calculation_value1", "0.55",
+    datawindowName: "form");
+await window.SaveDataAsync();
+await window.CloseAsync();
+```
+<!-- /tabs -->
 
 ---
 

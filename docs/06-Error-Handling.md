@@ -333,6 +333,10 @@ The Address entity does not have a `/new` template endpoint. This is by design â
 
 ### httpx Error Handling
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 import httpx
 
@@ -349,7 +353,50 @@ except Exception as e:
     print(f"Unexpected Error: {e}")
 ```
 
+**C#**
+
+```csharp
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+
+var handler = new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = (msg, cert, chain, errors) => true
+};
+using var client = new HttpClient(handler);
+client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+try
+{
+    var response = await client.GetAsync(url);
+    var body = await response.Content.ReadAsStringAsync();
+    response.EnsureSuccessStatusCode();
+    var data = JObject.Parse(body);
+}
+catch (HttpRequestException ex) when (ex.StatusCode != null)
+{
+    Console.WriteLine($"HTTP Error: {(int)ex.StatusCode}");
+    Console.WriteLine($"Message: {ex.Message}");
+}
+catch (HttpRequestException ex)
+{
+    Console.WriteLine($"Request Error: {ex.Message}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Unexpected Error: {ex.Message}");
+}
+```
+
+<!-- /tabs -->
+
 ### Transaction API Error Handling
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 def check_transaction_result(response_data: dict) -> bool:
@@ -374,7 +421,47 @@ if not check_transaction_result(data):
     pass
 ```
 
+**C#**
+
+```csharp
+bool CheckTransactionResult(JObject responseData)
+{
+    var summary = responseData["Summary"] as JObject;
+    var messages = responseData["Messages"] as JArray;
+
+    int failed = summary?["Failed"]?.Value<int>() ?? 0;
+    if (failed > 0)
+    {
+        foreach (var msg in messages ?? new JArray())
+        {
+            Console.WriteLine($"Error: {msg}");
+        }
+        return false;
+    }
+    return true;
+}
+
+// Usage
+var content = new StringContent(
+    payload.ToString(), System.Text.Encoding.UTF8, "application/json");
+var response = await client.PostAsync(url, content);
+var body = await response.Content.ReadAsStringAsync();
+response.EnsureSuccessStatusCode();
+var data = JObject.Parse(body);
+
+if (!CheckTransactionResult(data))
+{
+    // Handle failure
+}
+```
+
+<!-- /tabs -->
+
 ### Retry Logic
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 import time
@@ -395,11 +482,45 @@ def retry_request(func, max_retries=3, base_delay=1.0):
     return None
 ```
 
+**C#**
+
+```csharp
+static readonly int[] RetryableStatusCodes = { 500, 502, 503, 504 };
+static readonly Random Jitter = new();
+
+async Task<HttpResponseMessage> RetryRequestAsync(
+    Func<Task<HttpResponseMessage>> func, int maxRetries = 3, double baseDelay = 1.0)
+{
+    for (int attempt = 0; attempt < maxRetries; attempt++)
+    {
+        var response = await func();
+        if (RetryableStatusCodes.Contains((int)response.StatusCode))
+        {
+            if (attempt < maxRetries - 1)
+            {
+                double delay = baseDelay * Math.Pow(2, attempt) + Jitter.NextDouble();
+                await Task.Delay(TimeSpan.FromSeconds(delay));
+                continue;
+            }
+        }
+        response.EnsureSuccessStatusCode();
+        return response;
+    }
+    return null;
+}
+```
+
+<!-- /tabs -->
+
 ---
 
 ## Debugging Tips
 
 ### Enable Verbose Logging
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 import logging
@@ -409,7 +530,27 @@ httpx_logger = logging.getLogger("httpx")
 httpx_logger.setLevel(logging.DEBUG)
 ```
 
+**C#**
+
+```csharp
+// Use ILogger (Microsoft.Extensions.Logging) or enable HttpClient tracing
+using var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder.AddConsole().SetMinimumLevel(LogLevel.Debug);
+});
+var logger = loggerFactory.CreateLogger("HttpClient");
+
+// Or enable System.Net tracing via environment variable:
+// set DOTNET_SYSTEM_NET_HTTP_SOCKETSHTTPHANDLER_LOGGING=true
+```
+
+<!-- /tabs -->
+
 ### Log Request/Response
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 def log_request(request):
@@ -423,7 +564,38 @@ def log_response(response):
     print(f"Body: {response.text[:500]}")
 ```
 
+**C#**
+
+```csharp
+void LogRequest(HttpRequestMessage request)
+{
+    Console.WriteLine($"Request: {request.Method} {request.RequestUri}");
+    foreach (var header in request.Headers)
+    {
+        Console.WriteLine($"  {header.Key}: {string.Join(", ", header.Value)}");
+    }
+    if (request.Content != null)
+    {
+        var body = request.Content.ReadAsStringAsync().Result;
+        Console.WriteLine($"Body: {body[..Math.Min(body.Length, 500)]}");
+    }
+}
+
+void LogResponse(HttpResponseMessage response)
+{
+    Console.WriteLine($"Response: {(int)response.StatusCode}");
+    var body = response.Content.ReadAsStringAsync().Result;
+    Console.WriteLine($"Body: {body[..Math.Min(body.Length, 500)]}");
+}
+```
+
+<!-- /tabs -->
+
 ### Check Token Expiration
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 import jwt
@@ -446,6 +618,51 @@ def check_token_expiry(token: str):
     except Exception as e:
         print(f"Could not decode token: {e}")
 ```
+
+**C#**
+
+```csharp
+void CheckTokenExpiry(string token)
+{
+    try
+    {
+        // Decode the payload without signature verification
+        var parts = token.Split('.');
+        if (parts.Length < 2)
+        {
+            Console.WriteLine("Invalid token format");
+            return;
+        }
+        // Pad Base64 string if needed
+        var payload = parts[1];
+        payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+        var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+        var claims = JObject.Parse(json);
+
+        var exp = claims["exp"]?.Value<long>();
+        if (exp.HasValue)
+        {
+            var expTime = DateTimeOffset.FromUnixTimeSeconds(exp.Value).LocalDateTime;
+            Console.WriteLine($"Token expires: {expTime}");
+            if (expTime < DateTime.Now)
+            {
+                Console.WriteLine("Token is EXPIRED");
+            }
+            else
+            {
+                var remaining = expTime - DateTime.Now;
+                Console.WriteLine($"Token valid for: {remaining}");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Could not decode token: {ex.Message}");
+    }
+}
+```
+
+<!-- /tabs -->
 
 ---
 

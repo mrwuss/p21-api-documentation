@@ -247,6 +247,17 @@
             h3 { page-break-after: avoid; margin-top: 15pt; }
             pre, table, blockquote { page-break-inside: avoid; }
             p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
         }
 
         /* ===== Mobile ===== */
@@ -283,6 +294,61 @@
 
         .print-btn:hover {
             background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
         }
     </style>
 </head>
@@ -365,7 +431,7 @@
 <li><a href="#complex-filter">Complex Filter</a></li>
 </ul>
 </li>
-<li><a href="#python-examples">Python Examples</a><ul>
+<li><a href="#code-examples">Code Examples</a><ul>
 <li><a href="#basic-query_1">Basic Query</a></li>
 <li><a href="#filtered-query_1">Filtered Query</a></li>
 <li><a href="#pagination-helper">Pagination Helper</a></li>
@@ -609,12 +675,24 @@ $filter=expiration_date ge 2025-12-28
 </code></pre></div>
 
 <p>For date-relative queries, calculate the date in your application code:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">timedelta</span>
 
 <span class="n">tomorrow</span> <span class="o">=</span> <span class="p">(</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
 <span class="n">filter_expr</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;expiration_date ge </span><span class="si">{</span><span class="n">tomorrow</span><span class="si">}</span><span class="s2">&quot;</span>
 </code></pre></div>
-
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">tomorrow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DateTime</span><span class="p">.</span><span class="n">Today</span><span class="p">.</span><span class="n">AddDays</span><span class="p">(</span><span class="mi">1</span><span class="p">).</span><span class="n">ToString</span><span class="p">(</span><span class="s">&quot;yyyy-MM-dd&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">filterExpr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;expiration_date ge {tomorrow}&quot;</span><span class="p">;</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="data-type-formatting">Data Type Formatting</h2>
 <table>
@@ -671,6 +749,12 @@ $filter=expiration_date ge 2025-12-28
 <h3 id="item-ids-with-special-characters">Item IDs with Special Characters</h3>
 <p>P21 item IDs commonly contain characters that need URL encoding in OData filters: <code>/</code>, <code>+</code>, <code>#</code>, <code>&amp;</code>, and spaces. The single-quote doubling rule still applies within the OData filter expression, but these special characters also need URL encoding in the query string.</p>
 <p><strong>Python pattern for safe OData filter construction:</strong></p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">quote</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">safe_item_filter</span><span class="p">(</span><span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -706,9 +790,39 @@ $filter=expiration_date ge 2025-12-28
 <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/table/inv_mast&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
 <span class="c1"># httpx encodes the filter value in the query string automatically</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
 
+<span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Build a safe OData filter for item IDs with special characters.</span>
+<span class="c1">/// Doubles single quotes for OData; URL encoding is handled by HttpClient.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">SafeItemFilter</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">itemId</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Escape single quotes for OData</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">escaped</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">itemId</span><span class="p">.</span><span class="n">Replace</span><span class="p">(</span><span class="s">&quot;&#39;&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&#39;&#39;&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Build the filter expression</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s">$&quot;item_id eq &#39;{escaped}&#39;&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Examples of item IDs that need escaping:</span>
+<span class="c1">// &quot;1/2-FITTING&quot;     -&gt; item_id eq &#39;1/2-FITTING&#39;     (/ needs URL encoding)</span>
+<span class="c1">// &quot;ITEM+SIZE&quot;       -&gt; item_id eq &#39;ITEM+SIZE&#39;       (+ needs URL encoding)</span>
+<span class="c1">// &quot;PART #3&quot;         -&gt; item_id eq &#39;PART #3&#39;          (# and space need URL encoding)</span>
+<span class="c1">// &quot;O&#39;RING-204&quot;      -&gt; item_id eq &#39;O&#39;&#39;RING-204&#39;     (quote doubled)</span>
+
+<span class="c1">// Using with HttpClient (URL encoding via Uri.EscapeDataString):</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="n">SafeItemFilter</span><span class="p">(</span><span class="s">&quot;1/2-FITTING&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{baseUrl}/table/inv_mast?$filter={filter}&quot;</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="c1">// HttpClient sends the properly encoded query string</span>
+</code></pre></div>
+</div>
+</div>
 <blockquote>
-<p><strong>Tip:</strong> When using <code>httpx</code> with the <code>params</code> dict, URL encoding is handled automatically. The main concern is correctly doubling single quotes within the OData filter expression itself.</p>
+<p><strong>Tip:</strong> When using <code>httpx</code> (Python) with the <code>params</code> dict or <code>Uri.EscapeDataString</code> (C#), URL encoding is handled automatically. The main concern is correctly doubling single quotes within the OData filter expression itself.</p>
 </blockquote>
 <hr />
 <h2 id="response-format">Response Format</h2>
@@ -815,8 +929,14 @@ $filter=expiration_date ge 2025-12-28
 </code></pre></div>
 
 <hr />
-<h2 id="python-examples">Python Examples</h2>
+<h2 id="code-examples">Code Examples</h2>
 <h3 id="basic-query_1">Basic Query</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scripts.common.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_token</span><span class="p">,</span> <span class="n">get_auth_headers</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scripts.common.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_config</span>
@@ -837,8 +957,39 @@ $filter=expiration_date ge 2025-12-28
 <span class="k">for</span> <span class="n">supplier</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">supplier</span><span class="p">[</span><span class="s1">&#39;supplier_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">supplier</span><span class="p">[</span><span class="s1">&#39;supplier_name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
 
+<span class="c1">// Assumes token and baseUrl are already configured (see Authentication docs)</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">accessToken</span><span class="p">);</span>
+
+<span class="c1">// Query suppliers</span>
+<span class="kt">var</span><span class="w"> </span><span class="k">select</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">&quot;supplier_id,supplier_name&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{odataUrl}/table/supplier?$top=10&amp;$select={select}&quot;</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">supplier</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{supplier[&quot;</span><span class="n">supplier_id</span><span class="s">&quot;]}: {supplier[&quot;</span><span class="n">supplier_name</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="filtered-query_1">Filtered Query</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="c1"># Get price pages for supplier</span>
 <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;supplier_id eq 10050 and row_status_flag eq 704&quot;</span><span class="p">,</span>
@@ -853,8 +1004,26 @@ $filter=expiration_date ge 2025-12-28
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Get price pages for supplier</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">&quot;supplier_id eq 10050 and row_status_flag eq 704&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="k">select</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">&quot;price_page_uid,description,calculation_value1&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="k">orderby</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">&quot;description&quot;</span><span class="p">);</span>
 
+<span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{odataUrl}/table/price_page?$filter={filter}&amp;$select={select}&amp;$orderby={orderby}&quot;</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="pagination-helper">Pagination Helper</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_all_records</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">page_size</span><span class="o">=</span><span class="mi">5000</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch all records with automatic pagination.</span>
 
@@ -893,7 +1062,56 @@ $filter=expiration_date ge 2025-12-28
 
     <span class="k">return</span> <span class="n">records</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Fetch all records with automatic pagination.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="c1">/// &lt;param name=&quot;baseUrl&quot;&gt;OData service base URL.&lt;/param&gt;</span>
+<span class="c1">/// &lt;param name=&quot;table&quot;&gt;Table name to query.&lt;/param&gt;</span>
+<span class="c1">/// &lt;param name=&quot;filterExpr&quot;&gt;Optional OData $filter expression.&lt;/param&gt;</span>
+<span class="c1">/// &lt;param name=&quot;pageSize&quot;&gt;</span>
+<span class="c1">/// Records per request. Larger values mean fewer HTTP round-trips,</span>
+<span class="c1">/// which is usually the biggest performance factor.</span>
+<span class="c1">/// Use 5,000-25,000 for bulk/preload scenarios. Use 50-200</span>
+<span class="c1">/// when paginating for a UI. There is no documented server-side</span>
+<span class="c1">/// maximum -- 25,000 has been verified in production.</span>
+<span class="c1">/// &lt;/param&gt;</span>
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">GetAllRecordsAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">table</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string?</span><span class="w"> </span><span class="n">filterExpr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">pageSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5000</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">records</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">skip</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="k">true</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">query</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;$top={pageSize}&amp;$skip={skip}&amp;$count=true&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">filterExpr</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">            </span><span class="n">query</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="s">$&quot;&amp;$filter={Uri.EscapeDataString(filterExpr)}&quot;</span><span class="p">;</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{baseUrl}/table/{table}?{query}&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">        </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">)</span>
+<span class="w">            </span><span class="n">records</span><span class="p">.</span><span class="n">Add</span><span class="p">((</span><span class="n">JObject</span><span class="p">)</span><span class="n">item</span><span class="p">);</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">total</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="s">&quot;@odata.count&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="n">records</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">records</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">total</span><span class="p">)</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="n">skip</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">pageSize</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">records</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="best-practices">Best Practices</h2>
 <ol>
@@ -944,6 +1162,12 @@ $filter=expiration_date ge 2025-12-28
 </table>
 <h3 id="now-function-not-supported">now() Function Not Supported</h3>
 <p>The standard OData <code>now()</code> function returns 404 in P21. Use explicit date values instead:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="c1"># Calculate date in code</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">timedelta</span>
 <span class="n">tomorrow</span> <span class="o">=</span> <span class="p">(</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
@@ -951,7 +1175,17 @@ $filter=expiration_date ge 2025-12-28
 <span class="c1"># Use in filter</span>
 <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;expiration_date ge </span><span class="si">{</span><span class="n">tomorrow</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Calculate date in code</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">tomorrow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DateTime</span><span class="p">.</span><span class="n">Today</span><span class="p">.</span><span class="n">AddDays</span><span class="p">(</span><span class="mi">1</span><span class="p">).</span><span class="n">ToString</span><span class="p">(</span><span class="s">&quot;yyyy-MM-dd&quot;</span><span class="p">);</span>
 
+<span class="c1">// Use in filter</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;expiration_date ge {tomorrow}&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{odataUrl}/table/price_page?$filter={filter}&quot;</span><span class="p">;</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="page-size-guidance">Page Size Guidance</h2>
 <p>Each HTTP request carries overhead: TCP connection, authentication, query planning, and serialization. For large result sets, <strong>the number of round-trips is usually the biggest performance factor</strong>, not the response payload size.</p>
@@ -1052,14 +1286,36 @@ $filter=expiration_date ge 2025-12-28
 </table>
 <h3 id="avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</h3>
 <p>When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="c1"># BAD: N+1 queries - one query per page</span>
 <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">:</span>
     <span class="n">book</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">get_book_for_page</span><span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>  <span class="c1"># N queries!</span>
     <span class="n">library</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">get_library_for_book</span><span class="p">(</span><span class="n">book</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>  <span class="c1"># N more!</span>
 </code></pre></div>
-
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// BAD: N+1 queries - one query per page</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">page</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">pages</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">book</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">odata</span><span class="p">.</span><span class="n">GetBookForPageAsync</span><span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s">&quot;uid&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">());</span><span class="w">    </span><span class="c1">// N queries!</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">library</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">odata</span><span class="p">.</span><span class="n">GetLibraryForBookAsync</span><span class="p">(</span><span class="n">book</span><span class="p">[</span><span class="s">&quot;uid&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">());</span><span class="w"> </span><span class="c1">// N more!</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <p><strong>Solution 1: Batch queries</strong></p>
 <p>Fetch all related data upfront with IN clauses or multiple conditions:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="c1"># Get all pages first</span>
 <span class="n">pages</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;price_page&quot;</span><span class="p">,</span> <span class="n">filter_expr</span><span class="o">=</span><span class="s2">&quot;supplier_id eq 10050&quot;</span><span class="p">)</span>
 <span class="n">page_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;price_page_uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]</span>
@@ -1069,9 +1325,29 @@ $filter=expiration_date ge 2025-12-28
     <span class="n">links</span> <span class="o">=</span> <span class="k">await</span> <span class="n">odata</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;price_page_x_book&quot;</span><span class="p">,</span>
                                <span class="n">filter_expr</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;price_page_uid eq </span><span class="si">{</span><span class="n">page_uid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Get all pages first</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">pages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">odata</span><span class="p">.</span><span class="n">QueryAsync</span><span class="p">(</span><span class="s">&quot;price_page&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">filterExpr</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;supplier_id eq 10050&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">pageUids</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pages</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">p</span><span class="p">[</span><span class="s">&quot;price_page_uid&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
 
+<span class="c1">// Get all links in fewer queries</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">pageUid</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">pageUids</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">links</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">odata</span><span class="p">.</span><span class="n">QueryAsync</span><span class="p">(</span><span class="s">&quot;price_page_x_book&quot;</span><span class="p">,</span>
+<span class="w">                                        </span><span class="n">filterExpr</span><span class="p">:</span><span class="w"> </span><span class="s">$&quot;price_page_uid eq {pageUid}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <p><strong>Solution 2: Cache lookups</strong></p>
 <p>For repeated lookups (like library-to-book mapping), cache results:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">P21OData</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_library_book_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1086,7 +1362,27 @@ $filter=expiration_date ge 2025-12-28
         <span class="bp">self</span><span class="o">.</span><span class="n">_library_book_cache</span><span class="p">[</span><span class="n">library_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
         <span class="k">return</span> <span class="n">result</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">P21OData</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="n">JObject</span><span class="o">?&gt;</span><span class="w"> </span><span class="n">_libraryBookCache</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">();</span>
 
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">?&gt;</span><span class="w"> </span><span class="n">GetBookForLibraryAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">libraryId</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Return cached result if available</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">_libraryBookCache</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="n">libraryId</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">cached</span><span class="p">))</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">cached</span><span class="p">;</span>
+
+<span class="w">        </span><span class="c1">// Fetch and cache</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">FetchBookForLibraryAsync</span><span class="p">(</span><span class="n">libraryId</span><span class="p">);</span>
+<span class="w">        </span><span class="n">_libraryBookCache</span><span class="p">[</span><span class="n">libraryId</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="odata-schema-refresh">OData Schema Refresh</h2>
 <p>The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when <strong>new tables or views</strong> are added to the database, the OData service must be manually refreshed:</p>
@@ -1149,6 +1445,50 @@ $filter=expiration_date ge 2025-12-28
 
             window.addEventListener('scroll', updateActive, { passive: true });
             updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
         })();
     </script>
 </body>

@@ -1,0 +1,20 @@
+## .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.DotSettings.user
+
+## NuGet
+packages/
+*.nupkg
+
+## IDE
+.vs/
+.idea/
+*.sln.docstates
+
+## OS
+Thumbs.db
+.DS_Store

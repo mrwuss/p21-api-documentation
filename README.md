@@ -2,7 +2,7 @@
 
 > **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
 
-Comprehensive documentation and working Python examples for all Prophet 21 integration APIs.
+Comprehensive documentation and working examples (Python and C#) for all Prophet 21 integration APIs.
 
 ## Overview
 
@@ -87,6 +87,26 @@ python scripts/odata/01_basic_query.py
 - `scripts/entity/01_list_entities.py` - Discover entities
 - `scripts/entity/02_query_entity.py` - Query records
 - `scripts/entity/03_create_entity.py` - Create record
+
+## C# Examples
+
+The `examples/csharp/` directory contains equivalent C# console applications for every Python script, plus a shared client library.
+
+```bash
+# Build all C# examples
+cd examples/csharp
+dotnet build
+
+# Run a specific example
+dotnet run --project OData
+dotnet run --project Transaction
+dotnet run --project Interactive
+dotnet run --project Entity
+```
+
+See [examples/csharp/README.md](examples/csharp/README.md) for setup details.
+
+All documentation pages include tabbed code blocks showing both Python and C# side-by-side. The [online HTML docs](https://mrwuss.github.io/p21-api-documentation/html/) support language switching with global sync across all code blocks on a page.
 
 ## Environment Variables
 

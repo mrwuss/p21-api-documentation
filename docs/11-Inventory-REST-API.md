@@ -75,12 +75,33 @@ Example: `https://play.p21server.com/api/inventory/parts`
 
 ### Basic GET
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 resp = client.get(f"{base_url}/api/inventory/parts/WIDGET-001")
 resp.raise_for_status()
 item = resp.json()
 print(f"{item['ItemId']}: {item['ItemDesc']}")
 ```
+
+**C#**
+
+```csharp
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+
+var resp = await client.GetAsync($"{baseUrl}/api/inventory/parts/WIDGET-001");
+resp.EnsureSuccessStatusCode();
+var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
+Console.WriteLine($"{item["ItemId"]}: {item["ItemDesc"]}");
+```
+
+<!-- /tabs -->
 
 **Sample Response:**
 
@@ -127,6 +148,10 @@ GET /api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,Locat
 Authorization: Bearer <ACCESS_TOKEN>
 ```
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 resp = client.get(
     f"{base_url}/api/inventory/parts/WIDGET-001",
@@ -140,6 +165,27 @@ if item.get("Locations"):
     for loc in item["Locations"]["list"]:
         print(f"Loc: {loc['LocationId']}, Qty: {loc['QtyOnHand']}")
 ```
+
+**C#**
+
+```csharp
+var resp = await client.GetAsync(
+    $"{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=*");
+resp.EnsureSuccessStatusCode();
+var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+// Access nested Locations (inv_loc data)
+var locations = item["Locations"]?["list"] as JArray;
+if (locations != null)
+{
+    foreach (var loc in locations)
+    {
+        Console.WriteLine($"Loc: {loc["LocationId"]}, Qty: {loc["QtyOnHand"]}");
+    }
+}
+```
+
+<!-- /tabs -->
 
 With `extendedproperties=*`, child collections are populated as `{"list": [...]}` objects:
 
@@ -409,6 +455,10 @@ Units of Measure (`UnitsOfMeasure`) are defined at the `inv_mast` level and shar
 
 ## Automation Example
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 import httpx
 
@@ -454,6 +504,64 @@ def process_item(client: httpx.Client, item_id: str, new_location: dict, new_sup
     resp.raise_for_status()
     return resp.json()
 ```
+
+**C#**
+
+```csharp
+const string BaseUrl = "https://play.p21server.com";
+const string Api = BaseUrl + "/api/inventory/parts";
+
+async Task<JObject> ProcessItemAsync(
+    HttpClient client, string itemId, JObject newLocation, JObject newSupplier)
+{
+    // 1. Check if item exists
+    var resp = await client.GetAsync($"{Api}/{itemId}?extendedproperties=Locations,Suppliers");
+
+    if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+    {
+        // Item doesn't exist — create it with POST
+        var createPayload = new JObject { ["ItemId"] = itemId };
+        createPayload.Merge(newLocation);
+        createPayload.Merge(newSupplier);
+        var createContent = new StringContent(
+            createPayload.ToString(), Encoding.UTF8, "application/json");
+        var createResp = await client.PostAsync(Api, createContent);
+        createResp.EnsureSuccessStatusCode();
+        return JObject.Parse(await createResp.Content.ReadAsStringAsync());
+    }
+
+    resp.EnsureSuccessStatusCode();
+    var currentItem = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+    // 2. Check if company/location already linked
+    var locations = currentItem["Locations"]?["list"] as JArray ?? new JArray();
+    var existingCompanies = locations
+        .Select(loc => loc["CompanyId"]?.ToString())
+        .Where(c => c != null)
+        .ToHashSet();
+
+    var targetCompany = newLocation["CompanyId"]?.ToString();
+    if (existingCompanies.Contains(targetCompany))
+    {
+        Console.WriteLine($"Item {itemId} already linked to {targetCompany}");
+        return currentItem;
+    }
+
+    // 3. Append new records
+    locations.Add(newLocation);
+    var suppliers = currentItem["Suppliers"]?["list"] as JArray ?? new JArray();
+    suppliers.Add(newSupplier);
+
+    // 4. PUT updated payload
+    var putContent = new StringContent(
+        currentItem.ToString(), Encoding.UTF8, "application/json");
+    var putResp = await client.PutAsync($"{Api}/{itemId}", putContent);
+    putResp.EnsureSuccessStatusCode();
+    return JObject.Parse(await putResp.Content.ReadAsStringAsync());
+}
+```
+
+<!-- /tabs -->
 
 ### Batch Processing Tips
 

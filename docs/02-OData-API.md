@@ -187,12 +187,25 @@ $filter=expiration_date ge 2025-12-28
 
 For date-relative queries, calculate the date in your application code:
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 from datetime import date, timedelta
 
 tomorrow = (date.today() + timedelta(days=1)).isoformat()
 filter_expr = f"expiration_date ge {tomorrow}"
 ```
+
+**C#**
+
+```csharp
+var tomorrow = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
+var filterExpr = $"expiration_date ge {tomorrow}";
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -221,6 +234,10 @@ $filter=supplier_name eq 'O''Brien Supply'
 P21 item IDs commonly contain characters that need URL encoding in OData filters: `/`, `+`, `#`, `&`, and spaces. The single-quote doubling rule still applies within the OData filter expression, but these special characters also need URL encoding in the query string.
 
 **Python pattern for safe OData filter construction:**
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 from urllib.parse import quote
@@ -259,7 +276,40 @@ response = httpx.get(f"{base_url}/table/inv_mast", params=params, headers=header
 # httpx encodes the filter value in the query string automatically
 ```
 
-> **Tip:** When using `httpx` with the `params` dict, URL encoding is handled automatically. The main concern is correctly doubling single quotes within the OData filter expression itself.
+**C#**
+
+```csharp
+using System.Net.Http;
+
+/// <summary>
+/// Build a safe OData filter for item IDs with special characters.
+/// Doubles single quotes for OData; URL encoding is handled by HttpClient.
+/// </summary>
+static string SafeItemFilter(string itemId)
+{
+    // Escape single quotes for OData
+    var escaped = itemId.Replace("'", "''");
+
+    // Build the filter expression
+    return $"item_id eq '{escaped}'";
+}
+
+// Examples of item IDs that need escaping:
+// "1/2-FITTING"     -> item_id eq '1/2-FITTING'     (/ needs URL encoding)
+// "ITEM+SIZE"       -> item_id eq 'ITEM+SIZE'       (+ needs URL encoding)
+// "PART #3"         -> item_id eq 'PART #3'          (# and space need URL encoding)
+// "O'RING-204"      -> item_id eq 'O''RING-204'     (quote doubled)
+
+// Using with HttpClient (URL encoding via Uri.EscapeDataString):
+var filter = Uri.EscapeDataString(SafeItemFilter("1/2-FITTING"));
+var url = $"{baseUrl}/table/inv_mast?$filter={filter}";
+var response = await client.GetAsync(url);
+// HttpClient sends the properly encoded query string
+```
+
+<!-- /tabs -->
+
+> **Tip:** When using `httpx` (Python) with the `params` dict or `Uri.EscapeDataString` (C#), URL encoding is handled automatically. The main concern is correctly doubling single quotes within the OData filter expression itself.
 
 ---
 
@@ -363,9 +413,13 @@ GET /odataservice/odata/table/inv_mast
 
 ---
 
-## Python Examples
+## Code Examples
 
 ### Basic Query
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 import httpx
@@ -389,7 +443,39 @@ for supplier in data["value"]:
     print(f"{supplier['supplier_id']}: {supplier['supplier_name']}")
 ```
 
+**C#**
+
+```csharp
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Newtonsoft.Json.Linq;
+
+// Assumes token and baseUrl are already configured (see Authentication docs)
+var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", accessToken);
+
+// Query suppliers
+var select = Uri.EscapeDataString("supplier_id,supplier_name");
+var url = $"{odataUrl}/table/supplier?$top=10&$select={select}";
+var response = await client.GetAsync(url);
+response.EnsureSuccessStatusCode();
+
+var json = await response.Content.ReadAsStringAsync();
+var data = JObject.Parse(json);
+foreach (var supplier in data["value"]!)
+{
+    Console.WriteLine($"{supplier["supplier_id"]}: {supplier["supplier_name"]}");
+}
+```
+
+<!-- /tabs -->
+
 ### Filtered Query
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 # Get price pages for supplier
@@ -407,7 +493,26 @@ response = httpx.get(
 )
 ```
 
+**C#**
+
+```csharp
+// Get price pages for supplier
+var filter = Uri.EscapeDataString("supplier_id eq 10050 and row_status_flag eq 704");
+var select = Uri.EscapeDataString("price_page_uid,description,calculation_value1");
+var orderby = Uri.EscapeDataString("description");
+
+var url = $"{odataUrl}/table/price_page?$filter={filter}&$select={select}&$orderby={orderby}";
+var response = await client.GetAsync(url);
+response.EnsureSuccessStatusCode();
+```
+
+<!-- /tabs -->
+
 ### Pagination Helper
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 def get_all_records(base_url, table, filter_expr=None, page_size=5000):
@@ -449,6 +554,58 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
     return records
 ```
 
+**C#**
+
+```csharp
+/// <summary>
+/// Fetch all records with automatic pagination.
+/// </summary>
+/// <param name="baseUrl">OData service base URL.</param>
+/// <param name="table">Table name to query.</param>
+/// <param name="filterExpr">Optional OData $filter expression.</param>
+/// <param name="pageSize">
+/// Records per request. Larger values mean fewer HTTP round-trips,
+/// which is usually the biggest performance factor.
+/// Use 5,000-25,000 for bulk/preload scenarios. Use 50-200
+/// when paginating for a UI. There is no documented server-side
+/// maximum -- 25,000 has been verified in production.
+/// </param>
+async Task<List<JObject>> GetAllRecordsAsync(
+    HttpClient client, string baseUrl, string table,
+    string? filterExpr = null, int pageSize = 5000)
+{
+    var records = new List<JObject>();
+    var skip = 0;
+
+    while (true)
+    {
+        var query = $"$top={pageSize}&$skip={skip}&$count=true";
+        if (filterExpr != null)
+            query += $"&$filter={Uri.EscapeDataString(filterExpr)}";
+
+        var url = $"{baseUrl}/table/{table}?{query}";
+        var response = await client.GetAsync(url);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        var data = JObject.Parse(json);
+
+        foreach (var item in data["value"]!)
+            records.Add((JObject)item);
+
+        var total = data["@odata.count"]?.Value<int>() ?? records.Count;
+
+        if (records.Count >= total)
+            break;
+        skip += pageSize;
+    }
+
+    return records;
+}
+```
+
+<!-- /tabs -->
+
 ---
 
 ## Best Practices
@@ -476,6 +633,10 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
 
 The standard OData `now()` function returns 404 in P21. Use explicit date values instead:
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Calculate date in code
 from datetime import date, timedelta
@@ -484,6 +645,19 @@ tomorrow = (date.today() + timedelta(days=1)).isoformat()
 # Use in filter
 params = {"$filter": f"expiration_date ge {tomorrow}"}
 ```
+
+**C#**
+
+```csharp
+// Calculate date in code
+var tomorrow = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
+
+// Use in filter
+var filter = Uri.EscapeDataString($"expiration_date ge {tomorrow}");
+var url = $"{odataUrl}/table/price_page?$filter={filter}";
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -535,6 +709,10 @@ The 10x improvement comes entirely from eliminating round-trip overhead.
 
 When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # BAD: N+1 queries - one query per page
 for page in pages:
@@ -542,9 +720,26 @@ for page in pages:
     library = await odata.get_library_for_book(book['uid'])  # N more!
 ```
 
+**C#**
+
+```csharp
+// BAD: N+1 queries - one query per page
+foreach (var page in pages)
+{
+    var book = await odata.GetBookForPageAsync(page["uid"]!.ToString());    // N queries!
+    var library = await odata.GetLibraryForBookAsync(book["uid"]!.ToString()); // N more!
+}
+```
+
+<!-- /tabs -->
+
 **Solution 1: Batch queries**
 
 Fetch all related data upfront with IN clauses or multiple conditions:
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 # Get all pages first
@@ -557,9 +752,30 @@ for page_uid in page_uids:
                                filter_expr=f"price_page_uid eq {page_uid}")
 ```
 
+**C#**
+
+```csharp
+// Get all pages first
+var pages = await odata.QueryAsync("price_page", filterExpr: "supplier_id eq 10050");
+var pageUids = pages.Select(p => p["price_page_uid"]!.ToString()).ToList();
+
+// Get all links in fewer queries
+foreach (var pageUid in pageUids)
+{
+    var links = await odata.QueryAsync("price_page_x_book",
+                                        filterExpr: $"price_page_uid eq {pageUid}");
+}
+```
+
+<!-- /tabs -->
+
 **Solution 2: Cache lookups**
 
 For repeated lookups (like library-to-book mapping), cache results:
+
+<!-- tabs -->
+
+**Python**
 
 ```python
 class P21OData:
@@ -576,6 +792,29 @@ class P21OData:
         self._library_book_cache[library_id] = result
         return result
 ```
+
+**C#**
+
+```csharp
+public class P21OData
+{
+    private readonly Dictionary<string, JObject?> _libraryBookCache = new();
+
+    public async Task<JObject?> GetBookForLibraryAsync(string libraryId)
+    {
+        // Return cached result if available
+        if (_libraryBookCache.TryGetValue(libraryId, out var cached))
+            return cached;
+
+        // Fetch and cache
+        var result = await FetchBookForLibraryAsync(libraryId);
+        _libraryBookCache[libraryId] = result;
+        return result;
+    }
+}
+```
+
+<!-- /tabs -->
 
 ---
 

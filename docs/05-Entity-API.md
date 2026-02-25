@@ -126,9 +126,20 @@ Addresses have a **reduced** set of operations — no `/new` template and no upd
 
 List endpoints (`GET /api/entity/customers`) return a **307 redirect** to the same URL with a trailing slash (`/api/entity/customers/`). Configure your HTTP client to follow redirects:
 
+<!-- tabs -->
+
+**Python:**
 ```python
 client = httpx.Client(follow_redirects=True, ...)
 ```
+
+**C#:**
+```csharp
+var handler = new HttpClientHandler { AllowAutoRedirect = true };
+var client = new HttpClient(handler);
+```
+
+<!-- /tabs -->
 
 > **Note:** Be cautious with unfiltered list queries. The customers endpoint returned 19,896 records, contacts returned 58,639. Always use `$query` to filter when possible.
 
@@ -501,10 +512,13 @@ XML response example (ping):
 
 ---
 
-## Python Examples
+## Code Examples
 
 ### Setup
 
+<!-- tabs -->
+
+**Python:**
 ```python
 import httpx
 
@@ -531,16 +545,69 @@ client = httpx.Client(
 )
 ```
 
+**C#:**
+```csharp
+using System.Net.Http;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+var baseUrl = "https://play.p21server.com";
+
+// Get token
+var handler = new HttpClientHandler
+{
+    AllowAutoRedirect = true,
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+};
+var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
+client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+var tokenPayload = JsonConvert.SerializeObject(new
+{
+    username = "api_user",
+    password = "password"
+});
+var tokenResp = await client.PostAsync(
+    "/api/security/token/v2",
+    new StringContent(tokenPayload, Encoding.UTF8, "application/json")
+);
+tokenResp.EnsureSuccessStatusCode();
+var tokenJson = JObject.Parse(await tokenResp.Content.ReadAsStringAsync());
+var token = tokenJson["AccessToken"]!.ToString();
+
+// Set auth header for all subsequent requests
+client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+```
+
+<!-- /tabs -->
+
 ### Health Check
 
+<!-- tabs -->
+
+**Python:**
 ```python
 resp = client.get(f"{base_url}/api/entity/customers/ping")
 resp.raise_for_status()
 print(resp.json())  # {"ResponseMessage": "success"}
 ```
 
+**C#:**
+```csharp
+var resp = await client.GetAsync("/api/entity/customers/ping");
+resp.EnsureSuccessStatusCode();
+var json = JObject.Parse(await resp.Content.ReadAsStringAsync());
+Console.WriteLine(json);  // {"ResponseMessage": "success"}
+```
+
+<!-- /tabs -->
+
 ### Get Single Customer
 
+<!-- tabs -->
+
+**Python:**
 ```python
 resp = client.get(f"{base_url}/api/entity/customers/ACME_10")
 resp.raise_for_status()
@@ -549,8 +616,22 @@ print(f"{customer['CustomerId']}: {customer['CustomerName']}")
 # 10: ABC Supply Company
 ```
 
+**C#:**
+```csharp
+var resp = await client.GetAsync("/api/entity/customers/ACME_10");
+resp.EnsureSuccessStatusCode();
+var customer = JObject.Parse(await resp.Content.ReadAsStringAsync());
+Console.WriteLine($"{customer["CustomerId"]}: {customer["CustomerName"]}");
+// 10: ABC Supply Company
+```
+
+<!-- /tabs -->
+
 ### Get Customer with Extended Properties
 
+<!-- tabs -->
+
+**Python:**
 ```python
 resp = client.get(
     f"{base_url}/api/entity/customers/ACME_10",
@@ -563,8 +644,25 @@ print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
 # Springfield, IL 62701
 ```
 
+**C#:**
+```csharp
+var resp = await client.GetAsync(
+    "/api/entity/customers/ACME_10?extendedproperties=CustomerAddress"
+);
+resp.EnsureSuccessStatusCode();
+var customer = JObject.Parse(await resp.Content.ReadAsStringAsync());
+var addr = customer["CustomerAddress"]!;
+Console.WriteLine($"{addr["MailCity"]}, {addr["MailState"]} {addr["MailPostalCode"]}");
+// Springfield, IL 62701
+```
+
+<!-- /tabs -->
+
 ### Query Customers
 
+<!-- tabs -->
+
+**Python:**
 ```python
 resp = client.get(
     f"{base_url}/api/entity/customers/",
@@ -577,8 +675,27 @@ for c in customers:
     print(f"  {c['CompanyId']}_{c['CustomerId']}: {c['CustomerName']}")
 ```
 
+**C#:**
+```csharp
+var resp = await client.GetAsync(
+    "/api/entity/customers/?$query=startswith(CustomerName, 'ABC')"
+);
+resp.EnsureSuccessStatusCode();
+var customers = JArray.Parse(await resp.Content.ReadAsStringAsync());
+Console.WriteLine($"Found {customers.Count} customers");
+foreach (var c in customers)
+{
+    Console.WriteLine($"  {c["CompanyId"]}_{c["CustomerId"]}: {c["CustomerName"]}");
+}
+```
+
+<!-- /tabs -->
+
 ### Get Contact
 
+<!-- tabs -->
+
+**Python:**
 ```python
 resp = client.get(f"{base_url}/api/entity/contacts/1")
 resp.raise_for_status()
@@ -587,8 +704,22 @@ print(f"{contact['FirstName']} {contact['LastName']}")
 # John Smith
 ```
 
+**C#:**
+```csharp
+var resp = await client.GetAsync("/api/entity/contacts/1");
+resp.EnsureSuccessStatusCode();
+var contact = JObject.Parse(await resp.Content.ReadAsStringAsync());
+Console.WriteLine($"{contact["FirstName"]} {contact["LastName"]}");
+// John Smith
+```
+
+<!-- /tabs -->
+
 ### Create Customer
 
+<!-- tabs -->
+
+**Python:**
 ```python
 # Get template first
 resp = client.get(f"{base_url}/api/entity/customers/new")
@@ -609,8 +740,34 @@ resp = client.post(
 resp.raise_for_status()
 ```
 
+**C#:**
+```csharp
+// Get template first
+var resp = await client.GetAsync("/api/entity/customers/new");
+resp.EnsureSuccessStatusCode();
+var template = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+// Fill required fields
+template["CompanyId"] = "ACME";
+template["CustomerName"] = "New Customer Inc.";
+template["SalesrepId"] = "1100";
+template["TermsId"] = "1";
+
+// Create (POST without CustomerId = insert)
+resp = await client.PostAsync(
+    "/api/entity/customers",
+    new StringContent(template.ToString(), Encoding.UTF8, "application/json")
+);
+resp.EnsureSuccessStatusCode();
+```
+
+<!-- /tabs -->
+
 ### Update Customer
 
+<!-- tabs -->
+
+**Python:**
 ```python
 resp = client.put(
     f"{base_url}/api/entity/customers/ACME_10",
@@ -622,6 +779,23 @@ resp = client.put(
 )
 resp.raise_for_status()
 ```
+
+**C#:**
+```csharp
+var payload = new JObject
+{
+    ["CompanyId"] = "ACME",
+    ["CustomerId"] = 10,
+    ["CustomerName"] = "Updated Customer Name"
+};
+var resp = await client.PutAsync(
+    "/api/entity/customers/ACME_10",
+    new StringContent(payload.ToString(), Encoding.UTF8, "application/json")
+);
+resp.EnsureSuccessStatusCode();
+```
+
+<!-- /tabs -->
 
 ---
 
