@@ -1,9 +1,11 @@
 """
-Interactive API - Save and Close
+Interactive API - Save and Close (v2)
 
 Demonstrates a complete workflow: open, modify, save, and close.
 
 This is the typical pattern for creating records via the Interactive API.
+
+IMPORTANT: As of P21 25.2, DatawindowName is REQUIRED in change requests.
 
 Usage:
     python scripts/interactive/04_save_and_close.py
@@ -12,6 +14,7 @@ Usage:
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import httpx
@@ -24,7 +27,7 @@ warnings.filterwarnings("ignore")
 
 
 class InteractiveSession:
-    """Complete Interactive API session manager."""
+    """Complete Interactive API v2 session manager."""
 
     def __init__(self, ui_server_url: str, headers: dict, verify_ssl: bool):
         self.ui_server_url = ui_server_url
@@ -64,29 +67,39 @@ class InteractiveSession:
         )
 
     def change_data(self, window_id: str, changes: list) -> dict:
+        """Change field values using v2 API.
+
+        Args:
+            window_id: The window ID
+            changes: List of dicts with TabName, DatawindowName, FieldName, Value
+        """
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/change",
+            f"{self.ui_server_url}/api/ui/interactive/v2/change",
             headers=self.headers,
-            json={"WindowId": window_id, "ChangeRequests": changes}
+            json={"WindowId": window_id, "List": changes}
         )
         response.raise_for_status()
         return response.json()
 
     def change_tab(self, window_id: str, tab_name: str) -> dict:
+        """Switch to a different tab using v2 API."""
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/tab",
+            f"{self.ui_server_url}/api/ui/interactive/v2/tab",
             headers=self.headers,
-            json={"WindowId": window_id, "PagePath": {"PageName": tab_name}}
+            json={"WindowId": window_id, "PageName": tab_name}
         )
         response.raise_for_status()
         return response.json()
 
     def save_data(self, window_id: str) -> dict:
-        """Save the data in the window."""
+        """Save the data in the window using v2 API.
+
+        Note: v2 save takes just the window ID string, not a dict.
+        """
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/data",
+            f"{self.ui_server_url}/api/ui/interactive/v2/data",
             headers=self.headers,
-            json={"WindowId": window_id}
+            json=window_id  # v2: just the GUID string
         )
         response.raise_for_status()
         return response.json()
@@ -94,7 +107,7 @@ class InteractiveSession:
     def get_data(self, window_id: str) -> dict:
         """Get current data from window."""
         response = self.client.get(
-            f"{self.ui_server_url}/api/ui/interactive/v1/data",
+            f"{self.ui_server_url}/api/ui/interactive/v2/data",
             params={"windowId": window_id},
             headers=self.headers
         )
@@ -105,7 +118,7 @@ class InteractiveSession:
 def create_price_page(session: InteractiveSession, supplier_id: int,
                        product_group: str, description: str, multiplier: float) -> dict:
     """
-    Create a price page using the Interactive API.
+    Create a price page using the Interactive API v2.
 
     This demonstrates the complete workflow:
     1. Open window
@@ -128,30 +141,39 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
         # Step 2: Set page type first (triggers validation rules)
         session.change_data(window_id, [
-            {"DataWindowName": "d_form", "FieldName": "price_page_type_cd",
-             "Value": "Supplier / Product Group"}
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "price_page_type_cd", "Value": "Supplier / Product Group"}
         ])
 
         # Step 3: Fill in required fields (order matters!)
         session.change_data(window_id, [
-            {"DataWindowName": "d_form", "FieldName": "company_id", "Value": "ACME"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "company_id", "Value": "ACME"},
         ])
 
         session.change_data(window_id, [
-            {"DataWindowName": "d_form", "FieldName": "product_group_id", "Value": product_group},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "product_group_id", "Value": product_group},
         ])
 
         session.change_data(window_id, [
-            {"DataWindowName": "d_form", "FieldName": "supplier_id", "Value": str(supplier_id)},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "supplier_id", "Value": str(supplier_id)},
         ])
 
         session.change_data(window_id, [
-            {"DataWindowName": "d_form", "FieldName": "description", "Value": description},
-            {"DataWindowName": "d_form", "FieldName": "pricing_method_cd", "Value": "Source"},
-            {"DataWindowName": "d_form", "FieldName": "source_price_cd", "Value": "Supplier List Price"},
-            {"DataWindowName": "d_form", "FieldName": "effective_date", "Value": datetime.now().strftime("%Y-%m-%d")},
-            {"DataWindowName": "d_form", "FieldName": "expiration_date", "Value": "2030-12-31"},
-            {"DataWindowName": "d_form", "FieldName": "row_status_flag", "Value": "Active"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "description", "Value": description},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "pricing_method_cd", "Value": "Source"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "source_price_cd", "Value": "Supplier List Price"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "effective_date", "Value": datetime.now().strftime("%Y-%m-%d")},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "expiration_date", "Value": "2030-12-31"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "row_status_flag", "Value": "Active"},
         ])
 
         # Step 4: Switch to VALUES tab
@@ -159,15 +181,17 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
         # Step 5: Set calculation method and value
         session.change_data(window_id, [
-            {"DataWindowName": "d_values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"DataWindowName": "d_values", "FieldName": "calculation_value1", "Value": str(multiplier)},
+            {"TabName": "VALUES", "DatawindowName": "d_values",
+             "FieldName": "calculation_method_cd", "Value": "Multiplier"},
+            {"TabName": "VALUES", "DatawindowName": "d_values",
+             "FieldName": "calculation_value1", "Value": str(multiplier)},
         ])
 
         # Step 6: Save
         result = session.save_data(window_id)
 
-        # Check for blocked status (response window)
-        if result.get("Status") == "Blocked":
+        # Check for blocked status (Status 3 = dialog opened)
+        if result.get("Status") == 3:
             raise RuntimeError("Save blocked by response window - manual intervention needed")
 
         # Get the saved data to retrieve UID
@@ -179,17 +203,17 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
         return {"success": True, "data": data}
 
-    except Exception as e:
+    except Exception:
         if window_id:
             try:
                 session.close_window(window_id)
-            except:
+            except Exception:
                 pass
         raise
 
 
 def main():
-    print("Interactive API - Save and Close")
+    print("Interactive API - Save and Close (v2)")
     print("=" * 60)
 
     config = load_config()
@@ -240,7 +264,7 @@ def main():
         try:
             session.end()
             print("  Session ended")
-        except:
+        except Exception:
             pass
 
     print("\n" + "=" * 60)
