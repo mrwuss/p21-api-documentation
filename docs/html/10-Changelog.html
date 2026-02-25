@@ -351,6 +351,9 @@
 <li><strong>docs:</strong> Document <code>/tools</code> endpoint workaround for non-message-box response windows — <code>GET /tools</code> discovers buttons, <code>POST /tools</code> clicks them (verified on <code>w_inventory_scan_lookup</code>)</li>
 <li><strong>docs:</strong> Update Event Data format documentation — confirmed KV-list format <code>[{"Key": "...", "Value": "..."}]</code></li>
 <li><strong>fix:</strong> Document P21 25.2 breaking change — <code>DatawindowName</code> now required in Interactive API change requests (3-parameter <code>ChangeData</code> method no longer works, must use 4-parameter form). Affects Item, PO Receiving Group, Delivery List, Group Pick Ticket, and likely other windows. Updated all code examples and batch processing patterns. Source: community forum reports.</li>
+<li><strong>fix:</strong> Rewrite <code>06_complex_workflow.py</code> from v1 to v2 — endpoints, payload format (<code>List</code> not <code>ChangeRequests</code>), <code>DatawindowName</code> casing, integer status checks, v2 save format</li>
+<li><strong>fix:</strong> Fix <code>get_opened_window_id()</code> in reusable client to handle KV-list Event Data format <code>[{"Key": "windowid", "Value": "..."}]</code></li>
+<li><strong>fix:</strong> Fix Error Handling doc — Blocked status is integer <code>3</code> (not string), Event Data uses KV-list format</li>
 </ul>
 <h2 id="2026-02-17">2026-02-17</h2>
 <ul>

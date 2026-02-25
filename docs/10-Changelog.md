@@ -15,6 +15,9 @@ All notable changes to this documentation project are listed below, grouped by d
 - **docs:** Document `/tools` endpoint workaround for non-message-box response windows — `GET /tools` discovers buttons, `POST /tools` clicks them (verified on `w_inventory_scan_lookup`)
 - **docs:** Update Event Data format documentation — confirmed KV-list format `[{"Key": "...", "Value": "..."}]`
 - **fix:** Document P21 25.2 breaking change — `DatawindowName` now required in Interactive API change requests (3-parameter `ChangeData` method no longer works, must use 4-parameter form). Affects Item, PO Receiving Group, Delivery List, Group Pick Ticket, and likely other windows. Updated all code examples and batch processing patterns. Source: community forum reports.
+- **fix:** Rewrite `06_complex_workflow.py` from v1 to v2 — endpoints, payload format (`List` not `ChangeRequests`), `DatawindowName` casing, integer status checks, v2 save format
+- **fix:** Fix `get_opened_window_id()` in reusable client to handle KV-list Event Data format `[{"Key": "windowid", "Value": "..."}]`
+- **fix:** Fix Error Handling doc — Blocked status is integer `3` (not string), Event Data uses KV-list format
 
 ## 2026-02-17
 
