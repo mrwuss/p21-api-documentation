@@ -10,6 +10,8 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ## 2026-02-25
 
+- **feat:** Add C# code examples alongside Python across all documentation — tabbed code blocks (Python/C#) in generated HTML with global language sync and localStorage persistence, 23 C# console app examples mirroring every Python script, shared C# client library (`examples/csharp/Common/`) with auth, config, and HttpClient wrapper — *@mrwuss*
+
 - **fix:** Correct Interactive API `ResultStatus` enum mapping — `None=0, Success=1, Failure=2, Blocked=3` (was incorrectly `0=Failure, 2=Blocked, 3=Dialog`), verified against source (`ResultWrapper.cs`) and live API — [PR #26](https://github.com/mrwuss/p21-api-documentation/pull/26)
 - **docs:** Update Data Structures Reference to show integer status types with numeric values
 - **docs:** Document `/tools` endpoint workaround for non-message-box response windows — `GET /tools` discovers buttons, `POST /tools` clicks them (verified on `w_inventory_scan_lookup`)

@@ -247,6 +247,17 @@
             h3 { page-break-after: avoid; margin-top: 15pt; }
             pre, table, blockquote { page-break-inside: avoid; }
             p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
         }
 
         /* ===== Mobile ===== */
@@ -283,6 +294,61 @@
 
         .print-btn:hover {
             background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
         }
     </style>
 </head>
@@ -366,6 +432,12 @@
 <p>Interactive API sessions have a default idle timeout of approximately <strong>6 minutes</strong>. When processing many operations, a single session will time out between operations if any individual operation takes longer than expected or if there are delays between operations.</p>
 <h3 id="pattern">Pattern</h3>
 <p>Start a new session for each batch of ~25 operations. This keeps each session well within the timeout window while minimizing session creation overhead.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_in_batches</span><span class="p">(</span>
     <span class="n">client</span><span class="p">:</span> <span class="n">P21Client</span><span class="p">,</span>
     <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span>
@@ -397,7 +469,37 @@
 
     <span class="k">return</span> <span class="n">results</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;&gt;&gt;</span><span class="w"> </span><span class="n">ProcessInBatchesAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">P21Client</span><span class="w"> </span><span class="n">client</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">items</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">batchSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">25</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Process items in batches with a fresh session per batch.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;&gt;</span><span class="p">();</span>
 
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">items</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">batchSize</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">items</span><span class="p">.</span><span class="n">Skip</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">Take</span><span class="p">(</span><span class="n">batchSize</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">batchNum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">batchSize</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">totalBatches</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">items</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">batchSize</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">batchSize</span><span class="p">;</span>
+
+<span class="w">        </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogInformation</span><span class="p">(</span>
+<span class="w">            </span><span class="s">&quot;Processing batch {BatchNum}/{TotalBatches} ({Count} items)&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">batchNum</span><span class="p">,</span><span class="w"> </span><span class="n">totalBatches</span><span class="p">,</span><span class="w"> </span><span class="n">batch</span><span class="p">.</span><span class="n">Count</span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// New session for each batch</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">CreateSessionAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">batchResults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ProcessBatchAsync</span><span class="p">(</span><span class="n">session</span><span class="p">,</span><span class="w"> </span><span class="n">batch</span><span class="p">);</span>
+<span class="w">        </span><span class="n">results</span><span class="p">.</span><span class="n">AddRange</span><span class="p">(</span><span class="n">batchResults</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">results</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="verified-timing-data">Verified Timing Data</h3>
 <p>From production measurements creating price pages with book linking:</p>
 <table>
@@ -430,6 +532,12 @@
 <h2 id="window-reuse-within-a-batch">Window Reuse Within a Batch</h2>
 <p>Opening a P21 window is expensive (~500ms). Within a batch, open the window once and reuse it for multiple operations by calling <code>clear_data()</code> between records.</p>
 <h3 id="pattern_1">Pattern</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_batch</span><span class="p">(</span>
     <span class="n">session</span><span class="p">:</span> <span class="n">P21Session</span><span class="p">,</span>
     <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
@@ -467,7 +575,61 @@
 
     <span class="k">return</span> <span class="n">results</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;&gt;&gt;</span><span class="w"> </span><span class="n">ProcessBatchAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">P21Session</span><span class="w"> </span><span class="n">session</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">items</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Process a batch of items using a single window.</span>
+<span class="w">    </span><span class="c1">// Opens the window once, processes all items, then closes.</span>
+<span class="w">    </span><span class="c1">// Uses ClearData() between records to reset the form.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;&gt;</span><span class="p">();</span>
 
+<span class="w">    </span><span class="c1">// Open window once for the entire batch</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">items</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">items</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="w">            </span><span class="k">try</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">CreatePricePageAsync</span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">);</span>
+<span class="w">                </span><span class="n">results</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;item&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;success&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;result&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span>
+<span class="w">                </span><span class="p">});</span>
+
+<span class="w">                </span><span class="c1">// Clear the form for the next record (skip on last item)</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">items</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span>
+<span class="w">                    </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">ClearDataAsync</span><span class="p">();</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogError</span><span class="p">(</span><span class="s">&quot;Failed to process item {Item}: {Error}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="n">ex</span><span class="p">.</span><span class="n">Message</span><span class="p">);</span>
+<span class="w">                </span><span class="n">results</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;item&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;success&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ex</span><span class="p">.</span><span class="n">Message</span>
+<span class="w">                </span><span class="p">});</span>
+
+<span class="w">                </span><span class="c1">// On error, close and reopen the window (see Error Recovery below)</span>
+<span class="w">                </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">();</span>
+<span class="w">                </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">finally</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">results</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="key-points">Key Points</h3>
 <ul>
 <li>Call <code>clear_data()</code> after saving each record to reset the form</li>
@@ -478,6 +640,12 @@
 <h2 id="error-recovery-pattern">Error Recovery Pattern</h2>
 <p>When an error occurs during an Interactive API operation, the window state may be corrupted (partial field values, unsaved changes, open dialogs). Attempting to continue using a corrupted window leads to cascading failures.</p>
 <h3 id="pattern-close-and-reopen-on-error">Pattern: Close and Reopen on Error</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_price_page_with_recovery</span><span class="p">(</span>
     <span class="n">session</span><span class="p">:</span> <span class="n">P21Session</span><span class="p">,</span>
     <span class="n">window</span><span class="p">:</span> <span class="n">Window</span><span class="p">,</span>
@@ -524,7 +692,68 @@
     <span class="c1"># Should not reach here, but just in case</span>
     <span class="k">return</span> <span class="n">window</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Unexpected retry exhaustion&quot;</span><span class="p">}</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="p">(</span><span class="n">Window</span><span class="w"> </span><span class="n">Window</span><span class="p">,</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Result</span><span class="p">)</span><span class="o">&gt;</span>
+<span class="w">    </span><span class="n">CreatePricePageWithRecoveryAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="n">P21Session</span><span class="w"> </span><span class="n">session</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Window</span><span class="w"> </span><span class="n">window</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">item</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">maxRetries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Create a price page with error recovery.</span>
+<span class="w">    </span><span class="c1">// On failure, closes the corrupted window and opens a fresh one.</span>
+<span class="w">    </span><span class="n">Exception</span><span class="o">?</span><span class="w"> </span><span class="n">lastException</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
 
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">attempt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">attempt</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">maxRetries</span><span class="p">;</span><span class="w"> </span><span class="n">attempt</span><span class="o">++</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">try</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">CreatePricePageAsync</span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;success&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;result&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span>
+<span class="w">            </span><span class="p">});</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">lastException</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ex</span><span class="p">;</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">description</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">item</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="s">&quot;description&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">desc</span><span class="p">)</span>
+<span class="w">                </span><span class="o">?</span><span class="w"> </span><span class="n">desc</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;?&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;?&quot;</span><span class="p">;</span>
+<span class="w">            </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogWarning</span><span class="p">(</span>
+<span class="w">                </span><span class="s">&quot;Attempt {Attempt} failed for {Description}: {Error}&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="p">,</span><span class="w"> </span><span class="n">ex</span><span class="p">.</span><span class="n">Message</span><span class="p">);</span>
+
+<span class="w">            </span><span class="c1">// Close the potentially corrupted window</span>
+<span class="w">            </span><span class="k">try</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">            </span><span class="k">catch</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* Window may already be in bad state */</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">attempt</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">maxRetries</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="c1">// Open a fresh window and retry</span>
+<span class="w">                </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="k">else</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="c1">// All retries exhausted - reopen window for next item</span>
+<span class="w">                </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+<span class="w">                </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;success&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ex</span><span class="p">.</span><span class="n">Message</span>
+<span class="w">                </span><span class="p">});</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Should not reach here, but just in case</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;success&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;error&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Unexpected retry exhaustion&quot;</span>
+<span class="w">    </span><span class="p">});</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="why-not-recover-in-place">Why Not Recover In-Place?</h3>
 <table>
 <thead>
@@ -553,6 +782,12 @@
 <h2 id="page-expiration-workflow">Page Expiration Workflow</h2>
 <p>Creating new price pages often requires expiring old ones to prevent pricing conflicts. If both an old and new page are active for the same supplier/product group, P21 may apply either one unpredictably.</p>
 <h3 id="pattern-expire-before-replace">Pattern: Expire Before Replace</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">expire_price_page</span><span class="p">(</span>
     <span class="n">window</span><span class="p">:</span> <span class="n">Window</span><span class="p">,</span>
     <span class="n">price_page_uid</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -593,9 +828,59 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expired page </span><span class="si">{</span><span class="n">price_page_uid</span><span class="si">}</span><span class="s2"> (expires </span><span class="si">{</span><span class="n">expiration_date</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">True</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ExpirePricePageAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">Window</span><span class="w"> </span><span class="n">window</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">pricePageUid</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">expirationDate</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Expire a price page by setting its expiration date.</span>
 
+<span class="w">    </span><span class="c1">// Load the page by UID</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">ChangeDataAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">&quot;FORM&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;form&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;price_page_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">pricePageUid</span><span class="p">.</span><span class="n">ToString</span><span class="p">());</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">result</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogError</span><span class="p">(</span><span class="s">&quot;Failed to load page {Uid}: {Messages}&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">pricePageUid</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="p">.</span><span class="n">Join</span><span class="p">(</span><span class="s">&quot;; &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">Messages</span><span class="p">));</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">false</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Set the expiration date</span>
+<span class="w">    </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">ChangeDataAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">&quot;FORM&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;form&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;expiration_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">expirationDate</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">result</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogError</span><span class="p">(</span><span class="s">&quot;Failed to set expiration date: {Messages}&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="kt">string</span><span class="p">.</span><span class="n">Join</span><span class="p">(</span><span class="s">&quot;; &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">Messages</span><span class="p">));</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">false</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Save</span>
+<span class="w">    </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">SaveDataAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">result</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogError</span><span class="p">(</span><span class="s">&quot;Failed to save expiration: {Messages}&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="kt">string</span><span class="p">.</span><span class="n">Join</span><span class="p">(</span><span class="s">&quot;; &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">Messages</span><span class="p">));</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">false</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogInformation</span><span class="p">(</span><span class="s">&quot;Expired page {Uid} (expires {Date})&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="n">pricePageUid</span><span class="p">,</span><span class="w"> </span><span class="n">expirationDate</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">true</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="bulk-expiration">Bulk Expiration</h3>
 <p>Expiration follows the same batch patterns as creation. Process in batches with session-per-batch:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">expire_old_pages</span><span class="p">(</span>
     <span class="n">client</span><span class="p">:</span> <span class="n">P21Client</span><span class="p">,</span>
     <span class="n">page_uids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -640,12 +925,72 @@
 
     <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;succeeded&quot;</span><span class="p">:</span> <span class="n">succeeded</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">:</span> <span class="n">failed</span><span class="p">,</span> <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">page_uids</span><span class="p">)}</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">ExpireOldPagesAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">P21Client</span><span class="w"> </span><span class="n">client</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pageUids</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">expirationDate</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">batchSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">25</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Bulk expire price pages.</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">succeeded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">failed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">pageUids</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">batchSize</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pageUids</span><span class="p">.</span><span class="n">Skip</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">Take</span><span class="p">(</span><span class="n">batchSize</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">CreateSessionAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">try</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">batch</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="kt">bool</span><span class="w"> </span><span class="n">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ExpirePricePageAsync</span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="p">,</span><span class="w"> </span><span class="n">expirationDate</span><span class="p">);</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">succeeded</span><span class="o">++</span><span class="p">;</span>
+<span class="w">                    </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">ClearDataAsync</span><span class="p">();</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="k">else</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">failed</span><span class="o">++</span><span class="p">;</span>
+<span class="w">                    </span><span class="c1">// Reopen window on failure</span>
+<span class="w">                    </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">();</span>
+<span class="w">                    </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span>
+<span class="w">                        </span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">finally</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;succeeded&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">succeeded</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;failed&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">failed</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;total&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pageUids</span><span class="p">.</span><span class="n">Count</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="production-grade-async-client">Production-Grade Async Client</h2>
 <p>The example scripts in this project use synchronous <code>httpx</code>. For production batch processing, a full async client is recommended. Below is a complete, production-tested client architecture.</p>
 <h3 id="result-class">Result Class</h3>
 <p>Parse Interactive API responses into a structured result:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
 
 
@@ -700,9 +1045,87 @@
                 <span class="k">return</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span> <span class="p">{})</span>
         <span class="k">return</span> <span class="kc">None</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
 
+<span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Parsed result from an Interactive API response.</span>
+<span class="c1">/// Status codes match P21.UI.Service.Model.Interactive.V2.ResultWrapper:</span>
+<span class="c1">///   None=0, Success=1, Failure=2, Blocked=3</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">Result</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">StatusCode</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">init</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1">// 0=None, 1=Success, 2=Failure, 3=Blocked</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">Success</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">init</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Messages</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">init</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">();</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Events</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">init</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">();</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="n">Raw</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">init</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">StatusMap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;None&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Success&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Failure&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Blocked&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">    </span><span class="p">};</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// Parse an API response into a Result.</span>
+<span class="w">    </span><span class="c1">/// The API may return Status as an integer or string depending on context.</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="n">Result</span><span class="w"> </span><span class="nf">FromResponse</span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">responseData</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">statusToken</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseData</span><span class="p">[</span><span class="s">&quot;Status&quot;</span><span class="p">];</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">statusCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">statusToken</span><span class="o">?.</span><span class="n">Type</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JTokenType</span><span class="p">.</span><span class="n">String</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">string</span><span class="w"> </span><span class="n">statusStr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">statusToken</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">            </span><span class="n">StatusMap</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="n">statusStr</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="n">statusCode</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="nf">if</span><span class="w"> </span><span class="p">(</span><span class="n">statusToken</span><span class="o">?.</span><span class="n">Type</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JTokenType</span><span class="p">.</span><span class="n">Integer</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">statusCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">statusToken</span><span class="p">.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">events</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseData</span><span class="p">[</span><span class="s">&quot;Events&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToObject</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="p">();</span>
+
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">evt</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">events</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">evt</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;message&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="kt">string</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">evt</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Message&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="w">                </span><span class="n">messages</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Result</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">StatusCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">statusCode</span><span class="p">,</span>
+<span class="w">            </span><span class="n">Success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">statusCode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">            </span><span class="n">Messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">messages</span><span class="p">,</span>
+<span class="w">            </span><span class="n">Events</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">events</span><span class="p">,</span>
+<span class="w">            </span><span class="n">Raw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseData</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get the first event matching the given name.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">JObject</span><span class="o">?</span><span class="w"> </span><span class="n">GetEvent</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">eventName</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Events</span><span class="p">.</span><span class="n">FirstOrDefault</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">e</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">eventName</span><span class="p">)</span>
+<span class="w">            </span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToObject</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="event-parsing-helpers">Event Parsing Helpers</h3>
 <p>Common events you need to extract from API responses:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_generated_key</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="n">Result</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract auto-generated key (e.g., price_page_uid) from result events.</span>
 
@@ -726,8 +1149,44 @@
         <span class="k">return</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;WindowId&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">None</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Extract auto-generated key (e.g., price_page_uid) from result events.</span>
+<span class="c1">/// After saving a new record, P21 fires a &#39;keygenerated&#39; event</span>
+<span class="c1">/// containing the new UID.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="kt">int?</span><span class="w"> </span><span class="n">GetGeneratedKey</span><span class="p">(</span><span class="n">Result</span><span class="w"> </span><span class="n">result</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">eventData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">GetEvent</span><span class="p">(</span><span class="s">&quot;keygenerated&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eventData</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">eventData</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kt">int</span><span class="p">.</span><span class="n">TryParse</span><span class="p">(</span><span class="k">value</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">key</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="p">}</span>
 
+<span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Extract window ID from a &#39;windowopened&#39; event.</span>
+<span class="c1">/// When a response window/dialog opens, the API returns this event</span>
+<span class="c1">/// with the new window&#39;s ID.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">GetOpenedWindowId</span><span class="p">(</span><span class="n">Result</span><span class="w"> </span><span class="n">result</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">eventData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">GetEvent</span><span class="p">(</span><span class="s">&quot;windowopened&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">eventData</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="complete-window-class">Complete Window Class</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Window</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an open P21 Interactive API window.&quot;&quot;&quot;</span>
 
@@ -864,8 +1323,189 @@
             <span class="sa">f</span><span class="s2">&quot;/api/ui/interactive/v2/window?windowId=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
 
+<span class="c1">/// &lt;summary&gt;Represents an open P21 Interactive API window.&lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">Window</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">IAsyncDisposable</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="n">P21Client</span><span class="w"> </span><span class="n">_client</span><span class="p">;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">WindowId</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="nf">Window</span><span class="p">(</span><span class="n">P21Client</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">_client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="p">;</span>
+<span class="w">        </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// Change a single field value.</span>
+<span class="w">    </span><span class="c1">/// DatawindowName is required in P21 25.2+. Window data structures</span>
+<span class="w">    </span><span class="c1">/// changed so the server can no longer auto-resolve the target</span>
+<span class="w">    </span><span class="c1">/// datawindow from TabName alone.</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ChangeDataAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">tabName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WindowId</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tabName</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Change multiple field values in a single request.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ChangeDataBatchAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">ChangeField</span><span class="o">&gt;</span><span class="w"> </span><span class="n">changes</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">list</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(</span><span class="n">changes</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">c</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">TabName</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">DatawindowName</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">FieldName</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">Value</span>
+<span class="w">        </span><span class="p">}));</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WindowId</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">list</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Switch to a different tab.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">SelectTabAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">pageName</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WindowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pageName</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/v2/tab&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Select a specific row in a datawindow.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ChangeRowAsync</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WindowId</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Row&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/v2/row&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Add a new row to a datawindow.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">AddRowAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WindowId</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindowName</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/v2/row&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Save the current window data.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">SaveDataAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// v2 sends just the window ID string as the body (bare JSON string)</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">PutRawAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">&quot;/api/ui/interactive/v2/data&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s">$&quot;\&quot;{WindowId}\&quot;&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Clear the current window data (reset form for next record).&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ClearDataAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/data?id={WindowId}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="o">!</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get the current window data.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetDataAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/data?id={WindowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get the current window state.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetStateAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/window?windowId={WindowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get available tools (buttons) for the window.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JArray</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetToolsAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/tools?windowId={WindowId}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">resp</span><span class="p">[</span><span class="s">&quot;Tools&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToObject</span><span class="o">&lt;</span><span class="n">JArray</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Run a tool (click a button) in the window.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Result</span><span class="o">&gt;</span><span class="w"> </span><span class="n">RunToolAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">toolName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">toolText</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WindowId</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;ToolName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">toolName</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;ToolText&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">toolText</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/v2/tools&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Result</span><span class="p">.</span><span class="n">FromResponse</span><span class="p">(</span><span class="n">resp</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Close this window.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">CloseAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/window?windowId={WindowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">ValueTask</span><span class="w"> </span><span class="nf">DisposeAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">CloseAsync</span><span class="p">();</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">catch</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* Window may already be closed */</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">/// &lt;summary&gt;Field change descriptor for batch operations.&lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">record</span><span class="w"> </span><span class="nf">ChangeField</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">TabName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">DatawindowName</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">FieldName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Value</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="complete-p21client-class">Complete P21Client Class</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
@@ -1020,10 +1660,221 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="kc">False</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Microsoft.Extensions.Logging</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
 
+<span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Production async client for P21 Interactive API.</span>
+<span class="c1">/// Handles authentication, session management, and window operations.</span>
+<span class="c1">/// Tested against 700+ operations in production.</span>
+<span class="c1">///</span>
+<span class="c1">/// Usage:</span>
+<span class="c1">///   await using var client = new P21Client(baseUrl, username, password, logger);</span>
+<span class="c1">///   await client.InitializeAsync();</span>
+<span class="c1">///   var window = await client.OpenWindowAsync(&quot;SalesPricePage&quot;);</span>
+<span class="c1">///   var result = await window.ChangeDataAsync(&quot;FORM&quot;, &quot;form&quot;, &quot;description&quot;, &quot;Test&quot;);</span>
+<span class="c1">///   await window.SaveDataAsync();</span>
+<span class="c1">///   await window.CloseAsync();</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">P21Client</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">IAsyncDisposable</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">_baseUrl</span><span class="p">;</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">_username</span><span class="p">;</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">_password</span><span class="p">;</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="n">ILogger</span><span class="o">&lt;</span><span class="n">P21Client</span><span class="o">&gt;</span><span class="w"> </span><span class="n">_logger</span><span class="p">;</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">_token</span><span class="p">;</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">_uiServerUrl</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="nf">P21Client</span><span class="p">(</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">username</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">password</span><span class="p">,</span>
+<span class="w">        </span><span class="n">ILogger</span><span class="o">&lt;</span><span class="n">P21Client</span><span class="o">&gt;</span><span class="w"> </span><span class="n">logger</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">bool</span><span class="w"> </span><span class="n">verifySsl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
+<span class="w">        </span><span class="n">TimeSpan</span><span class="o">?</span><span class="w"> </span><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">_baseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">.</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">_username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">username</span><span class="p">;</span>
+<span class="w">        </span><span class="n">_password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">;</span>
+<span class="w">        </span><span class="n">_logger</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">logger</span><span class="p">;</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">verifySsl</span><span class="p">)</span>
+<span class="w">            </span><span class="n">handler</span><span class="p">.</span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">true</span><span class="p">;</span>
+
+<span class="w">        </span><span class="n">_httpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">timeout</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromSeconds</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">void</span><span class="w"> </span><span class="nf">SetAuthHeaders</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">_token</span><span class="p">);</span>
+<span class="w">        </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Clear</span><span class="p">();</span>
+<span class="w">        </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span>
+<span class="w">            </span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Obtain a bearer token from P21.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">AuthenticateAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">request</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Post</span><span class="p">,</span>
+<span class="w">            </span><span class="s">$&quot;{_baseUrl}/api/security/token&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">request</span><span class="p">.</span><span class="n">Content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;username&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">_username</span><span class="p">);</span>
+<span class="w">        </span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;password&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">_password</span><span class="p">);</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+<span class="w">        </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">        </span><span class="n">_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">json</span><span class="p">[</span><span class="s">&quot;AccessToken&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">        </span><span class="n">SetAuthHeaders</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Discover the UI server URL.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">DiscoverUiServerAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;{_baseUrl}/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">useUiServer</span><span class="p">:</span><span class="w"> </span><span class="k">false</span><span class="p">);</span>
+<span class="w">        </span><span class="n">_uiServerUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resp</span><span class="p">[</span><span class="s">&quot;Url&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">().</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Start an Interactive API session.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">StartSessionAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="w"> </span><span class="p">};</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">PostAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/sessions/&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;End the current Interactive API session.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">EndSessionAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/sessions/&quot;</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogDebug</span><span class="p">(</span><span class="s">&quot;Session cleanup error (ignored): {Error}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ex</span><span class="p">.</span><span class="n">Message</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// Initialize the client: authenticate, discover UI server, start session.</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">InitializeAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">AuthenticateAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">DiscoverUiServerAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">StartSessionAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// Create a scoped session that auto-disposes (start + end).</span>
+<span class="w">    </span><span class="c1">/// Use with &quot;await using&quot; for session-per-batch pattern.</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">P21Session</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CreateSessionAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">P21Session</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">StartAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">session</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Open a P21 window by service name.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Window</span><span class="o">&gt;</span><span class="w"> </span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">serviceName</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ServiceName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">serviceName</span><span class="w"> </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">PostAsync</span><span class="p">(</span><span class="s">&quot;/api/ui/interactive/v2/window&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resp</span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span>
+<span class="w">            </span><span class="o">??</span><span class="w"> </span><span class="n">resp</span><span class="p">[</span><span class="s">&quot;windowId&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">Window</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// --- HTTP helpers ---</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">useUiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">useUiServer</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">$&quot;{_uiServerUrl}{path}&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">path</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">url</span><span class="p">);</span>
+<span class="w">        </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">PostAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="n">payload</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">            </span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{_uiServerUrl}{path}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">        </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">PutAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="n">payload</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">            </span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{_uiServerUrl}{path}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">        </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;PUT with a raw string body (used for save_data v2).&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">PutRawAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">rawBody</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">            </span><span class="n">rawBody</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{_uiServerUrl}{path}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">        </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">?&gt;</span><span class="w"> </span><span class="n">DeleteAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">path</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{_uiServerUrl}{path}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">body</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">body</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">ValueTask</span><span class="w"> </span><span class="nf">DisposeAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">EndSessionAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">Dispose</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Scoped session for session-per-batch pattern. Use with &quot;await using&quot;.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">P21Session</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">IAsyncDisposable</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="n">P21Client</span><span class="w"> </span><span class="n">_client</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="nf">P21Session</span><span class="p">(</span><span class="n">P21Client</span><span class="w"> </span><span class="n">client</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">_client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">StartAsync</span><span class="p">()</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">StartSessionAsync</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Window</span><span class="o">&gt;</span><span class="w"> </span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">serviceName</span><span class="p">)</span>
+<span class="w">        </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="n">serviceName</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">ValueTask</span><span class="w"> </span><span class="nf">DisposeAsync</span><span class="p">()</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">EndSessionAsync</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="complete-batch-workflow-example">Complete Batch Workflow Example</h2>
 <p>Putting it all together: expire old pages, create new ones, and link to books.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
@@ -1108,7 +1959,116 @@
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">summary</span>
 </code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">Microsoft.Extensions.Logging</span><span class="p">;</span>
 
+<span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">BatchProcessor</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="n">ILogger</span><span class="o">&lt;</span><span class="n">BatchProcessor</span><span class="o">&gt;</span><span class="w"> </span><span class="n">_logger</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="nf">BatchProcessor</span><span class="p">(</span><span class="n">ILogger</span><span class="o">&lt;</span><span class="n">BatchProcessor</span><span class="o">&gt;</span><span class="w"> </span><span class="n">logger</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">_logger</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">logger</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// Replace supplier price pages: expire old, create new, link to books.</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">BatchSummary</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ReplaceSupplierPagesAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="n">P21Client</span><span class="w"> </span><span class="n">client</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">supplierId</span><span class="p">,</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">oldPageUids</span><span class="p">,</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">newPages</span><span class="p">,</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">bookIds</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">expirationDate</span><span class="p">,</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">batchSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">25</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">summary</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">BatchSummary</span><span class="p">();</span>
+
+<span class="w">        </span><span class="c1">// Phase 1: Expire old pages</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">oldPageUids</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogInformation</span><span class="p">(</span><span class="s">&quot;Expiring {Count} old pages...&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">oldPageUids</span><span class="p">.</span><span class="n">Count</span><span class="p">);</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ExpireOldPagesAsync</span><span class="p">(</span>
+<span class="w">                </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">oldPageUids</span><span class="p">,</span><span class="w"> </span><span class="n">expirationDate</span><span class="p">,</span><span class="w"> </span><span class="n">batchSize</span><span class="p">);</span>
+<span class="w">            </span><span class="n">summary</span><span class="p">.</span><span class="n">Expired</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;succeeded&quot;</span><span class="p">];</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="c1">// Phase 2: Create new pages</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">createdUids</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">newPages</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">batchSize</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">newPages</span><span class="p">.</span><span class="n">Skip</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">Take</span><span class="p">(</span><span class="n">batchSize</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">CreateSessionAsync</span><span class="p">();</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+
+<span class="w">            </span><span class="k">try</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">pageDef</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">batch</span><span class="p">)</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">try</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="kt">int</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">CreateSinglePageAsync</span><span class="p">(</span><span class="n">window</span><span class="p">,</span><span class="w"> </span><span class="n">pageDef</span><span class="p">);</span>
+<span class="w">                        </span><span class="n">createdUids</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">uid</span><span class="p">);</span>
+<span class="w">                        </span><span class="n">summary</span><span class="p">.</span><span class="n">Created</span><span class="o">++</span><span class="p">;</span>
+<span class="w">                        </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">ClearDataAsync</span><span class="p">();</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">summary</span><span class="p">.</span><span class="n">Errors</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">ex</span><span class="p">.</span><span class="n">Message</span><span class="p">);</span>
+<span class="w">                        </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">();</span>
+<span class="w">                        </span><span class="n">window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenWindowAsync</span><span class="p">(</span>
+<span class="w">                            </span><span class="n">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="p">);</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="k">finally</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">await</span><span class="w"> </span><span class="n">window</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">();</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="c1">// Phase 3: Link new pages to books</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">createdUids</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">batchSize</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">createdUids</span><span class="p">.</span><span class="n">Skip</span><span class="p">(</span><span class="n">i</span><span class="p">).</span><span class="n">Take</span><span class="p">(</span><span class="n">batchSize</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">CreateSessionAsync</span><span class="p">();</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">uid</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">batch</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">bookId</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">bookIds</span><span class="p">)</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="k">try</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">await</span><span class="w"> </span><span class="nf">LinkPageToBookAsync</span><span class="p">(</span><span class="n">session</span><span class="p">,</span><span class="w"> </span><span class="n">uid</span><span class="p">,</span><span class="w"> </span><span class="n">bookId</span><span class="p">);</span>
+<span class="w">                        </span><span class="n">summary</span><span class="p">.</span><span class="n">Linked</span><span class="o">++</span><span class="p">;</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">summary</span><span class="p">.</span><span class="n">Errors</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">$&quot;Link {uid}-&gt;{bookId}: {ex.Message}&quot;</span><span class="p">);</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogInformation</span><span class="p">(</span>
+<span class="w">            </span><span class="s">&quot;Complete: {Expired} expired, {Created} created, &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">            </span><span class="s">&quot;{Linked} linked, {Errors} errors&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">summary</span><span class="p">.</span><span class="n">Expired</span><span class="p">,</span><span class="w"> </span><span class="n">summary</span><span class="p">.</span><span class="n">Created</span><span class="p">,</span>
+<span class="w">            </span><span class="n">summary</span><span class="p">.</span><span class="n">Linked</span><span class="p">,</span><span class="w"> </span><span class="n">summary</span><span class="p">.</span><span class="n">Errors</span><span class="p">.</span><span class="n">Count</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">summary</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">BatchSummary</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Expired</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">set</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Created</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">set</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">Linked</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">set</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Errors</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="k">set</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="performance-summary">Performance Summary</h2>
 <p>Measured from production use creating and managing 700+ price pages:</p>
@@ -1221,6 +2181,50 @@
 
             window.addEventListener('scroll', updateActive, { passive: true });
             updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
         })();
     </script>
 </body>

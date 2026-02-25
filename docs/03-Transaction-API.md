@@ -369,6 +369,7 @@ The `target_date` edit must appear before `start_date` in the Edits array (due t
 
 ### Get Service Definition
 
+<!-- tabs -->
 ```python
 import httpx
 
@@ -383,8 +384,21 @@ definition = response.json()
 # definition["TransactionDefinition"] - field definitions with valid values
 ```
 
+```csharp
+var response = await client.GetAsync(
+    $"{uiServerUrl}/api/v2/definition/Order");
+response.EnsureSuccessStatusCode();
+
+var definition = JObject.Parse(
+    await response.Content.ReadAsStringAsync());
+// definition["Template"] - blank template for creating records
+// definition["TransactionDefinition"] - field definitions with valid values
+```
+<!-- /tabs -->
+
 ### Create Order
 
+<!-- tabs -->
 ```python
 payload = {
     "Name": "Order",
@@ -430,11 +444,54 @@ response = httpx.post(
 )
 ```
 
+```csharp
+var payload = new
+{
+    Name = "Order",
+    UseCodeValues = false,
+    Transactions = new[] {
+        new {
+            Status = "New",
+            DataElements = new object[] {
+                new {
+                    Name = "TABPAGE_1.order",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[] {
+                        new { Edits = new[] {
+                            new { Name = "customer_id", Value = "100198" }
+                        }}
+                    }
+                },
+                new {
+                    Name = "TP_ITEMS.items",
+                    Type = "List",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[] {
+                        new { Edits = new[] {
+                            new { Name = "oe_order_item_id", Value = "ITEM123" },
+                            new { Name = "unit_quantity", Value = "1" }
+                        }}
+                    }
+                }
+            }
+        }
+    }
+};
+
+var content = new StringContent(
+    JsonConvert.SerializeObject(payload),
+    Encoding.UTF8, "application/json");
+var response = await client.PostAsync(
+    $"{uiServerUrl}/api/v2/transaction", content);
+```
+<!-- /tabs -->
+
 ---
 
-## Python Examples
+## Code Examples
 
-See the `scripts/transaction/` directory for working examples:
+See the `scripts/transaction/` (Python) and `examples/csharp/Transaction/` (C#) directories for working examples:
 
 | Script | Description |
 |--------|-------------|

@@ -31,6 +31,167 @@ HTML_DIR = DOCS_DIR / "html"
 # Generated dynamically from markdown files
 PAGE_INDEX: list[tuple[str, str]] = []
 
+# ---------------------------------------------------------------------------
+# Tab infrastructure for multi-language code blocks
+# ---------------------------------------------------------------------------
+
+TAB_START = "CODETABS_START_9x7k2m"
+TAB_END = "CODETABS_END_9x7k2m"
+TAB_LANG = "CODETAB_LANG_9x7k2m"  # language marker: CODETAB_LANG_9x7k2m:python
+
+LANG_DISPLAY = {
+    "python": "Python",
+    "csharp": "C#",
+    "cs": "C#",
+    "javascript": "JavaScript",
+    "js": "JavaScript",
+    "typescript": "TypeScript",
+    "bash": "Bash",
+    "shell": "Shell",
+    "json": "JSON",
+    "xml": "XML",
+    "http": "HTTP",
+    "text": "Text",
+    "sql": "SQL",
+    "powershell": "PowerShell",
+}
+
+LANG_KEY_NORMALIZE = {
+    "cs": "csharp",
+    "js": "javascript",
+    "ts": "typescript",
+}
+
+
+def preprocess_tabs(md_content: str) -> str:
+    """Replace tab markers with sentinels, tagging each code block with its language.
+
+    Inside <!-- tabs --> regions, each ```lang block gets a language sentinel
+    injected before it so we can recover the language after codehilite strips it.
+    """
+    result_parts = []
+    remaining = md_content
+
+    while "<!-- tabs -->" in remaining:
+        before, _, rest = remaining.partition("<!-- tabs -->")
+        result_parts.append(before)
+
+        if "<!-- /tabs -->" in rest:
+            inside, _, after = rest.partition("<!-- /tabs -->")
+        else:
+            # No closing tag — treat rest as inside
+            inside = rest
+            after = ""
+
+        # Tag each fenced code block with its language
+        tagged = f"\n{TAB_START}\n"
+        for m in re.finditer(r"```(\w+)\s*\n", inside):
+            lang = m.group(1)
+            # Insert language sentinel before the code fence
+            tagged_block = f"\n{TAB_LANG}:{lang}\n\n```{lang}\n"
+            inside = inside.replace(m.group(0), tagged_block, 1)
+        tagged += inside + f"\n{TAB_END}\n"
+
+        result_parts.append(tagged)
+        remaining = after
+
+    result_parts.append(remaining)
+    return "".join(result_parts)
+
+
+def _build_tab_html(tabs: list[tuple[str, str]]) -> str:
+    """Build tabbed code block HTML from list of (lang, block_html) tuples."""
+    buttons = []
+    panels = []
+    for i, (lang, block_html) in enumerate(tabs):
+        key = LANG_KEY_NORMALIZE.get(lang, lang)
+        display = LANG_DISPLAY.get(lang, lang.title())
+        active = " active" if i == 0 else ""
+        buttons.append(
+            f'<button class="tab-btn{active}" data-lang="{key}">{display}</button>'
+        )
+        panels.append(
+            f'<div class="tab-panel{active}" data-lang="{key}">\n{block_html}\n</div>'
+        )
+
+    return (
+        '<div class="code-tabs">\n'
+        '  <div class="tab-buttons">\n    '
+        + "\n    ".join(buttons)
+        + "\n  </div>\n  "
+        + "\n  ".join(panels)
+        + "\n</div>"
+    )
+
+
+def postprocess_tabs(html_content: str) -> str:
+    """Convert sentinel-wrapped code blocks into tabbed containers."""
+    start_re = re.compile(
+        rf"<p>\s*{re.escape(TAB_START)}\s*</p>|{re.escape(TAB_START)}"
+    )
+    end_re = re.compile(
+        rf"<p>\s*{re.escape(TAB_END)}\s*</p>|{re.escape(TAB_END)}"
+    )
+
+    # Language sentinel pattern (becomes <p>CODETAB_LANG_9x7k2m:python</p>)
+    lang_sentinel_re = re.compile(
+        rf"<p>\s*{re.escape(TAB_LANG)}:(\w+)\s*</p>|{re.escape(TAB_LANG)}:(\w+)"
+    )
+
+    # Code block pattern: <pre> blocks, possibly wrapped in <div class="highlight">
+    code_block_re = re.compile(
+        r'(?:<div[^>]*class="[^"]*highlight[^"]*"[^>]*>\s*)?'
+        r"<pre>.*?</pre>"
+        r"(?:\s*</div>)?",
+        re.DOTALL,
+    )
+
+    while True:
+        start_match = start_re.search(html_content)
+        if not start_match:
+            break
+        end_match = end_re.search(html_content, start_match.end())
+        if not end_match:
+            html_content = (
+                html_content[: start_match.start()] + html_content[start_match.end() :]
+            )
+            continue
+
+        between = html_content[start_match.end() : end_match.start()]
+
+        # Extract languages from sentinels (in order)
+        langs = [
+            m.group(1) or m.group(2) for m in lang_sentinel_re.finditer(between)
+        ]
+
+        # Remove language sentinels from the between content
+        between_clean = lang_sentinel_re.sub("", between)
+
+        # Find all code blocks
+        blocks = code_block_re.findall(between_clean)
+
+        # Pair languages with blocks
+        tabs = []
+        for i, block_html in enumerate(blocks):
+            lang = langs[i] if i < len(langs) else "text"
+            tabs.append((lang, block_html))
+
+        if len(tabs) >= 2:
+            replacement = _build_tab_html(tabs)
+        else:
+            replacement = between_clean.strip()
+
+        html_content = (
+            html_content[: start_match.start()]
+            + replacement
+            + html_content[end_match.end() :]
+        )
+
+    # Clean up any stray sentinels
+    html_content = lang_sentinel_re.sub("", html_content)
+
+    return html_content
+
 
 def extract_title(md_file: Path) -> str:
     """Extract the first H1 title from a markdown file."""
@@ -328,6 +489,17 @@ def get_html_template(title: str, sidebar_html: str, content: str) -> str:
             h3 {{ page-break-after: avoid; margin-top: 15pt; }}
             pre, table, blockquote {{ page-break-inside: avoid; }}
             p {{ orphans: 3; widows: 3; }}
+            .tab-buttons {{ display: none; }}
+            .tab-panel {{ display: block !important; }}
+            .tab-panel::before {{
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }}
         }}
 
         /* ===== Mobile ===== */
@@ -364,6 +536,61 @@ def get_html_template(title: str, sidebar_html: str, content: str) -> str:
 
         .print-btn:hover {{
             background: #1a5276;
+        }}
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {{
+            margin: 20px 0;
+        }}
+
+        .tab-buttons {{
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }}
+
+        .tab-btn {{
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }}
+
+        .tab-btn:hover {{
+            background: #243447;
+            color: #c8d6e5;
+        }}
+
+        .tab-btn.active {{
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }}
+
+        .tab-panel {{
+            display: none;
+        }}
+
+        .tab-panel.active {{
+            display: block;
+        }}
+
+        .code-tabs .tab-panel pre {{
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }}
+
+        .code-tabs .tab-panel:first-of-type pre {{
+            border-radius: 0 5px 5px 5px;
+        }}
+
+        .code-tabs .tab-panel:last-of-type pre {{
+            border-radius: 0 0 5px 5px;
         }}
     </style>
 </head>
@@ -414,6 +641,50 @@ def get_html_template(title: str, sidebar_html: str, content: str) -> str:
             window.addEventListener('scroll', updateActive, {{ passive: true }});
             updateActive();
         }})();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {{
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {{
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {{
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {{
+                        buttons.forEach(function(b) {{ b.classList.remove('active'); }});
+                        panels.forEach(function(p) {{ p.classList.remove('active'); }});
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }}
+                }}
+
+                // Click handlers
+                buttons.forEach(function(btn) {{
+                    btn.addEventListener('click', function() {{
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {{
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {{
+                                cBtns.forEach(function(b) {{ b.classList.remove('active'); }});
+                                cPanels.forEach(function(p) {{ p.classList.remove('active'); }});
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }}
+                        }});
+                    }});
+                }});
+            }});
+        }})();
     </script>
 </body>
 </html>"""
@@ -433,6 +704,9 @@ def convert_md_to_html(md_file: Path) -> Path:
         md_content,
     )
 
+    # Replace tab markers with sentinels (before markdown conversion)
+    md_content = preprocess_tabs(md_content)
+
     # Extract title from first heading or filename
     title = md_file.stem.replace("-", " ").replace("_", " ")
     for line in md_content.split("\n"):
@@ -451,6 +725,9 @@ def convert_md_to_html(md_file: Path) -> Path:
 
     # Convert to HTML
     html_content = md.convert(md_content)
+
+    # Convert tab sentinels into tabbed code block containers
+    html_content = postprocess_tabs(html_content)
 
     # Get the generated ToC and add CSS classes for h3 indentation
     toc_html = getattr(md, "toc", "")

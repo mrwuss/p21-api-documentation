@@ -214,6 +214,7 @@ When another user or process previously set these fields via the API:
 
 #### Option A: Implement Retry with Random Jitter
 
+<!-- tabs -->
 ```python
 import random
 import time
@@ -233,6 +234,33 @@ def call_transaction_api(payload, max_retries=5):
             raise
     raise Exception("Max retries exceeded")
 ```
+
+```csharp
+async Task<TransactionResult> CallTransactionApiAsync(
+    object payload, int maxRetries = 5)
+{
+    var random = new Random();
+    for (int attempt = 0; attempt < maxRetries; attempt++)
+    {
+        try
+        {
+            var result = await client.Transaction.CreateAsync(payload);
+            if (result.Succeeded > 0)
+                return result;
+        }
+        catch (HttpRequestException ex)
+            when (ex.Message.Contains("Unexpected response window"))
+        {
+            // Dirty session - wait and retry with jitter
+            var delay = random.Next(500, 3000);
+            await Task.Delay(delay);
+            continue;
+        }
+    }
+    throw new Exception("Max retries exceeded");
+}
+```
+<!-- /tabs -->
 
 #### Option B: Use Async Endpoint
 

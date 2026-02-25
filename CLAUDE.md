@@ -41,13 +41,21 @@ p21-api-documentation/
 │   ├── 11-Inventory-REST-API.md
 │   └── html/                    # Generated HTML versions
 │
+├── examples/
+│   └── csharp/                  # C# console app examples
+│       ├── Common/              # Shared library (auth, config, client)
+│       ├── OData/               # OData API examples
+│       ├── Transaction/         # Transaction API examples
+│       ├── Interactive/         # Interactive API examples
+│       └── Entity/              # Entity API examples
+│
 └── scripts/
-    ├── common/                  # Shared auth/config
-    ├── odata/                   # OData examples
-    ├── transaction/             # Transaction API examples
-    ├── interactive/             # Interactive API examples
-    ├── entity/                  # Entity API examples
-    └── generate_html.py         # MD to HTML converter
+    ├── common/                  # Shared auth/config (Python)
+    ├── odata/                   # OData examples (Python)
+    ├── transaction/             # Transaction API examples (Python)
+    ├── interactive/             # Interactive API examples (Python)
+    ├── entity/                  # Entity API examples (Python)
+    └── generate_html.py         # MD to HTML converter (supports tabbed code blocks)
 ```
 
 ---

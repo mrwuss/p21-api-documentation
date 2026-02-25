@@ -76,7 +76,11 @@ Accept: application/json
 
 **Response:** Same as V2.
 
-### Python Example
+### Code Examples
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 import httpx
@@ -106,6 +110,60 @@ def get_token_v1(base_url: str, username: str, password: str) -> dict:
     response.raise_for_status()
     return response.json()
 ```
+
+**C#:**
+
+```csharp
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+public static class P21Auth
+{
+    /// <summary>Get token using V2 endpoint (recommended).</summary>
+    public static async Task<JObject> GetTokenV2Async(
+        string baseUrl, string username, string password)
+    {
+        using var client = new HttpClient();
+        var body = new { username, password };
+        var content = new StringContent(
+            JsonConvert.SerializeObject(body),
+            Encoding.UTF8, "application/json");
+        client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+        var response = await client.PostAsync(
+            $"{baseUrl}/api/security/token/v2", content);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        return JObject.Parse(json);
+    }
+
+    /// <summary>Get token using V1 endpoint (legacy).</summary>
+    public static async Task<JObject> GetTokenV1Async(
+        string baseUrl, string username, string password)
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("username", username);
+        client.DefaultRequestHeaders.Add("password", password);
+        client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+        var content = new StringContent(
+            "", Encoding.UTF8, "application/json");
+        var response = await client.PostAsync(
+            $"{baseUrl}/api/security/token", content);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        return JObject.Parse(json);
+    }
+}
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -247,7 +305,9 @@ Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
 
-### Python Example
+<!-- tabs -->
+
+**Python:**
 
 ```python
 def get_auth_headers(token: str) -> dict:
@@ -268,6 +328,29 @@ response = httpx.get(
 )
 ```
 
+**C#:**
+
+```csharp
+public static HttpClient CreateAuthorizedClient(string token)
+{
+    var client = new HttpClient();
+    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+    return client;
+}
+
+// Usage
+var tokenData = await P21Auth.GetTokenV2Async(baseUrl, username, password);
+var token = tokenData["AccessToken"]!.ToString();
+
+using var client = CreateAuthorizedClient(token);
+var response = await client.GetAsync(
+    $"{baseUrl}/odataservice/odata/table/supplier");
+var body = await response.Content.ReadAsStringAsync();
+```
+
+<!-- /tabs -->
+
 ---
 
 ## Token Expiration
@@ -279,6 +362,10 @@ response = httpx.get(
 | Refresh token | Provided for token renewal |
 
 ### Handling Expiration
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 import time
@@ -306,6 +393,45 @@ class TokenManager:
         return self.token_data["AccessToken"]
 ```
 
+**C#:**
+
+```csharp
+public class TokenManager
+{
+    private readonly string _baseUrl;
+    private readonly string _username;
+    private readonly string _password;
+    private JObject? _tokenData;
+    private DateTime _tokenTime = DateTime.MinValue;
+
+    public TokenManager(string baseUrl, string username, string password)
+    {
+        _baseUrl = baseUrl;
+        _username = username;
+        _password = password;
+    }
+
+    /// <summary>Get valid token, refreshing if needed.</summary>
+    public async Task<string> GetTokenAsync()
+    {
+        var expires = _tokenData?["ExpiresInSeconds"]?.Value<int>() ?? 0;
+        var elapsed = (DateTime.UtcNow - _tokenTime).TotalSeconds;
+
+        // Refresh if expired or expiring in 5 minutes
+        if (_tokenData == null || elapsed > expires - 300)
+        {
+            _tokenData = await P21Auth.GetTokenV2Async(
+                _baseUrl, _username, _password);
+            _tokenTime = DateTime.UtcNow;
+        }
+
+        return _tokenData["AccessToken"]!.ToString();
+    }
+}
+```
+
+<!-- /tabs -->
+
 ---
 
 ## UI Server URL
@@ -326,7 +452,9 @@ Accept: application/json
 }
 ```
 
-### Python Example
+<!-- tabs -->
+
+**Python:**
 
 ```python
 def get_ui_server_url(base_url: str, token: str) -> str:
@@ -338,6 +466,25 @@ def get_ui_server_url(base_url: str, token: str) -> str:
     response.raise_for_status()
     return response.json()["Url"].rstrip("/")
 ```
+
+**C#:**
+
+```csharp
+public static async Task<string> GetUiServerUrlAsync(
+    string baseUrl, string token)
+{
+    using var client = CreateAuthorizedClient(token);
+    var response = await client.GetAsync(
+        $"{baseUrl}/api/ui/router/v1?urlType=external");
+    response.EnsureSuccessStatusCode();
+
+    var json = await response.Content.ReadAsStringAsync();
+    var data = JObject.Parse(json);
+    return data["Url"]!.ToString().TrimEnd('/');
+}
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -360,6 +507,10 @@ Some P21 middleware instances return **XML instead of JSON** for token endpoints
 > **Note:** The XML response uses `ExpiresIn` while the JSON response uses `ExpiresInSeconds`. Both represent the token lifetime in seconds.
 
 ### Handling Both Formats
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 import re
@@ -388,6 +539,48 @@ def parse_token_response(response: httpx.Response) -> dict:
 
     return result
 ```
+
+**C#:**
+
+```csharp
+public static JObject ParseTokenResponse(HttpResponseMessage response)
+{
+    var text = response.Content.ReadAsStringAsync().Result;
+
+    // Try JSON first
+    try
+    {
+        var data = JObject.Parse(text);
+        if (data["AccessToken"] != null)
+            return data;
+    }
+    catch (JsonReaderException) { }
+
+    // Fall back to XML regex parsing
+    var result = new JObject();
+    var fields = new[]
+    {
+        "AccessToken", "TokenType", "ExpiresIn",
+        "ExpiresInSeconds", "RefreshToken"
+    };
+
+    foreach (var field in fields)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            text, $@"<{field}>([^<]*)</{field}>");
+        if (match.Success && !string.IsNullOrEmpty(match.Groups[1].Value))
+            result[field] = match.Groups[1].Value;
+    }
+
+    if (result["AccessToken"] == null)
+        throw new InvalidOperationException(
+            $"Could not parse token from response: {text[..Math.Min(text.Length, 500)]}");
+
+    return result;
+}
+```
+
+<!-- /tabs -->
 
 ---
 

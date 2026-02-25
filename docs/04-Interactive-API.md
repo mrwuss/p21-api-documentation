@@ -411,9 +411,13 @@ For datawindow or field-level tools, include the optional fields:
 
 ---
 
-## Python Examples
+## Python and C# Examples
 
 ### Basic Client Class
+
+<!-- tabs -->
+
+#### Python
 
 ```python
 import httpx
@@ -470,7 +474,82 @@ class InteractiveClient:
         )
 ```
 
-### Context Manager Usage (Sync)
+#### C#
+
+```csharp
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Newtonsoft.Json.Linq;
+
+public class InteractiveClient
+{
+    private readonly string _baseUrl;
+    private readonly string _username;
+    private readonly string _password;
+    private readonly HttpClient _http;
+    private string? _token;
+    private string? _uiServerUrl;
+
+    public InteractiveClient(string baseUrl, string username, string password, bool verifySsl = false)
+    {
+        _baseUrl = baseUrl.TrimEnd('/');
+        _username = username;
+        _password = password;
+
+        var handler = new HttpClientHandler();
+        if (!verifySsl)
+            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+
+        _http = new HttpClient(handler);
+    }
+
+    public async Task AuthenticateAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/security/token");
+        request.Headers.Add("username", _username);
+        request.Headers.Add("password", _password);
+        request.Content = new StringContent("", System.Text.Encoding.UTF8, "application/json");
+
+        var response = await _http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _token = body["AccessToken"]!.ToString();
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+    }
+
+    public async Task GetUiServerAsync()
+    {
+        var response = await _http.GetAsync($"{_baseUrl}/api/ui/router/v1?urlType=external");
+        response.EnsureSuccessStatusCode();
+
+        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _uiServerUrl = body["Url"]!.ToString().TrimEnd('/');
+    }
+
+    public async Task StartSessionAsync()
+    {
+        var payload = new JObject { ["ResponseWindowHandlingEnabled"] = false };
+        var content = new StringContent(payload.ToString(), System.Text.Encoding.UTF8, "application/json");
+
+        var response = await _http.PostAsync($"{_uiServerUrl}/api/ui/interactive/sessions", content);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task EndSessionAsync()
+    {
+        await _http.DeleteAsync($"{_uiServerUrl}/api/ui/interactive/sessions");
+    }
+}
+```
+
+<!-- /tabs -->
+
+### Context Manager / Disposable Usage (Sync)
+
+<!-- tabs -->
+
+#### Python
 
 ```python
 class InteractiveClient:
@@ -497,9 +576,46 @@ with InteractiveClient(base_url, username, password) as client:
     window.close()
 ```
 
-### Async Context Manager (Recommended)
+#### C#
+
+```csharp
+public class InteractiveClient : IDisposable
+{
+    // ... fields and methods above ...
+
+    public InteractiveClient Connect()
+    {
+        AuthenticateAsync().GetAwaiter().GetResult();
+        GetUiServerAsync().GetAwaiter().GetResult();
+        StartSessionAsync().GetAwaiter().GetResult();
+        return this;
+    }
+
+    public void Dispose()
+    {
+        try { EndSessionAsync().GetAwaiter().GetResult(); }
+        catch { /* ignored */ }
+        _http.Dispose();
+    }
+}
+
+// Usage
+using var client = new InteractiveClient(baseUrl, username, password).Connect();
+var window = client.OpenWindow("SalesPricePage");
+window.ChangeData("description", "New Value");
+window.Save();
+window.Close();
+```
+
+<!-- /tabs -->
+
+### Async Context Manager / IAsyncDisposable (Recommended)
 
 For production code, use async patterns with proper cleanup:
+
+<!-- tabs -->
+
+#### Python
 
 ```python
 import httpx
@@ -577,13 +693,103 @@ async with P21Client(base_url, username, password) as client:
     await window.close()
 ```
 
+#### C#
+
+```csharp
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
+
+public class P21Client : IAsyncDisposable
+{
+    private readonly string _baseUrl;
+    private readonly string _username;
+    private readonly string _password;
+    private readonly ILogger<P21Client> _logger;
+    private HttpClient? _http;
+    private string? _token;
+    private string? _uiServerUrl;
+
+    public P21Client(string baseUrl, string username, string password,
+                     bool verifySsl = true, ILogger<P21Client>? logger = null)
+    {
+        _baseUrl = baseUrl.TrimEnd('/');
+        _username = username;
+        _password = password;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<P21Client>.Instance;
+
+        var handler = new HttpClientHandler();
+        if (!verifySsl)
+            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+
+        _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
+    }
+
+    public async Task<JObject> AuthenticateAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/security/token");
+        request.Headers.Add("username", _username);
+        request.Headers.Add("password", _password);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Content = new StringContent("", System.Text.Encoding.UTF8, "application/json");
+
+        var response = await _http!.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _token = body["AccessToken"]!.ToString();
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        return body;
+    }
+
+    public async Task StartSessionAsync()
+    {
+        if (_token == null)
+            await AuthenticateAsync();
+        // ... get uiServerUrl and start session ...
+    }
+
+    public async Task EndSessionAsync()
+    {
+        // ... end session ...
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await EndSessionAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Session cleanup error (ignored)");
+        }
+
+        _http?.Dispose();
+        _http = null;
+    }
+}
+
+// Usage
+await using var client = new P21Client(baseUrl, username, password);
+await client.AuthenticateAsync();
+await client.StartSessionAsync();
+var window = await client.OpenWindowAsync(serviceName: "SalesPricePage");
+await window.ChangeDataAsync("FORM", "description", "New Value", datawindowName: "form");
+await window.SaveDataAsync();
+await window.CloseAsync();
+```
+
+<!-- /tabs -->
+
 **Key points for async usage:**
 
-1. Use `httpx.AsyncClient` instead of sync `httpx`
-2. Implement `__aenter__` and `__aexit__` for async context manager
-3. Always close the HTTP client in `__aexit__`
+1. Use `httpx.AsyncClient` (Python) or `HttpClient` with `async`/`await` (C#)
+2. Implement `__aenter__`/`__aexit__` (Python) or `IAsyncDisposable` (C#)
+3. Always close the HTTP client on disposal
 4. Ignore cleanup errors - session may have timed out
-5. Use `async with` syntax for guaranteed cleanup
+5. Use `async with` (Python) or `await using` (C#) for guaranteed cleanup
 
 ---
 
@@ -620,6 +826,10 @@ See the `scripts/interactive/` directory:
 ## Example: Linking Price Page to Price Book
 
 This example shows how to use the SalesPriceBook window to link a price page to a price book. This is a common operation after creating a new price page.
+
+<!-- tabs -->
+
+#### Python
 
 ```python
 async def link_page_to_book(
@@ -682,6 +892,75 @@ async def link_page_to_book(
         await window.close()
 ```
 
+#### C#
+
+```csharp
+public async Task<bool> LinkPageToBookAsync(
+    P21Client client,
+    int pricePageUid,
+    string priceBookId)
+{
+    // Open the SalesPriceBook window
+    var window = await client.OpenWindowAsync(serviceName: "SalesPriceBook");
+
+    try
+    {
+        // Step 1: Retrieve the book by ID on FORM tab
+        var result = await window.ChangeDataAsync(
+            "FORM", "price_book_id", priceBookId,
+            datawindowName: "form");
+        if (!result.Success)
+        {
+            _logger.LogError("Failed to retrieve book {BookId}: {Messages}",
+                priceBookId, result.Messages);
+            return false;
+        }
+
+        // Step 2: Switch to LIST tab
+        await window.SelectTabAsync("LIST");
+
+        // Step 3: Add a new row to the list_detail datawindow
+        result = await window.AddRowAsync("list_detail");
+        if (!result.Success)
+        {
+            _logger.LogError("Failed to add row: {Messages}", result.Messages);
+            return false;
+        }
+
+        // Step 4: Set the price_page_uid on the new row
+        result = await window.ChangeDataAsync(
+            "LIST", "price_page_uid", pricePageUid.ToString(),
+            datawindowName: "list_detail");
+        if (!result.Success)
+        {
+            _logger.LogError("Failed to set price_page_uid: {Messages}", result.Messages);
+            return false;
+        }
+
+        // Step 5: Save the changes
+        result = await window.SaveDataAsync();
+
+        if (result.Success)
+        {
+            _logger.LogInformation("Linked page {PageUid} to book {BookId}",
+                pricePageUid, priceBookId);
+            return true;
+        }
+        else
+        {
+            _logger.LogError("Failed to save: {Messages}", result.Messages);
+            return false;
+        }
+    }
+    finally
+    {
+        await window.CloseAsync();
+    }
+}
+```
+
+<!-- /tabs -->
+
 **Key points:**
 
 1. Open window by `ServiceName`, not title
@@ -702,6 +981,10 @@ In production P21 environments, price book names are often inconsistent. For exa
 **Strategy: Case-Insensitive OData Lookup**
 
 Use `contains()` with case-insensitive matching to find books by partial name:
+
+<!-- tabs -->
+
+#### Python
 
 ```python
 async def find_price_book(
@@ -732,9 +1015,37 @@ async def find_price_book(
     return None
 ```
 
+#### C#
+
+```csharp
+public async Task<JObject?> FindPriceBookAsync(
+    ODataClient odataClient,
+    IEnumerable<string> searchTerms)
+{
+    foreach (var term in searchTerms)
+    {
+        var filterExpr = $"contains(price_book_id,'{term}') and row_status_flag eq 704";
+        var results = await odataClient.QueryAsync(
+            "price_book",
+            filterExpr: filterExpr,
+            select: "price_book_id,description");
+
+        if (results.Count > 0)
+            return results[0];
+    }
+    return null;
+}
+```
+
+<!-- /tabs -->
+
 **Strategy: Library-to-Book Resolution**
 
 Price books are organized into libraries. Use the `price_book_x_library` junction table to resolve which books belong to a library:
+
+<!-- tabs -->
+
+#### Python
 
 ```python
 async def get_books_for_library(
@@ -761,9 +1072,44 @@ async def get_books_for_library(
     return books
 ```
 
+#### C#
+
+```csharp
+public async Task<List<JObject>> GetBooksForLibraryAsync(
+    ODataClient odataClient,
+    string libraryId)
+{
+    var links = await odataClient.QueryAsync(
+        "price_book_x_library",
+        filterExpr: $"price_library_uid eq {libraryId}",
+        select: "price_book_uid");
+
+    var bookUids = links.Select(l => l["price_book_uid"]!.ToString()).ToList();
+    var books = new List<JObject>();
+
+    foreach (var uid in bookUids)
+    {
+        var result = await odataClient.QueryAsync(
+            "price_book",
+            filterExpr: $"price_book_uid eq {uid} and row_status_flag eq 704",
+            select: "price_book_id,price_book_uid,description");
+
+        if (result.Count > 0)
+            books.Add(result[0]);
+    }
+    return books;
+}
+```
+
+<!-- /tabs -->
+
 **Strategy: Cache Library-to-Book Mapping**
 
 For bulk operations that link many pages to books, cache the library-to-book mapping to avoid N+1 queries:
+
+<!-- tabs -->
+
+#### Python
 
 ```python
 class BookLookupCache:
@@ -780,6 +1126,34 @@ class BookLookupCache:
             )
         return self._cache[library_id]
 ```
+
+#### C#
+
+```csharp
+public class BookLookupCache
+{
+    /// <summary>Cache library-to-book mappings for bulk operations.</summary>
+    private readonly ODataClient _odata;
+    private readonly Dictionary<string, List<JObject>> _cache = new();
+
+    public BookLookupCache(ODataClient odataClient)
+    {
+        _odata = odataClient;
+    }
+
+    public async Task<List<JObject>> GetBooksAsync(string libraryId)
+    {
+        if (!_cache.TryGetValue(libraryId, out var books))
+        {
+            books = await GetBooksForLibraryAsync(_odata, libraryId);
+            _cache[libraryId] = books;
+        }
+        return books;
+    }
+}
+```
+
+<!-- /tabs -->
 
 ---
 
@@ -940,6 +1314,10 @@ Row 5 selected → Detail shows row 4 (1 behind)
 
 **Workaround:** Select row N+1 after selecting row N to "push" row N's data through to the detail view.
 
+<!-- tabs -->
+
+#### Python
+
 ```python
 # To edit row 5 (last row in a 6-row list):
 
@@ -963,6 +1341,39 @@ await client.put(f"{ui_url}/api/ui/interactive/v2/change", headers=headers,
 await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=window_id)
 ```
 
+#### C#
+
+```csharp
+// To edit row 5 (last row in a 6-row list):
+
+// 1. Select target row
+await http.PutAsJsonAsync($"{uiUrl}/api/ui/interactive/v2/row",
+    new { WindowId = windowId, DatawindowName = "invloclist", Row = 5 });
+
+// 2. Select row N+1 to push row N's data through (can be non-existent)
+await http.PutAsJsonAsync($"{uiUrl}/api/ui/interactive/v2/row",
+    new { WindowId = windowId, DatawindowName = "invloclist", Row = 6 });
+
+// 3. Now go to detail tab - it will show row 5's data
+await http.PutAsJsonAsync($"{uiUrl}/api/ui/interactive/v2/tab",
+    new { WindowId = windowId, PageName = "TABPAGE_18" });
+
+// 4. Change the field and save
+await http.PutAsJsonAsync($"{uiUrl}/api/ui/interactive/v2/change",
+    new
+    {
+        WindowId = windowId,
+        List = new[]
+        {
+            new { TabName = "TABPAGE_18", FieldName = "product_group_id", Value = "NEW_VALUE" }
+        }
+    });
+await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/data",
+    new StringContent($"\"{windowId}\"", System.Text.Encoding.UTF8, "application/json"));
+```
+
+<!-- /tabs -->
+
 **Affected Windows:**
 - Item Maintenance (`Item` service) - Location Detail tab
 - Likely other windows with list/detail patterns
@@ -977,6 +1388,10 @@ After switching to a tab that contains a list or grid datawindow, row 0 is **aut
 
 **Workaround:** Skip the `change_row(0)` call when targeting the first row. Start explicit row selection at row 1.
 
+<!-- tabs -->
+
+#### Python
+
 ```python
 async def select_row_safe(window: Window, row: int, datawindow_name: str):
     """Select a row, handling the row 0 auto-selection quirk.
@@ -989,6 +1404,24 @@ async def select_row_safe(window: Window, row: int, datawindow_name: str):
         return
     await window.change_row(row, datawindow_name)
 ```
+
+#### C#
+
+```csharp
+public async Task SelectRowSafeAsync(Window window, int row, string datawindowName)
+{
+    // Row 0 is auto-selected when switching to a tab with a grid.
+    // Calling ChangeRow(0) explicitly returns 422.
+    if (row == 0)
+    {
+        // Row 0 is already selected after tab switch - skip
+        return;
+    }
+    await window.ChangeRowAsync(row, datawindowName);
+}
+```
+
+<!-- /tabs -->
 
 **Important:** This is different from the [row selection synchronization bug](#row-selection-synchronization-bug-list--detail) documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.
 

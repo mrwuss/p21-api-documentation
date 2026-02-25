@@ -20,6 +20,10 @@ Interactive API sessions have a default idle timeout of approximately **6 minute
 
 Start a new session for each batch of ~25 operations. This keeps each session well within the timeout window while minimizing session creation overhead.
 
+<!-- tabs -->
+
+**Python:**
+
 ```python
 async def process_in_batches(
     client: P21Client,
@@ -53,6 +57,39 @@ async def process_in_batches(
     return results
 ```
 
+**C#:**
+
+```csharp
+public async Task<List<Dictionary<string, object>>> ProcessInBatchesAsync(
+    P21Client client,
+    List<Dictionary<string, object>> items,
+    int batchSize = 25)
+{
+    // Process items in batches with a fresh session per batch.
+    var results = new List<Dictionary<string, object>>();
+
+    for (int i = 0; i < items.Count; i += batchSize)
+    {
+        var batch = items.Skip(i).Take(batchSize).ToList();
+        int batchNum = (i / batchSize) + 1;
+        int totalBatches = (items.Count + batchSize - 1) / batchSize;
+
+        _logger.LogInformation(
+            "Processing batch {BatchNum}/{TotalBatches} ({Count} items)",
+            batchNum, totalBatches, batch.Count);
+
+        // New session for each batch
+        await using var session = await client.CreateSessionAsync();
+        var batchResults = await ProcessBatchAsync(session, batch);
+        results.AddRange(batchResults);
+    }
+
+    return results;
+}
+```
+
+<!-- /tabs -->
+
 ### Verified Timing Data
 
 From production measurements creating price pages with book linking:
@@ -71,6 +108,10 @@ From production measurements creating price pages with book linking:
 Opening a P21 window is expensive (~500ms). Within a batch, open the window once and reuse it for multiple operations by calling `clear_data()` between records.
 
 ### Pattern
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 async def process_batch(
@@ -111,6 +152,63 @@ async def process_batch(
     return results
 ```
 
+**C#:**
+
+```csharp
+public async Task<List<Dictionary<string, object>>> ProcessBatchAsync(
+    P21Session session,
+    List<Dictionary<string, object>> items)
+{
+    // Process a batch of items using a single window.
+    // Opens the window once, processes all items, then closes.
+    // Uses ClearData() between records to reset the form.
+    var results = new List<Dictionary<string, object>>();
+
+    // Open window once for the entire batch
+    var window = await session.OpenWindowAsync(serviceName: "SalesPricePage");
+
+    try
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            try
+            {
+                var result = await CreatePricePageAsync(window, item);
+                results.Add(new Dictionary<string, object>
+                {
+                    ["item"] = item, ["success"] = true, ["result"] = result
+                });
+
+                // Clear the form for the next record (skip on last item)
+                if (i < items.Count - 1)
+                    await window.ClearDataAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to process item {Item}: {Error}", item, ex.Message);
+                results.Add(new Dictionary<string, object>
+                {
+                    ["item"] = item, ["success"] = false, ["error"] = ex.Message
+                });
+
+                // On error, close and reopen the window (see Error Recovery below)
+                await window.CloseAsync();
+                window = await session.OpenWindowAsync(serviceName: "SalesPricePage");
+            }
+        }
+    }
+    finally
+    {
+        await window.CloseAsync();
+    }
+
+    return results;
+}
+```
+
+<!-- /tabs -->
+
 ### Key Points
 
 - Call `clear_data()` after saving each record to reset the form
@@ -124,6 +222,10 @@ async def process_batch(
 When an error occurs during an Interactive API operation, the window state may be corrupted (partial field values, unsaved changes, open dialogs). Attempting to continue using a corrupted window leads to cascading failures.
 
 ### Pattern: Close and Reopen on Error
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 async def create_price_page_with_recovery(
@@ -173,6 +275,70 @@ async def create_price_page_with_recovery(
     return window, {"success": False, "error": "Unexpected retry exhaustion"}
 ```
 
+**C#:**
+
+```csharp
+public async Task<(Window Window, Dictionary<string, object> Result)>
+    CreatePricePageWithRecoveryAsync(
+        P21Session session,
+        Window window,
+        Dictionary<string, object> item,
+        int maxRetries = 2)
+{
+    // Create a price page with error recovery.
+    // On failure, closes the corrupted window and opens a fresh one.
+    Exception? lastException = null;
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            var result = await CreatePricePageAsync(window, item);
+            return (window, new Dictionary<string, object>
+            {
+                ["success"] = true, ["result"] = result
+            });
+        }
+        catch (Exception ex)
+        {
+            lastException = ex;
+            var description = item.TryGetValue("description", out var desc)
+                ? desc?.ToString() ?? "?" : "?";
+            _logger.LogWarning(
+                "Attempt {Attempt} failed for {Description}: {Error}",
+                attempt + 1, description, ex.Message);
+
+            // Close the potentially corrupted window
+            try { await window.CloseAsync(); }
+            catch { /* Window may already be in bad state */ }
+
+            if (attempt < maxRetries)
+            {
+                // Open a fresh window and retry
+                window = await session.OpenWindowAsync(serviceName: "SalesPricePage");
+            }
+            else
+            {
+                // All retries exhausted - reopen window for next item
+                window = await session.OpenWindowAsync(serviceName: "SalesPricePage");
+                return (window, new Dictionary<string, object>
+                {
+                    ["success"] = false, ["error"] = ex.Message
+                });
+            }
+        }
+    }
+
+    // Should not reach here, but just in case
+    return (window, new Dictionary<string, object>
+    {
+        ["success"] = false, ["error"] = "Unexpected retry exhaustion"
+    });
+}
+```
+
+<!-- /tabs -->
+
 ### Why Not Recover In-Place?
 
 | Recovery Strategy | Outcome |
@@ -190,6 +356,10 @@ The close-and-reopen strategy costs ~500ms but guarantees a clean state. For bul
 Creating new price pages often requires expiring old ones to prevent pricing conflicts. If both an old and new page are active for the same supplier/product group, P21 may apply either one unpredictably.
 
 ### Pattern: Expire Before Replace
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 async def expire_price_page(
@@ -233,9 +403,60 @@ async def expire_price_page(
     return True
 ```
 
+**C#:**
+
+```csharp
+public async Task<bool> ExpirePricePageAsync(
+    Window window,
+    int pricePageUid,
+    string expirationDate)
+{
+    // Expire a price page by setting its expiration date.
+
+    // Load the page by UID
+    var result = await window.ChangeDataAsync(
+        "FORM", "form", "price_page_uid", pricePageUid.ToString());
+    if (!result.Success)
+    {
+        _logger.LogError("Failed to load page {Uid}: {Messages}",
+            pricePageUid, string.Join("; ", result.Messages));
+        return false;
+    }
+
+    // Set the expiration date
+    result = await window.ChangeDataAsync(
+        "FORM", "form", "expiration_date", expirationDate);
+    if (!result.Success)
+    {
+        _logger.LogError("Failed to set expiration date: {Messages}",
+            string.Join("; ", result.Messages));
+        return false;
+    }
+
+    // Save
+    result = await window.SaveDataAsync();
+    if (!result.Success)
+    {
+        _logger.LogError("Failed to save expiration: {Messages}",
+            string.Join("; ", result.Messages));
+        return false;
+    }
+
+    _logger.LogInformation("Expired page {Uid} (expires {Date})",
+        pricePageUid, expirationDate);
+    return true;
+}
+```
+
+<!-- /tabs -->
+
 ### Bulk Expiration
 
 Expiration follows the same batch patterns as creation. Process in batches with session-per-batch:
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 async def expire_old_pages(
@@ -283,6 +504,63 @@ async def expire_old_pages(
     return {"succeeded": succeeded, "failed": failed, "total": len(page_uids)}
 ```
 
+**C#:**
+
+```csharp
+public async Task<Dictionary<string, int>> ExpireOldPagesAsync(
+    P21Client client,
+    List<int> pageUids,
+    string expirationDate,
+    int batchSize = 25)
+{
+    // Bulk expire price pages.
+    int succeeded = 0;
+    int failed = 0;
+
+    for (int i = 0; i < pageUids.Count; i += batchSize)
+    {
+        var batch = pageUids.Skip(i).Take(batchSize).ToList();
+
+        await using var session = await client.CreateSessionAsync();
+        var window = await session.OpenWindowAsync(serviceName: "SalesPricePage");
+
+        try
+        {
+            foreach (int uid in batch)
+            {
+                bool success = await ExpirePricePageAsync(window, uid, expirationDate);
+                if (success)
+                {
+                    succeeded++;
+                    await window.ClearDataAsync();
+                }
+                else
+                {
+                    failed++;
+                    // Reopen window on failure
+                    await window.CloseAsync();
+                    window = await session.OpenWindowAsync(
+                        serviceName: "SalesPricePage");
+                }
+            }
+        }
+        finally
+        {
+            await window.CloseAsync();
+        }
+    }
+
+    return new Dictionary<string, int>
+    {
+        ["succeeded"] = succeeded,
+        ["failed"] = failed,
+        ["total"] = pageUids.Count
+    };
+}
+```
+
+<!-- /tabs -->
+
 ---
 
 ## Production-Grade Async Client
@@ -292,6 +570,10 @@ The example scripts in this project use synchronous `httpx`. For production batc
 ### Result Class
 
 Parse Interactive API responses into a structured result:
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 from dataclasses import dataclass, field
@@ -349,9 +631,88 @@ class Result:
         return None
 ```
 
+**C#:**
+
+```csharp
+using Newtonsoft.Json.Linq;
+
+/// <summary>
+/// Parsed result from an Interactive API response.
+/// Status codes match P21.UI.Service.Model.Interactive.V2.ResultWrapper:
+///   None=0, Success=1, Failure=2, Blocked=3
+/// </summary>
+public class Result
+{
+    public int StatusCode { get; init; }  // 0=None, 1=Success, 2=Failure, 3=Blocked
+    public bool Success { get; init; }
+    public List<string> Messages { get; init; } = new();
+    public List<JObject> Events { get; init; } = new();
+    public JObject Raw { get; init; } = new();
+
+    private static readonly Dictionary<string, int> StatusMap = new()
+    {
+        ["None"] = 0, ["Success"] = 1, ["Failure"] = 2, ["Blocked"] = 3
+    };
+
+    /// <summary>
+    /// Parse an API response into a Result.
+    /// The API may return Status as an integer or string depending on context.
+    /// </summary>
+    public static Result FromResponse(JObject responseData)
+    {
+        var statusToken = responseData["Status"];
+        int statusCode = 0;
+
+        if (statusToken?.Type == JTokenType.String)
+        {
+            string statusStr = statusToken.ToString();
+            StatusMap.TryGetValue(statusStr, out statusCode);
+        }
+        else if (statusToken?.Type == JTokenType.Integer)
+        {
+            statusCode = statusToken.Value<int>();
+        }
+
+        var messages = new List<string>();
+        var events = responseData["Events"]?.ToObject<List<JObject>>() ?? new();
+
+        foreach (var evt in events)
+        {
+            if (evt["Name"]?.ToString() == "message")
+            {
+                string msg = evt["Data"]?["Message"]?.ToString() ?? "";
+                messages.Add(msg);
+            }
+        }
+
+        return new Result
+        {
+            StatusCode = statusCode,
+            Success = statusCode == 1,
+            Messages = messages,
+            Events = events,
+            Raw = responseData
+        };
+    }
+
+    /// <summary>Get the first event matching the given name.</summary>
+    public JObject? GetEvent(string eventName)
+    {
+        return Events.FirstOrDefault(e => e["Name"]?.ToString() == eventName)
+            ?["Data"]?.ToObject<JObject>();
+    }
+}
+```
+
+<!-- /tabs -->
+
 ### Event Parsing Helpers
 
 Common events you need to extract from API responses:
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 def get_generated_key(result: Result) -> int | None:
@@ -378,7 +739,44 @@ def get_opened_window_id(result: Result) -> str | None:
     return None
 ```
 
+**C#:**
+
+```csharp
+/// <summary>
+/// Extract auto-generated key (e.g., price_page_uid) from result events.
+/// After saving a new record, P21 fires a 'keygenerated' event
+/// containing the new UID.
+/// </summary>
+public static int? GetGeneratedKey(Result result)
+{
+    var eventData = result.GetEvent("keygenerated");
+    if (eventData != null)
+    {
+        string value = eventData["Value"]?.ToString() ?? "0";
+        return int.TryParse(value, out int key) ? key : null;
+    }
+    return null;
+}
+
+/// <summary>
+/// Extract window ID from a 'windowopened' event.
+/// When a response window/dialog opens, the API returns this event
+/// with the new window's ID.
+/// </summary>
+public static string? GetOpenedWindowId(Result result)
+{
+    var eventData = result.GetEvent("windowopened");
+    return eventData?["WindowId"]?.ToString();
+}
+```
+
+<!-- /tabs -->
+
 ### Complete Window Class
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 class Window:
@@ -518,7 +916,189 @@ class Window:
         )
 ```
 
+**C#:**
+
+```csharp
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+/// <summary>Represents an open P21 Interactive API window.</summary>
+public class Window : IAsyncDisposable
+{
+    private readonly P21Client _client;
+    public string WindowId { get; }
+
+    public Window(P21Client client, string windowId)
+    {
+        _client = client;
+        WindowId = windowId;
+    }
+
+    /// <summary>
+    /// Change a single field value.
+    /// DatawindowName is required in P21 25.2+. Window data structures
+    /// changed so the server can no longer auto-resolve the target
+    /// datawindow from TabName alone.
+    /// </summary>
+    public async Task<Result> ChangeDataAsync(
+        string tabName, string datawindowName,
+        string fieldName, string value)
+    {
+        var payload = new JObject
+        {
+            ["WindowId"] = WindowId,
+            ["List"] = new JArray
+            {
+                new JObject
+                {
+                    ["TabName"] = tabName,
+                    ["DatawindowName"] = datawindowName,
+                    ["FieldName"] = fieldName,
+                    ["Value"] = value
+                }
+            }
+        };
+        var resp = await _client.PutAsync("/api/ui/interactive/v2/change", payload);
+        return Result.FromResponse(resp);
+    }
+
+    /// <summary>Change multiple field values in a single request.</summary>
+    public async Task<Result> ChangeDataBatchAsync(
+        List<ChangeField> changes)
+    {
+        var list = new JArray(changes.Select(c => new JObject
+        {
+            ["TabName"] = c.TabName,
+            ["DatawindowName"] = c.DatawindowName,
+            ["FieldName"] = c.FieldName,
+            ["Value"] = c.Value
+        }));
+
+        var payload = new JObject
+        {
+            ["WindowId"] = WindowId,
+            ["List"] = list
+        };
+        var resp = await _client.PutAsync("/api/ui/interactive/v2/change", payload);
+        return Result.FromResponse(resp);
+    }
+
+    /// <summary>Switch to a different tab.</summary>
+    public async Task<Result> SelectTabAsync(string pageName)
+    {
+        var payload = new JObject
+        {
+            ["WindowId"] = WindowId, ["PageName"] = pageName
+        };
+        var resp = await _client.PutAsync("/api/ui/interactive/v2/tab", payload);
+        return Result.FromResponse(resp);
+    }
+
+    /// <summary>Select a specific row in a datawindow.</summary>
+    public async Task<Result> ChangeRowAsync(int row, string datawindowName)
+    {
+        var payload = new JObject
+        {
+            ["WindowId"] = WindowId,
+            ["DatawindowName"] = datawindowName,
+            ["Row"] = row
+        };
+        var resp = await _client.PutAsync("/api/ui/interactive/v2/row", payload);
+        return Result.FromResponse(resp);
+    }
+
+    /// <summary>Add a new row to a datawindow.</summary>
+    public async Task<Result> AddRowAsync(string datawindowName)
+    {
+        var payload = new JObject
+        {
+            ["WindowId"] = WindowId,
+            ["DatawindowName"] = datawindowName
+        };
+        var resp = await _client.PostAsync("/api/ui/interactive/v2/row", payload);
+        return Result.FromResponse(resp);
+    }
+
+    /// <summary>Save the current window data.</summary>
+    public async Task<Result> SaveDataAsync()
+    {
+        // v2 sends just the window ID string as the body (bare JSON string)
+        var resp = await _client.PutRawAsync(
+            "/api/ui/interactive/v2/data",
+            $"\"{WindowId}\"");
+        return Result.FromResponse(resp);
+    }
+
+    /// <summary>Clear the current window data (reset form for next record).</summary>
+    public async Task<Result> ClearDataAsync()
+    {
+        var resp = await _client.DeleteAsync(
+            $"/api/ui/interactive/v2/data?id={WindowId}");
+        return Result.FromResponse(resp!);
+    }
+
+    /// <summary>Get the current window data.</summary>
+    public async Task<JObject> GetDataAsync()
+    {
+        return await _client.GetAsync(
+            $"/api/ui/interactive/v2/data?id={WindowId}");
+    }
+
+    /// <summary>Get the current window state.</summary>
+    public async Task<JObject> GetStateAsync()
+    {
+        return await _client.GetAsync(
+            $"/api/ui/interactive/v2/window?windowId={WindowId}");
+    }
+
+    /// <summary>Get available tools (buttons) for the window.</summary>
+    public async Task<JArray> GetToolsAsync()
+    {
+        var resp = await _client.GetAsync(
+            $"/api/ui/interactive/v2/tools?windowId={WindowId}");
+        return resp["Tools"]?.ToObject<JArray>() ?? new JArray();
+    }
+
+    /// <summary>Run a tool (click a button) in the window.</summary>
+    public async Task<Result> RunToolAsync(string toolName, string toolText = "")
+    {
+        var payload = new JObject
+        {
+            ["WindowId"] = WindowId,
+            ["ToolName"] = toolName,
+            ["ToolText"] = toolText
+        };
+        var resp = await _client.PostAsync("/api/ui/interactive/v2/tools", payload);
+        return Result.FromResponse(resp);
+    }
+
+    /// <summary>Close this window.</summary>
+    public async Task CloseAsync()
+    {
+        await _client.DeleteAsync(
+            $"/api/ui/interactive/v2/window?windowId={WindowId}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await CloseAsync(); }
+        catch { /* Window may already be closed */ }
+    }
+}
+
+/// <summary>Field change descriptor for batch operations.</summary>
+public record ChangeField(
+    string TabName, string DatawindowName,
+    string FieldName, string Value);
+```
+
+<!-- /tabs -->
+
 ### Complete P21Client Class
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 import httpx
@@ -676,11 +1256,223 @@ class P21Client:
         return False
 ```
 
+**C#:**
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+/// <summary>
+/// Production async client for P21 Interactive API.
+/// Handles authentication, session management, and window operations.
+/// Tested against 700+ operations in production.
+///
+/// Usage:
+///   await using var client = new P21Client(baseUrl, username, password, logger);
+///   await client.InitializeAsync();
+///   var window = await client.OpenWindowAsync("SalesPricePage");
+///   var result = await window.ChangeDataAsync("FORM", "form", "description", "Test");
+///   await window.SaveDataAsync();
+///   await window.CloseAsync();
+/// </summary>
+public class P21Client : IAsyncDisposable
+{
+    private readonly string _baseUrl;
+    private readonly string _username;
+    private readonly string _password;
+    private readonly ILogger<P21Client> _logger;
+    private readonly HttpClient _httpClient;
+
+    private string? _token;
+    private string? _uiServerUrl;
+
+    public P21Client(
+        string baseUrl,
+        string username,
+        string password,
+        ILogger<P21Client> logger,
+        bool verifySsl = true,
+        TimeSpan? timeout = null)
+    {
+        _baseUrl = baseUrl.TrimEnd('/');
+        _username = username;
+        _password = password;
+        _logger = logger;
+
+        var handler = new HttpClientHandler();
+        if (!verifySsl)
+            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+
+        _httpClient = new HttpClient(handler)
+        {
+            Timeout = timeout ?? TimeSpan.FromSeconds(60)
+        };
+    }
+
+    private void SetAuthHeaders()
+    {
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _token);
+        _httpClient.DefaultRequestHeaders.Accept.Clear();
+        _httpClient.DefaultRequestHeaders.Accept
+            .Add(new MediaTypeWithQualityHeaderValue("application/json"));
+    }
+
+    /// <summary>Obtain a bearer token from P21.</summary>
+    public async Task AuthenticateAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post,
+            $"{_baseUrl}/api/security/token");
+        request.Content = new StringContent("", Encoding.UTF8, "application/json");
+        request.Headers.Add("username", _username);
+        request.Headers.Add("password", _password);
+
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var json = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _token = json["AccessToken"]!.ToString();
+        SetAuthHeaders();
+    }
+
+    /// <summary>Discover the UI server URL.</summary>
+    public async Task DiscoverUiServerAsync()
+    {
+        var resp = await GetAsync(
+            $"{_baseUrl}/api/ui/router/v1?urlType=external", useUiServer: false);
+        _uiServerUrl = resp["Url"]!.ToString().TrimEnd('/');
+    }
+
+    /// <summary>Start an Interactive API session.</summary>
+    public async Task StartSessionAsync()
+    {
+        var payload = new JObject { ["ResponseWindowHandlingEnabled"] = false };
+        await PostAsync("/api/ui/interactive/sessions/", payload);
+    }
+
+    /// <summary>End the current Interactive API session.</summary>
+    public async Task EndSessionAsync()
+    {
+        try { await DeleteAsync("/api/ui/interactive/sessions/"); }
+        catch (Exception ex) { _logger.LogDebug("Session cleanup error (ignored): {Error}", ex.Message); }
+    }
+
+    /// <summary>
+    /// Initialize the client: authenticate, discover UI server, start session.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        await AuthenticateAsync();
+        await DiscoverUiServerAsync();
+        await StartSessionAsync();
+    }
+
+    /// <summary>
+    /// Create a scoped session that auto-disposes (start + end).
+    /// Use with "await using" for session-per-batch pattern.
+    /// </summary>
+    public async Task<P21Session> CreateSessionAsync()
+    {
+        var session = new P21Session(this);
+        await session.StartAsync();
+        return session;
+    }
+
+    /// <summary>Open a P21 window by service name.</summary>
+    public async Task<Window> OpenWindowAsync(string serviceName)
+    {
+        var payload = new JObject { ["ServiceName"] = serviceName };
+        var resp = await PostAsync("/api/ui/interactive/v2/window", payload);
+        string windowId = resp["WindowId"]?.ToString()
+            ?? resp["windowId"]?.ToString() ?? "";
+        return new Window(this, windowId);
+    }
+
+    // --- HTTP helpers ---
+
+    public async Task<JObject> GetAsync(string path, bool useUiServer = true)
+    {
+        string url = useUiServer ? $"{_uiServerUrl}{path}" : path;
+        var resp = await _httpClient.GetAsync(url);
+        resp.EnsureSuccessStatusCode();
+        return JObject.Parse(await resp.Content.ReadAsStringAsync());
+    }
+
+    public async Task<JObject> PostAsync(string path, JObject payload)
+    {
+        var content = new StringContent(
+            payload.ToString(), Encoding.UTF8, "application/json");
+        var resp = await _httpClient.PostAsync($"{_uiServerUrl}{path}", content);
+        resp.EnsureSuccessStatusCode();
+        return JObject.Parse(await resp.Content.ReadAsStringAsync());
+    }
+
+    public async Task<JObject> PutAsync(string path, JObject payload)
+    {
+        var content = new StringContent(
+            payload.ToString(), Encoding.UTF8, "application/json");
+        var resp = await _httpClient.PutAsync($"{_uiServerUrl}{path}", content);
+        resp.EnsureSuccessStatusCode();
+        return JObject.Parse(await resp.Content.ReadAsStringAsync());
+    }
+
+    /// <summary>PUT with a raw string body (used for save_data v2).</summary>
+    public async Task<JObject> PutRawAsync(string path, string rawBody)
+    {
+        var content = new StringContent(
+            rawBody, Encoding.UTF8, "application/json");
+        var resp = await _httpClient.PutAsync($"{_uiServerUrl}{path}", content);
+        resp.EnsureSuccessStatusCode();
+        return JObject.Parse(await resp.Content.ReadAsStringAsync());
+    }
+
+    public async Task<JObject?> DeleteAsync(string path)
+    {
+        var resp = await _httpClient.DeleteAsync($"{_uiServerUrl}{path}");
+        resp.EnsureSuccessStatusCode();
+        var body = await resp.Content.ReadAsStringAsync();
+        return string.IsNullOrEmpty(body) ? null : JObject.Parse(body);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await EndSessionAsync();
+        _httpClient.Dispose();
+    }
+}
+
+/// <summary>
+/// Scoped session for session-per-batch pattern. Use with "await using".
+/// </summary>
+public class P21Session : IAsyncDisposable
+{
+    private readonly P21Client _client;
+
+    public P21Session(P21Client client) => _client = client;
+
+    public async Task StartAsync() => await _client.StartSessionAsync();
+
+    public async Task<Window> OpenWindowAsync(string serviceName)
+        => await _client.OpenWindowAsync(serviceName);
+
+    public async ValueTask DisposeAsync() => await _client.EndSessionAsync();
+}
+```
+
+<!-- /tabs -->
+
 ---
 
 ## Complete Batch Workflow Example
 
 Putting it all together: expire old pages, create new ones, and link to books.
+
+<!-- tabs -->
+
+**Python:**
 
 ```python
 import asyncio
@@ -767,6 +1559,118 @@ async def replace_supplier_pages(
     )
     return summary
 ```
+
+**C#:**
+
+```csharp
+using Microsoft.Extensions.Logging;
+
+public class BatchProcessor
+{
+    private readonly ILogger<BatchProcessor> _logger;
+
+    public BatchProcessor(ILogger<BatchProcessor> logger) => _logger = logger;
+
+    /// <summary>
+    /// Replace supplier price pages: expire old, create new, link to books.
+    /// </summary>
+    public async Task<BatchSummary> ReplaceSupplierPagesAsync(
+        P21Client client,
+        int supplierId,
+        List<int> oldPageUids,
+        List<Dictionary<string, object>> newPages,
+        List<string> bookIds,
+        string expirationDate,
+        int batchSize = 25)
+    {
+        var summary = new BatchSummary();
+
+        // Phase 1: Expire old pages
+        if (oldPageUids.Count > 0)
+        {
+            _logger.LogInformation("Expiring {Count} old pages...", oldPageUids.Count);
+            var result = await ExpireOldPagesAsync(
+                client, oldPageUids, expirationDate, batchSize);
+            summary.Expired = result["succeeded"];
+        }
+
+        // Phase 2: Create new pages
+        var createdUids = new List<int>();
+        for (int i = 0; i < newPages.Count; i += batchSize)
+        {
+            var batch = newPages.Skip(i).Take(batchSize).ToList();
+
+            await using var session = await client.CreateSessionAsync();
+            var window = await session.OpenWindowAsync(serviceName: "SalesPricePage");
+
+            try
+            {
+                foreach (var pageDef in batch)
+                {
+                    try
+                    {
+                        int uid = await CreateSinglePageAsync(window, pageDef);
+                        createdUids.Add(uid);
+                        summary.Created++;
+                        await window.ClearDataAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        summary.Errors.Add(ex.Message);
+                        await window.CloseAsync();
+                        window = await session.OpenWindowAsync(
+                            serviceName: "SalesPricePage");
+                    }
+                }
+            }
+            finally
+            {
+                await window.CloseAsync();
+            }
+        }
+
+        // Phase 3: Link new pages to books
+        for (int i = 0; i < createdUids.Count; i += batchSize)
+        {
+            var batch = createdUids.Skip(i).Take(batchSize).ToList();
+
+            await using var session = await client.CreateSessionAsync();
+            foreach (int uid in batch)
+            {
+                foreach (string bookId in bookIds)
+                {
+                    try
+                    {
+                        await LinkPageToBookAsync(session, uid, bookId);
+                        summary.Linked++;
+                    }
+                    catch (Exception ex)
+                    {
+                        summary.Errors.Add($"Link {uid}->{bookId}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        _logger.LogInformation(
+            "Complete: {Expired} expired, {Created} created, " +
+            "{Linked} linked, {Errors} errors",
+            summary.Expired, summary.Created,
+            summary.Linked, summary.Errors.Count);
+        return summary;
+    }
+}
+
+public class BatchSummary
+{
+    public int Expired { get; set; }
+    public int Created { get; set; }
+    public int Linked { get; set; }
+    public List<string> Errors { get; set; } = new();
+}
+```
+
+<!-- /tabs -->
 
 ---
 
