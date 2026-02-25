@@ -112,12 +112,12 @@ All documentation is derived from:
 - `DELETE /api/ui/interactive/v2/window?button=No` → 400
 - `POST /api/ui/interactive/v2/button` → 404
 
-**Workaround (February 2026)**: For non-message-box response windows (e.g., `w_popup_processing_msg`, `w_email_response`), discover available buttons via `GET /api/ui/interactive/v2/tools?windowId={id}` and click them via `POST /api/ui/interactive/v2/tools`. This works for post-save document link popups. Message box dialogs (`w_message`) remain unresolved.
+**Workaround (February 2026)**: For non-message-box response windows (e.g., `w_inventory_scan_lookup`, `w_popup_processing_msg`), discover available buttons via `GET /api/ui/interactive/v2/tools?windowId={id}` and click them via `POST /api/ui/interactive/v2/tools`. Verified working on `w_inventory_scan_lookup` (returns `cb_ok`, `cb_cancel`, etc.). Message box dialogs (`w_message`) remain unresolved.
 
 ### Interactive API - ResultStatus Enum (February 2026)
 
 **Official status codes** from `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
-```
+```text
 None=0, Success=1, Failure=2, Blocked=3
 ```
 

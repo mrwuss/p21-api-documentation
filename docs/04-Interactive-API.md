@@ -323,11 +323,8 @@ Example response with blocked status:
 }
 ```
 
-> **Note:** The `Events[].Data` field has two possible formats depending on P21 version:
-> - **Dict format:** `{"WindowId": "..."}`
-> - **KV-list format:** `[{"Key": "windowid", "Value": "..."}]`
->
-> Handle both in your parsing code.
+> **Note:** The `Events[].Data` field uses a key-value list format:
+> `[{"Key": "windowid", "Value": "..."}]`
 
 ---
 
@@ -792,18 +789,18 @@ Every action returns a `Result` with these properties:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Status` | string | `Success`, `Failure`, `Blocked`, or `None` |
+| `Status` | int | `0` (None), `1` (Success), `2` (Failure), `3` (Blocked) |
 | `Messages` | array | List of messages triggered by the action |
 | `Events` | array | List of events that occurred (fields enabled/disabled, windows opened, keys generated, etc.) |
 
-**Status values:**
+**Status values** (from `ResultStatus` enum):
 
-| Status | Meaning | Action |
-|--------|---------|--------|
-| `Success` | Action completed | Continue to next step |
-| `Failure` | Action failed | Check `Messages` for details |
-| `Blocked` | Session blocked by dialog | Check `Events` for `windowopened`, handle the response window |
-| `None` | No action needed | Status couldn't be determined |
+| Status | Value | Meaning | Action |
+|--------|-------|---------|--------|
+| `None` | `0` | No action needed | Status couldn't be determined |
+| `Success` | `1` | Action completed | Continue to next step |
+| `Failure` | `2` | Action failed | Check `Messages` for details |
+| `Blocked` | `3` | Session blocked by dialog | Check `Events` for `windowopened`, handle the response window |
 
 ### Messages
 
