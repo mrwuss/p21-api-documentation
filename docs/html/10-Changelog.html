@@ -313,6 +313,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-02-25">2026-02-25</a></li>
 <li><a href="#2026-02-17">2026-02-17</a></li>
 <li><a href="#2026-02-16">2026-02-16</a></li>
 <li><a href="#2026-02-13">2026-02-13</a></li>
@@ -343,6 +344,13 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-02-25">2026-02-25</h2>
+<ul>
+<li><strong>fix:</strong> Correct Interactive API <code>ResultStatus</code> enum mapping — <code>None=0, Success=1, Failure=2, Blocked=3</code> (was incorrectly <code>0=Failure, 2=Blocked, 3=Dialog</code>), verified against source (<code>ResultWrapper.cs</code>) and live API — <a href="https://github.com/mrwuss/p21-api-documentation/pull/26">PR #26</a></li>
+<li><strong>docs:</strong> Update Data Structures Reference to show integer status types with numeric values</li>
+<li><strong>docs:</strong> Document <code>/tools</code> endpoint workaround for non-message-box response windows — <code>GET /tools</code> discovers buttons, <code>POST /tools</code> clicks them (verified on <code>w_inventory_scan_lookup</code>)</li>
+<li><strong>docs:</strong> Update Event Data format documentation — confirmed KV-list format <code>[{"Key": "...", "Value": "..."}]</code></li>
+</ul>
 <h2 id="2026-02-17">2026-02-17</h2>
 <ul>
 <li><strong>docs:</strong> Add standalone Inventory REST API documentation — moved from Entity API doc, added verified PUT/POST behavior, multi-company inventory workflow (GET → Append → PUT), error examples, automation patterns — <em>Sibin Francis (<a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/25">PR #25</a>, verified and restructured by <em>@mrwuss</em></li>

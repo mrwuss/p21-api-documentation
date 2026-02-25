@@ -8,6 +8,13 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-02-25
+
+- **fix:** Correct Interactive API `ResultStatus` enum mapping — `None=0, Success=1, Failure=2, Blocked=3` (was incorrectly `0=Failure, 2=Blocked, 3=Dialog`), verified against source (`ResultWrapper.cs`) and live API — [PR #26](https://github.com/mrwuss/p21-api-documentation/pull/26)
+- **docs:** Update Data Structures Reference to show integer status types with numeric values
+- **docs:** Document `/tools` endpoint workaround for non-message-box response windows — `GET /tools` discovers buttons, `POST /tools` clicks them (verified on `w_inventory_scan_lookup`)
+- **docs:** Update Event Data format documentation — confirmed KV-list format `[{"Key": "...", "Value": "..."}]`
+
 ## 2026-02-17
 
 - **docs:** Add standalone Inventory REST API documentation — moved from Entity API doc, added verified PUT/POST behavior, multi-company inventory workflow (GET → Append → PUT), error examples, automation patterns — *Sibin Francis ([@sibinfrancisaj](https://github.com/sibinfrancisaj))* via [PR #25](https://github.com/mrwuss/p21-api-documentation/pull/25), verified and restructured by *@mrwuss*
