@@ -298,26 +298,33 @@ To find the correct field and datawindow names:
 
 Response windows (dialogs) can pop up during operations. When this happens:
 
-1. The result will have `Status: "Blocked"`
+1. The result will have `Status: 3` (Blocked)
 2. Check the `Events` array for `windowopened`
 3. Get the new window ID from the event data
-4. Handle the response window
-5. Close it to resume the original operation
+4. Handle the response window (interact with it like any other window)
+5. Close/dismiss it to resume the original operation
+
+> **Status codes** match the `ResultStatus` enum in `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
+> `None=0, Success=1, Failure=2, Blocked=3`.
+> The API returns Status as an integer. String values (`"Success"`, `"Failure"`, `"Blocked"`) may appear in some contexts — handle both.
 
 Example response with blocked status:
 ```json
 {
-    "Status": "Blocked",
+    "Status": 3,
     "Events": [
         {
             "Name": "windowopened",
-            "Data": {
-                "WindowId": "w_response_123"
-            }
+            "Data": [
+                { "Key": "windowid", "Value": "w_response_123" }
+            ]
         }
     ]
 }
 ```
+
+> **Note:** The `Events[].Data` field uses a key-value list format:
+> `[{"Key": "windowid", "Value": "..."}]`
 
 ---
 
@@ -782,18 +789,18 @@ Every action returns a `Result` with these properties:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Status` | string | `Success`, `Failure`, `Blocked`, or `None` |
+| `Status` | int | `0` (None), `1` (Success), `2` (Failure), `3` (Blocked) |
 | `Messages` | array | List of messages triggered by the action |
 | `Events` | array | List of events that occurred (fields enabled/disabled, windows opened, keys generated, etc.) |
 
-**Status values:**
+**Status values** (from `ResultStatus` enum):
 
-| Status | Meaning | Action |
-|--------|---------|--------|
-| `Success` | Action completed | Continue to next step |
-| `Failure` | Action failed | Check `Messages` for details |
-| `Blocked` | Session blocked by dialog | Check `Events` for `windowopened`, handle the response window |
-| `None` | No action needed | Status couldn't be determined |
+| Status | Value | Meaning | Action |
+|--------|-------|---------|--------|
+| `None` | `0` | No action needed | Status couldn't be determined |
+| `Success` | `1` | Action completed | Continue to next step |
+| `Failure` | `2` | Action failed | Check `Messages` for details |
+| `Blocked` | `3` | Session blocked by dialog | Check `Events` for `windowopened`, handle the response window |
 
 ### Messages
 

@@ -303,7 +303,7 @@ from dataclasses import dataclass, field
 class Result:
     """Parsed result from an Interactive API response."""
 
-    status_code: int  # 0=Failure, 1=Success, 2=Blocked, 3=Dialog
+    status_code: int  # 0=None, 1=Success, 2=Failure, 3=Blocked
     success: bool
     messages: list[str] = field(default_factory=list)
     events: list[dict] = field(default_factory=list)
@@ -311,15 +311,23 @@ class Result:
 
     @classmethod
     def from_response(cls, response_data: dict) -> "Result":
-        """Parse an API response dict into a Result."""
+        """Parse an API response dict into a Result.
+
+        Status codes match the official ResultStatus enum from
+        P21.UI.Service.Model.Interactive.V2.ResultWrapper:
+            None=0, Success=1, Failure=2, Blocked=3
+
+        The API may return Status as an integer (1, 2, 3) or a string
+        ("Success", "Failure", "Blocked") depending on context.
+        """
         status = response_data.get("Status", 0)
 
-        # Status codes: 0=Failure, 1=Success, 2=Blocked, 3=Dialog
+        # Official ResultStatus enum: None=0, Success=1, Failure=2, Blocked=3
         status_code = {
-            "Failure": 0,
+            "None": 0,
             "Success": 1,
-            "Blocked": 2,
-            "Dialog": 3,
+            "Failure": 2,
+            "Blocked": 3,
         }.get(status, 0) if isinstance(status, str) else status
 
         messages = []
