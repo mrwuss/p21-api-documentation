@@ -209,8 +209,7 @@ async def expire_price_page(
     """
     # Load the page by UID
     result = await window.change_data(
-        "FORM", "price_page_uid", str(price_page_uid),
-        datawindow_name="form"
+        "FORM", "form", "price_page_uid", str(price_page_uid)
     )
     if not result.success:
         logger.error(f"Failed to load page {price_page_uid}: {result.messages}")
@@ -218,8 +217,7 @@ async def expire_price_page(
 
     # Set the expiration date
     result = await window.change_data(
-        "FORM", "expiration_date", expiration_date,
-        datawindow_name="form"
+        "FORM", "form", "expiration_date", expiration_date
     )
     if not result.success:
         logger.error(f"Failed to set expiration date: {result.messages}")
@@ -393,19 +391,24 @@ class Window:
     async def change_data(
         self,
         tab_name: str,
+        datawindow_name: str,
         field_name: str,
         value: str,
-        datawindow_name: str | None = None,
     ) -> Result:
-        """Change a single field value."""
+        """Change a single field value.
+
+        Note: datawindow_name is required in P21 25.2+. Window data
+        structures changed so the server can no longer auto-resolve
+        the target datawindow from TabName alone.
+        """
         payload = {
             "WindowId": self.window_id,
             "List": [
                 {
                     "TabName": tab_name,
+                    "DatawindowName": datawindow_name,
                     "FieldName": field_name,
                     "Value": value,
-                    **({"DatawindowName": datawindow_name} if datawindow_name else {}),
                 }
             ],
         }
@@ -419,18 +422,17 @@ class Window:
         """Change multiple field values in a single request.
 
         Args:
-            changes: List of dicts with keys: tab_name, field_name, value,
-                     and optionally datawindow_name
+            changes: List of dicts with keys: tab_name, datawindow_name,
+                     field_name, value
         """
         payload = {
             "WindowId": self.window_id,
             "List": [
                 {
                     "TabName": c["tab_name"],
+                    "DatawindowName": c["datawindow_name"],
                     "FieldName": c["field_name"],
                     "Value": c["value"],
-                    **({"DatawindowName": c["datawindow_name"]}
-                       if "datawindow_name" in c else {}),
                 }
                 for c in changes
             ],

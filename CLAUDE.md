@@ -125,6 +125,28 @@ None=0, Success=1, Failure=2, Blocked=3
 
 The API returns Status as integers. String values (`"Success"`, `"Failure"`, `"Blocked"`) may appear in some serialization contexts — handle both.
 
+### Interactive API - DatawindowName Required in 25.2+ (February 2026)
+
+**Breaking Change**: P21 25.2 changed window data structures so that `DatawindowName` is now **required** in change requests. The 3-parameter form (TabName + FieldName + Value) no longer works — you must include `DatawindowName`.
+
+**Affected windows** (reported): Item, PO Receiving Group, Delivery List, Group Pick Ticket. Likely affects other windows as well.
+
+**C# SDK impact**:
+```text
+// Broken in 25.2+:
+window.ChangeData("Criteria", "po_criteria_id", "20");
+
+// Fixed — include DatawindowName:
+window.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
+```
+
+**REST API impact**: Always include `DatawindowName` in v2 change request payloads:
+```json
+{"TabName": "FORM", "DatawindowName": "form", "FieldName": "field", "Value": "value"}
+```
+
+**Source**: Community forum reports confirmed by multiple users after 25.2 upgrade.
+
 ---
 
 ### inv_loc Write Access — Partially Resolved (February 2026)

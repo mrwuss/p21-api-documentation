@@ -212,6 +212,8 @@ PUT /api/ui/interactive/v2/change
 
 > **Note:** v2 uses `List` with `TabName`, while v1 uses `ChangeRequests` with `DataWindowName`. The `DatawindowName` field in v2 uses lowercase 'w'.
 
+> **P21 25.2+ Breaking Change:** `DatawindowName` is now effectively **required** for v2 change requests. The 3-parameter form (TabName + FieldName + Value) stopped working after the 25.2 upgrade — you must include `DatawindowName` as the 4th field. This affects multiple windows including Item, PO Receiving Group, Delivery List, and Group Pick Ticket. Window data structures changed in 25.2 so the server can no longer auto-resolve the target datawindow from TabName alone. **Always include `DatawindowName` in change requests.**
+
 #### ValueType
 
 Each change request supports an optional `ValueType` field:
@@ -1001,7 +1003,7 @@ async def select_row_safe(window: Window, row: int, datawindow_name: str):
 | Operation | v1 | v2 |
 |-----------|----|----|
 | **Change** | `ChangeRequests` array | `List` array |
-| **Change field ref** | `DataWindowName` (capital W) | `TabName` + optional `DatawindowName` (lowercase w) |
+| **Change field ref** | `DataWindowName` (capital W) | `TabName` + `DatawindowName` (lowercase w) — **required in 25.2+** |
 | **Save** | `{"WindowId": "..."}` | `"..."` (just GUID string) |
 | **Tab change** | `PagePath: {PageName: "..."}` | `PageName: "..."` (direct) |
 | **Row change** | `RowNumber` | `Row` |
