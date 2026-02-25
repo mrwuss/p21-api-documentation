@@ -13,7 +13,7 @@ Usage (sync):
         rows = client.odata.query("supplier", top=5)
         with client.interactive.session() as session:
             window = session.open_window("Customer")
-            window.change_data("FORM", "customer_name", "Test")
+            window.change_data("FORM", "customer_name", "Test", datawindow_name="form")
             window.save_data()
             window.close()
 
@@ -72,9 +72,9 @@ class Result:
                 messages = [messages]
             events = data.get("Events") or data.get("events") or []
             window_id = data.get("WindowId") or data.get("windowId")
-            # Status field: 1 = success for Interactive, "Blocked" = blocked
+            # Status field: 1 = Success, 2 = Failure, 3 = Blocked (integer)
             status_val = data.get("Status") or data.get("status")
-            success = status_code in (200, 201) and status_val != "Blocked"
+            success = status_code in (200, 201) and status_val not in (2, 3, "Failure", "Blocked")
         else:
             messages = []
             events = []
@@ -143,14 +143,24 @@ def get_generated_key(result: Result) -> str | None:
 
 
 def get_opened_window_id(result: Result) -> str | None:
-    """Extract window ID from a 'windowopened' event (response windows)."""
+    """Extract window ID from a 'windowopened' event (response windows).
+
+    Event Data is a KV-list: [{"Key": "windowid", "Value": "..."}]
+    """
     for event in result.events:
         name = event.get("Name") or event.get("name") or ""
         if name.lower() == "windowopened":
-            data = event.get("Data") or event.get("data") or {}
-            if isinstance(data, dict):
+            data = event.get("Data") or event.get("data")
+            if isinstance(data, list):
+                # KV-list format: [{"Key": "windowid", "Value": "..."}]
+                for item in data:
+                    key = (item.get("Key") or item.get("key") or "").lower()
+                    if key == "windowid":
+                        return item.get("Value") or item.get("value")
+            elif isinstance(data, dict):
                 return data.get("WindowId") or data.get("windowId")
-            return str(data)
+            elif data:
+                return str(data)
     return None
 
 
@@ -177,10 +187,17 @@ class Window:
         tab_name: str,
         field_name: str,
         value: str,
-        datawindow_name: str | None = None,
+        datawindow_name: str = "",
     ) -> Result:
-        """Change a field value (v2 List format)."""
-        change = {"TabName": tab_name, "FieldName": field_name, "Value": value}
+        """Change a field value (v2 List format).
+
+        Note: datawindow_name is required in P21 25.2+. Always provide it.
+        """
+        change: dict[str, str] = {
+            "TabName": tab_name,
+            "FieldName": field_name,
+            "Value": value,
+        }
         if datawindow_name:
             change["DatawindowName"] = datawindow_name
         body = {"WindowId": self.window_id, "List": [change]}
@@ -188,11 +205,18 @@ class Window:
         return Result.from_response(resp)
 
     def change_fields(self, tab_name: str, fields: dict[str, str],
-                      datawindow_name: str | None = None) -> Result:
-        """Change multiple fields at once."""
+                      datawindow_name: str = "") -> Result:
+        """Change multiple fields at once.
+
+        Note: datawindow_name is required in P21 25.2+. Always provide it.
+        """
         changes = []
         for fname, fval in fields.items():
-            change = {"TabName": tab_name, "FieldName": fname, "Value": fval}
+            change: dict[str, str] = {
+                "TabName": tab_name,
+                "FieldName": fname,
+                "Value": fval,
+            }
             if datawindow_name:
                 change["DatawindowName"] = datawindow_name
             changes.append(change)
@@ -282,9 +306,14 @@ class AsyncWindow:
         tab_name: str,
         field_name: str,
         value: str,
-        datawindow_name: str | None = None,
+        datawindow_name: str = "",
     ) -> Result:
-        change = {"TabName": tab_name, "FieldName": field_name, "Value": value}
+        """Change a field value. datawindow_name is required in P21 25.2+."""
+        change: dict[str, str] = {
+            "TabName": tab_name,
+            "FieldName": field_name,
+            "Value": value,
+        }
         if datawindow_name:
             change["DatawindowName"] = datawindow_name
         body = {"WindowId": self.window_id, "List": [change]}
@@ -292,10 +321,15 @@ class AsyncWindow:
         return Result.from_response(resp)
 
     async def change_fields(self, tab_name: str, fields: dict[str, str],
-                            datawindow_name: str | None = None) -> Result:
+                            datawindow_name: str = "") -> Result:
+        """Change multiple fields. datawindow_name is required in P21 25.2+."""
         changes = []
         for fname, fval in fields.items():
-            change = {"TabName": tab_name, "FieldName": fname, "Value": fval}
+            change: dict[str, str] = {
+                "TabName": tab_name,
+                "FieldName": fname,
+                "Value": fval,
+            }
             if datawindow_name:
                 change["DatawindowName"] = datawindow_name
             changes.append(change)

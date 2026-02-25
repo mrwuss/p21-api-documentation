@@ -246,9 +246,9 @@ Default timeout is typically 6 minutes of inactivity.
 When a response window opens, the API returns:
 ```json
 {
-    "Status": "Blocked",
+    "Status": 3,
     "Events": [
-        {"Name": "windowopened", "Data": {"WindowId": "..."}}
+        {"Name": "windowopened", "Data": [{"Key": "windowid", "Value": "..."}]}
     ]
 }
 ```

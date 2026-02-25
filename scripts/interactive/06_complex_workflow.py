@@ -1,12 +1,12 @@
 """
-Interactive API - Complex Workflow
+Interactive API - Complex Workflow (v2)
 
-Demonstrates a multi-step workflow using the Interactive API.
+Demonstrates a multi-step workflow using the Interactive API v2.
 
 This example shows:
 - Context manager for session cleanup
 - Error handling at each step
-- Multiple field changes
+- Multiple field changes with DatawindowName (required in P21 25.2+)
 - Tab switching
 - Saving with validation checking
 
@@ -17,11 +17,11 @@ Usage:
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import httpx
 from datetime import datetime
-from contextlib import contextmanager
 from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
@@ -37,10 +37,12 @@ class Window:
         self.window_id = window_id
         self.data = data
 
-    def change(self, field_name: str, value: str, datawindow: str = "d_form"):
-        """Change a single field."""
+    def change(self, tab_name: str, datawindow_name: str,
+               field_name: str, value: str):
+        """Change a single field (v2 format with DatawindowName)."""
         return self.session.change_data(self.window_id, [
-            {"DataWindowName": datawindow, "FieldName": field_name, "Value": value}
+            {"TabName": tab_name, "DatawindowName": datawindow_name,
+             "FieldName": field_name, "Value": value}
         ])
 
     def change_multiple(self, changes: list):
@@ -61,7 +63,7 @@ class Window:
 
 
 class InteractiveClient:
-    """Full-featured Interactive API client."""
+    """Full-featured Interactive API v2 client."""
 
     def __init__(self, base_url: str, username: str, password: str, verify_ssl: bool = False):
         self.base_url = base_url.rstrip('/')
@@ -143,28 +145,37 @@ class InteractiveClient:
         return Window(self, data["WindowId"], data)
 
     def change_data(self, window_id: str, changes: list) -> dict:
+        """Change field values using v2 List format.
+
+        Each change dict should include:
+            TabName, DatawindowName, FieldName, Value
+
+        DatawindowName is required in P21 25.2+.
+        """
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/change",
+            f"{self.ui_server_url}/api/ui/interactive/v2/change",
             headers=self._headers(),
-            json={"WindowId": window_id, "ChangeRequests": changes}
+            json={"WindowId": window_id, "List": changes}
         )
         response.raise_for_status()
         return response.json()
 
     def change_tab(self, window_id: str, tab_name: str) -> dict:
+        """Switch to a different tab using v2 format."""
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/tab",
+            f"{self.ui_server_url}/api/ui/interactive/v2/tab",
             headers=self._headers(),
-            json={"WindowId": window_id, "PagePath": {"PageName": tab_name}}
+            json={"WindowId": window_id, "PageName": tab_name}
         )
         response.raise_for_status()
         return response.json()
 
     def save_data(self, window_id: str) -> dict:
+        """Save data using v2 format (bare GUID string body)."""
         response = self.client.put(
-            f"{self.ui_server_url}/api/ui/interactive/v1/data",
+            f"{self.ui_server_url}/api/ui/interactive/v2/data",
             headers=self._headers(),
-            json={"WindowId": window_id}
+            json=window_id  # v2: just the GUID string
         )
         response.raise_for_status()
         return response.json()
@@ -201,31 +212,36 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
     try:
         # Step 2: Set page type
         print("    Setting page type...", end=" ")
-        window.change("price_page_type_cd", "Supplier / Product Group")
+        window.change("FORM", "form", "price_page_type_cd", "Supplier / Product Group")
         print("OK")
 
         # Step 3: Fill required fields (order matters for some fields)
         print("    Setting company...", end=" ")
-        window.change("company_id", "ACME")
+        window.change("FORM", "form", "company_id", "ACME")
         print("OK")
 
         print("    Setting product group...", end=" ")
-        window.change("product_group_id", product_group)
+        window.change("FORM", "form", "product_group_id", product_group)
         print("OK")
 
         print("    Setting supplier...", end=" ")
-        window.change("supplier_id", str(supplier_id))
+        window.change("FORM", "form", "supplier_id", str(supplier_id))
         print("OK")
 
         print("    Setting remaining fields...", end=" ")
         window.change_multiple([
-            {"DataWindowName": "d_form", "FieldName": "description", "Value": description},
-            {"DataWindowName": "d_form", "FieldName": "pricing_method_cd", "Value": "Source"},
-            {"DataWindowName": "d_form", "FieldName": "source_price_cd", "Value": "Supplier List Price"},
-            {"DataWindowName": "d_form", "FieldName": "effective_date",
-             "Value": datetime.now().strftime("%Y-%m-%d")},
-            {"DataWindowName": "d_form", "FieldName": "expiration_date", "Value": "2030-12-31"},
-            {"DataWindowName": "d_form", "FieldName": "row_status_flag", "Value": "Active"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "description", "Value": description},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "pricing_method_cd", "Value": "Source"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "source_price_cd", "Value": "Supplier List Price"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "effective_date", "Value": datetime.now().strftime("%Y-%m-%d")},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "expiration_date", "Value": "2030-12-31"},
+            {"TabName": "FORM", "DatawindowName": "form",
+             "FieldName": "row_status_flag", "Value": "Active"},
         ])
         print("OK")
 
@@ -237,15 +253,18 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
         # Step 5: Set calculation values
         print("    Setting calculation values...", end=" ")
         window.change_multiple([
-            {"DataWindowName": "d_values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"DataWindowName": "d_values", "FieldName": "calculation_value1", "Value": str(multiplier)},
+            {"TabName": "VALUES", "DatawindowName": "d_values",
+             "FieldName": "calculation_method_cd", "Value": "Multiplier"},
+            {"TabName": "VALUES", "DatawindowName": "d_values",
+             "FieldName": "calculation_value1", "Value": str(multiplier)},
         ])
         print("OK")
 
         # Step 6: Save
         print("    Saving...", end=" ")
         result = window.save()
-        if result.get("Status") == "Blocked":
+        # Status 3 = Blocked (response window opened)
+        if result.get("Status") == 3:
             raise RuntimeError("Save blocked by response window")
         print("OK")
 
@@ -266,7 +285,7 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
 
 
 def main():
-    print("Interactive API - Complex Workflow")
+    print("Interactive API - Complex Workflow (v2)")
     print("=" * 60)
 
     config = load_config()
@@ -317,6 +336,7 @@ def main():
     print("\nKey patterns demonstrated:")
     print("- Context manager for automatic session cleanup")
     print("- Window class for cleaner field operations")
+    print("- v2 API format with DatawindowName (required in P21 25.2+)")
     print("- Step-by-step logging for debugging")
     print("- Error handling at each step")
 
