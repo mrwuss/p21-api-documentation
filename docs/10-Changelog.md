@@ -8,6 +8,15 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-03-06
+
+- **feat:** Add Production & Labor API documentation — TimeEntry service for recording labor hours against production orders, ProductionOrder service with full field definitions (54 header fields, assembly lines, components, labor entries, completions, routing), Labor/LaborProcess services for labor code maintenance, 24 production-related Transaction API services discovered, 13 Interactive API windows verified working — *@mrwuss*
+- **feat:** Add Python example scripts for production/labor — service discovery, TimeEntry definition, labor hour recording, ProductionOrder definition (`scripts/production/`)
+- **feat:** Add C# example code for production/labor — mirrors Python examples (`examples/csharp/Production/`)
+- **docs:** Update API Selection Guide with production/labor use cases and decision table entries
+- **docs:** Update Transaction API with production & labor services table
+- **docs:** Update Interactive API with production & labor windows table
+
 ## 2026-02-25
 
 - **feat:** Add C# code examples alongside Python across all documentation — tabbed code blocks (Python/C#) in generated HTML with global language sync and localStorage persistence, 23 C# console app examples mirroring every Python script, shared C# client library (`examples/csharp/Common/`) with auth, config, and HttpClient wrapper — *@mrwuss*

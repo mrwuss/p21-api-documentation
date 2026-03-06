@@ -19,6 +19,7 @@ This project provides developer-focused documentation for Prophet 21's integrati
 | **Interactive API** | Stateful window interactions with business logic | Complex workflows, validation needed | Working |
 | **Entity API** | CRUD on domain objects (customer, vendor, contact, address) | Simple record operations on 4 entities | Working (`/api/entity/`) |
 | **Inventory REST API** | CRUD on inventory items, multi-company workflows | Item reads, appending locations/suppliers | Working (`/api/inventory/parts`) |
+| **Production & Labor** | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking | Working (Transaction + Interactive) |
 
 ---
 
@@ -39,6 +40,7 @@ p21-api-documentation/
 │   ├── 09-Batch-Processing-Patterns.md
 │   ├── 10-Changelog.md
 │   ├── 11-Inventory-REST-API.md
+│   ├── 12-Production-Labor-API.md
 │   └── html/                    # Generated HTML versions
 │
 ├── examples/
@@ -47,7 +49,8 @@ p21-api-documentation/
 │       ├── OData/               # OData API examples
 │       ├── Transaction/         # Transaction API examples
 │       ├── Interactive/         # Interactive API examples
-│       └── Entity/              # Entity API examples
+│       ├── Entity/              # Entity API examples
+│       └── Production/          # Production & Labor examples
 │
 └── scripts/
     ├── common/                  # Shared auth/config (Python)
@@ -55,6 +58,7 @@ p21-api-documentation/
     ├── transaction/             # Transaction API examples (Python)
     ├── interactive/             # Interactive API examples (Python)
     ├── entity/                  # Entity API examples (Python)
+    ├── production/              # Production & Labor examples (Python)
     └── generate_html.py         # MD to HTML converter (supports tabbed code blocks)
 ```
 

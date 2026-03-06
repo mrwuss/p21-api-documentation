@@ -821,6 +821,26 @@ See the `scripts/interactive/` directory:
 | Purchase Order Entry | PurchaseOrder | Purchase orders |
 | Inventory Maintenance | InventoryMaster | Inventory items |
 
+### Production & Labor Windows
+
+| Window Title | Service Name | Purpose |
+|--------------|--------------|---------|
+| Production Order Entry | ProductionOrder | Full production order management |
+| Time Entry | TimeEntry | Record labor hours against production orders |
+| Time Entry (Service Order) | TimeEntrySO | Record labor hours against service orders |
+| Labor Maintenance | Labor | Labor code definitions and rates |
+| Labor Process Maintenance | LaborProcess | Labor process templates |
+| Job Maintenance | Job | Job CRUD |
+| Job Control Maintenance | JobControl | Job sites and contacts |
+| Operation Maintenance | Operation | Operation definitions |
+| Predefined Routing | PredefinedRouting | Routing templates |
+| Assembly Maintenance | Assembly | Assembly definitions |
+| Manufacturing Class | ManufacturingClass | Manufacturing classification |
+| Shift Maintenance | Shift | Shift definitions |
+| Production Order Processing | ProductionOrderProcessing | Process/complete production orders |
+
+See [Production & Labor API](12-Production-Labor-API.md) for detailed field definitions.
+
 ---
 
 ## Example: Linking Price Page to Price Book
@@ -1522,5 +1542,6 @@ DELETE /api/ui/interactive/v2/data?id={windowId}
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Transaction API](03-Transaction-API.md)
+- [Production & Labor API](12-Production-Labor-API.md) - TimeEntry, ProductionOrder, and labor services
 - [Batch Processing Patterns](09-Batch-Processing-Patterns.md) - Production batch processing, async client, error recovery
 - [scripts/interactive/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/interactive/) - Working examples
