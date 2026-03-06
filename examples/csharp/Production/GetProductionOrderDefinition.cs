@@ -87,11 +87,7 @@ public static class GetProductionOrderDefinition
                     Console.WriteLine($"  Type: {obj?["Type"]}");
                     Console.WriteLine($"  Key Fields: {obj?["KeyFields"]}");
 
-                    // Highlight labor-related DataElements
-                    if (elemName.Contains("labor", StringComparison.OrdinalIgnoreCase) ||
-                        elemName.Contains("routing", StringComparison.OrdinalIgnoreCase) ||
-                        elemName.Contains("operation", StringComparison.OrdinalIgnoreCase) ||
-                        elemName.Contains("component", StringComparison.OrdinalIgnoreCase))
+                    if (IsLaborRelated(elemName))
                     {
                         Console.WriteLine("  ** Labor/Routing Related **");
                     }
@@ -202,6 +198,17 @@ public static class GetProductionOrderDefinition
     }
 
     /// <summary>
+    /// Check if a name matches labor/routing/completion keywords.
+    /// </summary>
+    private static bool IsLaborRelated(string name)
+    {
+        return name.Contains("labor", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("routing", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("operation", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("component", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Print a DataElement structure from the template.
     /// </summary>
     private static void PrintDataElement(JObject? element, int indent)
@@ -221,11 +228,7 @@ public static class GetProductionOrderDefinition
             Console.WriteLine($"{prefix}  Keys: {keys}");
         }
 
-        // Highlight labor-related elements
-        if (name.Contains("labor", StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("routing", StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("operation", StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("component", StringComparison.OrdinalIgnoreCase))
+        if (IsLaborRelated(name))
         {
             Console.WriteLine($"{prefix}  ** Labor/Routing Related **");
         }

@@ -578,7 +578,7 @@
 <p>The <code>TimeEntry</code> service is the primary service for posting labor hours to production orders. It uses a header/detail pattern with a technician header and one or more labor line items.</p>
 <h3 id="service-definition">Service Definition</h3>
 <p>Retrieve the full schema with:</p>
-<div class="highlight"><pre><span></span><code>GET /api/v2/definition/TimeEntry
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/v2/definition/TimeEntry</span>
 </code></pre></div>
 
 <h4 id="header-tp_techniciantp_technician-form">Header -- <code>TP_TECHNICIAN.tp_technician</code> (Form)</h4>
@@ -695,6 +695,8 @@
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># After authentication and getting ui_server_url...</span>
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bearer &lt;token&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
+
 <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TimeEntry&quot;</span><span class="p">,</span>
     <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
@@ -740,6 +742,7 @@
     <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Succeeded: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;Succeeded&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
@@ -839,7 +842,7 @@
 <h2 id="productionorder-service-full-structure">ProductionOrder Service -- Full Structure</h2>
 <p>The <code>ProductionOrder</code> service is the most complex production service, with DataElements covering headers, assemblies, components, labor, routing, costs, and completion tracking.</p>
 <p>Retrieve the full schema with:</p>
-<div class="highlight"><pre><span></span><code>GET /api/v2/definition/ProductionOrder
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/v2/definition/ProductionOrder</span>
 </code></pre></div>
 
 <h3 id="dataelements">DataElements</h3>
@@ -1358,7 +1361,7 @@
 <h2 id="labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</h2>
 <p>The <code>Labor</code> service manages labor code definitions including rates, types, and cost structures.</p>
 <p>Retrieve the full schema with:</p>
-<div class="highlight"><pre><span></span><code>GET /api/v2/definition/Labor
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/v2/definition/Labor</span>
 </code></pre></div>
 
 <h3 id="key-field">Key Field</h3>
@@ -1500,7 +1503,7 @@
 <h2 id="laborprocess-service-process-templates">LaborProcess Service -- Process Templates</h2>
 <p>The <code>LaborProcess</code> service defines labor process templates with ordered operation sequences. These templates can be applied to production orders to pre-populate labor steps.</p>
 <p>Retrieve the full schema with:</p>
-<div class="highlight"><pre><span></span><code>GET /api/v2/definition/LaborProcess
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/v2/definition/LaborProcess</span>
 </code></pre></div>
 
 <h3 id="key-field_1">Key Field</h3>
@@ -1665,6 +1668,9 @@
   <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
+<span class="c1"># After authentication and getting ui_server_url...</span>
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bearer &lt;token&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
+
 <span class="c1"># Open Production Order Entry window</span>
 <span class="n">open_payload</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;ProductionOrder&quot;</span><span class="p">,</span>
@@ -1677,6 +1683,7 @@
     <span class="n">json</span><span class="o">=</span><span class="n">open_payload</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="n">window_id</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;WindowId&quot;</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Window opened: </span><span class="si">{</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1698,6 +1705,7 @@
     <span class="n">json</span><span class="o">=</span><span class="n">change_payload</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 
 <span class="c1"># Read current window data</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
@@ -1706,6 +1714,7 @@
     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 </code></pre></div>
 </div>
@@ -1748,10 +1757,12 @@
 <span class="w">    </span><span class="n">changePayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">changeResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">changeContent</span><span class="p">);</span>
+<span class="n">changeResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 
 <span class="c1">// Read current window data</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">dataResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/ui/interactive/v2/data?id={windowId}&quot;</span><span class="p">);</span>
+<span class="n">dataResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span>
 <span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">dataResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
 </code></pre></div>
@@ -1808,13 +1819,17 @@
   <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
+<span class="c1"># After authentication...</span>
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bearer &lt;token&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
+
 <span class="c1"># Query production orders (after enabling in SOA Admin)</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/dataaccess/v1/prod_order_hdr&quot;</span><span class="p">,</span>
-    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;company_id eq &#39;ACME&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id eq &#39;ACME&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>
     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">orders</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
 <span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="n">orders</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PO# </span><span class="si">{</span><span class="n">order</span><span class="p">[</span><span class="s1">&#39;prod_order_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">order</span><span class="p">[</span><span class="s1">&#39;complete&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

@@ -21,18 +21,25 @@ public static class ListProductionServices
     // Keywords to filter production/labor services
     private static readonly string[] ProductionKeywords =
     {
-        "production", "labor", "timeentry", "time_entry", "time entry",
-        "work order", "workorder", "routing", "bom", "billofmaterial",
-        "bill of material", "manufacturing", "shop", "technician",
-        "schedule", "operation"
+        "production", "labor", "timeentry", "time entry",
+        "workcenter", "work center",
+        "routing", "predefinedrouting", "predefined routing",
+        "manufacturing", "operation", "assembly", "shift", "job"
     };
 
-    // Specific services to check for by exact name
+    // Services documented in 12-Production-Labor-API.md, checked by exact name
     private static readonly string[] KnownProductionServices =
     {
-        "TimeEntry", "ProductionOrder", "ProductionSchedule",
-        "BillOfMaterial", "Routing", "WorkOrder", "LaborRecording",
-        "ShopFloor", "Technician", "ProductionLabor"
+        // Core Production
+        "ProductionOrder", "ProductionOrderProcessing",
+        "ProductionOrderPicking", "ProductionOrderFreightEntry",
+        "CompletedProducitonOrderAdjustment",
+        // Labor & Time
+        "TimeEntry", "TimeEntrySO", "Labor", "LaborProcess",
+        // Supporting
+        "WorkCenter", "Operation", "PredefinedRouting",
+        "Assembly", "AssemblyClass", "ManufacturingClass",
+        "Shift", "Job", "JobControl", "JobContractPricing"
     };
 
     public static async Task RunAsync()

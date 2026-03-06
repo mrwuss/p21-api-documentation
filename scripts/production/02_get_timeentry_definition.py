@@ -21,42 +21,13 @@ import json
 import httpx
 from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
+from common.transaction import get_service_definition, get_service_defaults
 
 import warnings
 warnings.filterwarnings("ignore")
 
 SERVICE_NAME = "TimeEntry"
 OUTPUT_DIR = Path(__file__).parent
-
-
-def get_service_definition(
-    ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool
-) -> dict:
-    """Fetch the definition for a service."""
-    response = httpx.get(
-        f"{ui_server_url}/api/v2/definition/{service_name}",
-        headers=headers,
-        verify=verify_ssl,
-        follow_redirects=True,
-        timeout=60.0,
-    )
-    response.raise_for_status()
-    return response.json()
-
-
-def get_service_defaults(
-    ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool
-) -> dict:
-    """Fetch the default values for a service."""
-    response = httpx.get(
-        f"{ui_server_url}/api/v2/defaults/{service_name}",
-        headers=headers,
-        verify=verify_ssl,
-        follow_redirects=True,
-        timeout=60.0,
-    )
-    response.raise_for_status()
-    return response.json()
 
 
 def print_data_element(element: dict, indent: int = 0) -> None:

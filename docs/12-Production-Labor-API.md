@@ -75,7 +75,7 @@ The `TimeEntry` service is the primary service for posting labor hours to produc
 
 Retrieve the full schema with:
 
-```
+```http
 GET /api/v2/definition/TimeEntry
 ```
 
@@ -109,6 +109,8 @@ GET /api/v2/definition/TimeEntry
 import httpx
 
 # After authentication and getting ui_server_url...
+headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
+
 payload = {
     "Name": "TimeEntry",
     "UseCodeValues": False,
@@ -154,6 +156,7 @@ response = httpx.post(
     json=payload,
     verify=False
 )
+response.raise_for_status()
 result = response.json()
 print(f"Succeeded: {result['Summary']['Succeeded']}")
 ```
@@ -260,7 +263,7 @@ The `ProductionOrder` service is the most complex production service, with DataE
 
 Retrieve the full schema with:
 
-```
+```http
 GET /api/v2/definition/ProductionOrder
 ```
 
@@ -430,7 +433,7 @@ The `Labor` service manages labor code definitions including rates, types, and c
 
 Retrieve the full schema with:
 
-```
+```http
 GET /api/v2/definition/Labor
 ```
 
@@ -484,7 +487,7 @@ The `LaborProcess` service defines labor process templates with ordered operatio
 
 Retrieve the full schema with:
 
-```
+```http
 GET /api/v2/definition/LaborProcess
 ```
 
@@ -541,6 +544,9 @@ All of the following windows can be opened via the Interactive API for stateful,
 ```python
 import httpx
 
+# After authentication and getting ui_server_url...
+headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
+
 # Open Production Order Entry window
 open_payload = {
     "ServiceName": "ProductionOrder",
@@ -553,6 +559,7 @@ response = httpx.post(
     json=open_payload,
     verify=False
 )
+response.raise_for_status()
 result = response.json()
 window_id = result["WindowId"]
 print(f"Window opened: {window_id}")
@@ -574,6 +581,7 @@ response = httpx.put(
     json=change_payload,
     verify=False
 )
+response.raise_for_status()
 
 # Read current window data
 response = httpx.get(
@@ -582,6 +590,7 @@ response = httpx.get(
     headers=headers,
     verify=False
 )
+response.raise_for_status()
 data = response.json()
 ```
 
@@ -624,10 +633,12 @@ var changeContent = new StringContent(
     changePayload.ToString(), Encoding.UTF8, "application/json");
 var changeResp = await client.PutAsync(
     $"{uiServerUrl}/api/ui/interactive/v2/change", changeContent);
+changeResp.EnsureSuccessStatusCode();
 
 // Read current window data
 var dataResp = await client.GetAsync(
     $"{uiServerUrl}/api/ui/interactive/v2/data?id={windowId}");
+dataResp.EnsureSuccessStatusCode();
 var data = JObject.Parse(
     await dataResp.Content.ReadAsStringAsync());
 ```
@@ -661,13 +672,17 @@ Once exposed, query them via the OData API:
 ```python
 import httpx
 
+# After authentication...
+headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
+
 # Query production orders (after enabling in SOA Admin)
 response = httpx.get(
     f"{base_url}/api/dataaccess/v1/prod_order_hdr",
-    params={"$filter": f"company_id eq 'ACME'", "$top": "10"},
+    params={"$filter": "company_id eq 'ACME'", "$top": "10"},
     headers=headers,
     verify=False
 )
+response.raise_for_status()
 orders = response.json()["value"]
 for order in orders:
     print(f"PO# {order['prod_order_number']}: {order['complete']}")

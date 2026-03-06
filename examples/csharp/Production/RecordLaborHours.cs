@@ -20,7 +20,7 @@
 //           },
 //           {
 //             "Name": "TP_LABORRECORDING.prod_order_line_comp_labor",  // Labor lines
-//             "Type": "Grid",
+//             "Type": "List",
 //             "Keys": [],
 //             "Rows": [{ "Edits": [...] }]
 //           }
@@ -238,7 +238,7 @@ public static class RecordLaborHours
                         new JObject
                         {
                             ["Name"] = "TP_LABORRECORDING.prod_order_line_comp_labor",
-                            ["Type"] = "Grid",
+                            ["Type"] = "List",
                             ["Keys"] = new JArray(),
                             ["Rows"] = new JArray
                             {
@@ -246,11 +246,11 @@ public static class RecordLaborHours
                                 {
                                     ["Edits"] = new JArray
                                     {
-                                        new JObject { ["Name"] = "prod_order_no", ["Value"] = (double)prodOrderNumber },
+                                        new JObject { ["Name"] = "prod_order_number", ["Value"] = (double)prodOrderNumber },
                                         new JObject { ["Name"] = "service_labor_id", ["Value"] = serviceLaborId },
                                         new JObject { ["Name"] = "start_time", ["Value"] = startTime },
                                         new JObject { ["Name"] = "end_time", ["Value"] = endTime },
-                                        new JObject { ["Name"] = "time_worked", ["Value"] = timeWorked.ToString("F2") },
+                                        new JObject { ["Name"] = "time_worked", ["Value"] = FormatTimeWorked(timeWorked) },
                                         new JObject { ["Name"] = "labor_type_cd", ["Value"] = laborTypeCd }
                                     },
                                     ["RelativeDateEdits"] = new JArray()
@@ -261,6 +261,17 @@ public static class RecordLaborHours
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// Format decimal hours as HH:MM string for the time_worked field.
+    /// </summary>
+    internal static string FormatTimeWorked(double hours)
+    {
+        var totalMinutes = (int)(hours * 60);
+        var h = totalMinutes / 60;
+        var m = totalMinutes % 60;
+        return $"{h}:{m:D2}";
     }
 
     /// <summary>

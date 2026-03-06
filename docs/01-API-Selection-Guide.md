@@ -19,7 +19,8 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 | Update existing records | **Interactive API** | Reliable field-level updates |
 | Handle response dialogs | **Interactive API** | Only API with dialog handling |
 | Record labor hours to production orders | **Transaction API** | TimeEntry service, stateless |
-| Manage production orders | **Transaction API** / **Interactive API** | Full PO lifecycle |
+| Bulk create production orders | **Transaction API** | Stateless, high-volume creation |
+| Modify or complete production orders | **Interactive API** | Stateful workflow with validation |
 
 ---
 

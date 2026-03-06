@@ -22,12 +22,27 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import json
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime
 from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
 warnings.filterwarnings("ignore")
+
+
+def _format_time_worked(hours: float) -> str:
+    """Convert decimal hours to H:MM string format for time_worked field.
+
+    Args:
+        hours: Decimal hours (e.g., 2.5 for 2 hours 30 minutes).
+
+    Returns:
+        String in H:MM format (e.g., "2:30").
+    """
+    total_minutes = round(hours * 60)
+    h = total_minutes // 60
+    m = total_minutes % 60
+    return f"{h}:{m:02d}"
 
 
 def build_timeentry_payload(
@@ -102,14 +117,14 @@ def build_timeentry_payload(
                     # --------------------------------------------------
                     {
                         "Name": "TP_LABORRECORDING.prod_order_line_comp_labor",
-                        "Type": "Form",
+                        "Type": "List",
                         "Keys": [],
                         "Rows": [
                             {
                                 "Edits": [
                                     # Production order to charge hours against
                                     {
-                                        "Name": "prod_order_no",
+                                        "Name": "prod_order_number",
                                         "Value": float(prod_order_number),
                                     },
                                     # Service/labor code (defines the type of work)
@@ -121,10 +136,10 @@ def build_timeentry_payload(
                                     {"Name": "start_time", "Value": start_time},
                                     # End time of the labor period
                                     {"Name": "end_time", "Value": end_time},
-                                    # Total hours worked (decimal hours)
+                                    # Total hours worked (H:MM string format)
                                     {
                                         "Name": "time_worked",
-                                        "Value": float(time_worked),
+                                        "Value": _format_time_worked(time_worked),
                                     },
                                     # Labor type determines how cost is calculated:
                                     #   "Rate" = hourly rate * time_worked
@@ -183,14 +198,14 @@ def main() -> None:
     end_time = "10:30"
     time_worked = 2.5  # 2 hours 30 minutes
 
-    print(f"\nBuilding labor entry:")
-    print(f"  Company:          ACME")
-    print(f"  Technician:       TECH001")
+    print("\nBuilding labor entry:")
+    print("  Company:          ACME")
+    print("  Technician:       TECH001")
     print(f"  Date:             {entry_date}")
-    print(f"  Production Order: 1001")
-    print(f"  Service/Labor ID: LABOR-STD")
+    print("  Production Order: 1001")
+    print("  Service/Labor ID: LABOR-STD")
     print(f"  Time:             {start_time} - {end_time} ({time_worked}h)")
-    print(f"  Labor Type:       Rate")
+    print("  Labor Type:       Rate")
 
     payload = build_timeentry_payload(
         company_id="ACME",
@@ -240,12 +255,12 @@ def main() -> None:
         failed = summary.get("Failed", 0)
         messages = result.get("Messages", [])
 
-        print(f"\n  Response Summary:")
+        print("\n  Response Summary:")
         print(f"    Succeeded: {succeeded}")
         print(f"    Failed:    {failed}")
 
         if messages:
-            print(f"    Messages:")
+            print("    Messages:")
             for msg in messages:
                 print(f"      - {msg}")
 
@@ -275,12 +290,12 @@ def main() -> None:
             print("  Check messages above for details.")
             print("\n  Common failure reasons:")
             print("    - Invalid technician_id (must exist in P21)")
-            print("    - Invalid prod_order_no (must be an open production order)")
+            print("    - Invalid prod_order_number (must be an open production order)")
             print("    - Invalid service_labor_id (must be a valid labor code)")
             print("    - Missing required fields (run 02_get_timeentry_definition.py)")
 
         # Always show full response for debugging
-        print(f"\n  Full response:")
+        print("\n  Full response:")
         print(json.dumps(result, indent=2))
 
     except httpx.HTTPStatusError as e:
@@ -294,7 +309,7 @@ def main() -> None:
             print("\n  Bad request - the payload structure may be incorrect.")
             print("  Run 02_get_timeentry_definition.py to verify the DataElement names.")
 
-    except Exception as e:
+    except (httpx.HTTPError, ValueError, KeyError) as e:
         print(f"\n  Error: {type(e).__name__}: {e}")
 
     print("\n" + "=" * 60)

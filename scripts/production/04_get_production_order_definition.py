@@ -19,6 +19,7 @@ import json
 import httpx
 from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
+from common.transaction import get_service_definition
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -31,21 +32,6 @@ LABOR_KEYWORDS = [
     "labor", "time", "technician", "hours", "worked", "rate",
     "cost", "completion", "complete", "finish", "quantity",
 ]
-
-
-def get_service_definition(
-    ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool
-) -> dict:
-    """Fetch the definition for a service."""
-    response = httpx.get(
-        f"{ui_server_url}/api/v2/definition/{service_name}",
-        headers=headers,
-        verify=verify_ssl,
-        follow_redirects=True,
-        timeout=60.0,
-    )
-    response.raise_for_status()
-    return response.json()
 
 
 def is_labor_related(name: str) -> bool:
