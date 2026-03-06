@@ -372,6 +372,7 @@
         <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
         <li><a href="10-Changelog.html">Changelog</a></li>
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -480,6 +481,21 @@
 <td>Handle response dialogs</td>
 <td><strong>Interactive API</strong></td>
 <td>Only API with dialog handling</td>
+</tr>
+<tr>
+<td>Record labor hours to production orders</td>
+<td><strong>Transaction API</strong></td>
+<td>TimeEntry service, stateless</td>
+</tr>
+<tr>
+<td>Bulk create production orders</td>
+<td><strong>Transaction API</strong></td>
+<td>Stateless, high-volume creation</td>
+</tr>
+<tr>
+<td>Modify or complete production orders</td>
+<td><strong>Interactive API</strong></td>
+<td>Stateful workflow with validation</td>
 </tr>
 </tbody>
 </table>
@@ -642,6 +658,8 @@
 <li>Sync products from external catalog</li>
 <li>Bulk create purchase orders</li>
 <li>Automated data migration</li>
+<li>Record labor hours against production orders (TimeEntry service)</li>
+<li>Bulk create production orders</li>
 </ul>
 <hr />
 <h2 id="interactive-api">Interactive API</h2>
@@ -684,6 +702,8 @@
 <li>Modify customer records</li>
 <li>Complex order entry</li>
 <li>Any operation with approval dialogs</li>
+<li>Manage production orders (open, modify, complete)</li>
+<li>Record labor hours via Time Entry window</li>
 </ul>
 <hr />
 <h2 id="entity-api">Entity API</h2>
@@ -840,6 +860,7 @@
 <li><a href="03-Transaction-API.html">Transaction API</a></li>
 <li><a href="04-Interactive-API.html">Interactive API</a></li>
 <li><a href="05-Entity-API.html">Entity API</a></li>
+<li><a href="12-Production-Labor-API.html">Production &amp; Labor API</a></li>
 <li><a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></li>
 </ul>
     </main>

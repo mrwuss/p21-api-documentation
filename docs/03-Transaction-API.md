@@ -160,6 +160,22 @@ Each **Edit** object supports:
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
 
+### Production & Labor Services
+
+| Service | P21 Window | Purpose |
+|---------|------------|---------|
+| `ProductionOrder` | Production Order Entry | Create and manage production orders |
+| `TimeEntry` | Time Entry | Record labor hours against production orders |
+| `TimeEntrySO` | Time Entry (Service Order) | Record labor hours against service orders |
+| `Labor` | Labor Maintenance | Labor code definitions and rates |
+| `LaborProcess` | Labor Process Maintenance | Labor process templates |
+| `WorkCenter` | Work Center Maintenance | Work center definitions |
+| `Operation` | Operation Maintenance | Operation definitions |
+| `PredefinedRouting` | Predefined Routing | Routing templates |
+| `ProductionOrderProcessing` | Production Order Processing | Process/complete production orders |
+
+See [Production & Labor API](12-Production-Labor-API.md) for detailed field definitions and examples.
+
 ---
 
 ## Response Format
@@ -556,5 +572,7 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 
 - [Authentication](00-Authentication.md)
 - [API Selection Guide](01-API-Selection-Guide.md)
+- [Production & Labor API](12-Production-Labor-API.md) - TimeEntry, ProductionOrder, and labor services
 - [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
 - [scripts/transaction/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/transaction/) - Working examples
+- [scripts/production/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/production/) - Production & labor examples

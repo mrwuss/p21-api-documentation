@@ -372,6 +372,7 @@
         <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
         <li><a href="10-Changelog.html">Changelog</a></li>
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -416,7 +417,10 @@
 </ul>
 </li>
 <li><a href="#working-example-scripts">Working Example Scripts</a></li>
-<li><a href="#common-windows">Common Windows</a></li>
+<li><a href="#common-windows">Common Windows</a><ul>
+<li><a href="#production-labor-windows">Production &amp; Labor Windows</a></li>
+</ul>
+</li>
 <li><a href="#example-linking-price-page-to-price-book">Example: Linking Price Page to Price Book</a><ul>
 <li><a href="#price-book-naming-and-lookup-strategies">Price Book Naming and Lookup Strategies</a></li>
 </ul>
@@ -1521,6 +1525,84 @@ GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form&amp
 </tr>
 </tbody>
 </table>
+<h3 id="production-labor-windows">Production &amp; Labor Windows</h3>
+<table>
+<thead>
+<tr>
+<th>Window Title</th>
+<th>Service Name</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Production Order Entry</td>
+<td>ProductionOrder</td>
+<td>Full production order management</td>
+</tr>
+<tr>
+<td>Time Entry</td>
+<td>TimeEntry</td>
+<td>Record labor hours against production orders</td>
+</tr>
+<tr>
+<td>Time Entry (Service Order)</td>
+<td>TimeEntrySO</td>
+<td>Record labor hours against service orders</td>
+</tr>
+<tr>
+<td>Labor Maintenance</td>
+<td>Labor</td>
+<td>Labor code definitions and rates</td>
+</tr>
+<tr>
+<td>Labor Process Maintenance</td>
+<td>LaborProcess</td>
+<td>Labor process templates</td>
+</tr>
+<tr>
+<td>Job Maintenance</td>
+<td>Job</td>
+<td>Job CRUD</td>
+</tr>
+<tr>
+<td>Job Control Maintenance</td>
+<td>JobControl</td>
+<td>Job sites and contacts</td>
+</tr>
+<tr>
+<td>Operation Maintenance</td>
+<td>Operation</td>
+<td>Operation definitions</td>
+</tr>
+<tr>
+<td>Predefined Routing</td>
+<td>PredefinedRouting</td>
+<td>Routing templates</td>
+</tr>
+<tr>
+<td>Assembly Maintenance</td>
+<td>Assembly</td>
+<td>Assembly definitions</td>
+</tr>
+<tr>
+<td>Manufacturing Class</td>
+<td>ManufacturingClass</td>
+<td>Manufacturing classification</td>
+</tr>
+<tr>
+<td>Shift Maintenance</td>
+<td>Shift</td>
+<td>Shift definitions</td>
+</tr>
+<tr>
+<td>Production Order Processing</td>
+<td>ProductionOrderProcessing</td>
+<td>Process/complete production orders</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="12-Production-Labor-API.html">Production &amp; Labor API</a> for detailed field definitions.</p>
 <hr />
 <h2 id="example-linking-price-page-to-price-book">Example: Linking Price Page to Price Book</h2>
 <p>This example shows how to use the SalesPriceBook window to link a price page to a price book. This is a common operation after creating a new price page.</p>
@@ -2420,6 +2502,7 @@ DELETE /api/ui/interactive/v2/data?id={windowId}
 <li><a href="00-Authentication.html">Authentication</a></li>
 <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
 <li><a href="03-Transaction-API.html">Transaction API</a></li>
+<li><a href="12-Production-Labor-API.html">Production &amp; Labor API</a> - TimeEntry, ProductionOrder, and labor services</li>
 <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a> - Production batch processing, async client, error recovery</li>
 <li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/interactive/">scripts/interactive/</a> - Working examples</li>
 </ul>
