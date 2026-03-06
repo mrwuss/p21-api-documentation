@@ -166,7 +166,7 @@ def main() -> None:
             print(f"  Type: {elem_type}")
             print(f"  Key Fields: {key_fields}")
             print(f"  Total Fields: {len(field_defs)}")
-            print(f"\n  Fields (* = required):")
+            print("\n  Fields (* = required):")
 
             for field in field_defs:
                 print_field_definition(field, indent=2)
