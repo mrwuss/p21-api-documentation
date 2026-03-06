@@ -500,7 +500,7 @@
 </tbody>
 </table>
 <h3 id="base-url-example">Base URL Example</h3>
-<div class="highlight"><pre><span></span><code>https://play.p21server.com/odataservice/odata/table/supplier
+<div class="highlight"><pre><span></span><code><span class="err">https://play.p21server.com/odataservice/odata/table/supplier</span>
 </code></pre></div>
 
 <hr />
@@ -528,32 +528,32 @@
 <p>All OData query parameters are prefixed with <code>$</code>.</p>
 <h3 id="select-choose-fields">$select - Choose Fields</h3>
 <p>Return only specific fields:</p>
-<div class="highlight"><pre><span></span><code>/odata/table/supplier?$select=supplier_id,supplier_name
+<div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$select=supplier_id,supplier_name</span>
 </code></pre></div>
 
 <h3 id="filter-filter-results">$filter - Filter Results</h3>
 <p>Filter records based on conditions:</p>
-<div class="highlight"><pre><span></span><code>/odata/table/supplier?$filter=supplier_id eq 10050
+<div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$filter=supplier_id eq 10050</span>
 </code></pre></div>
 
 <h3 id="orderby-sort-results">$orderby - Sort Results</h3>
 <p>Sort by one or more fields:</p>
-<div class="highlight"><pre><span></span><code>/odata/table/supplier?$orderby=supplier_name asc
+<div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$orderby=supplier_name asc</span>
 </code></pre></div>
 
 <h3 id="top-limit-results">$top - Limit Results</h3>
 <p>Return only N records:</p>
-<div class="highlight"><pre><span></span><code>/odata/table/supplier?$top=10
+<div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$top=10</span>
 </code></pre></div>
 
 <h3 id="skip-pagination">$skip - Pagination</h3>
 <p>Skip N records (combine with $top for paging):</p>
-<div class="highlight"><pre><span></span><code>/odata/table/supplier?$skip=20&amp;$top=10
+<div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$skip=20&amp;$top=10</span>
 </code></pre></div>
 
 <h3 id="count-get-count">$count - Get Count</h3>
 <p>Include total count in response:</p>
-<div class="highlight"><pre><span></span><code>/odata/table/supplier?$count=true
+<div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$count=true</span>
 </code></pre></div>
 
 <hr />
@@ -647,32 +647,32 @@
 </tbody>
 </table>
 <h3 id="null-checks">Null Checks</h3>
-<div class="highlight"><pre><span></span><code>$filter=expiration_date eq null
-$filter=notes ne null
+<div class="highlight"><pre><span></span><code><span class="err">$filter=expiration_date eq null</span>
+<span class="err">$filter=notes ne null</span>
 </code></pre></div>
 
 <hr />
 <h2 id="common-patterns">Common Patterns</h2>
 <h3 id="active-record-filter">Active Record Filter</h3>
 <p>P21 uses <code>row_status_flag</code> to track record status. Active records have <code>row_status_flag = 704</code>:</p>
-<div class="highlight"><pre><span></span><code>$filter=row_status_flag eq 704
+<div class="highlight"><pre><span></span><code><span class="err">$filter=row_status_flag eq 704</span>
 </code></pre></div>
 
 <p>Always include this filter when querying for active data:</p>
-<div class="highlight"><pre><span></span><code>$filter=supplier_id eq 10050 and row_status_flag eq 704
+<div class="highlight"><pre><span></span><code><span class="err">$filter=supplier_id eq 10050 and row_status_flag eq 704</span>
 </code></pre></div>
 
 <h3 id="non-expired-records">Non-Expired Records</h3>
 <p>To filter out expired records, compare <code>expiration_date</code> against a date value:</p>
-<div class="highlight"><pre><span></span><code>$filter=expiration_date ge 2025-01-01
+<div class="highlight"><pre><span></span><code><span class="err">$filter=expiration_date ge 2025-01-01</span>
 </code></pre></div>
 
 <p><strong>Warning:</strong> The <code>now()</code> function is not supported in P21 OData. Using it will return a 404 error:</p>
-<div class="highlight"><pre><span></span><code># DOES NOT WORK - returns 404
-$filter=expiration_date ge now()
+<div class="highlight"><pre><span></span><code><span class="err"># DOES NOT WORK - returns 404</span>
+<span class="err">$filter=expiration_date ge now()</span>
 
-# CORRECT - use explicit date
-$filter=expiration_date ge 2025-12-28
+<span class="err"># CORRECT - use explicit date</span>
+<span class="err">$filter=expiration_date ge 2025-12-28</span>
 </code></pre></div>
 
 <p>For date-relative queries, calculate the date in your application code:</p>
@@ -744,7 +744,7 @@ $filter=expiration_date ge 2025-12-28
 </table>
 <h3 id="string-escaping">String Escaping</h3>
 <p>Single quotes in values must be escaped by doubling:</p>
-<div class="highlight"><pre><span></span><code>$filter=supplier_name eq &#39;O&#39;&#39;Brien Supply&#39;
+<div class="highlight"><pre><span></span><code><span class="err">$filter=supplier_name eq &#39;O&#39;&#39;Brien Supply&#39;</span>
 </code></pre></div>
 
 <h3 id="item-ids-with-special-characters">Item IDs with Special Characters</h3>
@@ -787,8 +787,10 @@ $filter=expiration_date ge 2025-12-28
 <span class="c1"># &quot;O&#39;RING-204&quot;      -&gt; item_id eq &#39;O&#39;&#39;RING-204&#39;     (quote doubled)</span>
 
 <span class="c1"># Using with httpx (handles URL encoding automatically):</span>
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bearer &lt;token&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
 <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="n">safe_item_filter</span><span class="p">(</span><span class="s2">&quot;1/2-FITTING&quot;</span><span class="p">)}</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/table/inv_mast&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="c1"># httpx encodes the filter value in the query string automatically</span>
 </code></pre></div>
 </div>
@@ -903,30 +905,30 @@ $filter=expiration_date ge 2025-12-28
 <h2 id="examples">Examples</h2>
 <h3 id="basic-query">Basic Query</h3>
 <p>Get all suppliers:</p>
-<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/supplier
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/supplier</span>
 </code></pre></div>
 
 <h3 id="filtered-query">Filtered Query</h3>
 <p>Get active price pages for a supplier:</p>
-<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/price_page
-    ?$filter=supplier_id eq 10050 and row_status_flag eq 704
-    &amp;$select=price_page_uid,description,effective_date,expiration_date
-    &amp;$orderby=description
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/price_page</span>
+<span class="err">    ?$filter=supplier_id eq 10050 and row_status_flag eq 704</span>
+<span class="err">    &amp;$select=price_page_uid,description,effective_date,expiration_date</span>
+<span class="err">    &amp;$orderby=description</span>
 </code></pre></div>
 
 <h3 id="pagination">Pagination</h3>
 <p>Get page 3 (10 records per page):</p>
-<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/supplier
-    ?$skip=20
-    &amp;$top=10
-    &amp;$count=true
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/supplier</span>
+<span class="err">    ?$skip=20</span>
+<span class="err">    &amp;$top=10</span>
+<span class="err">    &amp;$count=true</span>
 </code></pre></div>
 
 <h3 id="complex-filter">Complex Filter</h3>
 <p>Products starting with 'FILTER' and price over $10:</p>
-<div class="highlight"><pre><span></span><code>GET /odataservice/odata/table/inv_mast
-    ?$filter=startswith(item_id,&#39;FILTER&#39;) and list_price gt 10
-    &amp;$select=item_id,item_desc,list_price
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/inv_mast</span>
+<span class="err">    ?$filter=startswith(item_id,&#39;FILTER&#39;) and list_price gt 10</span>
+<span class="err">    &amp;$select=item_id,item_desc,list_price</span>
 </code></pre></div>
 
 <hr />
@@ -953,6 +955,7 @@ $filter=expiration_date ge 2025-12-28
     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 
 <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 <span class="k">for</span> <span class="n">supplier</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]:</span>
@@ -1004,6 +1007,7 @@ $filter=expiration_date ge 2025-12-28
     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1038,6 +1042,7 @@ $filter=expiration_date ge 2025-12-28
 <span class="sd">            when paginating for a UI. There is no documented server-side</span>
 <span class="sd">            maximum -- 25,000 has been verified in production.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bearer &lt;token&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
     <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">skip</span> <span class="o">=</span> <span class="mi">0</span>
 
@@ -1052,6 +1057,7 @@ $filter=expiration_date ge 2025-12-28
             <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
             <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
         <span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
         <span class="n">records</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">])</span>

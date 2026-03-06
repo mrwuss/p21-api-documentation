@@ -34,7 +34,7 @@ This document addresses intermittent failures when using the Prophet 21 (P21) Tr
 
 ### 1.1 Error Message
 
-```
+```text
 System.AggregateException: One or more errors occurred.
 ---> P21.UI.Common.UiServerException: Unexpected response window:
 Email Purchase Order(s). Window class: w_email_response
@@ -109,7 +109,7 @@ This randomness initially suggested a configuration issue, but the inconsistency
 
 The error message mentioned `Email Purchase Order(s)` dialog, which suggested a P21 business rule was triggering an email workflow. The stack trace showed:
 
-```
+```text
 at P21.Application.Business.n_cst_emailsrv.of_retrieveemailinformation()
 at P21.Application.Business.n_cst_script.of_showprinterdialogbox()
 at P21.Application.UI.w_purchase_order_entry_sheet.ue_print()
@@ -151,7 +151,7 @@ The randomness pattern matched known behavior of **connection/session pools**:
 
 ### 3.1 How the Transaction API Session Pool Works
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    P21 UI Server                             │
 │  ┌─────────────────────────────────────────────────────┐    │
@@ -181,7 +181,7 @@ The randomness pattern matched known behavior of **connection/session pools**:
 
 The error occurs during `ue_clear()` - the **cleanup phase**:
 
-```
+```text
 at P21.Application.UI.w_purchase_order_entry_sheet.ue_clear()
 ```
 
@@ -195,7 +195,7 @@ This confirms:
 
 The `acknowledged` and `c_shipped_flag` fields trigger email notifications in P21:
 
-```
+```text
 acknowledged = ON  →  "Send acknowledgment to supplier"
 c_shipped_flag = ON  →  "Notify about shipment status"
 ```
@@ -266,13 +266,13 @@ async Task<TransactionResult> CallTransactionApiAsync(
 
 The async endpoint may use dedicated sessions:
 
-```
+```http
 POST /uiserver0/api/v2/transaction/async
 ```
 
 Then poll for results:
 
-```
+```http
 GET /uiserver0/api/v2/transaction/async?id={RequestId}
 ```
 
@@ -347,7 +347,7 @@ python scripts/transaction/test_session_pool.py
 
 **Sample Output:**
 
-```
+```text
 TEST 1: Rapid Fire (10 requests, no delay)
 ======================================================================
   [ 1] ✓  234ms - Succeeded: 1
@@ -366,7 +366,7 @@ CONCLUSIONS:
 
 A test run against the SalesPricePage window showed 100% success:
 
-```
+```text
 SESSION POOL BEHAVIOR ANALYSIS
 ======================================================================
 RAPID_FIRE:       Total: 10, Success: 10, Failed: 0 (100.0%)
@@ -403,7 +403,7 @@ CONCLUSIONS:
 
 ### A. Complete Error Stack Trace
 
-```
+```text
 System.AggregateException: One or more errors occurred.
 ---> P21.UI.Common.UiServerException:
      Unexpected response window: Email Purchase Order(s).

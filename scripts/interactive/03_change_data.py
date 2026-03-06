@@ -157,7 +157,7 @@ def main():
                 "Value": "Supplier / Product Group"
             }
         ])
-        print(f"  Changed price_page_type_cd")
+        print("  Changed price_page_type_cd")
         print(f"  Status: {result.get('Status')} (1=Success, 2=Failure)")
 
         # Example 2: Change multiple fields in one request
@@ -185,7 +185,7 @@ def main():
         print("-" * 50)
 
         result = session.change_tab(window_id, "VALUES")
-        print(f"  Tab changed to VALUES")
+        print("  Tab changed to VALUES")
         print(f"  Status: {result.get('Status')}")
 
         # Change fields on new tab
@@ -193,7 +193,7 @@ def main():
             {"TabName": "VALUES", "DatawindowName": "d_values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
             {"TabName": "VALUES", "DatawindowName": "d_values", "FieldName": "calculation_value1", "Value": "0.75"},
         ])
-        print(f"  Changed calculation fields")
+        print("  Changed calculation fields")
         print(f"  Status: {result.get('Status')}")
 
         # Get current data
@@ -218,12 +218,12 @@ def main():
         try:
             session.close_window(window_id)
             print("  Window closed")
-        except Exception:
+        except (httpx.HTTPError, OSError):
             pass
         try:
             session.end()
             print("  Session ended")
-        except Exception:
+        except (httpx.HTTPError, OSError):
             pass
 
     print("\n" + "=" * 60)

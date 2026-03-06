@@ -112,7 +112,7 @@ def main():
 
         transactions = transaction_set.get("Transactions", [])
         if transactions:
-            print(f"\n  DataElements in template:")
+            print("\n  DataElements in template:")
             for trans in transactions[:1]:  # First transaction
                 for elem in trans.get("DataElements", [])[:5]:  # First 5 elements
                     print_data_element(elem, indent=2)
@@ -163,7 +163,7 @@ def main():
         print(f"  Error: {e.response.status_code} - {e.response.text[:200]}")
 
     # Example 3: Get default values
-    print(f"\n\n3. Getting default values for 'Order' service:")
+    print("\n\n3. Getting default values for 'Order' service:")
     print("-" * 50)
 
     try:

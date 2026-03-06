@@ -35,7 +35,7 @@ The Inventory REST API is significant because it provides:
 
 ## Base URL
 
-```
+```http
 https://{hostname}/api/inventory/parts
 ```
 

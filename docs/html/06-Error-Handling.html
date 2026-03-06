@@ -778,7 +778,7 @@ Default timeout is typically 6 minutes of inactivity.</p>
 
 <p>This is <strong>by design</strong> — the Address entity has a reduced API surface. See <a href="05-Entity-API.html#address-limitations">Entity API - Address Limitations</a>.</p>
 <h3 id="500-address-template-not-available">500 - Address Template Not Available</h3>
-<div class="highlight"><pre><span></span><code>GET /api/entity/addresses/new → 500 Internal Server Error
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/addresses/new → 500 Internal Server Error</span>
 </code></pre></div>
 
 <p>The Address entity does not have a <code>/new</code> template endpoint. This is by design — use the Customer or Vendor template endpoints to see address fields within their extended properties.</p>

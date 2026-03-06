@@ -446,12 +446,12 @@
 </ol>
 <h2 id="token-endpoints">Token Endpoints</h2>
 <h3 id="v2-endpoint-recommended">V2 Endpoint (Recommended)</h3>
-<div class="highlight"><pre><span></span><code>POST https://{hostname}/api/security/token/v2
+<div class="highlight"><pre><span></span><code><span class="err">POST https://{hostname}/api/security/token/v2</span>
 </code></pre></div>
 
 <p>The V2 endpoint accepts credentials in the request body.</p>
 <h3 id="v1-endpoint-deprecated">V1 Endpoint (Deprecated)</h3>
-<div class="highlight"><pre><span></span><code>POST https://{hostname}/api/security/token
+<div class="highlight"><pre><span></span><code><span class="err">POST https://{hostname}/api/security/token</span>
 </code></pre></div>
 
 <p>The V1 endpoint accepts credentials as headers. While still functional, Epicor recommends migrating to V2.</p>
@@ -677,7 +677,7 @@
 </table>
 <h3 id="odata-table-scopes">OData Table Scopes</h3>
 <p>For OData access, specify allowed tables/views:</p>
-<div class="highlight"><pre><span></span><code>/odata:price_page,supplier,product_group
+<div class="highlight"><pre><span></span><code><span class="err">/odata:price_page,supplier,product_group</span>
 </code></pre></div>
 
 <p>This restricts the token to only those tables.</p>
@@ -781,6 +781,7 @@
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/odataservice/odata/table/supplier&quot;</span><span class="p">,</span>
     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span>
 <span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">

@@ -203,11 +203,11 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
         return {"success": True, "data": data}
 
-    except Exception:
+    except (httpx.HTTPError, OSError):
         if window_id:
             try:
                 session.close_window(window_id)
-            except Exception:
+            except (httpx.HTTPError, OSError):
                 pass
         raise
 
@@ -264,7 +264,7 @@ def main():
         try:
             session.end()
             print("  Session ended")
-        except Exception:
+        except (httpx.HTTPError, OSError):
             pass
 
     print("\n" + "=" * 60)

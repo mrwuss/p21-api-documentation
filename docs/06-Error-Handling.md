@@ -299,7 +299,7 @@ When a response window opens, the API returns:
 ### 405 - Method Not Allowed (Address Updates)
 
 Addresses do not support PUT/update operations. Attempting to update an address returns:
-```
+```text
 HTTP 405 Method Not Allowed
 ```
 
@@ -307,7 +307,7 @@ This is **by design** — the Address entity has a reduced API surface. See [Ent
 
 ### 500 - Address Template Not Available
 
-```
+```http
 GET /api/entity/addresses/new → 500 Internal Server Error
 ```
 

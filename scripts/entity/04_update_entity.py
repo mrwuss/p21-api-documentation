@@ -145,7 +145,7 @@ def main():
                     "*"
                 )
                 print(f"  Extended properties available: {list(extended.keys())[:5]}...")
-            except:
+            except (httpx.HTTPError, KeyError, ValueError):
                 print("  Extended properties not available for this order")
 
     except httpx.HTTPStatusError as e:

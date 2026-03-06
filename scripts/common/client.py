@@ -63,7 +63,7 @@ class Result:
         status_code = response.status_code
         try:
             data = response.json()
-        except Exception:
+        except (ValueError, KeyError):
             data = response.text
 
         if isinstance(data, dict):
@@ -107,7 +107,7 @@ class TransactionResult:
         status_code = response.status_code
         try:
             data = response.json()
-        except Exception:
+        except (ValueError, KeyError):
             return cls(
                 status_code=status_code,
                 messages=[response.text[:500]],
@@ -418,7 +418,7 @@ class InteractiveSession:
         self._started = True
         try:
             return resp.json()
-        except Exception:
+        except (ValueError, KeyError):
             return {"status": resp.status_code}
 
     def end(self) -> None:
@@ -483,7 +483,7 @@ class AsyncInteractiveSession:
         self._started = True
         try:
             return resp.json()
-        except Exception:
+        except (ValueError, KeyError):
             return {"status": resp.status_code}
 
     async def end(self) -> None:

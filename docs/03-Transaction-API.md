@@ -29,7 +29,7 @@ The Transaction API is a **stateless RESTful** web service for bulk data manipul
 
 All Transaction API endpoints use the UI Server URL. First, obtain the UI Server URL:
 
-```
+```http
 GET https://{hostname}/api/ui/router/v1?urlType=external
 ```
 
@@ -265,7 +265,7 @@ For long-running operations, use the async endpoint. Async requests run in a ded
 
 ### Submit Async Request
 
-```
+```http
 POST /api/v2/transaction/async
 ```
 
@@ -280,7 +280,7 @@ Response includes a request ID:
 
 ### Check Status
 
-```
+```http
 GET /api/v2/transaction/async?id=ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d
 ```
 
@@ -326,7 +326,7 @@ Use the callback endpoint to receive notification when complete:
 
 Some P21 services **cannot** use the standard `/api/v2/transaction` endpoint. These must use the commands endpoint instead:
 
-```
+```http
 POST /api/v2/commands
 ```
 
@@ -394,6 +394,7 @@ response = httpx.get(
     headers={"Authorization": f"Bearer {token}"},
     verify=False
 )
+response.raise_for_status()
 
 definition = response.json()
 # definition["Template"] - blank template for creating records
@@ -458,6 +459,7 @@ response = httpx.post(
     json=payload,
     verify=False
 )
+response.raise_for_status()
 ```
 
 ```csharp

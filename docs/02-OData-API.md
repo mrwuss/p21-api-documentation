@@ -27,7 +27,7 @@ The OData API provides **read-only** access to P21 data using the OData v3 proto
 
 ### Base URL Example
 
-```
+```http
 https://play.p21server.com/odataservice/odata/table/supplier
 ```
 
@@ -67,7 +67,7 @@ All OData query parameters are prefixed with `$`.
 
 Return only specific fields:
 
-```
+```http
 /odata/table/supplier?$select=supplier_id,supplier_name
 ```
 
@@ -75,7 +75,7 @@ Return only specific fields:
 
 Filter records based on conditions:
 
-```
+```http
 /odata/table/supplier?$filter=supplier_id eq 10050
 ```
 
@@ -83,7 +83,7 @@ Filter records based on conditions:
 
 Sort by one or more fields:
 
-```
+```http
 /odata/table/supplier?$orderby=supplier_name asc
 ```
 
@@ -91,7 +91,7 @@ Sort by one or more fields:
 
 Return only N records:
 
-```
+```http
 /odata/table/supplier?$top=10
 ```
 
@@ -99,7 +99,7 @@ Return only N records:
 
 Skip N records (combine with $top for paging):
 
-```
+```http
 /odata/table/supplier?$skip=20&$top=10
 ```
 
@@ -107,7 +107,7 @@ Skip N records (combine with $top for paging):
 
 Include total count in response:
 
-```
+```http
 /odata/table/supplier?$count=true
 ```
 
@@ -144,7 +144,7 @@ Include total count in response:
 
 ### Null Checks
 
-```
+```http
 $filter=expiration_date eq null
 $filter=notes ne null
 ```
@@ -157,13 +157,13 @@ $filter=notes ne null
 
 P21 uses `row_status_flag` to track record status. Active records have `row_status_flag = 704`:
 
-```
+```http
 $filter=row_status_flag eq 704
 ```
 
 Always include this filter when querying for active data:
 
-```
+```http
 $filter=supplier_id eq 10050 and row_status_flag eq 704
 ```
 
@@ -171,13 +171,13 @@ $filter=supplier_id eq 10050 and row_status_flag eq 704
 
 To filter out expired records, compare `expiration_date` against a date value:
 
-```
+```http
 $filter=expiration_date ge 2025-01-01
 ```
 
 **Warning:** The `now()` function is not supported in P21 OData. Using it will return a 404 error:
 
-```
+```http
 # DOES NOT WORK - returns 404
 $filter=expiration_date ge now()
 
@@ -225,7 +225,7 @@ var filterExpr = $"expiration_date ge {tomorrow}";
 
 Single quotes in values must be escaped by doubling:
 
-```
+```http
 $filter=supplier_name eq 'O''Brien Supply'
 ```
 
@@ -271,8 +271,10 @@ def safe_item_filter(item_id: str) -> str:
 # "O'RING-204"      -> item_id eq 'O''RING-204'     (quote doubled)
 
 # Using with httpx (handles URL encoding automatically):
+headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
 params = {"$filter": safe_item_filter("1/2-FITTING")}
 response = httpx.get(f"{base_url}/table/inv_mast", params=params, headers=headers)
+response.raise_for_status()
 # httpx encodes the filter value in the query string automatically
 ```
 
@@ -375,7 +377,7 @@ var response = await client.GetAsync(url);
 
 Get all suppliers:
 
-```
+```http
 GET /odataservice/odata/table/supplier
 ```
 
@@ -383,7 +385,7 @@ GET /odataservice/odata/table/supplier
 
 Get active price pages for a supplier:
 
-```
+```http
 GET /odataservice/odata/table/price_page
     ?$filter=supplier_id eq 10050 and row_status_flag eq 704
     &$select=price_page_uid,description,effective_date,expiration_date
@@ -394,7 +396,7 @@ GET /odataservice/odata/table/price_page
 
 Get page 3 (10 records per page):
 
-```
+```http
 GET /odataservice/odata/table/supplier
     ?$skip=20
     &$top=10
@@ -405,7 +407,7 @@ GET /odataservice/odata/table/supplier
 
 Products starting with 'FILTER' and price over $10:
 
-```
+```http
 GET /odataservice/odata/table/inv_mast
     ?$filter=startswith(item_id,'FILTER') and list_price gt 10
     &$select=item_id,item_desc,list_price
@@ -437,6 +439,7 @@ response = httpx.get(
     headers=headers,
     verify=False
 )
+response.raise_for_status()
 
 data = response.json()
 for supplier in data["value"]:
@@ -491,6 +494,7 @@ response = httpx.get(
     headers=headers,
     verify=False
 )
+response.raise_for_status()
 ```
 
 **C#**
@@ -528,6 +532,7 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
             when paginating for a UI. There is no documented server-side
             maximum -- 25,000 has been verified in production.
     """
+    headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
     records = []
     skip = 0
 
@@ -542,6 +547,7 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
             headers=headers,
             verify=False
         )
+        response.raise_for_status()
         data = response.json()
 
         records.extend(data["value"])

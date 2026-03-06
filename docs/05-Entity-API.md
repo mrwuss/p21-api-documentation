@@ -41,7 +41,7 @@ P21 also provides a separate **Inventory REST API** at `/api/inventory/parts` â€
 
 ## Base URL
 
-```
+```http
 https://{hostname}/api/entity/{resource}
 ```
 
@@ -72,7 +72,7 @@ Additionally, the **[Inventory REST API](11-Inventory-REST-API.md)** provides CR
 
 Customers and Vendors require a **composite key** combining `CompanyId` and the entity ID, separated by an underscore:
 
-```
+```http
 /api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
 /api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485
 ```
@@ -83,7 +83,7 @@ Customers and Vendors require a **composite key** combining `CompanyId` and the 
 
 Contacts and Addresses use **simple numeric IDs**:
 
-```
+```http
 /api/entity/contacts/1
 /api/entity/addresses/10
 ```
@@ -297,7 +297,7 @@ GET /api/entity/customers/ping
 
 Filter results using the `$query` parameter on list endpoints:
 
-```
+```http
 GET /api/entity/customers/?$query=startswith(CustomerName, 'ABC')
 ```
 
@@ -332,7 +332,7 @@ GET /api/entity/customers/?$query=startswith(CustomerName, 'ABC')
 
 ### Verified Query Examples
 
-```
+```http
 # Find customers by name prefix (returned 7 results)
 GET /api/entity/customers/?$query=startswith(CustomerName, 'ABC')
 
@@ -350,12 +350,12 @@ GET /api/entity/customers/?$query=CompanyId eq 'ACME'
 Include related/nested data using the `extendedproperties` parameter:
 
 **All nested objects:**
-```
+```http
 GET /api/entity/customers/ACME_10?extendedproperties=*
 ```
 
 **Specific nested object:**
-```
+```http
 GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 ```
 
@@ -1107,7 +1107,7 @@ The P21 middleware also exposes mobile-specific entity endpoints with **addition
 
 You can browse all available Entity API endpoints from the P21 middleware home page:
 
-```
+```http
 https://{hostname}/docs/
 ```
 

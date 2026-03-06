@@ -15,7 +15,7 @@ All P21 APIs require authentication via Bearer tokens. This guide covers the two
 
 ### V2 Endpoint (Recommended)
 
-```
+```http
 POST https://{hostname}/api/security/token/v2
 ```
 
@@ -23,7 +23,7 @@ The V2 endpoint accepts credentials in the request body.
 
 ### V1 Endpoint (Deprecated)
 
-```
+```http
 POST https://{hostname}/api/security/token
 ```
 
@@ -233,7 +233,7 @@ Consumer keys can restrict access to specific endpoints and data.
 
 For OData access, specify allowed tables/views:
 
-```
+```http
 /odata:price_page,supplier,product_group
 ```
 
@@ -326,6 +326,7 @@ response = httpx.get(
     f"{base_url}/odataservice/odata/table/supplier",
     headers=headers
 )
+response.raise_for_status()
 ```
 
 **C#:**

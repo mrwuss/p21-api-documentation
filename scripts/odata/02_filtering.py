@@ -91,7 +91,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print(f"  Suppliers starting with 'A':")
+    print("  Suppliers starting with 'A':")
     for supplier in data["value"]:
         print(f"    {supplier['supplier_id']}: {supplier['supplier_name']}")
 
@@ -113,7 +113,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print(f"  Product groups containing 'F':")
+    print("  Product groups containing 'F':")
     for group in data["value"]:
         print(f"    {group['product_group_id']}: {group.get('product_group_desc', 'N/A')}")
 
@@ -136,7 +136,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print(f"  Pages with multiplier between 0.5 and 1.0:")
+    print("  Pages with multiplier between 0.5 and 1.0:")
     for page in data["value"]:
         val = page.get('calculation_value1', 0)
         print(f"    {page['price_page_uid']}: {val:.3f} - {page.get('description', 'N/A')[:30]}")
