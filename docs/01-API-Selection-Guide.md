@@ -18,6 +18,8 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 | Simple CRUD (customers, vendors, contacts, addresses) | **Entity API** | Stateless, domain objects |
 | Update existing records | **Interactive API** | Reliable field-level updates |
 | Handle response dialogs | **Interactive API** | Only API with dialog handling |
+| Record labor hours to production orders | **Transaction API** | TimeEntry service, stateless |
+| Manage production orders | **Transaction API** / **Interactive API** | Full PO lifecycle |
 
 ---
 
@@ -110,6 +112,8 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 - Sync products from external catalog
 - Bulk create purchase orders
 - Automated data migration
+- Record labor hours against production orders (TimeEntry service)
+- Bulk create production orders
 
 ---
 
@@ -151,6 +155,8 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 - Modify customer records
 - Complex order entry
 - Any operation with approval dialogs
+- Manage production orders (open, modify, complete)
+- Record labor hours via Time Entry window
 
 ---
 
@@ -284,4 +290,5 @@ Measured against production P21 instance:
 - [Transaction API](03-Transaction-API.md)
 - [Interactive API](04-Interactive-API.md)
 - [Entity API](05-Entity-API.md)
+- [Production & Labor API](12-Production-Labor-API.md)
 - [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)

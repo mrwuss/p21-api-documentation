@@ -372,6 +372,7 @@
         <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
         <li><a href="10-Changelog.html">Changelog</a></li>
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -394,7 +395,10 @@
 <li><a href="#row-edit-fields">Row / Edit Fields</a></li>
 </ul>
 </li>
-<li><a href="#common-services">Common Services</a></li>
+<li><a href="#common-services">Common Services</a><ul>
+<li><a href="#production-labor-services">Production &amp; Labor Services</a></li>
+</ul>
+</li>
 <li><a href="#response-format">Response Format</a><ul>
 <li><a href="#success-response">Success Response</a></li>
 <li><a href="#error-response">Error Response</a></li>
@@ -771,6 +775,64 @@
 </tr>
 </tbody>
 </table>
+<h3 id="production-labor-services">Production &amp; Labor Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>P21 Window</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ProductionOrder</code></td>
+<td>Production Order Entry</td>
+<td>Create and manage production orders</td>
+</tr>
+<tr>
+<td><code>TimeEntry</code></td>
+<td>Time Entry</td>
+<td>Record labor hours against production orders</td>
+</tr>
+<tr>
+<td><code>TimeEntrySO</code></td>
+<td>Time Entry (Service Order)</td>
+<td>Record labor hours against service orders</td>
+</tr>
+<tr>
+<td><code>Labor</code></td>
+<td>Labor Maintenance</td>
+<td>Labor code definitions and rates</td>
+</tr>
+<tr>
+<td><code>LaborProcess</code></td>
+<td>Labor Process Maintenance</td>
+<td>Labor process templates</td>
+</tr>
+<tr>
+<td><code>WorkCenter</code></td>
+<td>Work Center Maintenance</td>
+<td>Work center definitions</td>
+</tr>
+<tr>
+<td><code>Operation</code></td>
+<td>Operation Maintenance</td>
+<td>Operation definitions</td>
+</tr>
+<tr>
+<td><code>PredefinedRouting</code></td>
+<td>Predefined Routing</td>
+<td>Routing templates</td>
+</tr>
+<tr>
+<td><code>ProductionOrderProcessing</code></td>
+<td>Production Order Processing</td>
+<td>Process/complete production orders</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="12-Production-Labor-API.html">Production &amp; Labor API</a> for detailed field definitions and examples.</p>
 <hr />
 <h2 id="response-format">Response Format</h2>
 <h3 id="success-response">Success Response</h3>
@@ -1240,8 +1302,10 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <ul>
 <li><a href="00-Authentication.html">Authentication</a></li>
 <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
+<li><a href="12-Production-Labor-API.html">Production &amp; Labor API</a> - TimeEntry, ProductionOrder, and labor services</li>
 <li><a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></li>
 <li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/transaction/">scripts/transaction/</a> - Working examples</li>
+<li><a href="https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/production/">scripts/production/</a> - Production &amp; labor examples</li>
 </ul>
     </main>
 

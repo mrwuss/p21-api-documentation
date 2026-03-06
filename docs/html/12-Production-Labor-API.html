@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Order & Labor Hour APIs - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <strong>P21 API Docs</strong>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="02-OData-API.html">OData API</a></li>
+        <li><a href="03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="05-Entity-API.html">Entity API</a></li>
+        <li><a href="06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="10-Changelog.html">Changelog</a></li>
+        <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li class="active"><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a><ul>
+<li><a href="#key-characteristics">Key Characteristics</a></li>
+<li><a href="#when-to-use">When to Use</a></li>
+</ul>
+</li>
+<li><a href="#available-services">Available Services</a><ul>
+<li><a href="#core-production-services">Core Production Services</a></li>
+<li><a href="#labor-time-services">Labor &amp; Time Services</a></li>
+<li><a href="#supporting-services">Supporting Services</a></li>
+</ul>
+</li>
+<li><a href="#recording-labor-hours-timeentry-service">Recording Labor Hours (TimeEntry Service)</a><ul>
+<li><a href="#service-definition">Service Definition</a></li>
+<li><a href="#example-record-labor-hours">Example: Record Labor Hours</a></li>
+<li><a href="#response">Response</a></li>
+</ul>
+</li>
+<li><a href="#productionorder-service-full-structure">ProductionOrder Service -- Full Structure</a><ul>
+<li><a href="#dataelements">DataElements</a></li>
+<li><a href="#additional-dataelements">Additional DataElements</a></li>
+</ul>
+</li>
+<li><a href="#labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</a><ul>
+<li><a href="#key-field">Key Field</a></li>
+<li><a href="#header-fields">Header Fields</a></li>
+<li><a href="#rate-tables">Rate Tables</a></li>
+<li><a href="#cost-data">Cost Data</a></li>
+</ul>
+</li>
+<li><a href="#laborprocess-service-process-templates">LaborProcess Service -- Process Templates</a><ul>
+<li><a href="#key-field_1">Key Field</a></li>
+<li><a href="#header-fields_1">Header Fields</a></li>
+<li><a href="#labor-process-list-operations">Labor Process List (Operations)</a></li>
+</ul>
+</li>
+<li><a href="#interactive-api-windows">Interactive API Windows</a><ul>
+<li><a href="#opening-a-production-window">Opening a Production Window</a></li>
+</ul>
+</li>
+<li><a href="#data-access-odata">Data Access (OData)</a><ul>
+<li><a href="#common-tables-to-expose">Common Tables to Expose</a></li>
+</ul>
+</li>
+<li><a href="#best-practices">Best Practices</a></li>
+<li><a href="#common-errors">Common Errors</a></li>
+<li><a href="#code-examples">Code Examples</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="production-order-labor-hour-apis">Production Order &amp; Labor Hour APIs</h1>
+<blockquote>
+<p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
+</blockquote>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>P21 provides production order management and labor hour tracking through the <strong>Transaction API</strong> and <strong>Interactive API</strong>. There are no dedicated REST endpoints for production or labor -- these capabilities use the existing Transaction and Interactive patterns documented in <a href="03-Transaction-API.html">Transaction API</a> and <a href="04-Interactive-API.html">Interactive API</a>.</p>
+<h3 id="key-characteristics">Key Characteristics</h3>
+<ul>
+<li><strong>No dedicated REST endpoints</strong> - Uses Transaction API (<code>/api/v2/transaction</code>) and Interactive API (<code>/api/ui/interactive/v2/</code>)</li>
+<li><strong>Full production lifecycle</strong> - Create orders, record labor, track costs, process completions</li>
+<li><strong>OData tables not exposed by default</strong> - Production-related tables require SOA Admin configuration before OData access</li>
+<li><strong>Service-based</strong> - Each production function maps to a named service</li>
+</ul>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li>Creating and managing production orders</li>
+<li>Recording labor hours against production orders or service orders</li>
+<li>Maintaining labor codes, work centers, and routing templates</li>
+<li>Tracking production costs (material, labor, freight, process)</li>
+<li>Automating production order processing and completion</li>
+</ul>
+<hr />
+<h2 id="available-services">Available Services</h2>
+<p>All services below are accessed through the Transaction API. Use <code>GET /api/v2/services</code> to confirm availability on your P21 instance. Use <code>GET /api/v2/definition/{ServiceName}</code> to retrieve the full schema and template for any service.</p>
+<h3 id="core-production-services">Core Production Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ProductionOrder</code></td>
+<td>Create and manage production orders with assemblies, components, labor, routing</td>
+</tr>
+<tr>
+<td><code>ProductionOrderProcessing</code></td>
+<td>Process and complete production orders</td>
+</tr>
+<tr>
+<td><code>ProductionOrderPicking</code></td>
+<td>Pick ticket management for production orders</td>
+</tr>
+<tr>
+<td><code>ProductionOrderFreightEntry</code></td>
+<td>Freight cost entry for production orders</td>
+</tr>
+<tr>
+<td><code>CompletedProducitonOrderAdjustment</code></td>
+<td>Adjust completed production orders</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The service name <code>CompletedProducitonOrderAdjustment</code> contains a typo ("Produciton" instead of "Production"). This is P21's actual service name -- you must use the misspelled version in API calls.</p>
+</blockquote>
+<h3 id="labor-time-services">Labor &amp; Time Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TimeEntry</code></td>
+<td>Record labor hours against production orders</td>
+</tr>
+<tr>
+<td><code>TimeEntrySO</code></td>
+<td>Record labor hours against service orders</td>
+</tr>
+<tr>
+<td><code>Labor</code></td>
+<td>Labor code maintenance (rates, types, costs)</td>
+</tr>
+<tr>
+<td><code>LaborProcess</code></td>
+<td>Labor process templates with operation sequences</td>
+</tr>
+</tbody>
+</table>
+<h3 id="supporting-services">Supporting Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Job</code></td>
+<td>Job maintenance</td>
+</tr>
+<tr>
+<td><code>JobControl</code></td>
+<td>Job control with customer/site info</td>
+</tr>
+<tr>
+<td><code>JobContractPricing</code></td>
+<td>Job contract pricing</td>
+</tr>
+<tr>
+<td><code>WorkCenter</code></td>
+<td>Work center maintenance</td>
+</tr>
+<tr>
+<td><code>Operation</code></td>
+<td>Operation definitions</td>
+</tr>
+<tr>
+<td><code>PredefinedRouting</code></td>
+<td>Routing templates</td>
+</tr>
+<tr>
+<td><code>Assembly</code></td>
+<td>Assembly maintenance</td>
+</tr>
+<tr>
+<td><code>AssemblyClass</code></td>
+<td>Assembly classification</td>
+</tr>
+<tr>
+<td><code>ManufacturingClass</code></td>
+<td>Manufacturing classification</td>
+</tr>
+<tr>
+<td><code>Shift</code></td>
+<td>Shift definitions</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="recording-labor-hours-timeentry-service">Recording Labor Hours (TimeEntry Service)</h2>
+<p>The <code>TimeEntry</code> service is the primary service for posting labor hours to production orders. It uses a header/detail pattern with a technician header and one or more labor line items.</p>
+<h3 id="service-definition">Service Definition</h3>
+<p>Retrieve the full schema with:</p>
+<div class="highlight"><pre><span></span><code>GET /api/v2/definition/TimeEntry
+</code></pre></div>
+
+<h4 id="header-tp_techniciantp_technician-form">Header -- <code>TP_TECHNICIAN.tp_technician</code> (Form)</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>company_id</code></td>
+<td>Char</td>
+<td>Yes</td>
+<td>Company ID</td>
+</tr>
+<tr>
+<td><code>technician_id</code></td>
+<td>Char</td>
+<td>Yes</td>
+<td>Technician/worker ID</td>
+</tr>
+<tr>
+<td><code>entry_date</code></td>
+<td>Datetime</td>
+<td>Yes</td>
+<td>Date of time entry</td>
+</tr>
+</tbody>
+</table>
+<h4 id="labor-lines-tp_laborrecordingprod_order_line_comp_labor-list">Labor Lines -- <code>TP_LABORRECORDING.prod_order_line_comp_labor</code> (List)</h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prod_order_number</code></td>
+<td>Decimal</td>
+<td>No (key)</td>
+<td>Production order number</td>
+</tr>
+<tr>
+<td><code>item_id</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Assembly item ID</td>
+</tr>
+<tr>
+<td><code>component_labor_id</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Component labor ID</td>
+</tr>
+<tr>
+<td><code>operation_cd</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Operation code</td>
+</tr>
+<tr>
+<td><code>service_labor_id</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Labor ID (from Labor service)</td>
+</tr>
+<tr>
+<td><code>start_time</code></td>
+<td>Datetime</td>
+<td>No</td>
+<td>Start time</td>
+</tr>
+<tr>
+<td><code>end_time</code></td>
+<td>Datetime</td>
+<td>No</td>
+<td>End time</td>
+</tr>
+<tr>
+<td><code>time_worked</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Time worked (HH:MM format)</td>
+</tr>
+<tr>
+<td><code>labor_type_cd</code></td>
+<td>Long</td>
+<td>Yes</td>
+<td><code>Rate</code>, <code>OT Rate</code>, or <code>Prem Rate</code></td>
+</tr>
+<tr>
+<td><code>cc_completeprodorder</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Complete production order flag</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-record-labor-hours">Example: Record Labor Hours</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># After authentication and getting ui_server_url...</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TimeEntry&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TP_TECHNICIAN.tp_technician&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;technician_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;TECH001&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;entry_date&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-06&quot;</span><span class="p">}</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]</span>
+                <span class="p">}]</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TP_LABORRECORDING.prod_order_line_comp_labor&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;prod_order_number&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;prod_order_number&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;1001&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;service_labor_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;LABOR01&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;start_time&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-06T08:00:00&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;end_time&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-06T12:00:00&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;time_worked&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;4:00&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;labor_type_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;Rate&quot;</span><span class="p">}</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]</span>
+                <span class="p">}]</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">}]</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Succeeded: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;Succeeded&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TimeEntry&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;UseCodeValues&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;Transactions&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;Status&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DataElements&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TP_TECHNICIAN.tp_technician&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;technician_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TECH001&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;entry_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-03-06&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="na">[&quot;RelativeDateEdits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">()</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TP_LABORRECORDING.prod_order_line_comp_labor&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;prod_order_number&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;prod_order_number&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1001</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;service_labor_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;LABOR01&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;start_time&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-03-06T08:00:00&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;end_time&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-03-06T12:00:00&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;time_worked&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;4:00&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;labor_type_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Rate&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="na">[&quot;RelativeDateEdits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">()</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">    </span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/v2/transaction&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Succeeded: {result[&quot;</span><span class="n">Summary</span><span class="s">&quot;][&quot;</span><span class="n">Succeeded</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<h3 id="response">Response</h3>
+<p>A successful time entry returns:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Transaction 1:: &quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;Results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TimeEntry&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">],</span>
+<span class="w">                </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Passed&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Succeeded&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Other&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="productionorder-service-full-structure">ProductionOrder Service -- Full Structure</h2>
+<p>The <code>ProductionOrder</code> service is the most complex production service, with DataElements covering headers, assemblies, components, labor, routing, costs, and completion tracking.</p>
+<p>Retrieve the full schema with:</p>
+<div class="highlight"><pre><span></span><code>GET /api/v2/definition/ProductionOrder
+</code></pre></div>
+
+<h3 id="dataelements">DataElements</h3>
+<h4 id="1-tabpage_1tp_1_dw_1-form-production-order-header">1. <code>TABPAGE_1.tp_1_dw_1</code> (Form) -- Production Order Header</h4>
+<p>Key: <code>prod_order_number</code></p>
+<p>Contains 54+ fields for the production order header:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prod_order_number</code></td>
+<td>Decimal</td>
+<td>Production order number (auto-assigned on create)</td>
+</tr>
+<tr>
+<td><code>source_loc_id</code></td>
+<td>Long</td>
+<td>Source location/warehouse</td>
+</tr>
+<tr>
+<td><code>order_date</code></td>
+<td>Datetime</td>
+<td>Order creation date</td>
+</tr>
+<tr>
+<td><code>required_date</code></td>
+<td>Datetime</td>
+<td>Required completion date</td>
+</tr>
+<tr>
+<td><code>expedite_date</code></td>
+<td>Datetime</td>
+<td>Expedite date</td>
+</tr>
+<tr>
+<td><code>company_id</code></td>
+<td>Char</td>
+<td>Company ID</td>
+</tr>
+<tr>
+<td><code>entered_by</code></td>
+<td>Char</td>
+<td>User who created the order</td>
+</tr>
+<tr>
+<td><code>approved</code></td>
+<td>Char</td>
+<td>Approval flag</td>
+</tr>
+<tr>
+<td><code>cancel</code></td>
+<td>Char</td>
+<td>Cancellation flag</td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td>Long</td>
+<td>Priority level</td>
+</tr>
+<tr>
+<td><code>complete</code></td>
+<td>Char</td>
+<td>Completion flag</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>Char</td>
+<td>Order notes</td>
+</tr>
+</tbody>
+</table>
+<h4 id="2-tabpage_17tp_17_dw_17-list-assembly-lines">2. <code>TABPAGE_17.tp_17_dw_17</code> (List) -- Assembly Lines</h4>
+<p>Assembly items to be manufactured on this production order:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>assembly_item_id</code></td>
+<td>Char</td>
+<td>Assembly item ID</td>
+</tr>
+<tr>
+<td><code>qty_to_make</code></td>
+<td>Decimal</td>
+<td>Quantity to manufacture</td>
+</tr>
+<tr>
+<td><code>qty_completed</code></td>
+<td>Decimal</td>
+<td>Quantity completed so far</td>
+</tr>
+<tr>
+<td><code>required_date</code></td>
+<td>Datetime</td>
+<td>Required date for this assembly</td>
+</tr>
+<tr>
+<td><code>process_cd</code></td>
+<td>Char</td>
+<td>Route/process code</td>
+</tr>
+</tbody>
+</table>
+<h4 id="3-tabpage_18components-list-component-materials">3. <code>TABPAGE_18.components</code> (List) -- Component Materials</h4>
+<p>Bill of materials for the production order:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>item_id</code></td>
+<td>Char</td>
+<td>Component item ID</td>
+</tr>
+<tr>
+<td><code>qty_per_assembly</code></td>
+<td>Decimal</td>
+<td>Quantity required per assembly</td>
+</tr>
+<tr>
+<td><code>unit_of_measure</code></td>
+<td>Char</td>
+<td>Unit of measure</td>
+</tr>
+<tr>
+<td><code>operation_cd</code></td>
+<td>Char</td>
+<td>Operation code</td>
+</tr>
+<tr>
+<td><code>estimated_labor_cost</code></td>
+<td>Decimal</td>
+<td>Estimated labor cost</td>
+</tr>
+<tr>
+<td><code>estimated_material_cost</code></td>
+<td>Decimal</td>
+<td>Estimated material cost</td>
+</tr>
+<tr>
+<td><code>technician_id</code></td>
+<td>Char</td>
+<td>Assigned technician</td>
+</tr>
+<tr>
+<td><code>operation_sequence</code></td>
+<td>Long</td>
+<td>Operation sequence order</td>
+</tr>
+</tbody>
+</table>
+<h4 id="4-tp_labortp_labor-list-labor-entries">4. <code>TP_LABOR.tp_labor</code> (List) -- Labor Entries</h4>
+<p>Labor lines recorded against the production order:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service_center_id</code></td>
+<td>Char</td>
+<td>Work center ID</td>
+</tr>
+<tr>
+<td><code>technician_id</code></td>
+<td>Char</td>
+<td>Technician/worker ID</td>
+</tr>
+<tr>
+<td><code>service_labor_id</code></td>
+<td>Char</td>
+<td>Labor code ID</td>
+</tr>
+<tr>
+<td><code>time_worked</code></td>
+<td>Char</td>
+<td>Time worked (HH:MM format)</td>
+</tr>
+<tr>
+<td><code>labor_type_cd</code></td>
+<td>Char</td>
+<td>Rate type: <code>Rate</code>, <code>OT Rate</code>, or <code>Prem Rate</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="5-tp_labordetailtp_labordetail-form-labor-entry-detail">5. <code>TP_LABORDETAIL.tp_labordetail</code> (Form) -- Labor Entry Detail</h4>
+<p>Detail view for a selected labor entry:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>applied_labor_acct</code></td>
+<td>Char</td>
+<td>GL account for applied labor</td>
+</tr>
+<tr>
+<td><code>bill_to_customer_flag</code></td>
+<td>Char</td>
+<td>Bill labor to customer flag</td>
+</tr>
+<tr>
+<td><code>skill_level</code></td>
+<td>Char</td>
+<td>Required skill level</td>
+</tr>
+<tr>
+<td><code>time_worked</code></td>
+<td>Char</td>
+<td>Time worked</td>
+</tr>
+<tr>
+<td><code>unit_cost</code></td>
+<td>Decimal</td>
+<td>Unit cost</td>
+</tr>
+<tr>
+<td><code>location_id</code></td>
+<td>Long</td>
+<td>Location ID</td>
+</tr>
+</tbody>
+</table>
+<h4 id="6-tp_laborscheduledisplaytp_laborscheduledisplay-list-labor-schedulehistory">6. <code>TP_LABORSCHEDULEDISPLAY.tp_laborscheduledisplay</code> (List) -- Labor Schedule/History</h4>
+<p>Read-only display of labor recorded against the production order:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>component_labor_id</code></td>
+<td>Char</td>
+<td>Component labor ID</td>
+</tr>
+<tr>
+<td><code>operation_cd</code></td>
+<td>Char</td>
+<td>Operation code</td>
+</tr>
+<tr>
+<td><code>service_center_id</code></td>
+<td>Char</td>
+<td>Work center</td>
+</tr>
+<tr>
+<td><code>technician_id</code></td>
+<td>Char</td>
+<td>Technician</td>
+</tr>
+<tr>
+<td><code>recorded_date</code></td>
+<td>Datetime</td>
+<td>Date labor was recorded</td>
+</tr>
+<tr>
+<td><code>time_worked</code></td>
+<td>Char</td>
+<td>Time worked</td>
+</tr>
+<tr>
+<td><code>start_time</code></td>
+<td>Datetime</td>
+<td>Start time</td>
+</tr>
+<tr>
+<td><code>end_time</code></td>
+<td>Datetime</td>
+<td>End time</td>
+</tr>
+<tr>
+<td><code>labor_type_cd</code></td>
+<td>Char</td>
+<td>Rate type</td>
+</tr>
+<tr>
+<td><code>sales_cost</code></td>
+<td>Decimal</td>
+<td>Sales cost</td>
+</tr>
+<tr>
+<td><code>total_cost</code></td>
+<td>Decimal</td>
+<td>Total cost</td>
+</tr>
+</tbody>
+</table>
+<h4 id="7-completioncompletion-list-completion-records">7. <code>COMPLETION.completion</code> (List) -- Completion Records</h4>
+<p>Tracks completion milestones with cost breakdowns:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>date_created</code></td>
+<td>Datetime</td>
+<td>Completion date</td>
+</tr>
+<tr>
+<td><code>qty_completed</code></td>
+<td>Decimal</td>
+<td>Quantity completed</td>
+</tr>
+<tr>
+<td><code>material_cost</code></td>
+<td>Decimal</td>
+<td>Material cost</td>
+</tr>
+<tr>
+<td><code>labor_cost</code></td>
+<td>Decimal</td>
+<td>Direct labor cost</td>
+</tr>
+<tr>
+<td><code>labor_cost_indirect</code></td>
+<td>Decimal</td>
+<td>Indirect labor cost</td>
+</tr>
+<tr>
+<td><code>other_charge_cost</code></td>
+<td>Decimal</td>
+<td>Other charges</td>
+</tr>
+<tr>
+<td><code>freight_cost</code></td>
+<td>Decimal</td>
+<td>Freight cost</td>
+</tr>
+<tr>
+<td><code>process_cost</code></td>
+<td>Decimal</td>
+<td>Process/routing cost</td>
+</tr>
+<tr>
+<td><code>additional_material_cost</code></td>
+<td>Decimal</td>
+<td>Additional material cost</td>
+</tr>
+<tr>
+<td><code>additional_labor_cost</code></td>
+<td>Decimal</td>
+<td>Additional direct labor cost</td>
+</tr>
+<tr>
+<td><code>additional_labor_cost_indirect</code></td>
+<td>Decimal</td>
+<td>Additional indirect labor cost</td>
+</tr>
+<tr>
+<td><code>additional_other_charge_cost</code></td>
+<td>Decimal</td>
+<td>Additional other charges</td>
+</tr>
+<tr>
+<td><code>additional_freight_cost</code></td>
+<td>Decimal</td>
+<td>Additional freight cost</td>
+</tr>
+<tr>
+<td><code>additional_process_cost</code></td>
+<td>Decimal</td>
+<td>Additional process cost</td>
+</tr>
+</tbody>
+</table>
+<h4 id="8-routing_tabpageprocess_x_transaction-form-routingprocess-info">8. <code>ROUTING_TABPAGE.process_x_transaction</code> (Form) -- Routing/Process Info</h4>
+<p>Routing and process details for the production order:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>process_code</code></td>
+<td>Char</td>
+<td>Process/routing code</td>
+</tr>
+<tr>
+<td><code>raw_item_id</code></td>
+<td>Char</td>
+<td>Raw material item ID</td>
+</tr>
+<tr>
+<td><code>finished_item_id</code></td>
+<td>Char</td>
+<td>Finished goods item ID</td>
+</tr>
+<tr>
+<td><code>qty_requested</code></td>
+<td>Decimal</td>
+<td>Quantity requested</td>
+</tr>
+<tr>
+<td><code>qty_completed</code></td>
+<td>Decimal</td>
+<td>Quantity completed</td>
+</tr>
+</tbody>
+</table>
+<h4 id="9-tp_assemblycoststp_assemblycosts-form-assembly-cost-summary">9. <code>TP_ASSEMBLYCOSTS.tp_assemblycosts</code> (Form) -- Assembly Cost Summary</h4>
+<p>Estimated vs. actual cost comparison:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>estimated_freight_cost</code></td>
+<td>Decimal</td>
+<td>Estimated freight</td>
+</tr>
+<tr>
+<td><code>actual_freight_cost</code></td>
+<td>Decimal</td>
+<td>Actual freight</td>
+</tr>
+<tr>
+<td><code>estimated_direct_labor_cost</code></td>
+<td>Decimal</td>
+<td>Estimated direct labor</td>
+</tr>
+<tr>
+<td><code>actual_direct_labor_cost</code></td>
+<td>Decimal</td>
+<td>Actual direct labor</td>
+</tr>
+<tr>
+<td><code>estimated_indirect_labor_cost</code></td>
+<td>Decimal</td>
+<td>Estimated indirect labor</td>
+</tr>
+<tr>
+<td><code>actual_indirect_labor_cost</code></td>
+<td>Decimal</td>
+<td>Actual indirect labor</td>
+</tr>
+<tr>
+<td><code>estimated_other_charge_cost</code></td>
+<td>Decimal</td>
+<td>Estimated other charges</td>
+</tr>
+<tr>
+<td><code>actual_other_charge_cost</code></td>
+<td>Decimal</td>
+<td>Actual other charges</td>
+</tr>
+<tr>
+<td><code>estimated_process_cost</code></td>
+<td>Decimal</td>
+<td>Estimated process cost</td>
+</tr>
+<tr>
+<td><code>actual_process_cost</code></td>
+<td>Decimal</td>
+<td>Actual process cost</td>
+</tr>
+</tbody>
+</table>
+<h3 id="additional-dataelements">Additional DataElements</h3>
+<p>The <code>ProductionOrder</code> service also includes DataElements for:</p>
+<ul>
+<li><strong>Pick tickets</strong> -- Production order picking</li>
+<li><strong>Document links</strong> -- Attached documents and files</li>
+<li><strong>Notes</strong> -- Order notes and annotations</li>
+<li><strong>Serial numbers</strong> -- Serial tracking for produced items</li>
+<li><strong>Lot numbers</strong> -- Lot tracking</li>
+<li><strong>Bin locations</strong> -- Bin allocation</li>
+<li><strong>Stock availability</strong> -- Component availability checking</li>
+<li><strong>PO linkage</strong> -- Links to purchase orders for components</li>
+</ul>
+<p>Use <code>GET /api/v2/definition/ProductionOrder</code> to see the complete list of DataElements and all available fields.</p>
+<hr />
+<h2 id="labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</h2>
+<p>The <code>Labor</code> service manages labor code definitions including rates, types, and cost structures.</p>
+<p>Retrieve the full schema with:</p>
+<div class="highlight"><pre><span></span><code>GET /api/v2/definition/Labor
+</code></pre></div>
+
+<h3 id="key-field">Key Field</h3>
+<p><code>service_labor_id</code> -- Unique identifier for the labor code.</p>
+<h3 id="header-fields">Header Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service_labor_id</code></td>
+<td>Char</td>
+<td>Labor code ID</td>
+</tr>
+<tr>
+<td><code>service_labor_desc</code></td>
+<td>Char</td>
+<td>Description</td>
+</tr>
+<tr>
+<td><code>estimated_hours</code></td>
+<td>Decimal</td>
+<td>Default estimated hours</td>
+</tr>
+<tr>
+<td><code>labor_type_cd</code></td>
+<td>Char</td>
+<td><code>Direct</code> or <code>Indirect</code></td>
+</tr>
+<tr>
+<td><code>estimate_rate_level</code></td>
+<td>Char</td>
+<td>Rate level for estimates</td>
+</tr>
+<tr>
+<td><code>skill_level</code></td>
+<td>Char</td>
+<td>Required skill level</td>
+</tr>
+<tr>
+<td><code>min_hours_charged</code></td>
+<td>Decimal</td>
+<td>Minimum hours charged</td>
+</tr>
+<tr>
+<td><code>row_status_flag</code></td>
+<td>Long</td>
+<td>Record status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rate-tables">Rate Tables</h3>
+<p>Each labor code can have multiple rate levels:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>base_rate</code></td>
+<td>Decimal</td>
+<td>Base rate amount</td>
+</tr>
+<tr>
+<td><code>hourly_rate</code></td>
+<td>Decimal</td>
+<td>Standard hourly rate</td>
+</tr>
+<tr>
+<td><code>ot_rate</code></td>
+<td>Decimal</td>
+<td>Overtime rate</td>
+</tr>
+<tr>
+<td><code>prem_rate</code></td>
+<td>Decimal</td>
+<td>Premium rate</td>
+</tr>
+<tr>
+<td><code>rate_amount</code></td>
+<td>Decimal</td>
+<td>Rate amount per level</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cost-data">Cost Data</h3>
+<p>Cost fields exist at both global and per-location levels:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>estimated_labor_cost</code></td>
+<td>Decimal</td>
+<td>Estimated labor cost</td>
+</tr>
+<tr>
+<td><code>hourly_cost</code></td>
+<td>Decimal</td>
+<td>Standard hourly cost</td>
+</tr>
+<tr>
+<td><code>overtime_hourly_cost</code></td>
+<td>Decimal</td>
+<td>Overtime hourly cost</td>
+</tr>
+<tr>
+<td><code>premium_hourly_cost</code></td>
+<td>Decimal</td>
+<td>Premium hourly cost</td>
+</tr>
+<tr>
+<td><code>burdened_cost</code></td>
+<td>Decimal</td>
+<td>Burdened (loaded) cost</td>
+</tr>
+<tr>
+<td><code>commission_cost</code></td>
+<td>Decimal</td>
+<td>Commission cost</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="laborprocess-service-process-templates">LaborProcess Service -- Process Templates</h2>
+<p>The <code>LaborProcess</code> service defines labor process templates with ordered operation sequences. These templates can be applied to production orders to pre-populate labor steps.</p>
+<p>Retrieve the full schema with:</p>
+<div class="highlight"><pre><span></span><code>GET /api/v2/definition/LaborProcess
+</code></pre></div>
+
+<h3 id="key-field_1">Key Field</h3>
+<p><code>service_labor_process_id</code> -- Unique identifier for the labor process template.</p>
+<h3 id="header-fields_1">Header Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service_labor_process_id</code></td>
+<td>Char</td>
+<td>Process template ID</td>
+</tr>
+<tr>
+<td><code>service_labor_process_desc</code></td>
+<td>Char</td>
+<td>Description</td>
+</tr>
+<tr>
+<td><code>row_status_flag</code></td>
+<td>Long</td>
+<td>Record status</td>
+</tr>
+<tr>
+<td><code>labor_operation_sequence_flag</code></td>
+<td>Char</td>
+<td>Operation sequencing flag</td>
+</tr>
+</tbody>
+</table>
+<h3 id="labor-process-list-operations">Labor Process List (Operations)</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service_labor_id</code></td>
+<td>Char</td>
+<td>Labor code ID</td>
+</tr>
+<tr>
+<td><code>estimated_hours</code></td>
+<td>Decimal</td>
+<td>Estimated hours for this operation</td>
+</tr>
+<tr>
+<td><code>previous_operation</code></td>
+<td>Long</td>
+<td>Previous operation in sequence</td>
+</tr>
+<tr>
+<td><code>operation_sequence</code></td>
+<td>Long</td>
+<td>This operation's sequence number</td>
+</tr>
+<tr>
+<td><code>next_operation</code></td>
+<td>Long</td>
+<td>Next operation in sequence</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="interactive-api-windows">Interactive API Windows</h2>
+<p>All of the following windows can be opened via the Interactive API for stateful, step-by-step interaction with full business logic validation. See <a href="04-Interactive-API.html">Interactive API</a> for session management and window operation details.</p>
+<table>
+<thead>
+<tr>
+<th>ServiceName</th>
+<th>Window</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ProductionOrder</code></td>
+<td>Production Order Entry</td>
+<td>Full production order management</td>
+</tr>
+<tr>
+<td><code>Labor</code></td>
+<td>Labor Maintenance</td>
+<td>Labor code CRUD</td>
+</tr>
+<tr>
+<td><code>LaborProcess</code></td>
+<td>Labor Process Maintenance</td>
+<td>Process template management</td>
+</tr>
+<tr>
+<td><code>TimeEntry</code></td>
+<td>Time Entry</td>
+<td>Record labor hours</td>
+</tr>
+<tr>
+<td><code>TimeEntrySO</code></td>
+<td>Time Entry (Service Order)</td>
+<td>Service order labor</td>
+</tr>
+<tr>
+<td><code>Job</code></td>
+<td>Job Maintenance</td>
+<td>Job CRUD</td>
+</tr>
+<tr>
+<td><code>JobControl</code></td>
+<td>Job Control Maintenance</td>
+<td>Job sites and contacts</td>
+</tr>
+<tr>
+<td><code>Operation</code></td>
+<td>Operation Maintenance</td>
+<td>Operation definitions</td>
+</tr>
+<tr>
+<td><code>PredefinedRouting</code></td>
+<td>Predefined Routing</td>
+<td>Routing templates</td>
+</tr>
+<tr>
+<td><code>Assembly</code></td>
+<td>Assembly Maintenance</td>
+<td>Assembly definitions</td>
+</tr>
+<tr>
+<td><code>ManufacturingClass</code></td>
+<td>Manufacturing Class</td>
+<td>Classification maintenance</td>
+</tr>
+<tr>
+<td><code>Shift</code></td>
+<td>Shift Maintenance</td>
+<td>Shift definitions</td>
+</tr>
+<tr>
+<td><code>ProductionOrderProcessing</code></td>
+<td>Production Order Processing</td>
+<td>Process and complete production orders</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> <code>WorkCenter</code> returns HTTP 500 when opened via the Interactive API. This may require specific licensing or server-side configuration. Use the Transaction API for work center operations instead.</p>
+</blockquote>
+<h3 id="opening-a-production-window">Opening a Production Window</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># Open Production Order Entry window</span>
+<span class="n">open_payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;ProductionOrder&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span> <span class="kc">False</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/window&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">open_payload</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="n">window_id</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;WindowId&quot;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Window opened: </span><span class="si">{</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Retrieve a production order</span>
+<span class="n">change_payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span>
+    <span class="s2">&quot;Changes&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="s2">&quot;tp_1_dw_1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;prod_order_number&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;1001&quot;</span>
+    <span class="p">}]</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/change&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">change_payload</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+
+<span class="c1"># Read current window data</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/data&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Open Production Order Entry window</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">openPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;ServiceName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ProductionOrder&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;ResponseWindowHandlingEnabled&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">openContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">    </span><span class="n">openPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">openResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/ui/interactive/v2/window&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">openContent</span><span class="p">);</span>
+<span class="n">openResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">openResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">openResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openResult</span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">].</span><span class="n">ToString</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Window opened: {windowId}&quot;</span><span class="p">);</span>
+
+<span class="c1">// Retrieve a production order</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">changePayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;Changes&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;prod_order_number&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1001&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">changeContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">    </span><span class="n">changePayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">changeResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">changeContent</span><span class="p">);</span>
+
+<span class="c1">// Read current window data</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">dataResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/ui/interactive/v2/data?id={windowId}&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">dataResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Important:</strong> Always include <code>DatawindowName</code> in v2 change requests. P21 25.2+ requires it -- omitting it causes <code>Status: 2</code> (Failure) responses. See <a href="04-Interactive-API.html">Interactive API - DatawindowName Required</a> for details.</p>
+</blockquote>
+<hr />
+<h2 id="data-access-odata">Data Access (OData)</h2>
+<p>Production and labor tables are <strong>not exposed</strong> in OData by default. To enable OData access to production data:</p>
+<ol>
+<li>Open <strong>SOA Admin &gt; Administration</strong></li>
+<li>Add production-related tables/views to OData permissions</li>
+<li>Click <strong>Refresh OData API service</strong></li>
+</ol>
+<h3 id="common-tables-to-expose">Common Tables to Expose</h3>
+<table>
+<thead>
+<tr>
+<th>Table Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prod_order_hdr</code></td>
+<td>Production order headers</td>
+</tr>
+<tr>
+<td><code>prod_order_line</code></td>
+<td>Production order lines</td>
+</tr>
+<tr>
+<td><code>prod_order_line_comp_labor</code></td>
+<td>Labor recorded against production orders</td>
+</tr>
+<tr>
+<td><code>work_center</code></td>
+<td>Work center definitions</td>
+</tr>
+<tr>
+<td><code>service_labor</code></td>
+<td>Labor code definitions</td>
+</tr>
+</tbody>
+</table>
+<p>Once exposed, query them via the OData API:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># Query production orders (after enabling in SOA Admin)</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/dataaccess/v1/prod_order_hdr&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;company_id eq &#39;ACME&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+<span class="n">orders</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">order</span> <span class="ow">in</span> <span class="n">orders</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PO# </span><span class="si">{</span><span class="n">order</span><span class="p">[</span><span class="s1">&#39;prod_order_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">order</span><span class="p">[</span><span class="s1">&#39;complete&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/dataaccess/v1/prod_order_hdr&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">    </span><span class="s">&quot;?$filter=company_id eq &#39;ACME&#39;&amp;$top=10&quot;</span><span class="p">);</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">orders</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">order</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">orders</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;PO# {order[&quot;</span><span class="n">prod_order_number</span><span class="s">&quot;]}: {order[&quot;</span><span class="n">complete</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p>See <a href="02-OData-API.html">OData API</a> for full query syntax including <code>$filter</code>, <code>$select</code>, <code>$orderby</code>, and <code>$expand</code>.</p>
+<hr />
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Get definitions first</strong> - Always retrieve the service definition (<code>GET /api/v2/definition/{ServiceName}</code>) before building payloads. Field names and valid values vary by P21 version.</li>
+<li><strong>Use display values</strong> - Set <code>UseCodeValues: false</code> for readability (e.g., <code>"Rate"</code> instead of internal codes).</li>
+<li><strong>Validate labor codes</strong> - Ensure <code>service_labor_id</code> values exist before referencing them in <code>TimeEntry</code> payloads. Use the <code>Labor</code> service or OData to look up valid codes.</li>
+<li><strong>Include DatawindowName</strong> - Always include <code>DatawindowName</code> in Interactive API v2 change requests. This is required in P21 25.2+.</li>
+<li><strong>Check Summary on responses</strong> - Always check <code>Summary.Succeeded</code> and <code>Summary.Failed</code> in Transaction API responses.</li>
+<li><strong>Consider async for bulk</strong> - Use the async Transaction endpoint (<code>/api/v2/transaction/async</code>) for large batches of labor entries to avoid session pool issues.</li>
+<li><strong>Time format</strong> - The <code>time_worked</code> field uses <code>HH:MM</code> string format (e.g., <code>"4:00"</code> for 4 hours), not decimal hours.</li>
+</ol>
+<hr />
+<h2 id="common-errors">Common Errors</h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>400 Bad Request</td>
+<td>Malformed payload or missing required fields</td>
+<td>Check against service definition</td>
+</tr>
+<tr>
+<td>401 Unauthorized</td>
+<td>Invalid/expired token</td>
+<td>Refresh authentication token</td>
+</tr>
+<tr>
+<td>500 on WorkCenter</td>
+<td>Service may require licensing/config</td>
+<td>Use Transaction API instead of Interactive</td>
+</tr>
+<tr>
+<td>"Invalid technician"</td>
+<td>Technician ID not found</td>
+<td>Verify <code>technician_id</code> exists in P21</td>
+</tr>
+<tr>
+<td>"Invalid labor code"</td>
+<td>Labor code not found</td>
+<td>Verify <code>service_labor_id</code> via Labor service</td>
+</tr>
+<tr>
+<td>"Production order not found"</td>
+<td>Invalid <code>prod_order_number</code></td>
+<td>Verify order exists and is not cancelled</td>
+</tr>
+<tr>
+<td>Status 2 (Failure) with no messages</td>
+<td>Missing <code>DatawindowName</code> in v2 change</td>
+<td>Add <code>DatawindowName</code> to change payload</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="code-examples">Code Examples</h2>
+<p>See the <code>scripts/production/</code> (Python) and <code>examples/csharp/Production/</code> (C#) directories for working examples.</p>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="00-Authentication.html">Authentication</a> -- Token generation</li>
+<li><a href="01-API-Selection-Guide.html">API Selection Guide</a> -- Which API to use when</li>
+<li><a href="03-Transaction-API.html">Transaction API</a> -- Stateless bulk operations (used by all production services)</li>
+<li><a href="04-Interactive-API.html">Interactive API</a> -- Stateful window interaction (for complex production workflows)</li>
+<li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a> -- Patterns for bulk labor entry</li>
+</ul>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
