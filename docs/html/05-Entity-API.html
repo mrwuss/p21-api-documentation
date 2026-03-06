@@ -516,7 +516,7 @@
 </ul>
 <hr />
 <h2 id="base-url">Base URL</h2>
-<div class="highlight"><pre><span></span><code>https://{hostname}/api/entity/{resource}
+<div class="highlight"><pre><span></span><code><span class="err">https://{hostname}/api/entity/{resource}</span>
 </code></pre></div>
 
 <p>Examples:
@@ -569,8 +569,8 @@
 <p>Additionally, the <strong><a href="11-Inventory-REST-API.html">Inventory REST API</a></strong> provides CRUD access to inventory items at <code>/api/inventory/parts</code>.</p>
 <h3 id="composite-keys">Composite Keys</h3>
 <p>Customers and Vendors require a <strong>composite key</strong> combining <code>CompanyId</code> and the entity ID, separated by an underscore:</p>
-<div class="highlight"><pre><span></span><code>/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
-/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485
+<div class="highlight"><pre><span></span><code><span class="err">/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10</span>
+<span class="err">/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485</span>
 </code></pre></div>
 
 <ul>
@@ -579,8 +579,8 @@
 <li>The underscore can be URL-encoded (<code>%5F</code>) if needed</li>
 </ul>
 <p>Contacts and Addresses use <strong>simple numeric IDs</strong>:</p>
-<div class="highlight"><pre><span></span><code>/api/entity/contacts/1
-/api/entity/addresses/10
+<div class="highlight"><pre><span></span><code><span class="err">/api/entity/contacts/1</span>
+<span class="err">/api/entity/addresses/10</span>
 </code></pre></div>
 
 <h3 id="vendor-id-vs-supplier-id">Vendor ID vs Supplier ID</h3>
@@ -836,7 +836,7 @@
 <hr />
 <h2 id="query-syntax">Query Syntax</h2>
 <p>Filter results using the <code>$query</code> parameter on list endpoints:</p>
-<div class="highlight"><pre><span></span><code>GET /api/entity/customers/?$query=startswith(CustomerName, &#39;ABC&#39;)
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/?$query=startswith(CustomerName, &#39;ABC&#39;)</span>
 </code></pre></div>
 
 <blockquote>
@@ -939,25 +939,25 @@
 </tbody>
 </table>
 <h3 id="verified-query-examples">Verified Query Examples</h3>
-<div class="highlight"><pre><span></span><code># Find customers by name prefix (returned 7 results)
-GET /api/entity/customers/?$query=startswith(CustomerName, &#39;ABC&#39;)
+<div class="highlight"><pre><span></span><code><span class="err"># Find customers by name prefix (returned 7 results)</span>
+<span class="err">GET /api/entity/customers/?$query=startswith(CustomerName, &#39;ABC&#39;)</span>
 
-# Find vendors by name prefix (returned 6 results)
-GET /api/entity/vendors/?$query=startswith(VendorName, &#39;ABC&#39;)
+<span class="err"># Find vendors by name prefix (returned 6 results)</span>
+<span class="err">GET /api/entity/vendors/?$query=startswith(VendorName, &#39;ABC&#39;)</span>
 
-# Filter by company
-GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
+<span class="err"># Filter by company</span>
+<span class="err">GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;</span>
 </code></pre></div>
 
 <hr />
 <h2 id="extended-properties">Extended Properties</h2>
 <p>Include related/nested data using the <code>extendedproperties</code> parameter:</p>
 <p><strong>All nested objects:</strong></p>
-<div class="highlight"><pre><span></span><code>GET /api/entity/customers/ACME_10?extendedproperties=*
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ACME_10?extendedproperties=*</span>
 </code></pre></div>
 
 <p><strong>Specific nested object:</strong></p>
-<div class="highlight"><pre><span></span><code>GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress</span>
 </code></pre></div>
 
 <h3 id="available-extended-properties-by-entity">Available Extended Properties by Entity</h3>
@@ -2850,7 +2850,7 @@ GET /api/entity/customers/?$query=CompanyId eq &#39;ACME&#39;
 </blockquote>
 <h3 id="endpoint-discovery">Endpoint Discovery</h3>
 <p>You can browse all available Entity API endpoints from the P21 middleware home page:</p>
-<div class="highlight"><pre><span></span><code>https://{hostname}/docs/
+<div class="highlight"><pre><span></span><code><span class="err">https://{hostname}/docs/</span>
 </code></pre></div>
 
 <p>This lists every registered endpoint including REST, SOAP, and mobile resources.</p>

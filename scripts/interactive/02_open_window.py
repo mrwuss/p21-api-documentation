@@ -115,7 +115,7 @@ def main():
         window_id = window_data.get("WindowId")
         title = window_data.get("Title", "Unknown")
 
-        print(f"  Window opened!")
+        print("  Window opened!")
         print(f"    Window ID: {window_id}")
         print(f"    Title: {title}")
 
@@ -139,7 +139,7 @@ def main():
         print("-" * 50)
 
         session.close_window(window_id)
-        print(f"  Window closed")
+        print("  Window closed")
 
     except httpx.HTTPStatusError as e:
         print(f"\n  HTTP Error: {e.response.status_code}")
@@ -155,7 +155,7 @@ def main():
         try:
             session.end()
             print("  Session ended")
-        except:
+        except (httpx.HTTPError, OSError):
             pass
 
     print("\n" + "=" * 60)

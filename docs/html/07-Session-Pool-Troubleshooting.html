@@ -684,11 +684,11 @@ c_shipped_flag = ON  →  &quot;Notify about shipment status&quot;
 </div>
 <h4 id="option-b-use-async-endpoint">Option B: Use Async Endpoint</h4>
 <p>The async endpoint may use dedicated sessions:</p>
-<div class="highlight"><pre><span></span><code>POST /uiserver0/api/v2/transaction/async
+<div class="highlight"><pre><span></span><code><span class="err">POST /uiserver0/api/v2/transaction/async</span>
 </code></pre></div>
 
 <p>Then poll for results:</p>
-<div class="highlight"><pre><span></span><code>GET /uiserver0/api/v2/transaction/async?id={RequestId}
+<div class="highlight"><pre><span></span><code><span class="err">GET /uiserver0/api/v2/transaction/async?id={RequestId}</span>
 </code></pre></div>
 
 <h4 id="option-c-split-transactions">Option C: Split Transactions</h4>

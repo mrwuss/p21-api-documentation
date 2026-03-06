@@ -29,7 +29,7 @@ The Interactive API (IAPI) is a **stateful** RESTful API that simulates user int
 
 All Interactive API endpoints use the UI Server URL. First, obtain it:
 
-```
+```http
 GET https://{hostname}/api/ui/router/v1?urlType=external
 ```
 
@@ -372,7 +372,7 @@ Tools include all buttons and right-click (RMB) options available at any point i
 
 Query tools at different levels by specifying optional parameters:
 
-```
+```http
 GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page
 GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&dwName=form
 GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&dwName=form&fieldName=description&row=0
@@ -1267,7 +1267,7 @@ Each **field definition** contains:
 
 The API server exposes built-in help pages that list all available endpoints and their parameters:
 
-```
+```http
 https://{ui-server-host}/api/ui/interactive/sessions/help
 https://{ui-server-host}/ui/interactive/v1/help
 ```
@@ -1323,7 +1323,7 @@ When working with windows that have a list/detail pattern (e.g., Item Maintenanc
 **Symptom:** After selecting row N in a list datawindow and navigating to the detail tab, the detail shows the **previous** row's data instead of row N.
 
 **Pattern observed:**
-```
+```text
 Row 0 selected → Detail shows row 0 (correct - first selection)
 Row 1 selected → Detail shows row 0 (1 behind)
 Row 2 selected → Detail shows row 1 (1 behind)
@@ -1518,7 +1518,7 @@ public async Task SelectRowSafeAsync(Window window, int row, string datawindowNa
 
 **v2:** Use `?id=` query parameter:
 
-```
+```http
 GET /api/ui/interactive/v2/data?id={windowId}
 DELETE /api/ui/interactive/v2/window?id={windowId}
 DELETE /api/ui/interactive/v2/data?id={windowId}

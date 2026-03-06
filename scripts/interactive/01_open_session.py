@@ -79,7 +79,7 @@ def main():
 
     try:
         result = start_session(ui_server_url, headers, config.verify_ssl)
-        print(f"  Session started successfully")
+        print("  Session started successfully")
         print(f"  Response: {result}")
 
     except httpx.HTTPStatusError as e:
@@ -106,7 +106,7 @@ def main():
 
     try:
         end_session(ui_server_url, headers, config.verify_ssl)
-        print(f"  Session ended successfully")
+        print("  Session ended successfully")
 
     except httpx.HTTPStatusError as e:
         print(f"  Error: {e.response.status_code}")

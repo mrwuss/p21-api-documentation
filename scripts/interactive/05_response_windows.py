@@ -324,12 +324,12 @@ def main():
             try:
                 session.close_window(window_id)
                 print("  Window closed")
-            except:
+            except (httpx.HTTPError, OSError):
                 print("  Window close failed (may have been blocked by dialog)")
         try:
             session.end()
             print("  Session ended")
-        except:
+        except (httpx.HTTPError, OSError):
             pass
 
     print("\n" + "=" * 60)

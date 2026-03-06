@@ -94,7 +94,7 @@ def main():
 
     total_count = data.get("@odata.count", "N/A")
     print(f"  Total price pages in database: {total_count}")
-    print(f"  First 3 records:")
+    print("  First 3 records:")
     for page in data["value"]:
         print(f"    {page['price_page_uid']}: {page.get('description', 'N/A')[:50]}")
 

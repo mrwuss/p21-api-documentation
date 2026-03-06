@@ -158,7 +158,7 @@ def main():
 
         else:
             print("\n  FAILED: Record not created")
-            print(f"    Check messages above for details")
+            print("    Check messages above for details")
 
     except httpx.HTTPStatusError as e:
         print(f"\n  HTTP Error: {e.response.status_code}")

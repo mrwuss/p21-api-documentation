@@ -191,7 +191,7 @@ def main():
         elif succeeded > 0:
             print(f"  PARTIAL: {succeeded} created, {failed} failed")
         else:
-            print(f"  FAILED: No records created")
+            print("  FAILED: No records created")
 
     except httpx.HTTPStatusError as e:
         print(f"\n  HTTP Error: {e.response.status_code}")

@@ -84,7 +84,7 @@ class InteractiveClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             self._end_session()
-        except:
+        except (httpx.HTTPError, OSError):
             pass
         if self.client:
             self.client.close()
@@ -279,7 +279,7 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
         print(f"FAILED ({e})")
         try:
             window.close()
-        except:
+        except (httpx.HTTPError, OSError):
             pass
         raise
 

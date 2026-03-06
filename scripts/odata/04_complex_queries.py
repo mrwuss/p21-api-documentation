@@ -100,7 +100,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print(f"  Pages with 'IND_OEM' in description:")
+    print("  Pages with 'IND_OEM' in description:")
     for page in data["value"]:
         print(f"    {page['price_page_uid']}: {page.get('description', 'N/A')}")
 
@@ -123,7 +123,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print(f"  Pages with earliest expiration dates:")
+    print("  Pages with earliest expiration dates:")
     for page in data["value"]:
         exp = str(page.get('expiration_date', 'N/A'))[:10]
         print(f"    {page['price_page_uid']}: expires {exp}")
@@ -147,7 +147,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print(f"  Pages ordered by supplier, then by date (newest first):")
+    print("  Pages ordered by supplier, then by date (newest first):")
     for page in data["value"]:
         eff = str(page.get('effective_date', 'N/A'))[:10]
         print(f"    Supplier {page['supplier_id']}: {page['price_page_uid']} ({eff})")

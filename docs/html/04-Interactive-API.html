@@ -487,7 +487,7 @@
 <hr />
 <h2 id="endpoints">Endpoints</h2>
 <p>All Interactive API endpoints use the UI Server URL. First, obtain it:</p>
-<div class="highlight"><pre><span></span><code>GET https://{hostname}/api/ui/router/v1?urlType=external
+<div class="highlight"><pre><span></span><code><span class="err">GET https://{hostname}/api/ui/router/v1?urlType=external</span>
 </code></pre></div>
 
 <p>Then use the returned URL as base:</p>
@@ -1009,9 +1009,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </ol>
 <h3 id="get-available-tools">Get Available Tools</h3>
 <p>Query tools at different levels by specifying optional parameters:</p>
-<div class="highlight"><pre><span></span><code>GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page
-GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form
-GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form&amp;fieldName=description&amp;row=0
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page</span>
+<span class="err">GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form</span>
+<span class="err">GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form&amp;fieldName=description&amp;row=0</span>
 </code></pre></div>
 
 <table>
@@ -2154,8 +2154,8 @@ GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form&amp
 <hr />
 <h2 id="self-documenting-help-endpoints">Self-Documenting Help Endpoints</h2>
 <p>The API server exposes built-in help pages that list all available endpoints and their parameters:</p>
-<div class="highlight"><pre><span></span><code>https://{ui-server-host}/api/ui/interactive/sessions/help
-https://{ui-server-host}/ui/interactive/v1/help
+<div class="highlight"><pre><span></span><code><span class="err">https://{ui-server-host}/api/ui/interactive/sessions/help</span>
+<span class="err">https://{ui-server-host}/ui/interactive/v1/help</span>
 </code></pre></div>
 
 <blockquote>
@@ -2458,9 +2458,9 @@ Row 5 selected → Detail shows row 4 (1 behind)
 
 <h3 id="get-window-data-close-window">Get Window Data / Close Window</h3>
 <p><strong>v2:</strong> Use <code>?id=</code> query parameter:</p>
-<div class="highlight"><pre><span></span><code>GET /api/ui/interactive/v2/data?id={windowId}
-DELETE /api/ui/interactive/v2/window?id={windowId}
-DELETE /api/ui/interactive/v2/data?id={windowId}
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/ui/interactive/v2/data?id={windowId}</span>
+<span class="err">DELETE /api/ui/interactive/v2/window?id={windowId}</span>
+<span class="err">DELETE /api/ui/interactive/v2/data?id={windowId}</span>
 </code></pre></div>
 
 <hr />

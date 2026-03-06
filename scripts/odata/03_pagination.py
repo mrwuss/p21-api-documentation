@@ -102,7 +102,7 @@ def main():
     print(f"  Total records: {total}")
     print(f"  Page size: {page_size}")
     print(f"  Total pages: {total_pages}")
-    print(f"  Page 1 results:")
+    print("  Page 1 results:")
     for supplier in data["value"]:
         print(f"    {supplier['supplier_id']}: {supplier['supplier_name']}")
 
@@ -113,7 +113,7 @@ def main():
     data = get_page(config.odata_url, "supplier", headers,
                     page_num=2, page_size=page_size, verify_ssl=config.verify_ssl)
 
-    print(f"  Page 2 results:")
+    print("  Page 2 results:")
     for supplier in data["value"]:
         print(f"    {supplier['supplier_id']}: {supplier['supplier_name']}")
 
@@ -132,7 +132,7 @@ def main():
 
     print(f"\n  Total records fetched: {len(records)}")
     if records:
-        print(f"  Sample records:")
+        print("  Sample records:")
         for page in records[:3]:
             print(f"    {page.get('price_page_uid')}: {page.get('description', 'N/A')[:40]}")
 
