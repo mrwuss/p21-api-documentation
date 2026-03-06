@@ -221,7 +221,7 @@ def build_sidebar_html(current_stem: str, toc_html: str) -> str:
 
     return f"""    <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <strong>P21 API Docs</strong>
+            <a href="index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
         </div>
         <div class="sidebar-section">
             <div class="sidebar-section-title">Pages</div>
