@@ -169,7 +169,7 @@ public static class P21Auth
 
 ## Method 2: Consumer Key
 
-Use for service accounts and automated integrations. Consumer keys are created in the SOA Admin console.
+Use for service accounts and automated integrations. Consumer keys bypass P21 user permission checks (Application Security and Dataservice Permissions) — access is controlled by the consumer key's API scope instead.
 
 ### Creating a Consumer Key
 
@@ -177,12 +177,18 @@ Use for service accounts and automated integrations. Consumer keys are created i
 2. Open the **API Console** tab
 3. Click **Register Consumer Key**
 4. Configure:
-   - **Consumer**: Descriptive name
-   - **SDK Access**: Enable for SDK access
-   - **Token Expire**: Key validity duration
-   - **API Scope**: Restrict access (see Scopes section)
 
-### Request
+| Field | Description | Recommended |
+|-------|-------------|-------------|
+| **Consumer** | Descriptive name (e.g., `CORE_API_CC`) | Use a name that identifies the integration |
+| **Consumer Type** | `Desktop`, `Mobile`, `Web`, or `Service` | `Service` for API integrations |
+| **SDK Access** | Enable for P21 SDK access | Enable if using `/p21sdk` scope |
+| **Token Expire** | Key validity duration | `Never Expire` for service accounts |
+| **API Scope** | Semicolon-delimited paths (see [Scopes](#api-scopes)) | `/api` for full access |
+
+### Basic Request (No Username)
+
+Returns a token tied to the consumer key with no P21 user context. Sufficient for read-only operations (OData, Entity API, Inventory REST API).
 
 ```http
 POST /api/security/token/v2 HTTP/1.1
@@ -196,8 +202,33 @@ Accept: application/json
 }
 ```
 
-With optional username (required for Interactive API):
+**Response:**
 ```json
+{
+    "AccessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "TokenType": "Bearer",
+    "UserName": "",
+    "ExpiresIn": 630720000,
+    "RefreshToken": "",
+    "Scope": "/api;/p21sdk",
+    "SessionId": "a1b2c3d4-...",
+    "ConsumerUid": "8",
+    "AppKey": null
+}
+```
+
+### Request with Username (Required for Interactive API)
+
+Adding `username` to the request associates the token with a P21 user identity. This is **required** for Interactive API sessions and provides audit trail attribution for write operations.
+
+> **Important:** The `username` must be a **real P21 user account** — not the consumer name. For example, if your consumer is named `CORE_API_CC`, you still need a P21 user like `coreapi` or `api_user` in the username field. The token endpoint accepts any string, but session creation will fail with `Error retrieving/validating user` if the user doesn't exist in P21.
+
+```http
+POST /api/security/token/v2 HTTP/1.1
+Host: play.p21server.com
+Content-Type: application/json
+Accept: application/json
+
 {
     "ClientSecret": "62ccc18a-25e2-440c-bf6d-749c117fa9db",
     "GrantType": "client_credentials",
@@ -205,29 +236,150 @@ With optional username (required for Interactive API):
 }
 ```
 
-### API-Specific Behavior
+**Response:**
+```json
+{
+    "AccessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "TokenType": "Bearer",
+    "UserName": "api_user",
+    "ExpiresIn": 630720000,
+    "RefreshToken": "",
+    "Scope": "/api;/p21sdk",
+    "SessionId": "e1f2a3b4-...",
+    "ConsumerUid": "8",
+    "AppKey": null
+}
+```
+
+### JWT Token Claims
+
+Consumer key tokens contain these claims:
+
+| Claim | Description | Example |
+|-------|-------------|---------|
+| `sub` | P21 username (if provided) or empty | `"api_user"` |
+| `aud` | Scope from consumer config (not the request) | `"/api;/p21sdk"` |
+| `P21.ConsumerUid` | Consumer key identifier | `"8"` |
+| `P21.SessionId` | Middleware session ID | `"a1b2c3d4-..."` |
+| `iss` | Token issuer | `"P21.Soa"` |
+| `exp` | Expiration timestamp | `2147483647` (Never Expire) |
+
+> **Note:** The `Scope` in the token response (and the `aud` JWT claim) is determined by the consumer key's configuration in SOA Admin — not by any `Scope` field in the request. Requesting a different scope is silently ignored.
+
+### API-Specific Behavior (Verified)
 
 | API | Without Username | With Username |
 |-----|------------------|---------------|
-| **OData** | Works - uses consumer key scope | Username ignored |
-| **Transaction** | Works - uses P21 install user | Uses specified user |
-| **Interactive** | **Does not work** - username required | Works |
-| **Entity** | Works - uses admin by default | Uses specified user |
+| **OData** | Works — uses consumer key scope | Works — username ignored for data access |
+| **Entity** | Works — returns data | Works — uses specified user |
+| **Inventory REST** | Works — returns data | Works — uses specified user |
+| **Transaction** | Works — uses P21 install user | Works — uses specified user for audit |
+| **Interactive** | **Fails** — `Error retrieving/validating user` | **Works** — user must be a real P21 account |
+
+### Important Caveats
+
+1. **Token endpoint creates a middleware session** — each call to `/api/security/token/v2` creates a new middleware session, which may invalidate tokens from previous calls. Get one token and reuse it.
+2. **No password required** — the consumer key replaces password authentication entirely. The username is only for P21 user context, not authentication.
+3. **Scope is locked** — the `Scope` field in the request is ignored. The consumer key's configured scope in SOA Admin determines access.
+4. **`/api` scope is sufficient** — the `/ui` scope is not required for Interactive API. The `/api` scope covers all endpoints including UI server operations.
+
+### Code Examples
+
+<!-- tabs -->
+
+**Python:**
+
+```python
+import httpx
+
+async def get_consumer_token(
+    base_url: str,
+    consumer_key: str,
+    username: str = "",
+) -> dict:
+    """Get token using consumer key authentication.
+
+    Args:
+        base_url: P21 server URL (e.g., "https://play.p21server.com")
+        consumer_key: Consumer key GUID from SOA Admin
+        username: Optional P21 username (required for Interactive API)
+
+    Returns:
+        Token response dict with AccessToken, Scope, etc.
+    """
+    payload = {
+        "GrantType": "client_credentials",
+        "ClientSecret": consumer_key,
+    }
+    if username:
+        payload["username"] = username
+
+    async with httpx.AsyncClient(verify=False) as client:
+        response = await client.post(
+            f"{base_url}/api/security/token/v2",
+            json=payload,
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+```
+
+**C#:**
+
+```csharp
+/// <summary>Get token using consumer key authentication.</summary>
+/// <param name="baseUrl">P21 server URL</param>
+/// <param name="consumerKey">Consumer key GUID from SOA Admin</param>
+/// <param name="username">Optional P21 username (required for Interactive API)</param>
+public static async Task<JObject> GetConsumerTokenAsync(
+    string baseUrl, string consumerKey, string username = "")
+{
+    using var client = new HttpClient();
+    var payload = new Dictionary<string, string>
+    {
+        ["GrantType"] = "client_credentials",
+        ["ClientSecret"] = consumerKey
+    };
+    if (!string.IsNullOrEmpty(username))
+        payload["username"] = username;
+
+    var content = new StringContent(
+        JsonConvert.SerializeObject(payload),
+        Encoding.UTF8, "application/json");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+    var response = await client.PostAsync(
+        $"{baseUrl}/api/security/token/v2", content);
+    response.EnsureSuccessStatusCode();
+
+    var json = await response.Content.ReadAsStringAsync();
+    return JObject.Parse(json);
+}
+```
+
+<!-- /tabs -->
 
 ---
 
 ## API Scopes
 
-Consumer keys can restrict access to specific endpoints and data.
+Consumer keys restrict access to specific endpoints. Scopes are configured in SOA Admin as semicolon-delimited paths with a leading slash.
 
 ### URL Scopes
 
 | Scope | Access |
 |-------|--------|
-| `/api` | All API endpoints |
-| `/uiserver0` | Interactive and Transaction APIs |
+| `/api` | All API endpoints (recommended for full access) |
+| `/api;/p21sdk` | API + SDK access (auto-added when SDK Access is enabled) |
+| `/api;/ui` | API + UI sessions |
+| `/uiserver0` | Interactive and Transaction APIs only |
 | `/odata` | OData endpoints (must specify tables) |
-| `/api;/uiserver0` | Multiple scopes (semicolon delimiter) |
+| `/api/.configuration` | Configuration endpoints only |
+
+> **Note:** When SDK Access is enabled in SOA Admin, `/p21sdk` is automatically appended to the scope. The `/api` scope alone is sufficient for all API operations including Interactive API sessions — the `/ui` scope is not required.
 
 ### OData Table Scopes
 
@@ -281,8 +433,8 @@ Key details about the Dataservice Permission screen:
 | Auth Method | Application Security | Dataservice Permission | Notes |
 |-------------|---------------------|----------------------|-------|
 | **User Credentials** | Required | Required | Both must be configured |
-| **Consumer Key** (no username) | Not needed | Not needed | Access controlled by API scope |
-| **Consumer Key** (with username) | Not needed | Not needed | User credentials are **ignored** for OData |
+| **Consumer Key** (no username) | Not needed | Not needed | Access controlled by API scope; sufficient for OData, Entity, Inventory REST |
+| **Consumer Key** (with username) | Not needed | Not needed | User must exist in P21 but doesn't need OData/Dataservice permissions; required for Interactive API |
 
 ### Troubleshooting
 
@@ -601,12 +753,14 @@ public static JObject ParseTokenResponse(HttpResponseMessage response)
 ## Best Practices
 
 1. **Use V2 endpoint** for new integrations
-2. **Store credentials securely** - use environment variables, not code
-3. **Handle token expiration** - refresh 5 minutes before expiry to avoid failed requests
-4. **Use consumer keys** for service accounts
-5. **Restrict scopes** to minimum required access
-6. **Disable SSL verification** only in development (`verify=False`)
-7. **Handle both JSON and XML** token responses for maximum middleware compatibility
+2. **Store credentials securely** — use environment variables, not code
+3. **Handle token expiration** — refresh 5 minutes before expiry to avoid failed requests
+4. **Use consumer keys** for service accounts — no password rotation needed
+5. **Include username** when using consumer keys with Interactive or Transaction APIs — this provides audit trail attribution and is required for session creation
+6. **Reuse tokens** — each call to the token endpoint creates a new middleware session; get one token and reuse it rather than requesting new tokens per-request
+7. **Restrict scopes** to minimum required access
+8. **Disable SSL verification** only in development (`verify=False`)
+9. **Handle both JSON and XML** token responses for maximum middleware compatibility
 
 ---
 
