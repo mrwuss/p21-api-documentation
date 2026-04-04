@@ -8,6 +8,12 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-04-04
+
+- **docs:** Expand consumer key authentication documentation — verified consumer key + username works for Interactive API sessions, added SOA Admin configuration fields, JWT token claims, API-specific behavior table, scope behavior, Python and C# code examples — *@mrwuss*
+- **feat:** Add `consumer_username` to P21Config and `load_config()` for consumer key auth support
+- **chore:** Scrub all personal and company-specific data from repository history via git-filter-repo
+
 ## 2026-03-06
 
 - **feat:** Add Production & Labor API documentation — TimeEntry service for recording labor hours against production orders, ProductionOrder service with full field definitions (54 header fields, assembly lines, components, labor entries, completions, routing), Labor/LaborProcess services for labor code maintenance, 24 production-related Transaction API services discovered, 13 Interactive API windows verified working — *@mrwuss*

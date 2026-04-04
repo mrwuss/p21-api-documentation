@@ -19,6 +19,7 @@ This repository provides developer-focused documentation for P21's integration A
 | [Interactive API](docs/04-Interactive-API.md) | Stateful window interactions with business logic | Complex workflows, validation |
 | [Entity API](docs/05-Entity-API.md) | Simple CRUD on business objects | Basic record operations |
 | [Inventory REST API](docs/11-Inventory-REST-API.md) | Inventory item CRUD, multi-company workflows | Item reads, appending locations/suppliers |
+| [Production & Labor](docs/12-Production-Labor-API.md) | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking |
 
 ## Quick Start
 
@@ -41,7 +42,7 @@ python scripts/odata/01_basic_query.py
 ## Documentation
 
 ### Getting Started
-- [Authentication](docs/00-Authentication.md) - Token generation, credentials vs consumer key
+- [Authentication](docs/00-Authentication.md) - Token generation, credentials vs consumer key, Interactive API auth
 - [API Selection Guide](docs/01-API-Selection-Guide.md) - Which API to use when
 
 ### API Reference
@@ -50,6 +51,7 @@ python scripts/odata/01_basic_query.py
 - [Interactive API](docs/04-Interactive-API.md) - Sessions, windows, workflows
 - [Entity API](docs/05-Entity-API.md) - Entity CRUD operations
 - [Inventory REST API](docs/11-Inventory-REST-API.md) - Inventory CRUD, multi-company workflows
+- [Production & Labor API](docs/12-Production-Labor-API.md) - Production orders, labor tracking
 
 ### Troubleshooting
 - [Error Handling](docs/06-Error-Handling.md) - HTTP codes, error responses
@@ -113,8 +115,12 @@ All documentation pages include tabbed code blocks showing both Python and C# si
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.p21server.com`) |
-| `P21_USERNAME` | Yes | P21 API username |
-| `P21_PASSWORD` | Yes | P21 API password |
+| `P21_USERNAME` | Yes* | P21 API username |
+| `P21_PASSWORD` | Yes* | P21 API password |
+| `P21_CONSUMER_KEY` | No | Consumer key GUID (alternative to username/password) |
+| `P21_CONSUMER_USERNAME` | No | P21 username for consumer key auth (required for Interactive API) |
+
+*Not required when using consumer key authentication. See [Authentication docs](docs/00-Authentication.md).
 
 ## Content Sources
 
