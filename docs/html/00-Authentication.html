@@ -394,8 +394,12 @@
 </li>
 <li><a href="#method-2-consumer-key">Method 2: Consumer Key</a><ul>
 <li><a href="#creating-a-consumer-key">Creating a Consumer Key</a></li>
-<li><a href="#request">Request</a></li>
-<li><a href="#api-specific-behavior">API-Specific Behavior</a></li>
+<li><a href="#basic-request-no-username">Basic Request (No Username)</a></li>
+<li><a href="#request-with-username-required-for-interactive-api">Request with Username (Required for Interactive API)</a></li>
+<li><a href="#jwt-token-claims">JWT Token Claims</a></li>
+<li><a href="#api-specific-behavior-verified">API-Specific Behavior (Verified)</a></li>
+<li><a href="#important-caveats">Important Caveats</a></li>
+<li><a href="#code-examples_1">Code Examples</a></li>
 </ul>
 </li>
 <li><a href="#api-scopes">API Scopes</a><ul>
@@ -581,19 +585,52 @@
 </div>
 <hr />
 <h2 id="method-2-consumer-key">Method 2: Consumer Key</h2>
-<p>Use for service accounts and automated integrations. Consumer keys are created in the SOA Admin console.</p>
+<p>Use for service accounts and automated integrations. Consumer keys bypass P21 user permission checks (Application Security and Dataservice Permissions) — access is controlled by the consumer key's API scope instead.</p>
 <h3 id="creating-a-consumer-key">Creating a Consumer Key</h3>
 <ol>
 <li>Log in to SOA Admin Page (<code>https://{hostname}/api/admin</code>)</li>
 <li>Open the <strong>API Console</strong> tab</li>
 <li>Click <strong>Register Consumer Key</strong></li>
 <li>Configure:</li>
-<li><strong>Consumer</strong>: Descriptive name</li>
-<li><strong>SDK Access</strong>: Enable for SDK access</li>
-<li><strong>Token Expire</strong>: Key validity duration</li>
-<li><strong>API Scope</strong>: Restrict access (see Scopes section)</li>
 </ol>
-<h3 id="request">Request</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Consumer</strong></td>
+<td>Descriptive name (e.g., <code>MY_SERVICE_APP</code>)</td>
+<td>Use a name that identifies the integration</td>
+</tr>
+<tr>
+<td><strong>Consumer Type</strong></td>
+<td><code>Desktop</code>, <code>Mobile</code>, <code>Web</code>, or <code>Service</code></td>
+<td><code>Service</code> for API integrations</td>
+</tr>
+<tr>
+<td><strong>SDK Access</strong></td>
+<td>Enable for P21 SDK access</td>
+<td>Enable if using <code>/p21sdk</code> scope</td>
+</tr>
+<tr>
+<td><strong>Token Expire</strong></td>
+<td>Key validity duration</td>
+<td><code>Never Expire</code> for service accounts</td>
+</tr>
+<tr>
+<td><strong>API Scope</strong></td>
+<td>Semicolon-delimited paths (see <a href="#api-scopes">Scopes</a>)</td>
+<td><code>/api</code> for full access</td>
+</tr>
+</tbody>
+</table>
+<h3 id="basic-request-no-username">Basic Request (No Username)</h3>
+<p>Returns a token tied to the consumer key with no P21 user context. Sufficient for read-only operations (OData, Entity API, Inventory REST API).</p>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token/v2</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
 <span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
 <span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
@@ -605,15 +642,98 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>With optional username (required for Interactive API):</p>
+<p><strong>Response:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;AccessToken&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;TokenType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Bearer&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ExpiresIn&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">630720000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RefreshToken&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api;/p21sdk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;SessionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a1b2c3d4-...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ConsumerUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;AppKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="request-with-username-required-for-interactive-api">Request with Username (Required for Interactive API)</h3>
+<p>Adding <code>username</code> to the request associates the token with a P21 user identity. This is <strong>required</strong> for Interactive API sessions and provides audit trail attribution for write operations.</p>
+<blockquote>
+<p><strong>Important:</strong> The <code>username</code> must be a <strong>real P21 user account</strong> — not the consumer name. For example, if your consumer is named <code>MY_SERVICE_APP</code>, you still need a P21 user like <code>svc_api</code> or <code>api_user</code> in the username field. The token endpoint accepts any string, but session creation will fail with <code>Error retrieving/validating user</code> if the user doesn't exist in P21.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token/v2</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+
+<span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;ClientSecret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;62ccc18a-25e2-440c-bf6d-749c117fa9db&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;GrantType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;client_credentials&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api_user&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<h3 id="api-specific-behavior">API-Specific Behavior</h3>
+<p><strong>Response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;AccessToken&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJIUzI1NiIs...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;TokenType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Bearer&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UserName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;api_user&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ExpiresIn&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">630720000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RefreshToken&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api;/p21sdk&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;SessionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;e1f2a3b4-...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ConsumerUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;8&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;AppKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="jwt-token-claims">JWT Token Claims</h3>
+<p>Consumer key tokens contain these claims:</p>
+<table>
+<thead>
+<tr>
+<th>Claim</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sub</code></td>
+<td>P21 username (if provided) or empty</td>
+<td><code>"api_user"</code></td>
+</tr>
+<tr>
+<td><code>aud</code></td>
+<td>Scope from consumer config (not the request)</td>
+<td><code>"/api;/p21sdk"</code></td>
+</tr>
+<tr>
+<td><code>P21.ConsumerUid</code></td>
+<td>Consumer key identifier</td>
+<td><code>"8"</code></td>
+</tr>
+<tr>
+<td><code>P21.SessionId</code></td>
+<td>Middleware session ID</td>
+<td><code>"a1b2c3d4-..."</code></td>
+</tr>
+<tr>
+<td><code>iss</code></td>
+<td>Token issuer</td>
+<td><code>"P21.Soa"</code></td>
+</tr>
+<tr>
+<td><code>exp</code></td>
+<td>Expiration timestamp</td>
+<td><code>2147483647</code> (Never Expire)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The <code>Scope</code> in the token response (and the <code>aud</code> JWT claim) is determined by the consumer key's configuration in SOA Admin — not by any <code>Scope</code> field in the request. Requesting a different scope is silently ignored.</p>
+</blockquote>
+<h3 id="api-specific-behavior-verified">API-Specific Behavior (Verified)</h3>
 <table>
 <thead>
 <tr>
@@ -625,29 +745,116 @@
 <tbody>
 <tr>
 <td><strong>OData</strong></td>
-<td>Works - uses consumer key scope</td>
-<td>Username ignored</td>
-</tr>
-<tr>
-<td><strong>Transaction</strong></td>
-<td>Works - uses P21 install user</td>
-<td>Uses specified user</td>
-</tr>
-<tr>
-<td><strong>Interactive</strong></td>
-<td><strong>Does not work</strong> - username required</td>
-<td>Works</td>
+<td>Works — uses consumer key scope</td>
+<td>Works — username ignored for data access</td>
 </tr>
 <tr>
 <td><strong>Entity</strong></td>
-<td>Works - uses admin by default</td>
-<td>Uses specified user</td>
+<td>Works — returns data</td>
+<td>Works — uses specified user</td>
+</tr>
+<tr>
+<td><strong>Inventory REST</strong></td>
+<td>Works — returns data</td>
+<td>Works — uses specified user</td>
+</tr>
+<tr>
+<td><strong>Transaction</strong></td>
+<td>Works — uses P21 install user</td>
+<td>Works — uses specified user for audit</td>
+</tr>
+<tr>
+<td><strong>Interactive</strong></td>
+<td><strong>Fails</strong> — <code>Error retrieving/validating user</code></td>
+<td><strong>Works</strong> — user must be a real P21 account</td>
 </tr>
 </tbody>
 </table>
+<h3 id="important-caveats">Important Caveats</h3>
+<ol>
+<li><strong>Token endpoint creates a middleware session</strong> — each call to <code>/api/security/token/v2</code> creates a new middleware session, which may invalidate tokens from previous calls. Get one token and reuse it.</li>
+<li><strong>No password required</strong> — the consumer key replaces password authentication entirely. The username is only for P21 user context, not authentication.</li>
+<li><strong>Scope is locked</strong> — the <code>Scope</code> field in the request is ignored. The consumer key's configured scope in SOA Admin determines access.</li>
+<li><strong><code>/api</code> scope is sufficient</strong> — the <code>/ui</code> scope is not required for Interactive API. The <code>/api</code> scope covers all endpoints including UI server operations.</li>
+</ol>
+<h3 id="code-examples_1">Code Examples</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_consumer_token</span><span class="p">(</span>
+    <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">consumer_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get token using consumer key authentication.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        base_url: P21 server URL (e.g., &quot;https://play.p21server.com&quot;)</span>
+<span class="sd">        consumer_key: Consumer key GUID from SOA Admin</span>
+<span class="sd">        username: Optional P21 username (required for Interactive API)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Token response dict with AccessToken, Scope, etc.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;GrantType&quot;</span><span class="p">:</span> <span class="s2">&quot;client_credentials&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ClientSecret&quot;</span><span class="p">:</span> <span class="n">consumer_key</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">username</span><span class="p">:</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;username&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">username</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;Get token using consumer key authentication.&lt;/summary&gt;</span>
+<span class="c1">/// &lt;param name=&quot;baseUrl&quot;&gt;P21 server URL&lt;/param&gt;</span>
+<span class="c1">/// &lt;param name=&quot;consumerKey&quot;&gt;Consumer key GUID from SOA Admin&lt;/param&gt;</span>
+<span class="c1">/// &lt;param name=&quot;username&quot;&gt;Optional P21 username (required for Interactive API)&lt;/param&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetConsumerTokenAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">consumerKey</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;GrantType&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;client_credentials&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;ClientSecret&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">consumerKey</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">username</span><span class="p">))</span>
+<span class="w">        </span><span class="n">payload</span><span class="p">[</span><span class="s">&quot;username&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">username</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">        </span><span class="n">JsonConvert</span><span class="p">.</span><span class="n">SerializeObject</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span>
+<span class="w">        </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{baseUrl}/api/security/token/v2&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="api-scopes">API Scopes</h2>
-<p>Consumer keys can restrict access to specific endpoints and data.</p>
+<p>Consumer keys restrict access to specific endpoints. Scopes are configured in SOA Admin as semicolon-delimited paths with a leading slash.</p>
 <h3 id="url-scopes">URL Scopes</h3>
 <table>
 <thead>
@@ -659,22 +866,33 @@
 <tbody>
 <tr>
 <td><code>/api</code></td>
-<td>All API endpoints</td>
+<td>All API endpoints (recommended for full access)</td>
+</tr>
+<tr>
+<td><code>/api;/p21sdk</code></td>
+<td>API + SDK access (auto-added when SDK Access is enabled)</td>
+</tr>
+<tr>
+<td><code>/api;/ui</code></td>
+<td>API + UI sessions</td>
 </tr>
 <tr>
 <td><code>/uiserver0</code></td>
-<td>Interactive and Transaction APIs</td>
+<td>Interactive and Transaction APIs only</td>
 </tr>
 <tr>
 <td><code>/odata</code></td>
 <td>OData endpoints (must specify tables)</td>
 </tr>
 <tr>
-<td><code>/api;/uiserver0</code></td>
-<td>Multiple scopes (semicolon delimiter)</td>
+<td><code>/api/.configuration</code></td>
+<td>Configuration endpoints only</td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Note:</strong> When SDK Access is enabled in SOA Admin, <code>/p21sdk</code> is automatically appended to the scope. The <code>/api</code> scope alone is sufficient for all API operations including Interactive API sessions — the <code>/ui</code> scope is not required.</p>
+</blockquote>
 <h3 id="odata-table-scopes">OData Table Scopes</h3>
 <p>For OData access, specify allowed tables/views:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/odata:price_page,supplier,product_group</span>
@@ -733,13 +951,13 @@
 <td><strong>Consumer Key</strong> (no username)</td>
 <td>Not needed</td>
 <td>Not needed</td>
-<td>Access controlled by API scope</td>
+<td>Access controlled by API scope; sufficient for OData, Entity, Inventory REST</td>
 </tr>
 <tr>
 <td><strong>Consumer Key</strong> (with username)</td>
 <td>Not needed</td>
 <td>Not needed</td>
-<td>User credentials are <strong>ignored</strong> for OData</td>
+<td>User must exist in P21 but doesn't need OData/Dataservice permissions; required for Interactive API</td>
 </tr>
 </tbody>
 </table>
@@ -1079,9 +1297,11 @@
 <h2 id="best-practices">Best Practices</h2>
 <ol>
 <li><strong>Use V2 endpoint</strong> for new integrations</li>
-<li><strong>Store credentials securely</strong> - use environment variables, not code</li>
-<li><strong>Handle token expiration</strong> - refresh 5 minutes before expiry to avoid failed requests</li>
-<li><strong>Use consumer keys</strong> for service accounts</li>
+<li><strong>Store credentials securely</strong> — use environment variables, not code</li>
+<li><strong>Handle token expiration</strong> — refresh 5 minutes before expiry to avoid failed requests</li>
+<li><strong>Use consumer keys</strong> for service accounts — no password rotation needed</li>
+<li><strong>Include username</strong> when using consumer keys with Interactive or Transaction APIs — this provides audit trail attribution and is required for session creation</li>
+<li><strong>Reuse tokens</strong> — each call to the token endpoint creates a new middleware session; get one token and reuse it rather than requesting new tokens per-request</li>
 <li><strong>Restrict scopes</strong> to minimum required access</li>
 <li><strong>Disable SSL verification</strong> only in development (<code>verify=False</code>)</li>
 <li><strong>Handle both JSON and XML</strong> token responses for maximum middleware compatibility</li>
