@@ -292,7 +292,7 @@ Consumer key tokens contain these claims:
 ```python
 import httpx
 
-async def get_consumer_token(
+def get_consumer_token(
     base_url: str,
     consumer_key: str,
     username: str = "",
@@ -314,17 +314,16 @@ async def get_consumer_token(
     if username:
         payload["username"] = username
 
-    async with httpx.AsyncClient(verify=False) as client:
-        response = await client.post(
-            f"{base_url}/api/security/token/v2",
-            json=payload,
-            headers={
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            },
-        )
-        response.raise_for_status()
-        return response.json()
+    response = httpx.post(
+        f"{base_url}/api/security/token/v2",
+        json=payload,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    response.raise_for_status()
+    return response.json()
 ```
 
 **C#:**

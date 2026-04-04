@@ -17,6 +17,7 @@ class P21Config:
     username: str = ""
     password: str = ""
     consumer_key: str | None = None
+    consumer_username: str | None = None
     verify_ssl: bool = False
 
     @property
@@ -73,6 +74,7 @@ def load_config() -> P21Config:
     username = os.getenv("P21_USERNAME", "")
     password = os.getenv("P21_PASSWORD", "")
     consumer_key = os.getenv("P21_CONSUMER_KEY")
+    consumer_username = os.getenv("P21_CONSUMER_USERNAME")
 
     # Validate: need base_url always, and either consumer_key or username+password
     missing = []
@@ -94,6 +96,7 @@ def load_config() -> P21Config:
         username=username,
         password=password,
         consumer_key=consumer_key,
+        consumer_username=consumer_username,
         verify_ssl=verify_ssl
     )
 
@@ -106,6 +109,7 @@ if __name__ == "__main__":
         print(f"Username: {config.username}")
         print(f"Password: {'*' * len(config.password)}")
         print(f"Consumer Key: {'set' if config.consumer_key else 'not set'}")
+        print(f"Consumer Username: {config.consumer_username or 'not set'}")
         print(f"Verify SSL: {config.verify_ssl}")
         print(f"Token URL: {config.token_url}")
         print(f"Token URL V2: {config.token_url_v2}")
