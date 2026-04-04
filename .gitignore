@@ -16,3 +16,12 @@ venv/
 
 # Test results (regenerated on each run)
 scripts/session_pool_results.json
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Scraped data
+scraped/
+
+# Misc local files
+*.png
