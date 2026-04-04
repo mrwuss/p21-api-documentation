@@ -414,7 +414,7 @@
 <hr />
 <h2 id="2026-03-06">2026-03-06</h2>
 <ul>
-<li><strong>feat:</strong> Add Production &amp; Labor API documentation — TimeEntry service for recording labor hours against production orders, ProductionOrder service with full field definitions (54 header fields, assembly lines, components, labor entries, completions, routing), Labor/LaborProcess services for labor code maintenance, 24 production-related Transaction API services discovered, 13 Interactive API windows verified working — <em>Josh Scarbrough</em></li>
+<li><strong>feat:</strong> Add Production &amp; Labor API documentation — TimeEntry service for recording labor hours against production orders, ProductionOrder service with full field definitions (54 header fields, assembly lines, components, labor entries, completions, routing), Labor/LaborProcess services for labor code maintenance, 24 production-related Transaction API services discovered, 13 Interactive API windows verified working — <em>@mrwuss</em></li>
 <li><strong>feat:</strong> Add Python example scripts for production/labor — service discovery, TimeEntry definition, labor hour recording, ProductionOrder definition (<code>scripts/production/</code>)</li>
 <li><strong>feat:</strong> Add C# example code for production/labor — mirrors Python examples (<code>examples/csharp/Production/</code>)</li>
 <li><strong>docs:</strong> Update API Selection Guide with production/labor use cases and decision table entries</li>
@@ -424,7 +424,7 @@
 <h2 id="2026-02-25">2026-02-25</h2>
 <ul>
 <li>
-<p><strong>feat:</strong> Add C# code examples alongside Python across all documentation — tabbed code blocks (Python/C#) in generated HTML with global language sync and localStorage persistence, 23 C# console app examples mirroring every Python script, shared C# client library (<code>examples/csharp/Common/</code>) with auth, config, and HttpClient wrapper — <em>Josh Scarbrough</em></p>
+<p><strong>feat:</strong> Add C# code examples alongside Python across all documentation — tabbed code blocks (Python/C#) in generated HTML with global language sync and localStorage persistence, 23 C# console app examples mirroring every Python script, shared C# client library (<code>examples/csharp/Common/</code>) with auth, config, and HttpClient wrapper — <em>@mrwuss</em></p>
 </li>
 <li>
 <p><strong>fix:</strong> Correct Interactive API <code>ResultStatus</code> enum mapping — <code>None=0, Success=1, Failure=2, Blocked=3</code> (was incorrectly <code>0=Failure, 2=Blocked, 3=Dialog</code>), verified against source (<code>ResultWrapper.cs</code>) and live API — <a href="https://github.com/mrwuss/p21-api-documentation/pull/26">PR #26</a></p>
@@ -439,66 +439,66 @@
 </ul>
 <h2 id="2026-02-17">2026-02-17</h2>
 <ul>
-<li><strong>docs:</strong> Add standalone Inventory REST API documentation — moved from Entity API doc, added verified PUT/POST behavior, multi-company inventory workflow (GET → Append → PUT), error examples, automation patterns — <em>Sibin Francis (<a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/25">PR #25</a>, verified and restructured by <em>Josh Scarbrough</em></li>
+<li><strong>docs:</strong> Add standalone Inventory REST API documentation — moved from Entity API doc, added verified PUT/POST behavior, multi-company inventory workflow (GET → Append → PUT), error examples, automation patterns — <em>Sibin Francis (<a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/25">PR #25</a>, verified and restructured by <em>@mrwuss</em></li>
 <li><strong>fix:</strong> Update inv_loc write access known issue — PUT can append new inv_loc records via Inventory REST API (partially resolved)</li>
 </ul>
 <h2 id="2026-02-16">2026-02-16</h2>
 <ul>
 <li><strong>feat:</strong> Add Postman Collection for all P21 APIs — pre-configured requests for Auth, OData, Transaction, Interactive, and Entity APIs with auto-capture test scripts — <em>NextTWis (<a href="https://github.com/NextTWis">@NextTWis</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/24">PR #24</a></li>
-<li><strong>fix:</strong> Correct API endpoints in Postman collection — verified all URLs against live server, fixed Entity/Interactive/Transaction paths and payloads — <em>Josh Scarbrough</em></li>
+<li><strong>fix:</strong> Correct API endpoints in Postman collection — verified all URLs against live server, fixed Entity/Interactive/Transaction paths and payloads — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-02-13">2026-02-13</h2>
 <ul>
 <li><strong>docs:</strong> Add Inventory REST API documentation to Entity API guide — verified endpoints, caveats, extended properties — <em>Sibin Francis (<a href="https://github.com/sibinfrancisaj">@sibinfrancisaj</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/23">PR #23</a></li>
-<li><strong>fix:</strong> Disable Jekyll rendering and add root URL redirect to HTML docs — <em>Josh Scarbrough</em></li>
+<li><strong>fix:</strong> Disable Jekyll rendering and add root URL redirect to HTML docs — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-02-12">2026-02-12</h2>
 <ul>
 <li><strong>feat:</strong> Add reusable P21 API client (<code>scripts/common/client.py</code>) with sync/async support, namespace helpers for all 4 APIs, and auto token refresh — <em>Claude Jones (<a href="https://github.com/RadAJones">@RadAJones</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/16">PR #16</a></li>
-<li><strong>fix:</strong> Address CodeRabbit + live API testing feedback on client — duplicate parser removal, query param fixes (<code>?id=</code> vs <code>?windowId=</code>), entity address guards, response window forwarding — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Add XML token responses section, query parameter testing results, and cross-reference updates across Auth, Interactive, Entity, and Error Handling docs — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Fix Entity API address limitations, add SOAP/mobile endpoints and error codes — <em>Josh Scarbrough</em></li>
-<li><strong>feat:</strong> Add sidebar navigation with page index and on-page table of contents to all HTML docs — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Expand Transaction API with commands endpoint, async limits, and special scenarios — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Expand Interactive API with session params, data structures, and missing endpoints — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Fix OData pagination guidance — page size defaults and performance — <em>Josh Scarbrough</em></li>
+<li><strong>fix:</strong> Address CodeRabbit + live API testing feedback on client — duplicate parser removal, query param fixes (<code>?id=</code> vs <code>?windowId=</code>), entity address guards, response window forwarding — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add XML token responses section, query parameter testing results, and cross-reference updates across Auth, Interactive, Entity, and Error Handling docs — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Fix Entity API address limitations, add SOAP/mobile endpoints and error codes — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> Add sidebar navigation with page index and on-page table of contents to all HTML docs — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Expand Transaction API with commands endpoint, async limits, and special scenarios — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Expand Interactive API with session params, data structures, and missing endpoints — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Fix OData pagination guidance — page size defaults and performance — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-02-11">2026-02-11</h2>
 <ul>
-<li><strong>docs:</strong> Add complete field listings for all Entity API templates — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Rewrite Entity API docs based on verified live testing — confirmed working, composite keys, address limitations — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Add OData Dataservice Permissions prerequisites and fix OData version (v3, not v4) — <em>Josh Scarbrough</em></li>
+<li><strong>docs:</strong> Add complete field listings for all Entity API templates — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Rewrite Entity API docs based on verified live testing — confirmed working, composite keys, address limitations — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add OData Dataservice Permissions prerequisites and fix OData version (v3, not v4) — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-02-09">2026-02-09</h2>
 <ul>
-<li><strong>docs:</strong> Add production learnings from 700+ bulk Interactive API operations — session batching, error recovery, page expiration patterns — <em>Josh Scarbrough</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/11">PR #11</a></li>
+<li><strong>docs:</strong> Add production learnings from 700+ bulk Interactive API operations — session batching, error recovery, page expiration patterns — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/11">PR #11</a></li>
 </ul>
 <h2 id="2026-01-20">2026-01-20</h2>
 <ul>
-<li><strong>docs:</strong> Add Interactive API v1 vs v2 differences — endpoint comparison, migration guide — <em>Josh Scarbrough</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/9">PR #9</a></li>
-<li><strong>chore:</strong> Cleanup repo — reorganize HTML to <code>docs/html/</code>, fix broken paths, restore Known Issues — <em>Josh Scarbrough</em></li>
+<li><strong>docs:</strong> Add Interactive API v1 vs v2 differences — endpoint comparison, migration guide — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/9">PR #9</a></li>
+<li><strong>chore:</strong> Cleanup repo — reorganize HTML to <code>docs/html/</code>, fix broken paths, restore Known Issues — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-01-19">2026-01-19</h2>
 <ul>
-<li><strong>docs:</strong> Add working endpoint for responding to P21 dialogs — <em>Josh Scarbrough</em></li>
+<li><strong>docs:</strong> Add working endpoint for responding to P21 dialogs — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-01-02">2026-01-02</h2>
 <ul>
-<li><strong>docs:</strong> Add row selection bug workaround and <code>inv_loc</code> example for Interactive API — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Add Interactive API v1 vs v2 differences — <em>Josh Scarbrough</em></li>
+<li><strong>docs:</strong> Add row selection bug workaround and <code>inv_loc</code> example for Interactive API — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add Interactive API v1 vs v2 differences — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2025-12-27">2025-12-27</h2>
 <ul>
-<li><strong>docs:</strong> Add lessons learned from Cube Writer project — session pool contamination patterns — <em>Josh Scarbrough</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/8">PR #8</a></li>
+<li><strong>docs:</strong> Add lessons learned from Cube Writer project — session pool contamination patterns — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/8">PR #8</a></li>
 </ul>
 <h2 id="2025-12-26">2025-12-26</h2>
 <ul>
-<li><strong>docs:</strong> Add disclaimer to all documentation pages — <em>Josh Scarbrough</em></li>
-<li><strong>docs:</strong> Add SalesPricePage dropdown codes reference — <em>Josh Scarbrough</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/1">PR #1</a></li>
+<li><strong>docs:</strong> Add disclaimer to all documentation pages — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add SalesPricePage dropdown codes reference — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/1">PR #1</a></li>
 </ul>
 <h2 id="2025-12-25-initial-release">2025-12-25 — Initial Release</h2>
 <ul>
-<li><strong>feat:</strong> Initial project setup with full documentation for all 4 P21 APIs — <em>Josh Scarbrough</em></li>
+<li><strong>feat:</strong> Initial project setup with full documentation for all 4 P21 APIs — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Authentication — token endpoints (V1/V2), credentials vs consumer keys, API scopes, token refresh</li>
 <li><strong>docs:</strong> API Selection Guide — decision flowchart and comparison table</li>
 <li><strong>docs:</strong> OData API — query syntax, filtering, pagination, example scripts</li>
@@ -522,7 +522,7 @@
 </thead>
 <tbody>
 <tr>
-<td>Josh Scarbrough</td>
+<td>@mrwuss</td>
 <td><a href="https://github.com/mrwuss">@mrwuss</a></td>
 <td>Project creator, all documentation, HTML generation, maintenance</td>
 </tr>

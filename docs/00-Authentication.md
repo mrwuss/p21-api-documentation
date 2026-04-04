@@ -180,7 +180,7 @@ Use for service accounts and automated integrations. Consumer keys bypass P21 us
 
 | Field | Description | Recommended |
 |-------|-------------|-------------|
-| **Consumer** | Descriptive name (e.g., `CORE_API_CC`) | Use a name that identifies the integration |
+| **Consumer** | Descriptive name (e.g., `MY_SERVICE_APP`) | Use a name that identifies the integration |
 | **Consumer Type** | `Desktop`, `Mobile`, `Web`, or `Service` | `Service` for API integrations |
 | **SDK Access** | Enable for P21 SDK access | Enable if using `/p21sdk` scope |
 | **Token Expire** | Key validity duration | `Never Expire` for service accounts |
@@ -221,7 +221,7 @@ Accept: application/json
 
 Adding `username` to the request associates the token with a P21 user identity. This is **required** for Interactive API sessions and provides audit trail attribution for write operations.
 
-> **Important:** The `username` must be a **real P21 user account** — not the consumer name. For example, if your consumer is named `CORE_API_CC`, you still need a P21 user like `coreapi` or `api_user` in the username field. The token endpoint accepts any string, but session creation will fail with `Error retrieving/validating user` if the user doesn't exist in P21.
+> **Important:** The `username` must be a **real P21 user account** — not the consumer name. For example, if your consumer is named `MY_SERVICE_APP`, you still need a P21 user like `svc_api` or `api_user` in the username field. The token endpoint accepts any string, but session creation will fail with `Error retrieving/validating user` if the user doesn't exist in P21.
 
 ```http
 POST /api/security/token/v2 HTTP/1.1

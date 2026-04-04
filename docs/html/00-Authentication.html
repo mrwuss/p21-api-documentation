@@ -604,7 +604,7 @@
 <tbody>
 <tr>
 <td><strong>Consumer</strong></td>
-<td>Descriptive name (e.g., <code>CORE_API_CC</code>)</td>
+<td>Descriptive name (e.g., <code>MY_SERVICE_APP</code>)</td>
 <td>Use a name that identifies the integration</td>
 </tr>
 <tr>
@@ -659,7 +659,7 @@
 <h3 id="request-with-username-required-for-interactive-api">Request with Username (Required for Interactive API)</h3>
 <p>Adding <code>username</code> to the request associates the token with a P21 user identity. This is <strong>required</strong> for Interactive API sessions and provides audit trail attribution for write operations.</p>
 <blockquote>
-<p><strong>Important:</strong> The <code>username</code> must be a <strong>real P21 user account</strong> — not the consumer name. For example, if your consumer is named <code>CORE_API_CC</code>, you still need a P21 user like <code>coreapi</code> or <code>api_user</code> in the username field. The token endpoint accepts any string, but session creation will fail with <code>Error retrieving/validating user</code> if the user doesn't exist in P21.</p>
+<p><strong>Important:</strong> The <code>username</code> must be a <strong>real P21 user account</strong> — not the consumer name. For example, if your consumer is named <code>MY_SERVICE_APP</code>, you still need a P21 user like <code>svc_api</code> or <code>api_user</code> in the username field. The token endpoint accepts any string, but session creation will fail with <code>Error retrieving/validating user</code> if the user doesn't exist in P21.</p>
 </blockquote>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token/v2</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
 <span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
