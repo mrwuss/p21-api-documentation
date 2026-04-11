@@ -1583,7 +1583,7 @@ unlocked = check_tab_unlocks(response)
 # unlocked == ["CUSTOMER_SHIP_TO"]
 ```
 
-#### C#
+#### C\#
 
 ```csharp
 public List<string> CheckTabUnlocks(JObject result)
@@ -1648,6 +1648,8 @@ When calling `add_row`, P21 returns `Status: 2` (Failure) if the **previous** ro
 ```python
 import logging
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 
@@ -1694,7 +1696,7 @@ async def add_row_tolerant(
     return result
 ```
 
-#### C#
+#### C\#
 
 ```csharp
 public async Task<JObject> AddRowTolerantAsync(
@@ -1757,6 +1759,13 @@ Response windows fall into distinct categories based on what interactions they s
 #### Python
 
 ```python
+import logging
+
+import httpx
+
+logger = logging.getLogger(__name__)
+
+
 async def handle_response_window(
     window_id: str,
     response_window_id: str,
@@ -1799,7 +1808,7 @@ async def handle_response_window(
     return click_resp.json()
 ```
 
-#### C#
+#### C\#
 
 ```csharp
 public async Task<JObject> HandleResponseWindowAsync(

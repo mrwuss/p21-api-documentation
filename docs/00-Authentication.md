@@ -64,7 +64,7 @@ Accept: application/json
 
 ### V1 Request (Legacy — Not Recommended)
 
-> **Credentials are in headers — see [security warning above](#v1-endpoint-deprecated--security-risk).**
+> **Credentials are in headers — see [security warning above](#v1-endpoint-deprecated-security-risk).**
 
 **Request:**
 ```http
@@ -580,12 +580,16 @@ class TokenManager:
         """Check if the cached token is still valid (with buffer)."""
         if self._token_data is None:
             return False
-        expires_in = self._token_data.get(
+        expires_raw = self._token_data.get(
             "ExpiresInSeconds",
             self._token_data.get("ExpiresIn", 0),
         )
+        try:
+            expires_in = int(expires_raw)
+        except (TypeError, ValueError):
+            expires_in = 3600
         elapsed = time.time() - self._token_acquired_at
-        return elapsed < (int(expires_in) - TOKEN_REFRESH_BUFFER)
+        return elapsed < (expires_in - TOKEN_REFRESH_BUFFER)
 
     def _authenticate(self) -> None:
         """Request a new token from the P21 token endpoint."""
@@ -707,34 +711,34 @@ public class TokenManager
         return _tokenData!["AccessToken"]!.ToString();
     }
 
-    /// <summary>Get authorization headers with a valid token.
-    /// Use with a caller-owned long-lived HttpClient.</summary>
-    public async Task<Dictionary<string, string>> GetHeadersAsync()
+    /// <summary>Apply auth to a request, refreshing the token if needed.</summary>
+    public async Task ApplyAuthAsync(HttpRequestMessage request)
     {
         var token = await GetTokenAsync();
-        return new Dictionary<string, string>
-        {
-            ["Authorization"] = $"Bearer {token}",
-            ["Accept"] = "application/json"
-        };
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        if (!request.Headers.Contains("Accept"))
+            request.Headers.Add("Accept", "application/json");
     }
 }
 
-// Usage — one long-lived HttpClient, authenticate once, reuse for all API calls
+// Usage — one long-lived HttpClient, per-request auth (always fresh token)
 var manager = new TokenManager(
     "https://play.p21server.com", "api_user", "your_password");
 using var client = new HttpClient();
 
 // OData query
-var headers = await manager.GetHeadersAsync();
-foreach (var h in headers) client.DefaultRequestHeaders.TryAddWithoutValidation(h.Key, h.Value);
-var odataResp = await client.GetAsync(
-    "https://play.p21server.com/odataservice/odata/table/supplier");
+var odataReq = new HttpRequestMessage(
+    HttpMethod.Get, "https://play.p21server.com/odataservice/odata/table/supplier");
+await manager.ApplyAuthAsync(odataReq);
+var odataResp = await client.SendAsync(odataReq);
 odataResp.EnsureSuccessStatusCode();
 
 // Entity API query — same token, no re-authentication
-var entityResp = await client.GetAsync(
-    "https://play.p21server.com/api/entity/customers/");
+var entityReq = new HttpRequestMessage(
+    HttpMethod.Get, "https://play.p21server.com/api/entity/customers/");
+await manager.ApplyAuthAsync(entityReq);
+var entityResp = await client.SendAsync(entityReq);
 entityResp.EnsureSuccessStatusCode();
 ```
 

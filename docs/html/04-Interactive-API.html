@@ -2605,6 +2605,8 @@ Row 5 selected → Detail shows row 4 (1 behind)
   <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
@@ -2736,7 +2738,14 @@ Row 5 selected → Detail shows row 4 (1 behind)
     <button class="tab-btn" data-lang="csharp">C#</button>
   </div>
   <div class="tab-panel active" data-lang="python">
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_response_window</span><span class="p">(</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_response_window</span><span class="p">(</span>
     <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">response_window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>

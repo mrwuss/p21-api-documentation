@@ -635,7 +635,7 @@ The `JOBPRICECOST` DataElement includes `commission_cost_value` and related comm
 
 #### Known Limitations
 
-- **Status "Existing" returns HTTP 500:** Attempting to retrieve existing contracts via `Transaction.Status = "Existing"` returns a `NullReferenceException` at `ToInternalBeSpecification`. This is a platform-wide bug affecting multiple services. Use `POST /api/v2/transaction/get` to retrieve existing records, and the Interactive API for modifications.
+- **Status "Existing" returns HTTP 500:** Attempting to retrieve existing contracts via `Transaction.Status = "Existing"` returns a `NullReferenceException` at `ToInternalBeSpecification`. This is a platform-wide bug affecting multiple services. Use `POST /api/v2/transaction/get` with `TransactionStates` to retrieve existing records, and the Interactive API for modifications.
 - **Commission fields disabled:** Cannot set commission costs via Transaction API (see above).
 - **`corp_address_id` read-only after save:** Must be set during initial creation.
 

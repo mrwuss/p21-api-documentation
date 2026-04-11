@@ -494,7 +494,7 @@
 
 <h3 id="v1-request-legacy-not-recommended">V1 Request (Legacy — Not Recommended)</h3>
 <blockquote>
-<p><strong>Credentials are in headers — see <a href="#v1-endpoint-deprecated--security-risk">security warning above</a>.</strong></p>
+<p><strong>Credentials are in headers — see <a href="#v1-endpoint-deprecated-security-risk">security warning above</a>.</strong></p>
 </blockquote>
 <p><strong>Request:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
@@ -1134,12 +1134,16 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the cached token is still valid (with buffer).&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span>
-        <span class="n">expires_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="n">expires_raw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
             <span class="s2">&quot;ExpiresInSeconds&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ExpiresIn&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
         <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">expires_in</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">expires_raw</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="n">expires_in</span> <span class="o">=</span> <span class="mi">3600</span>
         <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_acquired_at</span>
-        <span class="k">return</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">expires_in</span><span class="p">)</span> <span class="o">-</span> <span class="n">TOKEN_REFRESH_BUFFER</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">expires_in</span> <span class="o">-</span> <span class="n">TOKEN_REFRESH_BUFFER</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_authenticate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Request a new token from the P21 token endpoint.&quot;&quot;&quot;</span>
@@ -1259,34 +1263,34 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">_tokenData</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;AccessToken&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
 <span class="w">    </span><span class="p">}</span>
 
-<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get authorization headers with a valid token.</span>
-<span class="w">    </span><span class="c1">/// Use with a caller-owned long-lived HttpClient.&lt;/summary&gt;</span>
-<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">GetHeadersAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Apply auth to a request, refreshing the token if needed.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">ApplyAuthAsync</span><span class="p">(</span><span class="n">HttpRequestMessage</span><span class="w"> </span><span class="n">request</span><span class="p">)</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">();</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span>
-<span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="na">[&quot;Authorization&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;Bearer {token}&quot;</span><span class="p">,</span>
-<span class="w">            </span><span class="na">[&quot;Accept&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span>
-<span class="w">        </span><span class="p">};</span>
+<span class="w">        </span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Net</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">))</span>
+<span class="w">            </span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 
-<span class="c1">// Usage — one long-lived HttpClient, authenticate once, reuse for all API calls</span>
+<span class="c1">// Usage — one long-lived HttpClient, per-request auth (always fresh token)</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">manager</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">TokenManager</span><span class="p">(</span>
 <span class="w">    </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;your_password&quot;</span><span class="p">);</span>
 <span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
 
 <span class="c1">// OData query</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">manager</span><span class="p">.</span><span class="n">GetHeadersAsync</span><span class="p">();</span>
-<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">headers</span><span class="p">)</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">TryAddWithoutValidation</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">Key</span><span class="p">,</span><span class="w"> </span><span class="n">h</span><span class="p">.</span><span class="n">Value</span><span class="p">);</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">odataResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">&quot;https://play.p21server.com/odataservice/odata/table/supplier&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">odataReq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com/odataservice/odata/table/supplier&quot;</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">manager</span><span class="p">.</span><span class="n">ApplyAuthAsync</span><span class="p">(</span><span class="n">odataReq</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">odataResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">odataReq</span><span class="p">);</span>
 <span class="n">odataResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 
 <span class="c1">// Entity API query — same token, no re-authentication</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">entityResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">&quot;https://play.p21server.com/api/entity/customers/&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">entityReq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com/api/entity/customers/&quot;</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">manager</span><span class="p">.</span><span class="n">ApplyAuthAsync</span><span class="p">(</span><span class="n">entityReq</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">entityResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">entityReq</span><span class="p">);</span>
 <span class="n">entityResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 </code></pre></div>
 </div>

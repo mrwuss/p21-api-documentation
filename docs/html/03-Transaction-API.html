@@ -1513,7 +1513,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <p>The <code>JOBPRICECOST</code> DataElement includes <code>commission_cost_value</code> and related commission fields, but these are <strong>disabled</strong> -- the API returns "Column is disabled: commission_cost_value". Commission costs must be set via the Interactive API (JobContractPricing window) after contract creation.</p>
 <h4 id="known-limitations">Known Limitations</h4>
 <ul>
-<li><strong>Status "Existing" returns HTTP 500:</strong> Attempting to retrieve existing contracts via <code>Transaction.Status = "Existing"</code> returns a <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code>. This is a platform-wide bug affecting multiple services. Use <code>POST /api/v2/transaction/get</code> to retrieve existing records, and the Interactive API for modifications.</li>
+<li><strong>Status "Existing" returns HTTP 500:</strong> Attempting to retrieve existing contracts via <code>Transaction.Status = "Existing"</code> returns a <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code>. This is a platform-wide bug affecting multiple services. Use <code>POST /api/v2/transaction/get</code> with <code>TransactionStates</code> to retrieve existing records, and the Interactive API for modifications.</li>
 <li><strong>Commission fields disabled:</strong> Cannot set commission costs via Transaction API (see above).</li>
 <li><strong><code>corp_address_id</code> read-only after save:</strong> Must be set during initial creation.</li>
 </ul>
