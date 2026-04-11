@@ -415,8 +415,12 @@
 </ul>
 </li>
 <li><a href="#using-the-token">Using the Token</a></li>
-<li><a href="#token-expiration">Token Expiration</a><ul>
-<li><a href="#handling-expiration">Handling Expiration</a></li>
+<li><a href="#token-lifetime-and-reuse">Token Lifetime and Reuse</a><ul>
+<li><a href="#token-ttl">Token TTL</a></li>
+<li><a href="#why-reuse-tokens">Why Reuse Tokens</a></li>
+<li><a href="#multi-api-reuse">Multi-API Reuse</a></li>
+<li><a href="#token-refresh">Token Refresh</a></li>
+<li><a href="#token-manager-pattern">Token Manager Pattern</a></li>
 </ul>
 </li>
 <li><a href="#ui-server-url">UI Server URL</a></li>
@@ -1023,30 +1027,77 @@
 </div>
 </div>
 <hr />
-<h2 id="token-expiration">Token Expiration</h2>
+<h2 id="token-lifetime-and-reuse">Token Lifetime and Reuse</h2>
+<h3 id="token-ttl">Token TTL</h3>
+<p>The token response includes an <code>ExpiresInSeconds</code> field (or <code>ExpiresIn</code> in XML responses) indicating how long the token remains valid, in seconds.</p>
 <table>
 <thead>
 <tr>
-<th>Property</th>
-<th>Value</th>
+<th>Auth Method</th>
+<th>Typical TTL</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Default lifetime</td>
-<td>24 hours (86400 seconds)</td>
+<td><strong>User Credentials</strong></td>
+<td>86,400 seconds (24 hours)</td>
+<td>Configurable per server</td>
 </tr>
 <tr>
-<td>Returned in</td>
-<td><code>ExpiresInSeconds</code> field</td>
-</tr>
-<tr>
-<td>Refresh token</td>
-<td>Provided for token renewal</td>
+<td><strong>Consumer Key</strong></td>
+<td>630,720,000 seconds (20 years)</td>
+<td>When set to "Never Expire" in SOA Admin</td>
 </tr>
 </tbody>
 </table>
-<h3 id="handling-expiration">Handling Expiration</h3>
+<blockquote>
+<p><strong>Important:</strong> Always read <code>ExpiresInSeconds</code> from the response rather than hardcoding a TTL value. The default varies by server configuration and P21 version.</p>
+</blockquote>
+<h3 id="why-reuse-tokens">Why Reuse Tokens</h3>
+<p>Authenticate <strong>once</strong> at the start of your application or script and reuse that token for all subsequent API calls.</p>
+<ul>
+<li><strong>Middleware sessions</strong> — each call to <code>/api/security/token/v2</code> creates a new middleware session. Excessive token requests waste server resources and may invalidate previous sessions.</li>
+<li><strong>Rate limiting</strong> — frequent authentication requests may trigger server-side throttling.</li>
+<li><strong>Performance</strong> — token acquisition involves a network round-trip and credential validation. Reusing a cached token avoids this overhead on every API call.</li>
+</ul>
+<h3 id="multi-api-reuse">Multi-API Reuse</h3>
+<p>A single token works across <strong>all</strong> P21 APIs. You do not need separate tokens per API.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Same Token?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OData</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Transaction</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Interactive</td>
+<td>Yes (requires username in token request)</td>
+</tr>
+<tr>
+<td>Entity</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Inventory REST</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="token-refresh">Token Refresh</h3>
+<p>When a token expires or is about to expire, re-authenticate to get a new one. The token response may include a <code>RefreshToken</code> field, but most P21 integrations simply re-authenticate with credentials since the token endpoint is lightweight.</p>
+<p><strong>Recommended approach:</strong> Check the token's remaining lifetime before each request and re-authenticate when the token is within 5 minutes of expiry. This avoids mid-request failures from an expired token.</p>
+<h3 id="token-manager-pattern">Token Manager Pattern</h3>
+<p>The following pattern caches the token, checks expiry with a 5-minute buffer before each request, and automatically re-authenticates when needed.</p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -1054,38 +1105,107 @@
   </div>
   <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># Buffer in seconds — re-authenticate this far before actual expiry</span>
+<span class="n">TOKEN_REFRESH_BUFFER</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># 5 minutes</span>
+
 
 <span class="k">class</span><span class="w"> </span><span class="nc">TokenManager</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages P21 token lifecycle with automatic refresh.</span>
+
+<span class="sd">    Caches the token and re-authenticates when the token is</span>
+<span class="sd">    within TOKEN_REFRESH_BUFFER seconds of expiry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">token_time</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_token_acquired_at</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_token_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the cached token is still valid (with buffer).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">expires_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;ExpiresInSeconds&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ExpiresIn&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_acquired_at</span>
+        <span class="k">return</span> <span class="n">elapsed</span> <span class="o">&lt;</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">expires_in</span><span class="p">)</span> <span class="o">-</span> <span class="n">TOKEN_REFRESH_BUFFER</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_authenticate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Request a new token from the P21 token endpoint.&quot;&quot;&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+            <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span><span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_token_acquired_at</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get valid token, refreshing if needed.&quot;&quot;&quot;</span>
-        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-        <span class="n">expires</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ExpiresInSeconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="k">else</span> <span class="mi">0</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a valid access token, refreshing if needed.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_token_valid</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_authenticate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_token_data</span><span class="p">[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
-        <span class="c1"># Refresh if expired or expiring in 5 minutes</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="ow">or</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_time</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">expires</span> <span class="o">-</span> <span class="mi">300</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span> <span class="o">=</span> <span class="n">get_token_v2</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">password</span>
-            <span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">token_time</span> <span class="o">=</span> <span class="n">now</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get authorization headers with a valid token.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_token</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
 
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">token_data</span><span class="p">[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+
+<span class="c1"># Usage — authenticate once, reuse for all API calls</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">TokenManager</span><span class="p">(</span>
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://play.p21server.com&quot;</span><span class="p">,</span>
+    <span class="n">username</span><span class="o">=</span><span class="s2">&quot;api_user&quot;</span><span class="p">,</span>
+    <span class="n">password</span><span class="o">=</span><span class="s2">&quot;your_password&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># OData query</span>
+<span class="n">odata_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;https://play.p21server.com/odataservice/odata/table/supplier&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">manager</span><span class="o">.</span><span class="n">get_headers</span><span class="p">(),</span>
+<span class="p">)</span>
+
+<span class="c1"># Entity API query — same token, no re-authentication</span>
+<span class="n">entity_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;https://play.p21server.com/api/entity/customers/&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">manager</span><span class="o">.</span><span class="n">get_headers</span><span class="p">(),</span>
+<span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
-<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">TokenManager</span>
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Collections.Generic</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Threading.Tasks</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
+
+<span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Manages P21 token lifecycle with automatic refresh.</span>
+<span class="c1">/// Caches the token and re-authenticates when the token is</span>
+<span class="c1">/// within RefreshBufferSeconds of expiry.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">TokenManager</span>
 <span class="p">{</span>
+<span class="w">    </span><span class="c1">// Re-authenticate this far before actual expiry</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">RefreshBufferSeconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">300</span><span class="p">;</span><span class="w"> </span><span class="c1">// 5 minutes</span>
+
 <span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">_baseUrl</span><span class="p">;</span>
 <span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">_username</span><span class="p">;</span>
 <span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">_password</span><span class="p">;</span>
 <span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="n">JObject</span><span class="o">?</span><span class="w"> </span><span class="n">_tokenData</span><span class="p">;</span>
-<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="n">DateTime</span><span class="w"> </span><span class="n">_tokenTime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DateTime</span><span class="p">.</span><span class="n">MinValue</span><span class="p">;</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="n">DateTime</span><span class="w"> </span><span class="n">_tokenAcquiredAt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DateTime</span><span class="p">.</span><span class="n">MinValue</span><span class="p">;</span>
 
 <span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="nf">TokenManager</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">username</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">password</span><span class="p">)</span>
 <span class="w">    </span><span class="p">{</span>
@@ -1094,23 +1214,66 @@
 <span class="w">        </span><span class="n">_password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">password</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 
-<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get valid token, refreshing if needed.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="nf">IsTokenValid</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">_tokenData</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">null</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="k">false</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">expiresIn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_tokenData</span><span class="p">[</span><span class="s">&quot;ExpiresInSeconds&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="w">                     </span><span class="o">??</span><span class="w"> </span><span class="n">_tokenData</span><span class="p">[</span><span class="s">&quot;ExpiresIn&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">()</span>
+<span class="w">                     </span><span class="o">??</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">elapsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">DateTime</span><span class="p">.</span><span class="n">UtcNow</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">_tokenAcquiredAt</span><span class="p">).</span><span class="n">TotalSeconds</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">elapsed</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">expiresIn</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">RefreshBufferSeconds</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">AuthenticateAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_password</span><span class="w"> </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">            </span><span class="n">JsonConvert</span><span class="p">.</span><span class="n">SerializeObject</span><span class="p">(</span><span class="n">body</span><span class="p">),</span>
+<span class="w">            </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;{_baseUrl}/api/security/token/v2&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">        </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="n">_tokenData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
+<span class="w">        </span><span class="n">_tokenAcquiredAt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DateTime</span><span class="p">.</span><span class="n">UtcNow</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get a valid access token, refreshing if needed.&lt;/summary&gt;</span>
 <span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">()</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">expires</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_tokenData</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;ExpiresInSeconds&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">elapsed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">DateTime</span><span class="p">.</span><span class="n">UtcNow</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">_tokenTime</span><span class="p">).</span><span class="n">TotalSeconds</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">IsTokenValid</span><span class="p">())</span>
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="nf">AuthenticateAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">_tokenData</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;AccessToken&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span>
 
-<span class="w">        </span><span class="c1">// Refresh if expired or expiring in 5 minutes</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">_tokenData</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">elapsed</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">expires</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">300</span><span class="p">)</span>
-<span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="n">_tokenData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">P21Auth</span><span class="p">.</span><span class="n">GetTokenV2Async</span><span class="p">(</span>
-<span class="w">                </span><span class="n">_baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">_username</span><span class="p">,</span><span class="w"> </span><span class="n">_password</span><span class="p">);</span>
-<span class="w">            </span><span class="n">_tokenTime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DateTime</span><span class="p">.</span><span class="n">UtcNow</span><span class="p">;</span>
-<span class="w">        </span><span class="p">}</span>
-
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">_tokenData</span><span class="p">[</span><span class="s">&quot;AccessToken&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Create an HttpClient with valid authorization headers.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">HttpClient</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CreateAuthorizedClientAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
+<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">            </span><span class="s">&quot;Authorization&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;Bearer {token}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">client</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
+
+<span class="c1">// Usage — authenticate once, reuse for all API calls</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">manager</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">TokenManager</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;your_password&quot;</span><span class="p">);</span>
+
+<span class="c1">// OData query</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">manager</span><span class="p">.</span><span class="n">CreateAuthorizedClientAsync</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">odataResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com/odataservice/odata/table/supplier&quot;</span><span class="p">);</span>
+
+<span class="c1">// Entity API query — same token, no re-authentication</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">entityResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com/api/entity/customers/&quot;</span><span class="p">);</span>
 </code></pre></div>
 </div>
 </div>
@@ -1298,10 +1461,10 @@
 <ol>
 <li><strong>Use V2 endpoint</strong> for new integrations</li>
 <li><strong>Store credentials securely</strong> — use environment variables, not code</li>
-<li><strong>Handle token expiration</strong> — refresh 5 minutes before expiry to avoid failed requests</li>
+<li><strong>Handle token expiration</strong> — refresh 5 minutes before expiry to avoid failed requests (see <a href="#token-lifetime-and-reuse">Token Lifetime and Reuse</a>)</li>
 <li><strong>Use consumer keys</strong> for service accounts — no password rotation needed</li>
 <li><strong>Include username</strong> when using consumer keys with Interactive or Transaction APIs — this provides audit trail attribution and is required for session creation</li>
-<li><strong>Reuse tokens</strong> — each call to the token endpoint creates a new middleware session; get one token and reuse it rather than requesting new tokens per-request</li>
+<li><strong>Reuse tokens</strong> — each call to the token endpoint creates a new middleware session; get one token and reuse it across all P21 APIs rather than requesting new tokens per-request (see <a href="#token-lifetime-and-reuse">Token Lifetime and Reuse</a>)</li>
 <li><strong>Restrict scopes</strong> to minimum required access</li>
 <li><strong>Disable SSL verification</strong> only in development (<code>verify=False</code>)</li>
 <li><strong>Handle both JSON and XML</strong> token responses for maximum middleware compatibility</li>

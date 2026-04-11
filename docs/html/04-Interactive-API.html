@@ -452,6 +452,14 @@
 </ul>
 </li>
 <li><a href="#troubleshooting-v2-issues">Troubleshooting v2 Issues</a></li>
+<li><a href="#operational-patterns">Operational Patterns</a><ul>
+<li><a href="#tab-unlock-sequences">Tab Unlock Sequences</a></li>
+<li><a href="#add_row-with-status2-failure">add_row with Status=2 (Failure)</a></li>
+<li><a href="#response-window-types">Response Window Types</a></li>
+<li><a href="#uom-auto-population">UOM Auto-Population</a></li>
+<li><a href="#timeout-recommendations">Timeout Recommendations</a></li>
+</ul>
+</li>
 <li><a href="#related">Related</a></li>
 </ul>
 </div>
@@ -2496,6 +2504,366 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="operational-patterns">Operational Patterns</h2>
+<p>Patterns discovered through production use of the Interactive API. These cover behaviors that are not documented in the official SDK but are consistent and reproducible.</p>
+<h3 id="tab-unlock-sequences">Tab Unlock Sequences</h3>
+<p>Certain windows have tabs that start disabled and unlock progressively as prerequisite fields are populated. The API communicates unlock state via <code>tabpageenabled</code> events in responses.</p>
+<p><strong>Example: JobContractPricing</strong></p>
+<p>On window open, 7 tabs are disabled: <code>CUSTSHIPTOCONSIGN</code>, <code>BINS</code>, <code>VALUES</code>, <code>BIN_ITEMS</code>, <code>ITEM_BIN_NOTES</code>, <code>SHIPTOCONSIGNCONTROL</code>, <code>CONSIGNMENTISSUES</code>. The unlock sequence is:</p>
+<ol>
+<li>Set <code>contract_no</code> on <code>FORM</code> — enables <code>CUSTOMER_SHIP_TO</code></li>
+<li>Create a customer/ship_to combination on <code>CUSTOMER_SHIP_TO</code>, then set <code>customer_id</code> and <code>ship_to_id</code> on <code>FORM</code> — enables <code>SHIP_TO_ITEM</code></li>
+<li>Set <code>item_id</code> on <code>SHIP_TO_ITEM</code> and dismiss the scan lookup dialog — enables <code>VALUES</code>, <code>BINS</code>, <code>BIN_ITEMS</code>, <code>ITEM_BIN_NOTES</code> simultaneously</li>
+</ol>
+<blockquote>
+<p><strong>Important:</strong> P21 rejects setting <code>customer_id</code> or <code>ship_to_id</code> on the FORM header directly. You must create the combination on <code>CUSTOMER_SHIP_TO</code> first. Error: <em>"Before selecting a Customer ID or Ship To ID, make sure that the combination exists in the Customer/Ship To tab."</em></p>
+</blockquote>
+<p><strong>Detecting tab unlock events:</strong></p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_tab_unlocks</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract tab unlock events from an API response.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        result: The parsed JSON response from a change/save operation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of tab names that were just enabled.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">unlocked</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Events&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;tabpageenabled&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">kv</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">if</span> <span class="n">kv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Key&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;pagename&quot;</span><span class="p">:</span>
+                    <span class="n">unlocked</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="s2">&quot;Value&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">unlocked</span>
+
+
+<span class="c1"># Usage: monitor unlocks as you populate fields</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/change&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span>
+        <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="s2">&quot;FORM&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="s2">&quot;form&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;contract_no&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;1001&quot;</span>
+        <span class="p">}]</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="n">unlocked</span> <span class="o">=</span> <span class="k">await</span> <span class="n">check_tab_unlocks</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="c1"># unlocked == [&quot;CUSTOMER_SHIP_TO&quot;]</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CheckTabUnlocks</span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">result</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Extract tab unlock events from an API response.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">unlocked</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">events</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Events&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">evt</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">events</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">evt</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;tabpageenabled&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">evt</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">();</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">kv</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">data</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="s">&quot;Key&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;pagename&quot;</span><span class="p">)</span>
+<span class="w">                    </span><span class="n">unlocked</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">());</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">unlocked</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Usage: monitor unlocks as you populate fields</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;FORM&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;form&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;contract_no&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1001&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{uiUrl}/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">unlocked</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CheckTabUnlocks</span><span class="p">(</span><span class="n">result</span><span class="p">);</span>
+<span class="c1">// unlocked == [&quot;CUSTOMER_SHIP_TO&quot;]</span>
+</code></pre></div>
+</div>
+</div>
+<p><strong>General guidance:</strong> Always check <code>tabpageenabled</code> events when working with multi-tab windows. Do not attempt to switch to a disabled tab — the API will return an error. Query the window definition (<code>GET /api/ui/interactive/v2/window?id={windowId}</code>) to see current tab states via <code>TabPageList[].Enabled</code>.</p>
+<h3 id="add_row-with-status2-failure">add_row with Status=2 (Failure)</h3>
+<p>When calling <code>add_row</code>, P21 returns <code>Status: 2</code> (Failure) if the <strong>previous</strong> row has incomplete or invalid data. Despite the failure status, the new row <strong>is still created</strong> and ready for data entry. This is expected P21 behavior, not a hard error.</p>
+<p><strong>Example:</strong> <code>add_row("bins")</code> returns Status=2 with message <em>"Required value missing for Bin ID on row 1"</em> — but row 2 is created and editable.</p>
+<p><strong>Guidance:</strong> When adding multiple rows in sequence, expect Status=2 on subsequent <code>add_row</code> calls if prior rows are not fully populated. Do not treat Status=2 as a fatal error in this context — check the messages to determine whether the failure is about the previous row's validation or a real problem.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_row_tolerant</span><span class="p">(</span>
+    <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">datawindow_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span>
+    <span class="n">ui_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a row, tolerating Status=2 from incomplete previous rows.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        window_id: The active window ID.</span>
+<span class="sd">        datawindow_name: Target datawindow (e.g., &quot;bins&quot;).</span>
+<span class="sd">        headers: Request headers with auth token.</span>
+<span class="sd">        client: httpx async client.</span>
+<span class="sd">        ui_url: UI server base URL.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Parsed response dict.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If the failure is not a previous-row validation issue.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/row&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">datawindow_name</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+    <span class="n">status</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">,</span> <span class="p">[])]</span>
+        <span class="c1"># Previous-row validation warnings are expected — row was still added</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s2">&quot;required value missing&quot;</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;add_row returned Status=2 (previous row incomplete), row added&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="c1"># Unexpected failure — raise</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;add_row failed: </span><span class="si">{</span><span class="n">messages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">AddRowTolerantAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">http</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">uiUrl</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Add a row, tolerating Status=2 from incomplete previous rows.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindowName</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{uiUrl}/api/ui/interactive/v2/row&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Status&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Messages&quot;</span><span class="p">]</span><span class="o">?</span>
+<span class="w">            </span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">m</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">m</span><span class="p">[</span><span class="s">&quot;Text&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="n">ToList</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+
+<span class="w">        </span><span class="c1">// Previous-row validation warnings are expected — row was still added</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">messages</span><span class="p">.</span><span class="n">Any</span><span class="p">(</span><span class="n">m</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="s">&quot;required value missing&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">StringComparison</span><span class="p">.</span><span class="n">OrdinalIgnoreCase</span><span class="p">)))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogInformation</span><span class="p">(</span><span class="s">&quot;add_row returned Status=2 (previous row incomplete), row added&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="c1">// Unexpected failure — raise</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;add_row failed: {string.Join(&quot;</span><span class="p">;</span><span class="w"> </span><span class="s">&quot;, messages)}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<h3 id="response-window-types">Response Window Types</h3>
+<p>Response windows fall into distinct categories based on what interactions they support. All can be dismissed via <code>POST /tools</code>, but only some allow data interaction.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Example</th>
+<th>Buttons</th>
+<th>Field Input</th>
+<th>Dismiss Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Button-only dialog</strong></td>
+<td><code>w_rule_callback_response</code></td>
+<td><code>cb_1</code> through <code>cb_5</code></td>
+<td>N/A</td>
+<td><code>POST /tools</code> with button name</td>
+</tr>
+<tr>
+<td><strong>Form + button dialog</strong></td>
+<td><code>w_inventory_scan_lookup</code></td>
+<td><code>cb_ok</code>, <code>cb_cancel</code></td>
+<td>Fields visible but <strong>not writable</strong> via API</td>
+<td><code>POST /tools</code> with button name</td>
+</tr>
+<tr>
+<td><strong>Message box</strong></td>
+<td><code>w_message</code></td>
+<td>Default-answered</td>
+<td>Cannot be inspected</td>
+<td>Auto-answered when <code>ResponseWindowHandlingEnabled: false</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key limitation:</strong> Form-type response windows can only be <strong>dismissed</strong> (button click), not <strong>interacted with</strong> (field changes). <code>GET /data</code> returns 400 and <code>PUT /change</code> returns 500 with <em>"Tab with name FORM does not exist"</em>. Workflows that depend on filling response window fields cannot be fully automated.</p>
+<p><strong>Inspecting and dismissing response windows:</strong></p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_response_window</span><span class="p">(</span>
+    <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">response_window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span>
+    <span class="n">ui_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">button</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cb_cancel&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inspect a response window and dismiss it via button click.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        window_id: The parent window ID.</span>
+<span class="sd">        response_window_id: The response window ID from the windowopened event.</span>
+<span class="sd">        headers: Request headers with auth token.</span>
+<span class="sd">        client: httpx async client.</span>
+<span class="sd">        ui_url: UI server base URL.</span>
+<span class="sd">        button: Button name to click (default: cb_cancel).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Parsed response from the tool click.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Step 1: Discover available buttons</span>
+    <span class="n">tools_resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/tools&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;windowId&quot;</span><span class="p">:</span> <span class="n">response_window_id</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">tools_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">tools</span> <span class="o">=</span> <span class="n">tools_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">available</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ToolName&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Response window </span><span class="si">%s</span><span class="s2"> has buttons: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_window_id</span><span class="p">,</span> <span class="n">available</span><span class="p">)</span>
+
+    <span class="c1"># Step 2: Click the desired button</span>
+    <span class="n">click_resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/tools&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">response_window_id</span><span class="p">,</span> <span class="s2">&quot;ToolName&quot;</span><span class="p">:</span> <span class="n">button</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">click_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">click_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">HandleResponseWindowAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">responseWindowId</span><span class="p">,</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">http</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">uiUrl</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">button</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;cb_cancel&quot;</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Step 1: Discover available buttons</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">toolsResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{uiUrl}/api/ui/interactive/v2/tools?windowId={responseWindowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">toolsResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">tools</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JArray</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">toolsResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">available</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tools</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">t</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">t</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="n">t</span><span class="p">[</span><span class="s">&quot;ToolName&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">    </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogInformation</span><span class="p">(</span><span class="s">&quot;Response window {WindowId} has buttons: {Buttons}&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="n">responseWindowId</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="p">.</span><span class="n">Join</span><span class="p">(</span><span class="s">&quot;, &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">available</span><span class="p">));</span>
+
+<span class="w">    </span><span class="c1">// Step 2: Click the desired button</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseWindowId</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;ToolName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">button</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">clickResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{uiUrl}/api/ui/interactive/v2/tools&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">    </span><span class="n">clickResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">clickResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Note:</strong> The <code>GET /tools</code> endpoint uses <code>?windowId=</code> (not <code>?id=</code>). See the <a href="#data-operations-v2---recommended">query parameter inconsistency note</a> in the Endpoints section.</p>
+</blockquote>
+<h3 id="uom-auto-population">UOM Auto-Population</h3>
+<p>When setting <code>item_id</code> via the Interactive API, P21 validates the unit of measure against the item's valid UOM list. Setting an invalid <code>uom</code> value results in HTTP 422 with <em>"Invalid uom value"</em>.</p>
+<p><strong>Best practice:</strong> Do <strong>not</strong> set <code>uom</code> explicitly — let P21 auto-populate it from the item master data. The API fills in the item's default selling or purchasing UOM automatically after <code>item_id</code> is set. Only override <code>uom</code> if you have confirmed the target value exists in the item's UOM list.</p>
+<h3 id="timeout-recommendations">Timeout Recommendations</h3>
+<p>Recommended HTTP timeouts based on production experience with large payloads:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Recommended Timeout</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>submit_transaction</code> (Transaction API, 100+ lines)</td>
+<td>300s</td>
+<td>Large payloads with many line items</td>
+</tr>
+<tr>
+<td><code>save_data</code> (Interactive API)</td>
+<td>120s</td>
+<td>Business logic validation can be slow</td>
+</tr>
+<tr>
+<td><code>select_row</code> / <code>change_fields</code></td>
+<td>60s</td>
+<td>Individual field operations</td>
+</tr>
+<tr>
+<td>Default for all operations</td>
+<td>60s minimum</td>
+<td>P21 server processing varies by load</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>These are guidelines from production use. Adjust based on data volume and server performance. The default <code>httpx</code> timeout of 5 seconds is almost always too low for P21 operations.</p>
+</blockquote>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

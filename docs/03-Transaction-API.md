@@ -160,11 +160,13 @@ Each **Edit** object supports:
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
 
-### Production & Labor Services
+### Production, Assembly & Labor Services
 
 | Service | P21 Window | Purpose |
 |---------|------------|---------|
 | `ProductionOrder` | Production Order Entry | Create and manage production orders |
+| `Assembly` | Assembly Maintenance | Assembly/BOM definitions for items (see [Assembly Service](#assembly-service)) |
+| `JobContractPricing` | Job Contract Pricing | Job contract price pages with quantity breaks (see [JobContractPricing Service](#jobcontractpricing-service)) |
 | `TimeEntry` | Time Entry | Record labor hours against production orders |
 | `TimeEntrySO` | Time Entry (Service Order) | Record labor hours against service orders |
 | `Labor` | Labor Maintenance | Labor code definitions and rates |
@@ -502,6 +504,719 @@ var content = new StringContent(
     Encoding.UTF8, "application/json");
 var response = await client.PostAsync(
     $"{uiServerUrl}/api/v2/transaction", content);
+```
+<!-- /tabs -->
+
+---
+
+## Service Reference
+
+### JobContractPricing Service
+
+The `JobContractPricing` service creates job contract price pages -- customer-specific pricing agreements with optional quantity breaks. It has 25 DataElements; the key ones are documented below.
+
+#### Service Definition
+
+```http
+GET /api/v2/definition/JobContractPricing
+```
+
+#### Header -- `FORM.d_dw_job_price_hdr` (Form)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `company_id` | Char | Yes | Company ID |
+| `contract_no` | Char | No | Contract number (auto-assigned if blank) |
+| `customer_id` | Decimal | Yes | Customer ID |
+| `taker` | Char | No | Order taker / salesperson |
+| `end_date` | Datetime | No | Contract end date |
+| `corp_address_id` | Long | No | Corporate address ID (read-only after initial save) |
+| `ship_to_id` | Long | No | Ship-to address ID |
+| `job_no` | Char | No | Associated job number |
+| `approved` | Char | No | Approval flag |
+| `cancelled` | Char | No | Cancellation flag |
+| `consignment_flag` | Char | No | Consignment contract flag |
+
+> **Important:** `corp_address_id` must be set during initial creation. Based on production reports, this field becomes read-only after the contract is saved.
+
+#### Customer/Ship To -- `CUSTOMER_SHIP_TO.customer_ship_to` (List)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `customer_id` | Decimal | Customer ID |
+| `ship_to_id` | Long | Ship-to address ID |
+| `activation_date` | Datetime | Ship-to activation date |
+| `expiration_date` | Datetime | Ship-to expiration date |
+| `address_name` | Char | Ship-to address name |
+
+#### Line Items -- `JOBPRICELINE.jobpriceline` (List, 29 fields)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `item_id` | Char | Yes | Item ID |
+| `uom` | Char | Yes | Unit of measure |
+| `pricing_method` | Char | Yes | Pricing method (see valid values below) |
+| `price` | Decimal | Conditional | Fixed price (for non-break lines only) |
+| `multiplier` | Decimal | Conditional | Price multiplier (for break lines only) |
+| `source_price` | Char | Conditional | Source price reference (for break lines only) |
+| `customer_part_no` | Char | No | Customer's part number |
+
+**`pricing_method` valid values:**
+
+| Value | Use Case |
+|-------|----------|
+| `Pricing Libraries` | Use pricing library rules |
+| `Source` | Source-based pricing with quantity breaks |
+| `Price` | Fixed price (no breaks) |
+| `None` | No pricing |
+
+**Non-break vs break lines:**
+
+- **Non-break (fixed price):** Set `pricing_method` to `"Price"` and `price` to the value. Do NOT send `source_price` or `multiplier`.
+- **Break (quantity-based):** Set `pricing_method` to `"Source"`, `source_price` to `"Supplier List Price"` (or other source), and `multiplier` to `1` (or desired multiplier). Do NOT send `price`.
+
+#### Values/Breaks -- `VALUES.values` (Form, 46 fields)
+
+The VALUES DataElement defines quantity break tiers for a line item.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `calculation_method_cd` | Char | Calculation method (see valid values below) |
+| `break1` through `break14` | Decimal | Break threshold quantities |
+| `calculation_value` through `calculation_value14` | Decimal | Price/value at each tier |
+| `other_cost` through `other_cost14` | Decimal | Other cost at each tier |
+
+**`calculation_method_cd` valid values:** `Difference`, `Multiplier`, `Mark up`, `Percentage`, `Fixed Price`
+
+##### Break Tier Structure
+
+The service supports 15 price levels: 14 break thresholds (`break1`-`break14`) plus one catch-all tier. Break values represent the **starting quantity of the next tier** (advance thresholds).
+
+Rules:
+- `break1` should NOT be 0 -- it defines where the second tier starts
+- The last active tier has its break set to `0`, signaling no further advance
+- `calculation_value` (no suffix) is the first tier; `calculation_value2` through `calculation_value14` are tiers 2-14; the 15th tier has no break threshold
+
+**Example -- 3 tiers with Fixed Price method:**
+
+| Tier | Quantity Range | Field | Value | Break Field | Break Value |
+|------|---------------|-------|-------|-------------|-------------|
+| 1 | 1-9 | `calculation_value` | `10.00` | `break1` | `10` |
+| 2 | 10-49 | `calculation_value2` | `8.50` | `break2` | `50` |
+| 3 | 50+ | `calculation_value3` | `7.00` | `break3` | `0` |
+
+Tier 1 applies for quantities 1-9 (below `break1`=10). Tier 2 applies for 10-49 (below `break2`=50). Tier 3 applies for 50+ (`break3`=0 means no further advance).
+
+##### Multi-Line Break Interleaving
+
+VALUES is `Type: Form` (single row), so it applies to the **current JOBPRICELINE cursor position**. For contracts with multiple break lines, you must send a SEPARATE `JOBPRICELINE` DataElement (1 row) followed by its own `VALUES` DataElement for each line. Putting all lines in a single multi-row `JOBPRICELINE` causes only the last line to receive breaks.
+
+**Correct interleaving:**
+```
+DataElements:
+  1. FORM.d_dw_job_price_hdr (header)
+  2. JOBPRICELINE.jobpriceline (Line A -- 1 row)
+  3. VALUES.values (breaks for Line A)
+  4. JOBPRICELINE.jobpriceline (Line B -- 1 row)
+  5. VALUES.values (breaks for Line B)
+```
+
+**Incorrect (only Line B gets breaks):**
+```
+DataElements:
+  1. FORM.d_dw_job_price_hdr (header)
+  2. JOBPRICELINE.jobpriceline (Lines A and B -- 2 rows)
+  3. VALUES.values (breaks -- applies only to last row)
+```
+
+#### Commission Costs
+
+The `JOBPRICECOST` DataElement includes `commission_cost_value` and related commission fields, but these are **disabled** -- the API returns "Column is disabled: commission_cost_value". Commission costs must be set via the Interactive API (JobContractPricing window) after contract creation.
+
+#### Known Limitations
+
+- **Status "Existing" returns HTTP 500:** Attempting to retrieve existing contracts via `Transaction.Status = "Existing"` returns a `NullReferenceException` at `ToInternalBeSpecification`. This is a platform-wide bug affecting multiple services. Use `POST /api/v2/transaction/get` to retrieve existing records, and the Interactive API for modifications.
+- **Commission fields disabled:** Cannot set commission costs via Transaction API (see above).
+- **`corp_address_id` read-only after save:** Must be set during initial creation.
+
+#### Example: Create a Job Contract with Break and Non-Break Lines
+
+<!-- tabs -->
+```python
+import httpx
+
+# Authenticate and get UI server URL
+base_url = "https://play.p21server.com"
+auth_resp = httpx.post(
+    f"{base_url}/api/security/token",
+    data={"username": "api_user", "password": "api_pass", "grant_type": "password"},
+    verify=False,
+)
+auth_resp.raise_for_status()
+token = auth_resp.json()["access_token"]
+
+router_resp = httpx.get(
+    f"{base_url}/api/ui/router/v1?urlType=external",
+    headers={"Authorization": f"Bearer {token}"},
+    verify=False,
+)
+router_resp.raise_for_status()
+ui_server_url = router_resp.text.strip().strip('"')
+
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+}
+
+# Create a contract with one fixed-price line and one break line
+payload = {
+    "Name": "JobContractPricing",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            # 1. Contract header
+            {
+                "Name": "FORM.d_dw_job_price_hdr",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "company_id", "Value": "ACME"},
+                        {"Name": "customer_id", "Value": "100198"},
+                        {"Name": "corp_address_id", "Value": "1"},
+                        {"Name": "end_date", "Value": "2027-12-31"},
+                        {"Name": "approved", "Value": "ON"},
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            },
+            # 2. Fixed-price line (no breaks)
+            {
+                "Name": "JOBPRICELINE.jobpriceline",
+                "Type": "List",
+                "Keys": ["item_id"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "item_id", "Value": "WIDGET-001"},
+                        {"Name": "uom", "Value": "EA"},
+                        {"Name": "pricing_method", "Value": "Price"},
+                        {"Name": "price", "Value": "25.00"},
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            },
+            # 3. Break line -- JOBPRICELINE (1 row)
+            {
+                "Name": "JOBPRICELINE.jobpriceline",
+                "Type": "List",
+                "Keys": ["item_id"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "item_id", "Value": "WIDGET-002"},
+                        {"Name": "uom", "Value": "EA"},
+                        {"Name": "pricing_method", "Value": "Source"},
+                        {"Name": "source_price", "Value": "Supplier List Price"},
+                        {"Name": "multiplier", "Value": "1"},
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            },
+            # 4. Break tiers for WIDGET-002 (must follow its JOBPRICELINE)
+            {
+                "Name": "VALUES.values",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "calculation_method_cd", "Value": "Fixed Price"},
+                        # Tier 1: qty 1-9 @ $10.00
+                        {"Name": "calculation_value", "Value": "10.00"},
+                        {"Name": "break1", "Value": "10"},
+                        # Tier 2: qty 10-49 @ $8.50
+                        {"Name": "calculation_value2", "Value": "8.50"},
+                        {"Name": "break2", "Value": "50"},
+                        # Tier 3: qty 50+ @ $7.00
+                        {"Name": "calculation_value3", "Value": "7.00"},
+                        {"Name": "break3", "Value": "0"},
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            },
+        ],
+    }],
+}
+
+response = httpx.post(
+    f"{ui_server_url}/api/v2/transaction",
+    headers=headers,
+    json=payload,
+    verify=False,
+)
+response.raise_for_status()
+result = response.json()
+print(f"Succeeded: {result['Summary']['Succeeded']}, Failed: {result['Summary']['Failed']}")
+
+if result["Summary"]["Succeeded"] > 0:
+    contract_no = result["Results"]["Transactions"][0]["DataElements"][0]["Rows"][0]["Edits"]
+    for edit in contract_no:
+        if edit["Name"] == "contract_no":
+            print(f"Contract #: {edit['Value']}")
+            break
+```
+
+```csharp
+using System.Net.Http;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+// Authenticate and get UI server URL
+using var httpClient = new HttpClient();
+httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+
+var authContent = new FormUrlEncodedContent(new[]
+{
+    new KeyValuePair<string, string>("username", "api_user"),
+    new KeyValuePair<string, string>("password", "api_pass"),
+    new KeyValuePair<string, string>("grant_type", "password"),
+});
+var authResp = await httpClient.PostAsync(
+    "https://play.p21server.com/api/security/token", authContent);
+authResp.EnsureSuccessStatusCode();
+var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
+var token = authJson["access_token"]!.ToString();
+
+httpClient.DefaultRequestHeaders.Authorization =
+    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+var routerResp = await httpClient.GetAsync(
+    "https://play.p21server.com/api/ui/router/v1?urlType=external");
+routerResp.EnsureSuccessStatusCode();
+var uiServerUrl = (await routerResp.Content.ReadAsStringAsync()).Trim().Trim('"');
+
+// Create a contract with one fixed-price line and one break line
+var payload = new JObject
+{
+    ["Name"] = "JobContractPricing",
+    ["UseCodeValues"] = false,
+    ["Transactions"] = new JArray
+    {
+        new JObject
+        {
+            ["Status"] = "New",
+            ["DataElements"] = new JArray
+            {
+                // 1. Contract header
+                new JObject
+                {
+                    ["Name"] = "FORM.d_dw_job_price_hdr",
+                    ["Type"] = "Form",
+                    ["Keys"] = new JArray(),
+                    ["Rows"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
+                                new JObject { ["Name"] = "customer_id", ["Value"] = "100198" },
+                                new JObject { ["Name"] = "corp_address_id", ["Value"] = "1" },
+                                new JObject { ["Name"] = "end_date", ["Value"] = "2027-12-31" },
+                                new JObject { ["Name"] = "approved", ["Value"] = "ON" },
+                            },
+                            ["RelativeDateEdits"] = new JArray()
+                        }
+                    }
+                },
+                // 2. Fixed-price line (no breaks)
+                new JObject
+                {
+                    ["Name"] = "JOBPRICELINE.jobpriceline",
+                    ["Type"] = "List",
+                    ["Keys"] = new JArray { "item_id" },
+                    ["Rows"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "item_id", ["Value"] = "WIDGET-001" },
+                                new JObject { ["Name"] = "uom", ["Value"] = "EA" },
+                                new JObject { ["Name"] = "pricing_method", ["Value"] = "Price" },
+                                new JObject { ["Name"] = "price", ["Value"] = "25.00" },
+                            },
+                            ["RelativeDateEdits"] = new JArray()
+                        }
+                    }
+                },
+                // 3. Break line -- JOBPRICELINE (1 row)
+                new JObject
+                {
+                    ["Name"] = "JOBPRICELINE.jobpriceline",
+                    ["Type"] = "List",
+                    ["Keys"] = new JArray { "item_id" },
+                    ["Rows"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "item_id", ["Value"] = "WIDGET-002" },
+                                new JObject { ["Name"] = "uom", ["Value"] = "EA" },
+                                new JObject { ["Name"] = "pricing_method", ["Value"] = "Source" },
+                                new JObject { ["Name"] = "source_price", ["Value"] = "Supplier List Price" },
+                                new JObject { ["Name"] = "multiplier", ["Value"] = "1" },
+                            },
+                            ["RelativeDateEdits"] = new JArray()
+                        }
+                    }
+                },
+                // 4. Break tiers for WIDGET-002 (must follow its JOBPRICELINE)
+                new JObject
+                {
+                    ["Name"] = "VALUES.values",
+                    ["Type"] = "Form",
+                    ["Keys"] = new JArray(),
+                    ["Rows"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "calculation_method_cd", ["Value"] = "Fixed Price" },
+                                // Tier 1: qty 1-9 @ $10.00
+                                new JObject { ["Name"] = "calculation_value", ["Value"] = "10.00" },
+                                new JObject { ["Name"] = "break1", ["Value"] = "10" },
+                                // Tier 2: qty 10-49 @ $8.50
+                                new JObject { ["Name"] = "calculation_value2", ["Value"] = "8.50" },
+                                new JObject { ["Name"] = "break2", ["Value"] = "50" },
+                                // Tier 3: qty 50+ @ $7.00
+                                new JObject { ["Name"] = "calculation_value3", ["Value"] = "7.00" },
+                                new JObject { ["Name"] = "break3", ["Value"] = "0" },
+                            },
+                            ["RelativeDateEdits"] = new JArray()
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+var content = new StringContent(
+    payload.ToString(), Encoding.UTF8, "application/json");
+var response = await httpClient.PostAsync(
+    $"{uiServerUrl}/api/v2/transaction", content);
+response.EnsureSuccessStatusCode();
+
+var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine(
+    $"Succeeded: {result["Summary"]!["Succeeded"]}, " +
+    $"Failed: {result["Summary"]!["Failed"]}");
+
+if ((int)result["Summary"]!["Succeeded"]! > 0)
+{
+    var edits = result["Results"]!["Transactions"]![0]!["DataElements"]![0]!["Rows"]![0]!["Edits"]!;
+    foreach (var edit in edits)
+    {
+        if (edit["Name"]!.ToString() == "contract_no")
+        {
+            Console.WriteLine($"Contract #: {edit["Value"]}");
+            break;
+        }
+    }
+}
+```
+<!-- /tabs -->
+
+---
+
+### Assembly Service
+
+The `Assembly` service creates assembly/BOM (bill of materials) definitions for existing inventory items. It defines which components make up an assembled product, along with routing steps and cost estimates. It has 15 DataElements; the key ones are documented below.
+
+See also: [Production & Labor API](12-Production-Labor-API.md) for production order workflows that consume assembly definitions.
+
+#### Service Definition
+
+```http
+GET /api/v2/definition/Assembly
+```
+
+#### Header -- `TABPAGE_1.assemblyhdr` (Form, 36 fields)
+
+Key: `inv_mast_item_id`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `inv_mast_item_id` | Char | Yes | Item ID (must exist in inventory) |
+| `pricing_option` | Char | No | Pricing option for the assembly |
+| `default_disposition` | Char | No | Default disposition code |
+| `production_order_processing` | Char | No | Production order processing flag |
+| `copy_item_id` | Char | No | Copy BOM from existing assembly (`cc_` prefix = computed/client column) |
+| `revision_level` | Char | No | Assembly revision level |
+| `allow_disassembly` | Char | No | Allow disassembly flag |
+| `hose_assembly_flag` | Char | No | Hose assembly indicator |
+
+> **Important:** `inv_mast_item_id` must reference an existing inventory item. Non-existent items return "This item ID is not valid". Items that already have assembly definitions are blocked from re-creation.
+
+#### Components/BOM -- `TABPAGE_17.tp_17_dw_17` (List, 20 fields)
+
+Key: `item_id_service_labor_id`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `item_id_service_labor_id` | Char | Yes | Component item ID or labor ID |
+| `quantity` (`qty_needed`) | Decimal | No | Quantity needed per assembly |
+| `component_type` | Char | No | Component type (see valid values below) |
+| `operation_cd` | Char | No | Operation code |
+| `unit_of_measure` | Char | No | UOM (auto-populated from item master if omitted) |
+| `backflush_flag` | Char | No | Backflush flag |
+
+**`component_type` valid values:** `Hose fitting/adaptor`, `Hose sleeve`, `Hose/cable`, `None`
+
+These values are hose-assembly-specific. For non-hose assemblies, omit `component_type` entirely -- it defaults to empty (`IgnoreIfEmpty: true`).
+
+**`unit_of_measure`:** Not required (`IgnoreIfEmpty: true`). When omitted, P21 auto-populates from the item master -- standard P21 behavior.
+
+#### Routing -- `ROUTING_TABPAGE.process` (Form) + `ROUTING_TABPAGE.stage_x_process` (List, 22 fields)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `process_code` | Char | Process/routing code |
+| `sequence_no` | Long | Operation sequence number |
+| `cost` | Decimal | Cost for this routing step |
+| `cost_type` | Char | Cost type classification |
+| `estimated_hours` | Decimal | Estimated hours for this step |
+
+#### Part + Assembly Creation Workflow
+
+Assembly definitions are metadata attached to existing inventory items. Creating a new assembly-item from scratch requires two steps:
+
+1. **Create the item** via Inventory REST API (`POST /api/inventory/parts`)
+2. **Create the assembly definition** via Transaction API (`Assembly` service)
+
+The Assembly service does NOT create new inventory items -- it adds BOM metadata to an item that already exists.
+
+#### Known Limitations
+
+- **Status "Existing" returns HTTP 500:** Same `NullReferenceException` at `ToInternalBeSpecification` as other services. Use the Interactive API (Assembly window) for modifications to existing assemblies.
+- **Item must exist first:** `inv_mast_item_id` must reference an existing item.
+- **No re-creation:** Items that already have assembly definitions cannot have a second assembly created.
+
+#### Example: Create an Assembly Definition
+
+<!-- tabs -->
+```python
+import httpx
+
+# Authenticate and get UI server URL
+base_url = "https://play.p21server.com"
+auth_resp = httpx.post(
+    f"{base_url}/api/security/token",
+    data={"username": "api_user", "password": "api_pass", "grant_type": "password"},
+    verify=False,
+)
+auth_resp.raise_for_status()
+token = auth_resp.json()["access_token"]
+
+router_resp = httpx.get(
+    f"{base_url}/api/ui/router/v1?urlType=external",
+    headers={"Authorization": f"Bearer {token}"},
+    verify=False,
+)
+router_resp.raise_for_status()
+ui_server_url = router_resp.text.strip().strip('"')
+
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+}
+
+# Create assembly definition for an existing item
+# The item WIDGET-001 must already exist in inventory
+payload = {
+    "Name": "Assembly",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            # Assembly header
+            {
+                "Name": "TABPAGE_1.assemblyhdr",
+                "Type": "Form",
+                "Keys": ["inv_mast_item_id"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "inv_mast_item_id", "Value": "WIDGET-001"},
+                        {"Name": "allow_disassembly", "Value": "ON"},
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            },
+            # BOM components
+            {
+                "Name": "TABPAGE_17.tp_17_dw_17",
+                "Type": "List",
+                "Keys": ["item_id_service_labor_id"],
+                "Rows": [
+                    {
+                        "Edits": [
+                            {"Name": "item_id_service_labor_id", "Value": "COMPONENT-A"},
+                            {"Name": "quantity", "Value": "2"},
+                            {"Name": "operation_cd", "Value": "ASSY"},
+                        ],
+                        "RelativeDateEdits": [],
+                    },
+                    {
+                        "Edits": [
+                            {"Name": "item_id_service_labor_id", "Value": "COMPONENT-B"},
+                            {"Name": "quantity", "Value": "1"},
+                            {"Name": "operation_cd", "Value": "ASSY"},
+                        ],
+                        "RelativeDateEdits": [],
+                    },
+                ],
+            },
+        ],
+    }],
+}
+
+response = httpx.post(
+    f"{ui_server_url}/api/v2/transaction",
+    headers=headers,
+    json=payload,
+    verify=False,
+)
+response.raise_for_status()
+result = response.json()
+print(f"Succeeded: {result['Summary']['Succeeded']}, Failed: {result['Summary']['Failed']}")
+
+if result["Summary"]["Failed"] > 0:
+    for msg in result.get("Messages", []):
+        print(f"  Message: {msg}")
+```
+
+```csharp
+using System.Net.Http;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+// Authenticate and get UI server URL
+using var httpClient = new HttpClient();
+httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+
+var authContent = new FormUrlEncodedContent(new[]
+{
+    new KeyValuePair<string, string>("username", "api_user"),
+    new KeyValuePair<string, string>("password", "api_pass"),
+    new KeyValuePair<string, string>("grant_type", "password"),
+});
+var authResp = await httpClient.PostAsync(
+    "https://play.p21server.com/api/security/token", authContent);
+authResp.EnsureSuccessStatusCode();
+var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
+var token = authJson["access_token"]!.ToString();
+
+httpClient.DefaultRequestHeaders.Authorization =
+    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+var routerResp = await httpClient.GetAsync(
+    "https://play.p21server.com/api/ui/router/v1?urlType=external");
+routerResp.EnsureSuccessStatusCode();
+var uiServerUrl = (await routerResp.Content.ReadAsStringAsync()).Trim().Trim('"');
+
+// Create assembly definition for an existing item
+// The item WIDGET-001 must already exist in inventory
+var payload = new JObject
+{
+    ["Name"] = "Assembly",
+    ["UseCodeValues"] = false,
+    ["Transactions"] = new JArray
+    {
+        new JObject
+        {
+            ["Status"] = "New",
+            ["DataElements"] = new JArray
+            {
+                // Assembly header
+                new JObject
+                {
+                    ["Name"] = "TABPAGE_1.assemblyhdr",
+                    ["Type"] = "Form",
+                    ["Keys"] = new JArray { "inv_mast_item_id" },
+                    ["Rows"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "inv_mast_item_id", ["Value"] = "WIDGET-001" },
+                                new JObject { ["Name"] = "allow_disassembly", ["Value"] = "ON" },
+                            },
+                            ["RelativeDateEdits"] = new JArray()
+                        }
+                    }
+                },
+                // BOM components
+                new JObject
+                {
+                    ["Name"] = "TABPAGE_17.tp_17_dw_17",
+                    ["Type"] = "List",
+                    ["Keys"] = new JArray { "item_id_service_labor_id" },
+                    ["Rows"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "item_id_service_labor_id", ["Value"] = "COMPONENT-A" },
+                                new JObject { ["Name"] = "quantity", ["Value"] = "2" },
+                                new JObject { ["Name"] = "operation_cd", ["Value"] = "ASSY" },
+                            },
+                            ["RelativeDateEdits"] = new JArray()
+                        },
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "item_id_service_labor_id", ["Value"] = "COMPONENT-B" },
+                                new JObject { ["Name"] = "quantity", ["Value"] = "1" },
+                                new JObject { ["Name"] = "operation_cd", ["Value"] = "ASSY" },
+                            },
+                            ["RelativeDateEdits"] = new JArray()
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+var content = new StringContent(
+    payload.ToString(), Encoding.UTF8, "application/json");
+var response = await httpClient.PostAsync(
+    $"{uiServerUrl}/api/v2/transaction", content);
+response.EnsureSuccessStatusCode();
+
+var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine(
+    $"Succeeded: {result["Summary"]!["Succeeded"]}, " +
+    $"Failed: {result["Summary"]!["Failed"]}");
+
+if ((int)result["Summary"]!["Failed"]! > 0)
+{
+    var messages = result["Messages"] as JArray;
+    if (messages != null)
+    {
+        foreach (var msg in messages)
+            Console.WriteLine($"  Message: {msg}");
+    }
+}
 ```
 <!-- /tabs -->
 

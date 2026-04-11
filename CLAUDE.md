@@ -161,36 +161,26 @@ window.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
 
 ---
 
-### inv_loc Write Access — Partially Resolved (February 2026)
+### inv_loc Write Access — Resolved (April 2026)
 
-**Appending new `inv_loc` records** (resolved):
-- The **Inventory REST API** `PUT /api/inventory/parts/{ItemId}` can append new `inv_loc` and `inventory_supplier` records
-- Use the GET → Append → PUT pattern: retrieve item with `extendedproperties=*`, add new Location/Supplier to the lists, PUT back
-- P21 validates appended records through full business logic (company validation, GL account checks)
-- See [Inventory REST API docs](docs/11-Inventory-REST-API.md) for details
+**All three operations now have verified API paths:**
 
-**Reading `inv_loc` data** (resolved):
-- `GET /api/inventory/parts/{ItemId}?extendedproperties=*` returns full `inv_loc` data including GL accounts, product groups, and costs
-- OData also provides read access to `inv_loc` table
+| Operation | API | Status |
+|-----------|-----|--------|
+| **Appending new `inv_loc` records** | Inventory REST API `PUT /api/inventory/parts/{ItemId}` — GET → Append → PUT pattern | Resolved (Feb 2026) |
+| **Reading `inv_loc` data** | Inventory REST API `GET /api/inventory/parts/{ItemId}?extendedproperties=*` or OData | Resolved (Feb 2026) |
+| **Updating existing `inv_loc` fields** | Inventory REST API `PUT /api/inventory/parts/{ItemId}` — GET → Modify → PUT pattern | **Resolved (Apr 2026)** |
 
-**Updating existing `inv_loc` fields** (still unresolved):
+**Updating existing fields** — verified working: Sellable, ProductGroupId, PurchaseDiscountGroup, SalesDiscountGroup. P21 validates changed values (e.g., invalid ProductGroupId returns "Product group ID does not exist for this company ID"). See [Inventory REST API docs](docs/11-Inventory-REST-API.md) for details.
 
-| API | Result |
-|-----|--------|
-| **Interactive API (Item window)** | GL account fields on TABPAGE_24 are **read-only** - cannot be modified |
-| **Transaction API** | No `InvLoc` service exists. Item service returns 500 errors for inv_loc updates |
-| **Inventory REST API** | Can append new records, but modifying fields on existing `inv_loc` records not verified |
+**Remaining limitation**: Interactive API Item window GL account fields on TABPAGE_24 are still read-only. The Inventory REST API is the recommended path for `inv_loc` modifications.
 
-**Impact**: Cannot programmatically:
-1. Change `product_group_id` on existing locations without triggering GL account dialog
-2. Restore GL accounts after they've been changed by the dialog
-3. Update individual fields on existing `inv_loc` records
+### Transaction API — Status "Existing" Platform Bug (April 2026)
 
-**Workarounds**:
-1. **Inventory REST API** - Can append new `inv_loc` records (multi-company workflows)
-2. **Direct SQL** - Update `inv_loc` table directly (bypasses business logic, use with caution)
-3. **Epicor Support** - Request response window endpoint documentation
+`POST /api/v2/transaction` with `Status: "Existing"` returns HTTP 500 `NullReferenceException` at `ToInternalBeSpecification`. This is a **platform-wide bug**, not service-specific — confirmed on JobContractPricing, Assembly, SalesPricePage, and TimeEntry.
+
+**Workaround**: Use `POST /api/v2/transaction/get` with `TransactionStates` to retrieve existing records. Use the Interactive API for modifications to existing records.
 
 ---
 
-*Last updated: 2026-03-06*
+*Last updated: 2026-04-10*

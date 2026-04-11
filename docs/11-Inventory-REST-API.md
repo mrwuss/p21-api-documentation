@@ -14,7 +14,7 @@ P21 provides an **Inventory REST API** at `/api/inventory/parts` for CRUD operat
 
 The Inventory REST API is significant because it provides:
 - **Read access** to `inv_loc` (inventory location) records via extended properties
-- **Write access** to append new `inv_loc` and `inventory_supplier` records via PUT
+- **Write access** to append new `inv_loc` and `inventory_supplier` records, or update existing ones, via PUT
 - Direct item-level CRUD without sessions or stateful workflows
 
 ### When to Use
@@ -29,7 +29,6 @@ The Inventory REST API is significant because it provides:
 - **No `/new` template** — `GET /api/inventory/parts/new` returns 404
 - **List endpoint hangs** — `GET /api/inventory/parts/` without `$query` tries to load all items and times out
 - **Not all items accessible** — Some items in `inv_mast` (via OData) return 404 from this API
-- **Cannot update existing `inv_loc` fields** — You can append new location records but not modify fields on existing ones (see [Known Limitations](#known-limitations))
 
 ---
 
@@ -50,7 +49,7 @@ Example: `https://play.p21server.com/api/inventory/parts`
 | `GET` | `/api/inventory/parts/ping` | Health check | Yes |
 | `GET` | `/api/inventory/parts/{ItemId}` | Get single item | Yes |
 | `PUT` | `/api/inventory/parts/{ItemId}` | Update item (append locations/suppliers) | Yes |
-| `POST` | `/api/inventory/parts` | Create new item | Yes (error for duplicates) |
+| `POST` | `/api/inventory/parts` | Create new item (see [307 redirect note](#4-post-returns-307-redirect)) | Yes |
 | `GET` | `/api/inventory/parts/{ItemId}/availability` | Item availability | Not tested |
 | `GET` | `/api/inventory/parts/{ItemId}/price` | Item pricing | Not tested |
 | `POST` | `/api/inventory/parts/itemsAvailability` | Batch availability | Not tested |
@@ -288,8 +287,35 @@ Key fields from `GET /api/inventory/parts/{ItemId}` (maps to `inv_mast` table):
 | `TrackLots` | string | Lot tracking flag (Y/N) |
 | `Serialized` | string | Serialized flag (Y/N) |
 | `InvMastUid` | int | Internal unique identifier |
+| `DefaultPurchaseDiscGroup` | string | Default purchase discount group (item-level) |
+| `DefaultSalesDiscountGroup` | string | Default sales discount group (item-level) |
 | `UserDefinedFields` | object | User-defined fields |
 | `ObjectName` | string | Always `"inv_mast"` |
+
+### Location-Level Fields (inv_loc)
+
+Key fields on `inv_loc` records within `Locations.list` (requires `extendedproperties=Locations`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `LocationId` | int | Warehouse/location identifier |
+| `CompanyId` | string | Company the location belongs to |
+| `ProductGroupId` | string | Product group for this location |
+| `Sellable` | string | Whether item is sellable at this location (Y/N) |
+| `Stockable` | string | Whether item is stockable at this location (Y/N) |
+| `GlAccountNo` | string | GL inventory account |
+| `RevenueAccountNo` | string | GL revenue account |
+| `CosAccountNo` | string | GL cost-of-sale account |
+| `PurchaseDiscountGroup` | string | Purchase discount group (location-level) |
+| `SalesDiscountGroup` | string | Sales discount group (location-level) |
+| `QtyOnHand` | decimal | Current quantity on hand |
+| `MovingAverageCost` | decimal | Moving average cost |
+| `StandardCost` | decimal | Standard cost |
+| `ReplenishmentMethod` | string | Replenishment method (e.g., "Min/Max") |
+| `Delete` | string | Soft-delete flag (Y/N) — see [Location Soft-Delete](#5-location-soft-delete-via-delete-flag) |
+| `ObjectName` | string | Always `"inv_loc"` |
+
+> **Note:** `PurchaseDiscountGroup` and `SalesDiscountGroup` on `inv_loc` are **separate** from the item-level `DefaultPurchaseDiscGroup` and `DefaultSalesDiscountGroup` on `inv_mast`. Values can differ between levels — the location-level fields override the item-level defaults for that specific location.
 
 ---
 
@@ -297,11 +323,12 @@ Key fields from `GET /api/inventory/parts/{ItemId}` (maps to `inv_mast` table):
 
 ### PUT — Update Existing Item
 
-`PUT /api/inventory/parts/{ItemId}` accepts the full item payload and processes changes including appended child records (Locations, Suppliers).
+`PUT /api/inventory/parts/{ItemId}` accepts the full item payload and processes changes including appended child records and modifications to existing records.
 
 **Verified behavior:**
 - Sending back the same data unchanged returns 200 (idempotent)
 - Appending new `inv_loc` records in `Locations.list` triggers P21 business logic validation (company validation, GL account checks)
+- Modifying fields on existing `inv_loc` records applies the changes (see [Updating Existing Location Fields](#updating-existing-location-fields))
 - Invalid data produces descriptive P21 error messages
 
 ### POST — Create New Item
@@ -433,6 +460,241 @@ These errors prove the API is actively processing the appended Location records 
 
 ---
 
+## Updating Existing Location Fields
+
+The GET -> Modify -> PUT pattern also works for **updating fields on existing `inv_loc` records**, not just appending new ones.
+
+**Verified writable fields:** `Sellable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`
+
+P21 validates changed values through business logic. For example, setting an invalid `ProductGroupId` returns:
+
+```json
+{
+    "ErrorMessage": "Error updating WIDGET-001: Error updating inv_mast: Product group ID does not exist for this company ID.",
+    "ErrorType": "P21.Common.Exceptions.Prophet21Exception"
+}
+```
+
+### Example: Update Location Fields
+
+<!-- tabs -->
+
+**Python**
+
+```python
+import httpx
+
+BASE_URL = "https://play.p21server.com"
+TOKEN = "<ACCESS_TOKEN>"
+
+with httpx.Client(
+    headers={"Authorization": f"Bearer {TOKEN}"},
+    follow_redirects=True,
+) as client:
+    # 1. GET current item with Locations
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/WIDGET-001",
+        params={"extendedproperties": "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"},
+    )
+    resp.raise_for_status()
+    item = resp.json()
+
+    # 2. Modify fields on existing location
+    for loc in item["Locations"]["list"]:
+        if loc["LocationId"] == 1 and loc["CompanyId"] == "ACME":
+            loc["Sellable"] = "N"
+            loc["ProductGroupId"] = "MISC"
+            loc["PurchaseDiscountGroup"] = "BULK"
+            loc["SalesDiscountGroup"] = "RETAIL"
+            break
+
+    # 3. PUT back
+    resp = client.put(f"{BASE_URL}/api/inventory/parts/WIDGET-001", json=item)
+    resp.raise_for_status()
+    print(f"Updated: {resp.status_code}")
+```
+
+**C#**
+
+```csharp
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+
+var handler = new HttpClientHandler { AllowAutoRedirect = true };
+using var client = new HttpClient(handler);
+client.DefaultRequestHeaders.Add("Authorization", "Bearer <ACCESS_TOKEN>");
+var baseUrl = "https://play.p21server.com";
+
+// 1. GET current item with Locations
+var resp = await client.GetAsync(
+    $"{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure");
+resp.EnsureSuccessStatusCode();
+var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+// 2. Modify fields on existing location
+var locations = item["Locations"]?["list"] as JArray;
+var target = locations?.FirstOrDefault(
+    l => (int)l["LocationId"] == 1 && (string)l["CompanyId"] == "ACME");
+if (target != null)
+{
+    target["Sellable"] = "N";
+    target["ProductGroupId"] = "MISC";
+    target["PurchaseDiscountGroup"] = "BULK";
+    target["SalesDiscountGroup"] = "RETAIL";
+}
+
+// 3. PUT back
+var content = new StringContent(item.ToString(), Encoding.UTF8, "application/json");
+var putResp = await client.PutAsync($"{baseUrl}/api/inventory/parts/WIDGET-001", content);
+putResp.EnsureSuccessStatusCode();
+Console.WriteLine($"Updated: {(int)putResp.StatusCode}");
+```
+
+<!-- /tabs -->
+
+> **Important:** Always include **all** existing child records (Locations, Suppliers, etc.) in the PUT payload. Omitting records may cause P21 to remove them.
+
+---
+
+## Minimum Create Payload
+
+`POST /api/inventory/parts` requires a minimal set of fields. P21 auto-derives GL accounts from `ProductGroupId` + `LocationId`, so you do not need to specify them explicitly.
+
+**Required fields:**
+- `ItemId` (string, unique across all companies)
+- `ItemDesc` (string, **max 40 characters** — see [Common Issues](#3-itemdesc-max-40-characters))
+- `Locations` with at least one entry: `LocationId` + `ProductGroupId` (P21 infers `CompanyId` from the location if omitted)
+- `Suppliers` with at least one entry: `SupplierId` + `DivisionId`
+- `LocationSuppliers` linking the location and supplier: `LocationId` + `SupplierId` + `PrimarySupplier`
+
+<!-- tabs -->
+
+**Python**
+
+```python
+import httpx
+
+BASE_URL = "https://play.p21server.com"
+TOKEN = "<ACCESS_TOKEN>"
+
+payload = {
+    "ItemId": "WIDGET-002",
+    "ItemDesc": "Small Widget Assembly",
+    "Locations": {
+        "list": [
+            {
+                "LocationId": 1,
+                "ProductGroupId": "MISC",
+                "ObjectName": "inv_loc"
+            }
+        ]
+    },
+    "Suppliers": {
+        "list": [
+            {
+                "SupplierId": 10,
+                "DivisionId": 1,
+                "ObjectName": "inventory_supplier"
+            }
+        ]
+    },
+    "LocationSuppliers": {
+        "list": [
+            {
+                "LocationId": 1,
+                "SupplierId": 10,
+                "PrimarySupplier": "Y",
+                "ObjectName": "inventory_supplier_x_loc"
+            }
+        ]
+    },
+    "ObjectName": "inv_mast"
+}
+
+with httpx.Client(
+    headers={"Authorization": f"Bearer {TOKEN}"},
+    follow_redirects=True,
+) as client:
+    resp = client.post(f"{BASE_URL}/api/inventory/parts/", json=payload)
+    resp.raise_for_status()
+    print(f"Created: {resp.json()['ItemId']}")
+```
+
+**C#**
+
+```csharp
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+
+var handler = new HttpClientHandler { AllowAutoRedirect = true };
+using var client = new HttpClient(handler);
+client.DefaultRequestHeaders.Add("Authorization", "Bearer <ACCESS_TOKEN>");
+var baseUrl = "https://play.p21server.com";
+
+var payload = new JObject
+{
+    ["ItemId"] = "WIDGET-002",
+    ["ItemDesc"] = "Small Widget Assembly",
+    ["ObjectName"] = "inv_mast",
+    ["Locations"] = new JObject
+    {
+        ["list"] = new JArray
+        {
+            new JObject
+            {
+                ["LocationId"] = 1,
+                ["ProductGroupId"] = "MISC",
+                ["ObjectName"] = "inv_loc"
+            }
+        }
+    },
+    ["Suppliers"] = new JObject
+    {
+        ["list"] = new JArray
+        {
+            new JObject
+            {
+                ["SupplierId"] = 10,
+                ["DivisionId"] = 1,
+                ["ObjectName"] = "inventory_supplier"
+            }
+        }
+    },
+    ["LocationSuppliers"] = new JObject
+    {
+        ["list"] = new JArray
+        {
+            new JObject
+            {
+                ["LocationId"] = 1,
+                ["SupplierId"] = 10,
+                ["PrimarySupplier"] = "Y",
+                ["ObjectName"] = "inventory_supplier_x_loc"
+            }
+        }
+    }
+};
+
+var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+var resp = await client.PostAsync($"{baseUrl}/api/inventory/parts/", content);
+resp.EnsureSuccessStatusCode();
+var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
+Console.WriteLine($"Created: {result["ItemId"]}");
+```
+
+<!-- /tabs -->
+
+> **Note:** `CompanyId` is optional on Location records — P21 infers the default company from the `LocationId`. GL accounts (`GlAccountNo`, `RevenueAccountNo`, `CosAccountNo`) are auto-derived from the `ProductGroupId` and location configuration.
+
+---
+
 ## Common Issues
 
 ### 1. "Item ID already exists"
@@ -447,7 +709,171 @@ These errors prove the API is actively processing the appended Location records 
 
 **Fix:** Look up valid GL accounts for the target company before constructing the Location payload.
 
-### 3. UOM Handling
+### 3. ItemDesc Max 40 Characters
+
+The `ItemDesc` field on `inv_mast` has a **40-character maximum**. Behavior differs by method:
+
+- **POST** with >40 chars fails with a misleading error: `"Required value missing for Item Description"` (the value is present, just too long)
+- **PUT** with >40 chars **silently discards** the value — no error, but the description is not updated
+
+Always validate before sending:
+
+<!-- tabs -->
+
+**Python**
+
+```python
+MAX_ITEM_DESC_LENGTH = 40
+
+def validate_item_desc(desc: str) -> str:
+    """Validate ItemDesc length before API call."""
+    if len(desc) > MAX_ITEM_DESC_LENGTH:
+        raise ValueError(
+            f"ItemDesc '{desc}' is {len(desc)} chars (max {MAX_ITEM_DESC_LENGTH}). "
+            "POST will fail with misleading error; PUT will silently discard."
+        )
+    return desc
+```
+
+**C#**
+
+```csharp
+const int MaxItemDescLength = 40;
+
+static string ValidateItemDesc(string desc)
+{
+    if (desc.Length > MaxItemDescLength)
+    {
+        throw new ArgumentException(
+            $"ItemDesc '{desc}' is {desc.Length} chars (max {MaxItemDescLength}). " +
+            "POST will fail with misleading error; PUT will silently discard.");
+    }
+    return desc;
+}
+```
+
+<!-- /tabs -->
+
+### 4. POST Returns 307 Redirect
+
+`POST /api/inventory/parts` (without trailing slash) returns **307 Temporary Redirect** to `/api/inventory/parts/`. Most HTTP clients do not follow redirects on POST by default.
+
+**Fix:** Either add a trailing slash to the URL, or configure your client to follow redirects:
+
+<!-- tabs -->
+
+**Python**
+
+```python
+import httpx
+
+# Option 1: Trailing slash
+resp = client.post(f"{BASE_URL}/api/inventory/parts/", json=payload)
+
+# Option 2: follow_redirects
+client = httpx.Client(
+    headers={"Authorization": f"Bearer {TOKEN}"},
+    follow_redirects=True,
+)
+resp = client.post(f"{BASE_URL}/api/inventory/parts", json=payload)
+```
+
+**C#**
+
+```csharp
+// Option 1: Trailing slash
+var resp = await client.PostAsync($"{baseUrl}/api/inventory/parts/", content);
+
+// Option 2: AllowAutoRedirect (default is true for HttpClientHandler)
+var handler = new HttpClientHandler { AllowAutoRedirect = true };
+using var client = new HttpClient(handler);
+var resp = await client.PostAsync($"{baseUrl}/api/inventory/parts", content);
+```
+
+<!-- /tabs -->
+
+> **Note:** `GET` and `PUT` (which include the ItemId in the URL path) are not affected.
+
+### 5. Location Soft-Delete via Delete Flag
+
+To remove an item from a location without deleting the `inv_loc` record, set the `Delete` flag to `"Y"`. This is a **soft-delete** — the record still exists in the database but is excluded from business operations (ordering, selling, etc.).
+
+<!-- tabs -->
+
+**Python**
+
+```python
+import httpx
+
+BASE_URL = "https://play.p21server.com"
+TOKEN = "<ACCESS_TOKEN>"
+
+with httpx.Client(
+    headers={"Authorization": f"Bearer {TOKEN}"},
+    follow_redirects=True,
+) as client:
+    # 1. GET item with locations
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/WIDGET-001",
+        params={"extendedproperties": "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"},
+    )
+    resp.raise_for_status()
+    item = resp.json()
+
+    # 2. Set Delete flag on target location
+    for loc in item["Locations"]["list"]:
+        if loc["LocationId"] == 2 and loc["CompanyId"] == "ACME":
+            loc["Delete"] = "Y"
+            break
+
+    # 3. PUT back
+    resp = client.put(f"{BASE_URL}/api/inventory/parts/WIDGET-001", json=item)
+    resp.raise_for_status()
+    print(f"Soft-deleted location: {resp.status_code}")
+```
+
+**C#**
+
+```csharp
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+
+var handler = new HttpClientHandler { AllowAutoRedirect = true };
+using var client = new HttpClient(handler);
+client.DefaultRequestHeaders.Add("Authorization", "Bearer <ACCESS_TOKEN>");
+var baseUrl = "https://play.p21server.com";
+
+// 1. GET item with locations
+var resp = await client.GetAsync(
+    $"{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure");
+resp.EnsureSuccessStatusCode();
+var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
+
+// 2. Set Delete flag on target location
+var locations = item["Locations"]?["list"] as JArray;
+var target = locations?.FirstOrDefault(
+    l => (int)l["LocationId"] == 2 && (string)l["CompanyId"] == "ACME");
+if (target != null)
+{
+    target["Delete"] = "Y";
+}
+
+// 3. PUT back
+var content = new StringContent(item.ToString(), Encoding.UTF8, "application/json");
+var putResp = await client.PutAsync($"{baseUrl}/api/inventory/parts/WIDGET-001", content);
+putResp.EnsureSuccessStatusCode();
+Console.WriteLine($"Soft-deleted location: {(int)putResp.StatusCode}");
+```
+
+<!-- /tabs -->
+
+> **Note:** To restore a soft-deleted location, set `Delete` back to `"N"` using the same pattern.
+
+### 6. UOM Handling
 
 Units of Measure (`UnitsOfMeasure`) are defined at the `inv_mast` level and shared across all companies. You typically do not need to add company-specific UOMs — standard units like "EA", "BOX", etc. apply globally. Ensure existing UOMs are included in your PUT payload.
 
@@ -576,13 +1002,11 @@ For large datasets (thousands of items):
 
 ## Known Limitations
 
-1. **Append only, not update** — You can append new `inv_loc` records to an item, but modifying fields on *existing* `inv_loc` records via this API has not been verified. For updating existing location fields (GL accounts, product group, etc.), the Interactive API Item window or direct SQL may be required.
+1. **No `/new` template** — Unlike the Entity API, there is no template endpoint. You must know the required fields for POST (see [Minimum Create Payload](#minimum-create-payload)).
 
-2. **No `/new` template** — Unlike the Entity API, there is no template endpoint. You must know the required fields for POST.
+2. **List endpoint performance** — Always use `$query` filtering. The unfiltered list endpoint attempts to load all inventory and times out.
 
-3. **List endpoint performance** — Always use `$query` filtering. The unfiltered list endpoint attempts to load all inventory and times out.
-
-4. **Item accessibility** — Some items that exist in `inv_mast` (visible via OData) return 404 from this API. This may be related to item status or configuration.
+3. **Item accessibility** — Some items that exist in `inv_mast` (visible via OData) return 404 from this API. This may be related to item status or configuration.
 
 ---
 
