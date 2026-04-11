@@ -612,7 +612,7 @@ Tier 1 applies for quantities 1-9 (below `break1`=10). Tier 2 applies for 10-49 
 VALUES is `Type: Form` (single row), so it applies to the **current JOBPRICELINE cursor position**. For contracts with multiple break lines, you must send a SEPARATE `JOBPRICELINE` DataElement (1 row) followed by its own `VALUES` DataElement for each line. Putting all lines in a single multi-row `JOBPRICELINE` causes only the last line to receive breaks.
 
 **Correct interleaving:**
-```
+```text
 DataElements:
   1. FORM.d_dw_job_price_hdr (header)
   2. JOBPRICELINE.jobpriceline (Line A -- 1 row)
@@ -622,7 +622,7 @@ DataElements:
 ```
 
 **Incorrect (only Line B gets breaks):**
-```
+```text
 DataElements:
   1. FORM.d_dw_job_price_hdr (header)
   2. JOBPRICELINE.jobpriceline (Lines A and B -- 2 rows)
@@ -649,11 +649,12 @@ import httpx
 base_url = "https://play.p21server.com"
 auth_resp = httpx.post(
     f"{base_url}/api/security/token",
-    data={"username": "api_user", "password": "api_pass", "grant_type": "password"},
+    headers={"username": "api_user", "password": "api_pass", "Content-Type": "application/json"},
+    content="",
     verify=False,
 )
 auth_resp.raise_for_status()
-token = auth_resp.json()["access_token"]
+token = auth_resp.json()["AccessToken"]
 
 router_resp = httpx.get(
     f"{base_url}/api/ui/router/v1?urlType=external",
@@ -661,7 +662,7 @@ router_resp = httpx.get(
     verify=False,
 )
 router_resp.raise_for_status()
-ui_server_url = router_resp.text.strip().strip('"')
+ui_server_url = router_resp.json()["Url"].rstrip("/")
 
 headers = {
     "Authorization": f"Bearer {token}",
@@ -776,17 +777,16 @@ using Newtonsoft.Json.Linq;
 using var httpClient = new HttpClient();
 httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-var authContent = new FormUrlEncodedContent(new[]
-{
-    new KeyValuePair<string, string>("username", "api_user"),
-    new KeyValuePair<string, string>("password", "api_pass"),
-    new KeyValuePair<string, string>("grant_type", "password"),
-});
-var authResp = await httpClient.PostAsync(
-    "https://play.p21server.com/api/security/token", authContent);
+var authRequest = new HttpRequestMessage(HttpMethod.Post,
+    "https://play.p21server.com/api/security/token");
+authRequest.Headers.Add("username", "api_user");
+authRequest.Headers.Add("password", "api_pass");
+authRequest.Content = new StringContent("", Encoding.UTF8, "application/json");
+
+var authResp = await httpClient.SendAsync(authRequest);
 authResp.EnsureSuccessStatusCode();
 var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
-var token = authJson["access_token"]!.ToString();
+var token = authJson["AccessToken"]!.ToString();
 
 httpClient.DefaultRequestHeaders.Authorization =
     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
@@ -794,7 +794,8 @@ httpClient.DefaultRequestHeaders.Authorization =
 var routerResp = await httpClient.GetAsync(
     "https://play.p21server.com/api/ui/router/v1?urlType=external");
 routerResp.EnsureSuccessStatusCode();
-var uiServerUrl = (await routerResp.Content.ReadAsStringAsync()).Trim().Trim('"');
+var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
+var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
 
 // Create a contract with one fixed-price line and one break line
 var payload = new JObject
@@ -1016,11 +1017,12 @@ import httpx
 base_url = "https://play.p21server.com"
 auth_resp = httpx.post(
     f"{base_url}/api/security/token",
-    data={"username": "api_user", "password": "api_pass", "grant_type": "password"},
+    headers={"username": "api_user", "password": "api_pass", "Content-Type": "application/json"},
+    content="",
     verify=False,
 )
 auth_resp.raise_for_status()
-token = auth_resp.json()["access_token"]
+token = auth_resp.json()["AccessToken"]
 
 router_resp = httpx.get(
     f"{base_url}/api/ui/router/v1?urlType=external",
@@ -1028,7 +1030,7 @@ router_resp = httpx.get(
     verify=False,
 )
 router_resp.raise_for_status()
-ui_server_url = router_resp.text.strip().strip('"')
+ui_server_url = router_resp.json()["Url"].rstrip("/")
 
 headers = {
     "Authorization": f"Bearer {token}",
@@ -1110,17 +1112,16 @@ using Newtonsoft.Json.Linq;
 using var httpClient = new HttpClient();
 httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-var authContent = new FormUrlEncodedContent(new[]
-{
-    new KeyValuePair<string, string>("username", "api_user"),
-    new KeyValuePair<string, string>("password", "api_pass"),
-    new KeyValuePair<string, string>("grant_type", "password"),
-});
-var authResp = await httpClient.PostAsync(
-    "https://play.p21server.com/api/security/token", authContent);
+var authRequest = new HttpRequestMessage(HttpMethod.Post,
+    "https://play.p21server.com/api/security/token");
+authRequest.Headers.Add("username", "api_user");
+authRequest.Headers.Add("password", "api_pass");
+authRequest.Content = new StringContent("", Encoding.UTF8, "application/json");
+
+var authResp = await httpClient.SendAsync(authRequest);
 authResp.EnsureSuccessStatusCode();
 var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
-var token = authJson["access_token"]!.ToString();
+var token = authJson["AccessToken"]!.ToString();
 
 httpClient.DefaultRequestHeaders.Authorization =
     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
@@ -1128,7 +1129,8 @@ httpClient.DefaultRequestHeaders.Authorization =
 var routerResp = await httpClient.GetAsync(
     "https://play.p21server.com/api/ui/router/v1?urlType=external");
 routerResp.EnsureSuccessStatusCode();
-var uiServerUrl = (await routerResp.Content.ReadAsStringAsync()).Trim().Trim('"');
+var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
+var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
 
 // Create assembly definition for an existing item
 // The item WIDGET-001 must already exist in inventory

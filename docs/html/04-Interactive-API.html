@@ -2526,7 +2526,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
     <button class="tab-btn" data-lang="csharp">C#</button>
   </div>
   <div class="tab-panel active" data-lang="python">
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_tab_unlocks</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">check_tab_unlocks</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract tab unlock events from an API response.</span>
 
 <span class="sd">    Args:</span>
@@ -2559,7 +2559,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
     <span class="p">}</span>
 <span class="p">)</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-<span class="n">unlocked</span> <span class="o">=</span> <span class="k">await</span> <span class="n">check_tab_unlocks</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="n">unlocked</span> <span class="o">=</span> <span class="n">check_tab_unlocks</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
 <span class="c1"># unlocked == [&quot;CUSTOMER_SHIP_TO&quot;]</span>
 </code></pre></div>
 </div>
@@ -2619,7 +2619,12 @@ Row 5 selected → Detail shows row 4 (1 behind)
     <button class="tab-btn" data-lang="csharp">C#</button>
   </div>
   <div class="tab-panel active" data-lang="python">
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_row_tolerant</span><span class="p">(</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_row_tolerant</span><span class="p">(</span>
     <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">datawindow_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
@@ -2704,7 +2709,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </div>
 </div>
 <h3 id="response-window-types">Response Window Types</h3>
-<p>Response windows fall into distinct categories based on what interactions they support. All can be dismissed via <code>POST /tools</code>, but only some allow data interaction.</p>
+<p>Response windows fall into distinct categories based on what interactions they support. Tool-capable dialogs can be dismissed via <code>POST /tools</code>, but message boxes (<code>w_message</code>) are auto-answered based on <code>ResponseWindowHandlingEnabled</code> configuration.</p>
 <table>
 <thead>
 <tr>
@@ -2739,7 +2744,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </tr>
 </tbody>
 </table>
-<p><strong>Key limitation:</strong> Form-type response windows can only be <strong>dismissed</strong> (button click), not <strong>interacted with</strong> (field changes). <code>GET /data</code> returns 400 and <code>PUT /change</code> returns 500 with <em>"Tab with name FORM does not exist"</em>. Workflows that depend on filling response window fields cannot be fully automated.</p>
+<p><strong>Key limitation (verified April 2026):</strong> Form-type response windows can only be <strong>dismissed</strong> (button click), not <strong>interacted with</strong> (field changes). <code>GET /data</code> returns 400 and <code>PUT /change</code> returns 500 with <em>"Tab with name FORM does not exist"</em>. Workflows that depend on filling response window fields cannot be fully automated.</p>
 <p><strong>Inspecting and dismissing response windows:</strong></p>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -2823,7 +2828,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </div>
 </div>
 <blockquote>
-<p><strong>Note:</strong> The <code>GET /tools</code> endpoint uses <code>?windowId=</code> (not <code>?id=</code>). See the <a href="#data-operations-v2---recommended">query parameter inconsistency note</a> in the Endpoints section.</p>
+<p><strong>Note:</strong> The <code>GET /tools</code> endpoint uses <code>?windowId=</code> (not <code>?id=</code>). See the <a href="#data-operations-v2-recommended">query parameter inconsistency note</a> in the Endpoints section.</p>
 </blockquote>
 <h3 id="uom-auto-population">UOM Auto-Population</h3>
 <p>When setting <code>item_id</code> via the Interactive API, P21 validates the unit of measure against the item's valid UOM list. Setting an invalid <code>uom</code> value results in HTTP 422 with <em>"Invalid uom value"</em>.</p>

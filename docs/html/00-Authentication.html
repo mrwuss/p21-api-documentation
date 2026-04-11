@@ -1029,7 +1029,7 @@
 <hr />
 <h2 id="token-lifetime-and-reuse">Token Lifetime and Reuse</h2>
 <h3 id="token-ttl">Token TTL</h3>
-<p>The token response includes an <code>ExpiresInSeconds</code> field (or <code>ExpiresIn</code> in XML responses) indicating how long the token remains valid, in seconds.</p>
+<p>The token response includes an expiry field indicating how long the token remains valid, in seconds. The field name varies by auth flow and middleware format: user credential JSON responses use <code>ExpiresInSeconds</code>, consumer key JSON responses use <code>ExpiresIn</code>, and XML responses also use <code>ExpiresIn</code>. Always check for both field names when parsing (see the <code>TokenManager</code> examples below).</p>
 <table>
 <thead>
 <tr>
@@ -1052,7 +1052,7 @@
 </tbody>
 </table>
 <blockquote>
-<p><strong>Important:</strong> Always read <code>ExpiresInSeconds</code> from the response rather than hardcoding a TTL value. The default varies by server configuration and P21 version.</p>
+<p><strong>Important:</strong> Always read the expiry field (<code>ExpiresInSeconds</code> or <code>ExpiresIn</code>) from the response rather than hardcoding a TTL value. The default varies by server configuration and P21 version.</p>
 </blockquote>
 <h3 id="why-reuse-tokens">Why Reuse Tokens</h3>
 <p>Authenticate <strong>once</strong> at the start of your application or script and reuse that token for all subsequent API calls.</p>
@@ -1174,12 +1174,14 @@
     <span class="s2">&quot;https://play.p21server.com/odataservice/odata/table/supplier&quot;</span><span class="p">,</span>
     <span class="n">headers</span><span class="o">=</span><span class="n">manager</span><span class="o">.</span><span class="n">get_headers</span><span class="p">(),</span>
 <span class="p">)</span>
+<span class="n">odata_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 
 <span class="c1"># Entity API query — same token, no re-authentication</span>
 <span class="n">entity_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="s2">&quot;https://play.p21server.com/api/entity/customers/&quot;</span><span class="p">,</span>
     <span class="n">headers</span><span class="o">=</span><span class="n">manager</span><span class="o">.</span><span class="n">get_headers</span><span class="p">(),</span>
 <span class="p">)</span>
+<span class="n">entity_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1226,6 +1228,8 @@
 
 <span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">AuthenticateAsync</span><span class="p">()</span>
 <span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Short-lived HttpClient is acceptable here — token refresh is infrequent</span>
+<span class="w">        </span><span class="c1">// (once per TTL, typically 24h+ for user credentials, 20y for consumer keys).</span>
 <span class="w">        </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
 <span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">_password</span><span class="w"> </span><span class="p">};</span>
 <span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
@@ -1250,30 +1254,35 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">_tokenData</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;AccessToken&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
 <span class="w">    </span><span class="p">}</span>
 
-<span class="w">    </span><span class="c1">/// &lt;summary&gt;Create an HttpClient with valid authorization headers.&lt;/summary&gt;</span>
-<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">HttpClient</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CreateAuthorizedClientAsync</span><span class="p">()</span>
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get authorization headers with a valid token.</span>
+<span class="w">    </span><span class="c1">/// Use with a caller-owned long-lived HttpClient.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">GetHeadersAsync</span><span class="p">()</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">();</span>
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
-<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
-<span class="w">            </span><span class="s">&quot;Authorization&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;Bearer {token}&quot;</span><span class="p">);</span>
-<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">client</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;Authorization&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;Bearer {token}&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Accept&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span>
+<span class="w">        </span><span class="p">};</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 
-<span class="c1">// Usage — authenticate once, reuse for all API calls</span>
+<span class="c1">// Usage — one long-lived HttpClient, authenticate once, reuse for all API calls</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">manager</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">TokenManager</span><span class="p">(</span>
 <span class="w">    </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;your_password&quot;</span><span class="p">);</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
 
 <span class="c1">// OData query</span>
-<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">manager</span><span class="p">.</span><span class="n">CreateAuthorizedClientAsync</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">headers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">manager</span><span class="p">.</span><span class="n">GetHeadersAsync</span><span class="p">();</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">h</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">headers</span><span class="p">)</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">TryAddWithoutValidation</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">Key</span><span class="p">,</span><span class="w"> </span><span class="n">h</span><span class="p">.</span><span class="n">Value</span><span class="p">);</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">odataResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="s">&quot;https://play.p21server.com/odataservice/odata/table/supplier&quot;</span><span class="p">);</span>
+<span class="n">odataResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 
 <span class="c1">// Entity API query — same token, no re-authentication</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">entityResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="s">&quot;https://play.p21server.com/api/entity/customers/&quot;</span><span class="p">);</span>
+<span class="n">entityResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 </code></pre></div>
 </div>
 </div>
@@ -1338,7 +1347,7 @@
 </code></pre></div>
 
 <blockquote>
-<p><strong>Note:</strong> The XML response uses <code>ExpiresIn</code> while the JSON response uses <code>ExpiresInSeconds</code>. Both represent the token lifetime in seconds.</p>
+<p><strong>Note:</strong> XML responses use <code>ExpiresIn</code>, user credential JSON responses use <code>ExpiresInSeconds</code>, and consumer key JSON responses use <code>ExpiresIn</code>. All represent the token lifetime in seconds.</p>
 </blockquote>
 <h3 id="handling-both-formats">Handling Both Formats</h3>
 <div class="code-tabs">

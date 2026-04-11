@@ -1562,7 +1562,7 @@ On window open, 7 tabs are disabled: `CUSTSHIPTOCONSIGN`, `BINS`, `VALUES`, `BIN
 #### Python
 
 ```python
-async def check_tab_unlocks(result: dict) -> list[str]:
+def check_tab_unlocks(result: dict) -> list[str]:
     """Extract tab unlock events from an API response.
 
     Args:
@@ -1595,7 +1595,7 @@ result = await client.put(
     }
 )
 response = result.json()
-unlocked = await check_tab_unlocks(response)
+unlocked = check_tab_unlocks(response)
 # unlocked == ["CUSTOMER_SHIP_TO"]
 ```
 
@@ -1662,6 +1662,11 @@ When calling `add_row`, P21 returns `Status: 2` (Failure) if the **previous** ro
 #### Python
 
 ```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 async def add_row_tolerant(
     window_id: str,
     datawindow_name: str,
@@ -1751,7 +1756,7 @@ public async Task<JObject> AddRowTolerantAsync(
 
 ### Response Window Types
 
-Response windows fall into distinct categories based on what interactions they support. All can be dismissed via `POST /tools`, but only some allow data interaction.
+Response windows fall into distinct categories based on what interactions they support. Tool-capable dialogs can be dismissed via `POST /tools`, but message boxes (`w_message`) are auto-answered based on `ResponseWindowHandlingEnabled` configuration.
 
 | Type | Example | Buttons | Field Input | Dismiss Method |
 |------|---------|---------|-------------|----------------|
@@ -1759,7 +1764,7 @@ Response windows fall into distinct categories based on what interactions they s
 | **Form + button dialog** | `w_inventory_scan_lookup` | `cb_ok`, `cb_cancel` | Fields visible but **not writable** via API | `POST /tools` with button name |
 | **Message box** | `w_message` | Default-answered | Cannot be inspected | Auto-answered when `ResponseWindowHandlingEnabled: false` |
 
-**Key limitation:** Form-type response windows can only be **dismissed** (button click), not **interacted with** (field changes). `GET /data` returns 400 and `PUT /change` returns 500 with *"Tab with name FORM does not exist"*. Workflows that depend on filling response window fields cannot be fully automated.
+**Key limitation (verified April 2026):** Form-type response windows can only be **dismissed** (button click), not **interacted with** (field changes). `GET /data` returns 400 and `PUT /change` returns 500 with *"Tab with name FORM does not exist"*. Workflows that depend on filling response window fields cannot be fully automated.
 
 **Inspecting and dismissing response windows:**
 
@@ -1846,7 +1851,7 @@ public async Task<JObject> HandleResponseWindowAsync(
 
 <!-- /tabs -->
 
-> **Note:** The `GET /tools` endpoint uses `?windowId=` (not `?id=`). See the [query parameter inconsistency note](#data-operations-v2---recommended) in the Endpoints section.
+> **Note:** The `GET /tools` endpoint uses `?windowId=` (not `?id=`). See the [query parameter inconsistency note](#data-operations-v2-recommended) in the Endpoints section.
 
 ### UOM Auto-Population
 

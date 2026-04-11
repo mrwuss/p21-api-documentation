@@ -565,6 +565,7 @@ Console.WriteLine($"Updated: {(int)putResp.StatusCode}");
 `POST /api/inventory/parts` requires a minimal set of fields. P21 auto-derives GL accounts from `ProductGroupId` + `LocationId`, so you do not need to specify them explicitly.
 
 **Required fields:**
+
 - `ItemId` (string, unique across all companies)
 - `ItemDesc` (string, **max 40 characters** — see [Common Issues](#3-itemdesc-max-40-characters))
 - `Locations` with at least one entry: `LocationId` + `ProductGroupId` (P21 infers `CompanyId` from the location if omitted)

@@ -509,14 +509,14 @@ var body = await response.Content.ReadAsStringAsync();
 
 ### Token TTL
 
-The token response includes an `ExpiresInSeconds` field (or `ExpiresIn` in XML responses) indicating how long the token remains valid, in seconds.
+The token response includes an expiry field indicating how long the token remains valid, in seconds. The field name varies by auth flow and middleware format: user credential JSON responses use `ExpiresInSeconds`, consumer key JSON responses use `ExpiresIn`, and XML responses also use `ExpiresIn`. Always check for both field names when parsing (see the `TokenManager` examples below).
 
 | Auth Method | Typical TTL | Notes |
 |-------------|-------------|-------|
 | **User Credentials** | 86,400 seconds (24 hours) | Configurable per server |
 | **Consumer Key** | 630,720,000 seconds (20 years) | When set to "Never Expire" in SOA Admin |
 
-> **Important:** Always read `ExpiresInSeconds` from the response rather than hardcoding a TTL value. The default varies by server configuration and P21 version.
+> **Important:** Always read the expiry field (`ExpiresInSeconds` or `ExpiresIn`) from the response rather than hardcoding a TTL value. The default varies by server configuration and P21 version.
 
 ### Why Reuse Tokens
 
@@ -623,12 +623,14 @@ odata_resp = httpx.get(
     "https://play.p21server.com/odataservice/odata/table/supplier",
     headers=manager.get_headers(),
 )
+odata_resp.raise_for_status()
 
 # Entity API query — same token, no re-authentication
 entity_resp = httpx.get(
     "https://play.p21server.com/api/entity/customers/",
     headers=manager.get_headers(),
 )
+entity_resp.raise_for_status()
 ```
 
 **C#:**
@@ -677,6 +679,8 @@ public class TokenManager
 
     private async Task AuthenticateAsync()
     {
+        // Short-lived HttpClient is acceptable here — token refresh is infrequent
+        // (once per TTL, typically 24h+ for user credentials, 20y for consumer keys).
         using var client = new HttpClient();
         var body = new { username = _username, password = _password };
         var content = new StringContent(
@@ -701,30 +705,35 @@ public class TokenManager
         return _tokenData!["AccessToken"]!.ToString();
     }
 
-    /// <summary>Create an HttpClient with valid authorization headers.</summary>
-    public async Task<HttpClient> CreateAuthorizedClientAsync()
+    /// <summary>Get authorization headers with a valid token.
+    /// Use with a caller-owned long-lived HttpClient.</summary>
+    public async Task<Dictionary<string, string>> GetHeadersAsync()
     {
         var token = await GetTokenAsync();
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Add(
-            "Authorization", $"Bearer {token}");
-        client.DefaultRequestHeaders.Add("Accept", "application/json");
-        return client;
+        return new Dictionary<string, string>
+        {
+            ["Authorization"] = $"Bearer {token}",
+            ["Accept"] = "application/json"
+        };
     }
 }
 
-// Usage — authenticate once, reuse for all API calls
+// Usage — one long-lived HttpClient, authenticate once, reuse for all API calls
 var manager = new TokenManager(
     "https://play.p21server.com", "api_user", "your_password");
+using var client = new HttpClient();
 
 // OData query
-using var client = await manager.CreateAuthorizedClientAsync();
+var headers = await manager.GetHeadersAsync();
+foreach (var h in headers) client.DefaultRequestHeaders.TryAddWithoutValidation(h.Key, h.Value);
 var odataResp = await client.GetAsync(
     "https://play.p21server.com/odataservice/odata/table/supplier");
+odataResp.EnsureSuccessStatusCode();
 
 // Entity API query — same token, no re-authentication
 var entityResp = await client.GetAsync(
     "https://play.p21server.com/api/entity/customers/");
+entityResp.EnsureSuccessStatusCode();
 ```
 
 <!-- /tabs -->
@@ -801,7 +810,7 @@ Some P21 middleware instances return **XML instead of JSON** for token endpoints
 </TokenResponse>
 ```
 
-> **Note:** The XML response uses `ExpiresIn` while the JSON response uses `ExpiresInSeconds`. Both represent the token lifetime in seconds.
+> **Note:** XML responses use `ExpiresIn`, user credential JSON responses use `ExpiresInSeconds`, and consumer key JSON responses use `ExpiresIn`. All represent the token lifetime in seconds.
 
 ### Handling Both Formats
 

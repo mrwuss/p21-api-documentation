@@ -1227,12 +1227,14 @@
 <hr />
 <h2 id="minimum-create-payload">Minimum Create Payload</h2>
 <p><code>POST /api/inventory/parts</code> requires a minimal set of fields. P21 auto-derives GL accounts from <code>ProductGroupId</code> + <code>LocationId</code>, so you do not need to specify them explicitly.</p>
-<p><strong>Required fields:</strong>
-- <code>ItemId</code> (string, unique across all companies)
-- <code>ItemDesc</code> (string, <strong>max 40 characters</strong> — see <a href="#3-itemdesc-max-40-characters">Common Issues</a>)
-- <code>Locations</code> with at least one entry: <code>LocationId</code> + <code>ProductGroupId</code> (P21 infers <code>CompanyId</code> from the location if omitted)
-- <code>Suppliers</code> with at least one entry: <code>SupplierId</code> + <code>DivisionId</code>
-- <code>LocationSuppliers</code> linking the location and supplier: <code>LocationId</code> + <code>SupplierId</code> + <code>PrimarySupplier</code></p>
+<p><strong>Required fields:</strong></p>
+<ul>
+<li><code>ItemId</code> (string, unique across all companies)</li>
+<li><code>ItemDesc</code> (string, <strong>max 40 characters</strong> — see <a href="#3-itemdesc-max-40-characters">Common Issues</a>)</li>
+<li><code>Locations</code> with at least one entry: <code>LocationId</code> + <code>ProductGroupId</code> (P21 infers <code>CompanyId</code> from the location if omitted)</li>
+<li><code>Suppliers</code> with at least one entry: <code>SupplierId</code> + <code>DivisionId</code></li>
+<li><code>LocationSuppliers</code> linking the location and supplier: <code>LocationId</code> + <code>SupplierId</code> + <code>PrimarySupplier</code></li>
+</ul>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
