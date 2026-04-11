@@ -1160,9 +1160,10 @@
     <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
     <span class="c1"># 1. GET current item with Locations</span>
+    <span class="n">ext</span> <span class="o">=</span> <span class="s2">&quot;Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span>
     <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span>
-        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span><span class="p">},</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="n">ext</span><span class="p">},</span>
     <span class="p">)</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
     <span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
@@ -1459,9 +1460,10 @@
     <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
     <span class="c1"># 1. GET item with locations</span>
+    <span class="n">ext</span> <span class="o">=</span> <span class="s2">&quot;Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span>
     <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span>
-        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span><span class="p">},</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="n">ext</span><span class="p">},</span>
     <span class="p">)</span>
     <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
     <span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
@@ -1533,7 +1535,10 @@
 <span class="n">API</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts&quot;</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">process_item</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_location</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">new_supplier</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_item</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">new_location</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">new_supplier</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add an existing item to a new company/location via GET -&gt; Append -&gt; PUT.&quot;&quot;&quot;</span>
 
     <span class="c1"># 1. Check if item exists</span>

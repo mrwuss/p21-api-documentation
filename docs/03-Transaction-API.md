@@ -756,10 +756,13 @@ response = httpx.post(
 )
 response.raise_for_status()
 result = response.json()
-print(f"Succeeded: {result['Summary']['Succeeded']}, Failed: {result['Summary']['Failed']}")
+succeeded = result['Summary']['Succeeded']
+failed = result['Summary']['Failed']
+print(f"Succeeded: {succeeded}, Failed: {failed}")
 
 if result["Summary"]["Succeeded"] > 0:
-    contract_no = result["Results"]["Transactions"][0]["DataElements"][0]["Rows"][0]["Edits"]
+    txn = result["Results"]["Transactions"][0]
+    contract_no = txn["DataElements"][0]["Rows"][0]["Edits"]
     for edit in contract_no:
         if edit["Name"] == "contract_no":
             print(f"Contract #: {edit['Value']}")
@@ -1062,7 +1065,10 @@ payload = {
                 "Rows": [
                     {
                         "Edits": [
-                            {"Name": "item_id_service_labor_id", "Value": "COMPONENT-A"},
+                            {
+                                "Name": "item_id_service_labor_id",
+                                "Value": "COMPONENT-A",
+                            },
                             {"Name": "quantity", "Value": "2"},
                             {"Name": "operation_cd", "Value": "ASSY"},
                         ],
@@ -1070,7 +1076,10 @@ payload = {
                     },
                     {
                         "Edits": [
-                            {"Name": "item_id_service_labor_id", "Value": "COMPONENT-B"},
+                            {
+                                "Name": "item_id_service_labor_id",
+                                "Value": "COMPONENT-B",
+                            },
                             {"Name": "quantity", "Value": "1"},
                             {"Name": "operation_cd", "Value": "ASSY"},
                         ],
@@ -1090,7 +1099,9 @@ response = httpx.post(
 )
 response.raise_for_status()
 result = response.json()
-print(f"Succeeded: {result['Summary']['Succeeded']}, Failed: {result['Summary']['Failed']}")
+succeeded = result['Summary']['Succeeded']
+failed = result['Summary']['Failed']
+print(f"Succeeded: {succeeded}, Failed: {failed}")
 
 if result["Summary"]["Failed"] > 0:
     for msg in result.get("Messages", []):

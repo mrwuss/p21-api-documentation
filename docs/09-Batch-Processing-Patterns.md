@@ -47,7 +47,10 @@ async def process_in_batches(
         batch_num = (i // batch_size) + 1
         total_batches = (len(items) + batch_size - 1) // batch_size
 
-        logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} items)")
+        logger.info(
+            "Processing batch %s/%s (%s items)",
+            batch_num, total_batches, len(batch),
+        )
 
         # New session for each batch
         async with client.session() as session:
@@ -310,7 +313,7 @@ public async Task<(Window Window, Dictionary<string, object> Result)>
 
             // Close the potentially corrupted window
             try { await window.CloseAsync(); }
-            catch { /* Window may already be in bad state */ }
+            catch (Exception) { /* Window may already be in bad state */ }
 
             if (attempt < maxRetries)
             {
@@ -1082,7 +1085,7 @@ public class Window : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         try { await CloseAsync(); }
-        catch { /* Window may already be closed */ }
+        catch (Exception) { /* Window may already be closed */ }
     }
 }
 
@@ -1465,7 +1468,6 @@ Putting it all together: expire old pages, create new ones, and link to books.
 **Python:**
 
 ```python
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)

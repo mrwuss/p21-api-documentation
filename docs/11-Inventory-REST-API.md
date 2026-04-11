@@ -492,9 +492,10 @@ with httpx.Client(
     follow_redirects=True,
 ) as client:
     # 1. GET current item with Locations
+    ext = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"
     resp = client.get(
         f"{BASE_URL}/api/inventory/parts/WIDGET-001",
-        params={"extendedproperties": "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"},
+        params={"extendedproperties": ext},
     )
     resp.raise_for_status()
     item = resp.json()
@@ -814,9 +815,10 @@ with httpx.Client(
     follow_redirects=True,
 ) as client:
     # 1. GET item with locations
+    ext = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"
     resp = client.get(
         f"{BASE_URL}/api/inventory/parts/WIDGET-001",
-        params={"extendedproperties": "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"},
+        params={"extendedproperties": ext},
     )
     resp.raise_for_status()
     item = resp.json()
@@ -893,7 +895,10 @@ BASE_URL = "https://play.p21server.com"
 API = f"{BASE_URL}/api/inventory/parts"
 
 
-def process_item(client: httpx.Client, item_id: str, new_location: dict, new_supplier: dict):
+def process_item(
+    client: httpx.Client, item_id: str,
+    new_location: dict, new_supplier: dict,
+):
     """Add an existing item to a new company/location via GET -> Append -> PUT."""
 
     # 1. Check if item exists

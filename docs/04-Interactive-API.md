@@ -556,7 +556,7 @@ class InteractiveClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             self.end_session()
-        except:
+        except Exception:
             pass
         return False
 
@@ -586,7 +586,7 @@ public class InteractiveClient : IDisposable
     public void Dispose()
     {
         try { EndSessionAsync().GetAwaiter().GetResult(); }
-        catch { /* ignored */ }
+        catch (Exception) { /* ignored */ }
         _http.Dispose();
     }
 }
@@ -616,7 +616,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class P21Client:
-    def __init__(self, base_url: str, username: str, password: str, verify_ssl: bool = True):
+    def __init__(
+        self, base_url: str, username: str,
+        password: str, verify_ssl: bool = True,
+    ):
         self.base_url = base_url.rstrip('/')
         self.username = username
         self.password = password
@@ -1342,7 +1345,10 @@ await client.put(f"{ui_url}/api/ui/interactive/v2/change", headers=headers,
     json={"WindowId": window_id, "List": [
         {"TabName": "TABPAGE_18", "FieldName": "product_group_id", "Value": "NEW_VALUE"}
     ]})
-await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=window_id)
+await client.put(
+    f"{ui_url}/api/ui/interactive/v2/data",
+    headers=headers, json=window_id,
+)
 ```
 
 #### C#
@@ -1688,7 +1694,9 @@ async def add_row_tolerant(
         messages = [m.get("Text", "") for m in result.get("Messages", [])]
         # Previous-row validation warnings are expected — row was still added
         if any("required value missing" in m.lower() for m in messages):
-            logger.info("add_row returned Status=2 (previous row incomplete), row added")
+            logger.info(
+                "add_row returned Status=2, row added"
+            )
             return result
         # Unexpected failure — raise
         raise RuntimeError(f"add_row failed: {messages}")
