@@ -92,14 +92,9 @@ class InteractiveClient:
 
     def _authenticate(self):
         response = self.client.post(
-            f"{self.base_url}/api/security/token",
-            headers={
-                "username": self.username,
-                "password": self.password,
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            content=""
+            f"{self.base_url}/api/security/token/v2",
+            json={"username": self.username, "password": self.password},
+            headers={"Accept": "application/json"}
         )
         response.raise_for_status()
         self.token = response.json()["AccessToken"]

@@ -56,11 +56,11 @@ All services below are accessed through the Transaction API. Use `GET /api/v2/se
 |---------|---------|
 | `Job` | Job maintenance |
 | `JobControl` | Job control with customer/site info |
-| `JobContractPricing` | Job contract pricing |
+| `JobContractPricing` | Job contract pricing (see [detailed docs](03-Transaction-API.md#jobcontractpricing-service)) |
 | `WorkCenter` | Work center maintenance |
 | `Operation` | Operation definitions |
 | `PredefinedRouting` | Routing templates |
-| `Assembly` | Assembly maintenance |
+| `Assembly` | Assembly/BOM definitions (see [detailed docs](03-Transaction-API.md#assembly-service)) |
 | `AssemblyClass` | Assembly classification |
 | `ManufacturingClass` | Manufacturing classification |
 | `Shift` | Shift definitions |
@@ -424,6 +424,19 @@ The `ProductionOrder` service also includes DataElements for:
 - **PO linkage** -- Links to purchase orders for components
 
 Use `GET /api/v2/definition/ProductionOrder` to see the complete list of DataElements and all available fields.
+
+---
+
+## Assembly Service (Cross-Reference)
+
+Assembly definitions (BOM/bill of materials) are a prerequisite for production orders -- you cannot create a production order for an item that does not have an assembly definition. The `Assembly` Transaction API service creates these definitions, specifying which components make up an assembled product along with routing steps and cost estimates.
+
+**Full documentation:** See [Transaction API -- Assembly Service](03-Transaction-API.md#assembly-service) for the complete service structure, field reference, known limitations, and code examples.
+
+**Typical workflow:**
+1. Create the inventory item via Inventory REST API (`POST /api/inventory/parts`)
+2. Create the assembly/BOM definition via Transaction API (`Assembly` service)
+3. Create production orders via Transaction API (`ProductionOrder` service) referencing the assembled item
 
 ---
 

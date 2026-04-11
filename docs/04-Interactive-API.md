@@ -433,13 +433,8 @@ class InteractiveClient:
 
     def authenticate(self):
         response = httpx.post(
-            f"{self.base_url}/api/security/token",
-            headers={
-                "username": self.username,
-                "password": self.password,
-                "Content-Type": "application/json"
-            },
-            content="",
+            f"{self.base_url}/api/security/token/v2",
+            json={"username": self.username, "password": self.password},
             verify=self.verify_ssl
         )
         response.raise_for_status()
@@ -505,16 +500,13 @@ public class InteractiveClient
 
     public async Task AuthenticateAsync()
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/security/token");
-        request.Headers.Add("username", _username);
-        request.Headers.Add("password", _password);
-        request.Content = new StringContent("", System.Text.Encoding.UTF8, "application/json");
-
-        var response = await _http.SendAsync(request);
+        var body = new JObject { ["username"] = _username, ["password"] = _password };
+        var content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
+        var response = await _http.PostAsync($"{_baseUrl}/api/security/token/v2", content);
         response.EnsureSuccessStatusCode();
 
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        _token = body["AccessToken"]!.ToString();
+        var parsed = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _token = parsed["AccessToken"]!.ToString();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
     }
 
@@ -564,7 +556,7 @@ class InteractiveClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             self.end_session()
-        except:
+        except Exception:
             pass
         return False
 
@@ -594,7 +586,7 @@ public class InteractiveClient : IDisposable
     public void Dispose()
     {
         try { EndSessionAsync().GetAwaiter().GetResult(); }
-        catch { /* ignored */ }
+        catch (Exception) { /* ignored */ }
         _http.Dispose();
     }
 }
@@ -624,7 +616,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class P21Client:
-    def __init__(self, base_url: str, username: str, password: str, verify_ssl: bool = True):
+    def __init__(
+        self, base_url: str, username: str,
+        password: str, verify_ssl: bool = True,
+    ):
         self.base_url = base_url.rstrip('/')
         self.username = username
         self.password = password
@@ -643,15 +638,11 @@ class P21Client:
         return self._client
 
     async def authenticate(self) -> dict:
-        url = f"{self.base_url}/api/security/token"
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "username": self.username,
-            "password": self.password
-        }
+        url = f"{self.base_url}/api/security/token/v2"
         client = self._get_client()
-        response = await client.post(url, headers=headers, content="")
+        response = await client.post(
+            url, json={"username": self.username, "password": self.password}
+        )
         response.raise_for_status()
         self.token = response.json()
         return self.token
@@ -728,19 +719,15 @@ public class P21Client : IAsyncDisposable
 
     public async Task<JObject> AuthenticateAsync()
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/security/token");
-        request.Headers.Add("username", _username);
-        request.Headers.Add("password", _password);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Content = new StringContent("", System.Text.Encoding.UTF8, "application/json");
-
-        var response = await _http!.SendAsync(request);
+        var body = new JObject { ["username"] = _username, ["password"] = _password };
+        var content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
+        var response = await _http!.PostAsync($"{_baseUrl}/api/security/token/v2", content);
         response.EnsureSuccessStatusCode();
 
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        _token = body["AccessToken"]!.ToString();
+        var parsed = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _token = parsed["AccessToken"]!.ToString();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-        return body;
+        return parsed;
     }
 
     public async Task StartSessionAsync()
@@ -1358,7 +1345,10 @@ await client.put(f"{ui_url}/api/ui/interactive/v2/change", headers=headers,
     json={"WindowId": window_id, "List": [
         {"TabName": "TABPAGE_18", "FieldName": "product_group_id", "Value": "NEW_VALUE"}
     ]})
-await client.put(f"{ui_url}/api/ui/interactive/v2/data", headers=headers, json=window_id)
+await client.put(
+    f"{ui_url}/api/ui/interactive/v2/data",
+    headers=headers, json=window_id,
+)
 ```
 
 #### C#
@@ -1534,6 +1524,354 @@ DELETE /api/ui/interactive/v2/data?id={windowId}
 | 422 "Window ID was not provided" | Save payload wrapped in object | Send just the GUID string for v2 |
 | 500 on tab change | Using PagePath wrapper | Use PageName directly for v2 |
 | Field change doesn't persist | Missing TabName | Include TabName in change request |
+
+---
+
+## Operational Patterns
+
+Patterns discovered through production use of the Interactive API. These cover behaviors that are not documented in the official SDK but are consistent and reproducible.
+
+### Tab Unlock Sequences
+
+Certain windows have tabs that start disabled and unlock progressively as prerequisite fields are populated. The API communicates unlock state via `tabpageenabled` events in responses.
+
+**Example: JobContractPricing**
+
+On window open, 7 tabs are disabled: `CUSTSHIPTOCONSIGN`, `BINS`, `VALUES`, `BIN_ITEMS`, `ITEM_BIN_NOTES`, `SHIPTOCONSIGNCONTROL`, `CONSIGNMENTISSUES`. The unlock sequence is:
+
+1. Set `contract_no` on `FORM` — enables `CUSTOMER_SHIP_TO`
+2. Create a customer/ship_to combination on `CUSTOMER_SHIP_TO`, then set `customer_id` and `ship_to_id` on `FORM` — enables `SHIP_TO_ITEM`
+3. Set `item_id` on `SHIP_TO_ITEM` and dismiss the scan lookup dialog — enables `VALUES`, `BINS`, `BIN_ITEMS`, `ITEM_BIN_NOTES` simultaneously
+
+> **Important:** P21 rejects setting `customer_id` or `ship_to_id` on the FORM header directly. You must create the combination on `CUSTOMER_SHIP_TO` first. Error: *"Before selecting a Customer ID or Ship To ID, make sure that the combination exists in the Customer/Ship To tab."*
+
+**Detecting tab unlock events:**
+
+<!-- tabs -->
+
+#### Python
+
+```python
+def check_tab_unlocks(result: dict) -> list[str]:
+    """Extract tab unlock events from an API response.
+
+    Args:
+        result: The parsed JSON response from a change/save operation.
+
+    Returns:
+        List of tab names that were just enabled.
+    """
+    unlocked: list[str] = []
+    for event in result.get("Events", []):
+        if event.get("Name") == "tabpageenabled":
+            for kv in event.get("Data", []):
+                if kv.get("Key") == "pagename":
+                    unlocked.append(kv["Value"])
+    return unlocked
+
+
+# Usage: monitor unlocks as you populate fields
+result = await client.put(
+    f"{ui_url}/api/ui/interactive/v2/change",
+    headers=headers,
+    json={
+        "WindowId": window_id,
+        "List": [{
+            "TabName": "FORM",
+            "DatawindowName": "form",
+            "FieldName": "contract_no",
+            "Value": "1001"
+        }]
+    }
+)
+response = result.json()
+unlocked = check_tab_unlocks(response)
+# unlocked == ["CUSTOMER_SHIP_TO"]
+```
+
+#### C\#
+
+```csharp
+public List<string> CheckTabUnlocks(JObject result)
+{
+    // Extract tab unlock events from an API response.
+    var unlocked = new List<string>();
+    var events = result["Events"] as JArray ?? new JArray();
+
+    foreach (var evt in events)
+    {
+        if (evt["Name"]?.ToString() == "tabpageenabled")
+        {
+            var data = evt["Data"] as JArray ?? new JArray();
+            foreach (var kv in data)
+            {
+                if (kv["Key"]?.ToString() == "pagename")
+                    unlocked.Add(kv["Value"]!.ToString());
+            }
+        }
+    }
+    return unlocked;
+}
+
+// Usage: monitor unlocks as you populate fields
+var payload = new JObject
+{
+    ["WindowId"] = windowId,
+    ["List"] = new JArray
+    {
+        new JObject
+        {
+            ["TabName"] = "FORM",
+            ["DatawindowName"] = "form",
+            ["FieldName"] = "contract_no",
+            ["Value"] = "1001"
+        }
+    }
+};
+var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+var response = await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/change", content);
+var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+var unlocked = CheckTabUnlocks(result);
+// unlocked == ["CUSTOMER_SHIP_TO"]
+```
+
+<!-- /tabs -->
+
+**General guidance:** Always check `tabpageenabled` events when working with multi-tab windows. Do not attempt to switch to a disabled tab — the API will return an error. Query the window definition (`GET /api/ui/interactive/v2/window?id={windowId}`) to see current tab states via `TabPageList[].Enabled`.
+
+### add_row with Status=2 (Failure)
+
+When calling `add_row`, P21 returns `Status: 2` (Failure) if the **previous** row has incomplete or invalid data. Despite the failure status, the new row **is still created** and ready for data entry. This is expected P21 behavior, not a hard error.
+
+**Example:** `add_row("bins")` returns Status=2 with message *"Required value missing for Bin ID on row 1"* — but row 2 is created and editable.
+
+**Guidance:** When adding multiple rows in sequence, expect Status=2 on subsequent `add_row` calls if prior rows are not fully populated. Do not treat Status=2 as a fatal error in this context — check the messages to determine whether the failure is about the previous row's validation or a real problem.
+
+<!-- tabs -->
+
+#### Python
+
+```python
+import logging
+
+import httpx
+
+logger = logging.getLogger(__name__)
+
+
+async def add_row_tolerant(
+    window_id: str,
+    datawindow_name: str,
+    headers: dict[str, str],
+    client: httpx.AsyncClient,
+    ui_url: str,
+) -> dict:
+    """Add a row, tolerating Status=2 from incomplete previous rows.
+
+    Args:
+        window_id: The active window ID.
+        datawindow_name: Target datawindow (e.g., "bins").
+        headers: Request headers with auth token.
+        client: httpx async client.
+        ui_url: UI server base URL.
+
+    Returns:
+        Parsed response dict.
+
+    Raises:
+        RuntimeError: If the failure is not a previous-row validation issue.
+    """
+    response = await client.post(
+        f"{ui_url}/api/ui/interactive/v2/row",
+        headers=headers,
+        json={"WindowId": window_id, "DatawindowName": datawindow_name},
+    )
+    response.raise_for_status()
+    result = response.json()
+
+    status = result.get("Status", 0)
+    if status == 2:
+        messages = [m.get("Text", "") for m in result.get("Messages", [])]
+        # Previous-row validation warnings are expected — row was still added
+        if any("required value missing" in m.lower() for m in messages):
+            logger.info(
+                "add_row returned Status=2, row added"
+            )
+            return result
+        # Unexpected failure — raise
+        raise RuntimeError(f"add_row failed: {messages}")
+
+    return result
+```
+
+#### C\#
+
+```csharp
+public async Task<JObject> AddRowTolerantAsync(
+    string windowId,
+    string datawindowName,
+    HttpClient http,
+    string uiUrl)
+{
+    // Add a row, tolerating Status=2 from incomplete previous rows.
+    var payload = new JObject
+    {
+        ["WindowId"] = windowId,
+        ["DatawindowName"] = datawindowName
+    };
+    var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+    var response = await http.PostAsync($"{uiUrl}/api/ui/interactive/v2/row", content);
+    response.EnsureSuccessStatusCode();
+
+    var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+    var status = result["Status"]?.Value<int>() ?? 0;
+
+    if (status == 2)
+    {
+        var messages = result["Messages"]?
+            .Select(m => m["Text"]?.ToString() ?? "")
+            .ToList() ?? new List<string>();
+
+        // Previous-row validation warnings are expected — row was still added
+        if (messages.Any(m => m.Contains("required value missing", StringComparison.OrdinalIgnoreCase)))
+        {
+            _logger.LogInformation("add_row returned Status=2 (previous row incomplete), row added");
+            return result;
+        }
+        // Unexpected failure — raise
+        throw new InvalidOperationException($"add_row failed: {string.Join("; ", messages)}");
+    }
+
+    return result;
+}
+```
+
+<!-- /tabs -->
+
+### Response Window Types
+
+Response windows fall into distinct categories based on what interactions they support. Tool-capable dialogs can be dismissed via `POST /tools`, but message boxes (`w_message`) are auto-answered based on `ResponseWindowHandlingEnabled` configuration.
+
+| Type | Example | Buttons | Field Input | Dismiss Method |
+|------|---------|---------|-------------|----------------|
+| **Button-only dialog** | `w_rule_callback_response` | `cb_1` through `cb_5` | N/A | `POST /tools` with button name |
+| **Form + button dialog** | `w_inventory_scan_lookup` | `cb_ok`, `cb_cancel` | Fields visible but **not writable** via API | `POST /tools` with button name |
+| **Message box** | `w_message` | Default-answered | Cannot be inspected | Auto-answered when `ResponseWindowHandlingEnabled: false` |
+
+**Key limitation (verified April 2026):** Form-type response windows can only be **dismissed** (button click), not **interacted with** (field changes). `GET /data` returns 400 and `PUT /change` returns 500 with *"Tab with name FORM does not exist"*. Workflows that depend on filling response window fields cannot be fully automated.
+
+**Inspecting and dismissing response windows:**
+
+<!-- tabs -->
+
+#### Python
+
+```python
+import logging
+
+import httpx
+
+logger = logging.getLogger(__name__)
+
+
+async def handle_response_window(
+    window_id: str,
+    response_window_id: str,
+    headers: dict[str, str],
+    client: httpx.AsyncClient,
+    ui_url: str,
+    button: str = "cb_cancel",
+) -> dict:
+    """Inspect a response window and dismiss it via button click.
+
+    Args:
+        window_id: The parent window ID.
+        response_window_id: The response window ID from the windowopened event.
+        headers: Request headers with auth token.
+        client: httpx async client.
+        ui_url: UI server base URL.
+        button: Button name to click (default: cb_cancel).
+
+    Returns:
+        Parsed response from the tool click.
+    """
+    # Step 1: Discover available buttons
+    tools_resp = await client.get(
+        f"{ui_url}/api/ui/interactive/v2/tools",
+        headers=headers,
+        params={"windowId": response_window_id},
+    )
+    tools_resp.raise_for_status()
+    tools = tools_resp.json()
+    available = [t.get("Name") or t.get("ToolName") for t in tools]
+    logger.info("Response window %s has buttons: %s", response_window_id, available)
+
+    # Step 2: Click the desired button
+    click_resp = await client.post(
+        f"{ui_url}/api/ui/interactive/v2/tools",
+        headers=headers,
+        json={"WindowId": response_window_id, "ToolName": button},
+    )
+    click_resp.raise_for_status()
+    return click_resp.json()
+```
+
+#### C\#
+
+```csharp
+public async Task<JObject> HandleResponseWindowAsync(
+    string windowId,
+    string responseWindowId,
+    HttpClient http,
+    string uiUrl,
+    string button = "cb_cancel")
+{
+    // Step 1: Discover available buttons
+    var toolsResp = await http.GetAsync(
+        $"{uiUrl}/api/ui/interactive/v2/tools?windowId={responseWindowId}");
+    toolsResp.EnsureSuccessStatusCode();
+
+    var tools = JArray.Parse(await toolsResp.Content.ReadAsStringAsync());
+    var available = tools.Select(t => t["Name"]?.ToString() ?? t["ToolName"]?.ToString()).ToList();
+    _logger.LogInformation("Response window {WindowId} has buttons: {Buttons}",
+        responseWindowId, string.Join(", ", available));
+
+    // Step 2: Click the desired button
+    var payload = new JObject
+    {
+        ["WindowId"] = responseWindowId,
+        ["ToolName"] = button
+    };
+    var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+    var clickResp = await http.PostAsync($"{uiUrl}/api/ui/interactive/v2/tools", content);
+    clickResp.EnsureSuccessStatusCode();
+
+    return JObject.Parse(await clickResp.Content.ReadAsStringAsync());
+}
+```
+
+<!-- /tabs -->
+
+> **Note:** The `GET /tools` endpoint uses `?windowId=` (not `?id=`). See the [query parameter inconsistency note](#data-operations-v2-recommended) in the Endpoints section.
+
+### UOM Auto-Population
+
+When setting `item_id` via the Interactive API, P21 validates the unit of measure against the item's valid UOM list. Setting an invalid `uom` value results in HTTP 422 with *"Invalid uom value"*.
+
+**Best practice:** Do **not** set `uom` explicitly — let P21 auto-populate it from the item master data. The API fills in the item's default selling or purchasing UOM automatically after `item_id` is set. Only override `uom` if you have confirmed the target value exists in the item's UOM list.
+
+### Timeout Recommendations
+
+Recommended HTTP timeouts based on production experience with large payloads:
+
+| Operation | Recommended Timeout | Notes |
+|-----------|-------------------|-------|
+| `submit_transaction` (Transaction API, 100+ lines) | 300s | Large payloads with many line items |
+| `save_data` (Interactive API) | 120s | Business logic validation can be slow |
+| `select_row` / `change_fields` | 60s | Individual field operations |
+| Default for all operations | 60s minimum | P21 server processing varies by load |
+
+> These are guidelines from production use. Adjust based on data volume and server performance. The default `httpx` timeout of 5 seconds is almost always too low for P21 operations.
 
 ---
 

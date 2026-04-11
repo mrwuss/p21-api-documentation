@@ -393,6 +393,7 @@
 <li><a href="#get-with-extended-properties">GET with Extended Properties</a></li>
 <li><a href="#extended-properties-reference">Extended Properties Reference</a></li>
 <li><a href="#data-fields-partial">Data Fields (Partial)</a></li>
+<li><a href="#location-level-fields-inv_loc">Location-Level Fields (inv_loc)</a></li>
 </ul>
 </li>
 <li><a href="#writing-items">Writing Items</a><ul>
@@ -408,10 +409,18 @@
 <li><a href="#verified-error-messages">Verified Error Messages</a></li>
 </ul>
 </li>
+<li><a href="#updating-existing-location-fields">Updating Existing Location Fields</a><ul>
+<li><a href="#example-update-location-fields">Example: Update Location Fields</a></li>
+</ul>
+</li>
+<li><a href="#minimum-create-payload">Minimum Create Payload</a></li>
 <li><a href="#common-issues">Common Issues</a><ul>
 <li><a href="#1-item-id-already-exists">1. "Item ID already exists"</a></li>
 <li><a href="#2-account-doesnt-exist-for-company">2. "Account doesn't exist for company"</a></li>
-<li><a href="#3-uom-handling">3. UOM Handling</a></li>
+<li><a href="#3-itemdesc-max-40-characters">3. ItemDesc Max 40 Characters</a></li>
+<li><a href="#4-post-returns-307-redirect">4. POST Returns 307 Redirect</a></li>
+<li><a href="#5-location-soft-delete-via-delete-flag">5. Location Soft-Delete via Delete Flag</a></li>
+<li><a href="#6-uom-handling">6. UOM Handling</a></li>
 </ul>
 </li>
 <li><a href="#automation-example">Automation Example</a><ul>
@@ -442,7 +451,7 @@
 <p>P21 provides an <strong>Inventory REST API</strong> at <code>/api/inventory/parts</code> for CRUD operations on inventory items (<code>inv_mast</code>). This is a <strong>separate API</strong> from the <a href="05-Entity-API.html">Entity API</a> at <code>/api/entity/</code> — it uses its own base path and has different behavior.</p>
 <p>The Inventory REST API is significant because it provides:
 - <strong>Read access</strong> to <code>inv_loc</code> (inventory location) records via extended properties
-- <strong>Write access</strong> to append new <code>inv_loc</code> and <code>inventory_supplier</code> records via PUT
+- <strong>Write access</strong> to append new <code>inv_loc</code> and <code>inventory_supplier</code> records, or update existing ones, via PUT
 - Direct item-level CRUD without sessions or stateful workflows</p>
 <h3 id="when-to-use">When to Use</h3>
 <ul>
@@ -456,7 +465,6 @@
 <li><strong>No <code>/new</code> template</strong> — <code>GET /api/inventory/parts/new</code> returns 404</li>
 <li><strong>List endpoint hangs</strong> — <code>GET /api/inventory/parts/</code> without <code>$query</code> tries to load all items and times out</li>
 <li><strong>Not all items accessible</strong> — Some items in <code>inv_mast</code> (via OData) return 404 from this API</li>
-<li><strong>Cannot update existing <code>inv_loc</code> fields</strong> — You can append new location records but not modify fields on existing ones (see <a href="#known-limitations">Known Limitations</a>)</li>
 </ul>
 <hr />
 <h2 id="base-url">Base URL</h2>
@@ -497,8 +505,8 @@
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/inventory/parts</code></td>
-<td>Create new item</td>
-<td>Yes (error for duplicates)</td>
+<td>Create new item (see <a href="#4-post-returns-307-redirect">307 redirect note</a>)</td>
+<td>Yes</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -891,6 +899,16 @@
 <td>Internal unique identifier</td>
 </tr>
 <tr>
+<td><code>DefaultPurchaseDiscGroup</code></td>
+<td>string</td>
+<td>Default purchase discount group (item-level)</td>
+</tr>
+<tr>
+<td><code>DefaultSalesDiscountGroup</code></td>
+<td>string</td>
+<td>Default sales discount group (item-level)</td>
+</tr>
+<tr>
 <td><code>UserDefinedFields</code></td>
 <td>object</td>
 <td>User-defined fields</td>
@@ -902,13 +920,110 @@
 </tr>
 </tbody>
 </table>
+<h3 id="location-level-fields-inv_loc">Location-Level Fields (inv_loc)</h3>
+<p>Key fields on <code>inv_loc</code> records within <code>Locations.list</code> (requires <code>extendedproperties=Locations</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LocationId</code></td>
+<td>int</td>
+<td>Warehouse/location identifier</td>
+</tr>
+<tr>
+<td><code>CompanyId</code></td>
+<td>string</td>
+<td>Company the location belongs to</td>
+</tr>
+<tr>
+<td><code>ProductGroupId</code></td>
+<td>string</td>
+<td>Product group for this location</td>
+</tr>
+<tr>
+<td><code>Sellable</code></td>
+<td>string</td>
+<td>Whether item is sellable at this location (Y/N)</td>
+</tr>
+<tr>
+<td><code>Stockable</code></td>
+<td>string</td>
+<td>Whether item is stockable at this location (Y/N)</td>
+</tr>
+<tr>
+<td><code>GlAccountNo</code></td>
+<td>string</td>
+<td>GL inventory account</td>
+</tr>
+<tr>
+<td><code>RevenueAccountNo</code></td>
+<td>string</td>
+<td>GL revenue account</td>
+</tr>
+<tr>
+<td><code>CosAccountNo</code></td>
+<td>string</td>
+<td>GL cost-of-sale account</td>
+</tr>
+<tr>
+<td><code>PurchaseDiscountGroup</code></td>
+<td>string</td>
+<td>Purchase discount group (location-level)</td>
+</tr>
+<tr>
+<td><code>SalesDiscountGroup</code></td>
+<td>string</td>
+<td>Sales discount group (location-level)</td>
+</tr>
+<tr>
+<td><code>QtyOnHand</code></td>
+<td>decimal</td>
+<td>Current quantity on hand</td>
+</tr>
+<tr>
+<td><code>MovingAverageCost</code></td>
+<td>decimal</td>
+<td>Moving average cost</td>
+</tr>
+<tr>
+<td><code>StandardCost</code></td>
+<td>decimal</td>
+<td>Standard cost</td>
+</tr>
+<tr>
+<td><code>ReplenishmentMethod</code></td>
+<td>string</td>
+<td>Replenishment method (e.g., "Min/Max")</td>
+</tr>
+<tr>
+<td><code>Delete</code></td>
+<td>string</td>
+<td>Soft-delete flag (Y/N) — see <a href="#5-location-soft-delete-via-delete-flag">Location Soft-Delete</a></td>
+</tr>
+<tr>
+<td><code>ObjectName</code></td>
+<td>string</td>
+<td>Always <code>"inv_loc"</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> <code>PurchaseDiscountGroup</code> and <code>SalesDiscountGroup</code> on <code>inv_loc</code> are <strong>separate</strong> from the item-level <code>DefaultPurchaseDiscGroup</code> and <code>DefaultSalesDiscountGroup</code> on <code>inv_mast</code>. Values can differ between levels — the location-level fields override the item-level defaults for that specific location.</p>
+</blockquote>
 <hr />
 <h2 id="writing-items">Writing Items</h2>
 <h3 id="put-update-existing-item">PUT — Update Existing Item</h3>
-<p><code>PUT /api/inventory/parts/{ItemId}</code> accepts the full item payload and processes changes including appended child records (Locations, Suppliers).</p>
+<p><code>PUT /api/inventory/parts/{ItemId}</code> accepts the full item payload and processes changes including appended child records and modifications to existing records.</p>
 <p><strong>Verified behavior:</strong>
 - Sending back the same data unchanged returns 200 (idempotent)
 - Appending new <code>inv_loc</code> records in <code>Locations.list</code> triggers P21 business logic validation (company validation, GL account checks)
+- Modifying fields on existing <code>inv_loc</code> records applies the changes (see <a href="#updating-existing-location-fields">Updating Existing Location Fields</a>)
 - Invalid data produces descriptive P21 error messages</p>
 <h3 id="post-create-new-item">POST — Create New Item</h3>
 <p><code>POST /api/inventory/parts</code> creates a new inventory item. If the <code>ItemId</code> already exists, P21 returns an error:</p>
@@ -1018,6 +1133,231 @@
 
 <p>These errors prove the API is actively processing the appended Location records — validating the CompanyId and GL accounts against P21's chart of accounts.</p>
 <hr />
+<h2 id="updating-existing-location-fields">Updating Existing Location Fields</h2>
+<p>The GET -&gt; Modify -&gt; PUT pattern also works for <strong>updating fields on existing <code>inv_loc</code> records</strong>, not just appending new ones.</p>
+<p><strong>Verified writable fields:</strong> <code>Sellable</code>, <code>ProductGroupId</code>, <code>PurchaseDiscountGroup</code>, <code>SalesDiscountGroup</code></p>
+<p>P21 validates changed values through business logic. For example, setting an invalid <code>ProductGroupId</code> returns:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error updating WIDGET-001: Error updating inv_mast: Product group ID does not exist for this company ID.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Common.Exceptions.Prophet21Exception&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="example-update-location-fields">Example: Update Location Fields</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">TOKEN</span> <span class="o">=</span> <span class="s2">&quot;&lt;ACCESS_TOKEN&gt;&quot;</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="c1"># 1. GET current item with Locations</span>
+    <span class="n">ext</span> <span class="o">=</span> <span class="s2">&quot;Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="n">ext</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+    <span class="c1"># 2. Modify fields on existing location</span>
+    <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;Locations&quot;</span><span class="p">][</span><span class="s2">&quot;list&quot;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;LocationId&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ACME&quot;</span><span class="p">:</span>
+            <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;Sellable&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;N&quot;</span>
+            <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;ProductGroupId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;MISC&quot;</span>
+            <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;PurchaseDiscountGroup&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;BULK&quot;</span>
+            <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;SalesDiscountGroup&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;RETAIL&quot;</span>
+            <span class="k">break</span>
+
+    <span class="c1"># 3. PUT back</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">item</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated: </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Linq</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Threading.Tasks</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">AllowAutoRedirect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Authorization&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Bearer &lt;ACCESS_TOKEN&gt;&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">baseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span>
+
+<span class="c1">// 1. GET current item with Locations</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span><span class="p">);</span>
+<span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="c1">// 2. Modify fields on existing location</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">locations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">item</span><span class="p">[</span><span class="s">&quot;Locations&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;list&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">locations</span><span class="o">?.</span><span class="n">FirstOrDefault</span><span class="p">(</span>
+<span class="w">    </span><span class="n">l</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">l</span><span class="p">[</span><span class="s">&quot;LocationId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="p">)</span><span class="n">l</span><span class="p">[</span><span class="s">&quot;CompanyId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">target</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">target</span><span class="p">[</span><span class="s">&quot;Sellable&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">target</span><span class="p">[</span><span class="s">&quot;ProductGroupId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;MISC&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">target</span><span class="p">[</span><span class="s">&quot;PurchaseDiscountGroup&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;BULK&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">target</span><span class="p">[</span><span class="s">&quot;SalesDiscountGroup&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;RETAIL&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 3. PUT back</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">putResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">putResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Updated: {(int)putResp.StatusCode}&quot;</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Important:</strong> Always include <strong>all</strong> existing child records (Locations, Suppliers, etc.) in the PUT payload. Omitting records may cause P21 to remove them.</p>
+</blockquote>
+<hr />
+<h2 id="minimum-create-payload">Minimum Create Payload</h2>
+<p><code>POST /api/inventory/parts</code> requires a minimal set of fields. P21 auto-derives GL accounts from <code>ProductGroupId</code> + <code>LocationId</code>, so you do not need to specify them explicitly.</p>
+<p><strong>Required fields:</strong></p>
+<ul>
+<li><code>ItemId</code> (string, unique across all companies)</li>
+<li><code>ItemDesc</code> (string, <strong>max 40 characters</strong> — see <a href="#3-itemdesc-max-40-characters">Common Issues</a>)</li>
+<li><code>Locations</code> with at least one entry: <code>LocationId</code> + <code>ProductGroupId</code> (P21 infers <code>CompanyId</code> from the location if omitted)</li>
+<li><code>Suppliers</code> with at least one entry: <code>SupplierId</code> + <code>DivisionId</code></li>
+<li><code>LocationSuppliers</code> linking the location and supplier: <code>LocationId</code> + <code>SupplierId</code> + <code>PrimarySupplier</code></li>
+</ul>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">TOKEN</span> <span class="o">=</span> <span class="s2">&quot;&lt;ACCESS_TOKEN&gt;&quot;</span>
+
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ItemId&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-002&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ItemDesc&quot;</span><span class="p">:</span> <span class="s2">&quot;Small Widget Assembly&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Locations&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;list&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;LocationId&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;ProductGroupId&quot;</span><span class="p">:</span> <span class="s2">&quot;MISC&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;ObjectName&quot;</span><span class="p">:</span> <span class="s2">&quot;inv_loc&quot;</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Suppliers&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;list&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;SupplierId&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                <span class="s2">&quot;DivisionId&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;ObjectName&quot;</span><span class="p">:</span> <span class="s2">&quot;inventory_supplier&quot;</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;LocationSuppliers&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;list&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;LocationId&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;SupplierId&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                <span class="s2">&quot;PrimarySupplier&quot;</span><span class="p">:</span> <span class="s2">&quot;Y&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;ObjectName&quot;</span><span class="p">:</span> <span class="s2">&quot;inventory_supplier_x_loc&quot;</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;ObjectName&quot;</span><span class="p">:</span> <span class="s2">&quot;inv_mast&quot;</span>
+<span class="p">}</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created: </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s1">&#39;ItemId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Threading.Tasks</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">AllowAutoRedirect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Authorization&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Bearer &lt;ACCESS_TOKEN&gt;&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">baseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;ItemId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-002&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;ItemDesc&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Small Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;ObjectName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;inv_mast&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;Locations&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;list&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;LocationId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;ProductGroupId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;MISC&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;ObjectName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;inv_loc&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="na">[&quot;Suppliers&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;list&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;SupplierId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;DivisionId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;ObjectName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;inventory_supplier&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="na">[&quot;LocationSuppliers&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;list&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;LocationId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;SupplierId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;PrimarySupplier&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;ObjectName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;inventory_supplier_x_loc&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/inventory/parts/&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Created: {result[&quot;</span><span class="n">ItemId</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Note:</strong> <code>CompanyId</code> is optional on Location records — P21 infers the default company from the <code>LocationId</code>. GL accounts (<code>GlAccountNo</code>, <code>RevenueAccountNo</code>, <code>CosAccountNo</code>) are auto-derived from the <code>ProductGroupId</code> and location configuration.</p>
+</blockquote>
+<hr />
 <h2 id="common-issues">Common Issues</h2>
 <h3 id="1-item-id-already-exists">1. "Item ID already exists"</h3>
 <p><strong>Cause:</strong> Using <code>POST</code> for an item that already exists in <code>inv_mast</code>.</p>
@@ -1025,7 +1365,161 @@
 <h3 id="2-account-doesnt-exist-for-company">2. "Account doesn't exist for company"</h3>
 <p><strong>Cause:</strong> The <code>GlAccountNo</code>, <code>RevenueAccountNo</code>, or <code>CosAccountNo</code> in your new Location record is not valid for the target company.</p>
 <p><strong>Fix:</strong> Look up valid GL accounts for the target company before constructing the Location payload.</p>
-<h3 id="3-uom-handling">3. UOM Handling</h3>
+<h3 id="3-itemdesc-max-40-characters">3. ItemDesc Max 40 Characters</h3>
+<p>The <code>ItemDesc</code> field on <code>inv_mast</code> has a <strong>40-character maximum</strong>. Behavior differs by method:</p>
+<ul>
+<li><strong>POST</strong> with &gt;40 chars fails with a misleading error: <code>"Required value missing for Item Description"</code> (the value is present, just too long)</li>
+<li><strong>PUT</strong> with &gt;40 chars <strong>silently discards</strong> the value — no error, but the description is not updated</li>
+</ul>
+<p>Always validate before sending:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="n">MAX_ITEM_DESC_LENGTH</span> <span class="o">=</span> <span class="mi">40</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_item_desc</span><span class="p">(</span><span class="n">desc</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate ItemDesc length before API call.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">MAX_ITEM_DESC_LENGTH</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;ItemDesc &#39;</span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s2">&#39; is </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span><span class="si">}</span><span class="s2"> chars (max </span><span class="si">{</span><span class="n">MAX_ITEM_DESC_LENGTH</span><span class="si">}</span><span class="s2">). &quot;</span>
+            <span class="s2">&quot;POST will fail with misleading error; PUT will silently discard.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">desc</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">MaxItemDescLength</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">40</span><span class="p">;</span>
+
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ValidateItemDesc</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">desc</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">desc</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">MaxItemDescLength</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">ArgumentException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;ItemDesc &#39;{desc}&#39; is {desc.Length} chars (max {MaxItemDescLength}). &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">            </span><span class="s">&quot;POST will fail with misleading error; PUT will silently discard.&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">desc</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<h3 id="4-post-returns-307-redirect">4. POST Returns 307 Redirect</h3>
+<p><code>POST /api/inventory/parts</code> (without trailing slash) returns <strong>307 Temporary Redirect</strong> to <code>/api/inventory/parts/</code>. Most HTTP clients do not follow redirects on POST by default.</p>
+<p><strong>Fix:</strong> Either add a trailing slash to the URL, or configure your client to follow redirects:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># Option 1: Trailing slash</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+
+<span class="c1"># Option 2: follow_redirects</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Option 1: Trailing slash</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/inventory/parts/&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+
+<span class="c1">// Option 2: AllowAutoRedirect (default is true for HttpClientHandler)</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">AllowAutoRedirect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/inventory/parts&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Note:</strong> <code>GET</code> and <code>PUT</code> (which include the ItemId in the URL path) are not affected.</p>
+</blockquote>
+<h3 id="5-location-soft-delete-via-delete-flag">5. Location Soft-Delete via Delete Flag</h3>
+<p>To remove an item from a location without deleting the <code>inv_loc</code> record, set the <code>Delete</code> flag to <code>"Y"</code>. This is a <strong>soft-delete</strong> — the record still exists in the database but is excluded from business operations (ordering, selling, etc.).</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">TOKEN</span> <span class="o">=</span> <span class="s2">&quot;&lt;ACCESS_TOKEN&gt;&quot;</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="c1"># 1. GET item with locations</span>
+    <span class="n">ext</span> <span class="o">=</span> <span class="s2">&quot;Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="n">ext</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">item</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+    <span class="c1"># 2. Set Delete flag on target location</span>
+    <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;Locations&quot;</span><span class="p">][</span><span class="s2">&quot;list&quot;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;LocationId&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;CompanyId&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ACME&quot;</span><span class="p">:</span>
+            <span class="n">loc</span><span class="p">[</span><span class="s2">&quot;Delete&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Y&quot;</span>
+            <span class="k">break</span>
+
+    <span class="c1"># 3. PUT back</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">item</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Soft-deleted location: </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Linq</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Threading.Tasks</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">AllowAutoRedirect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Authorization&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Bearer &lt;ACCESS_TOKEN&gt;&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">baseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span>
+
+<span class="c1">// 1. GET item with locations</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure&quot;</span><span class="p">);</span>
+<span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="c1">// 2. Set Delete flag on target location</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">locations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">item</span><span class="p">[</span><span class="s">&quot;Locations&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;list&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">locations</span><span class="o">?.</span><span class="n">FirstOrDefault</span><span class="p">(</span>
+<span class="w">    </span><span class="n">l</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">l</span><span class="p">[</span><span class="s">&quot;LocationId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="p">)</span><span class="n">l</span><span class="p">[</span><span class="s">&quot;CompanyId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">target</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">target</span><span class="p">[</span><span class="s">&quot;Delete&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 3. PUT back</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">putResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/inventory/parts/WIDGET-001&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">putResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Soft-deleted location: {(int)putResp.StatusCode}&quot;</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Note:</strong> To restore a soft-deleted location, set <code>Delete</code> back to <code>"N"</code> using the same pattern.</p>
+</blockquote>
+<h3 id="6-uom-handling">6. UOM Handling</h3>
 <p>Units of Measure (<code>UnitsOfMeasure</code>) are defined at the <code>inv_mast</code> level and shared across all companies. You typically do not need to add company-specific UOMs — standard units like "EA", "BOX", etc. apply globally. Ensure existing UOMs are included in your PUT payload.</p>
 <hr />
 <h2 id="automation-example">Automation Example</h2>
@@ -1041,7 +1535,10 @@
 <span class="n">API</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts&quot;</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">process_item</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_location</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">new_supplier</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_item</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">new_location</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">new_supplier</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add an existing item to a new company/location via GET -&gt; Append -&gt; PUT.&quot;&quot;&quot;</span>
 
     <span class="c1"># 1. Check if item exists</span>
@@ -1147,10 +1644,7 @@
 <h2 id="known-limitations">Known Limitations</h2>
 <ol>
 <li>
-<p><strong>Append only, not update</strong> — You can append new <code>inv_loc</code> records to an item, but modifying fields on <em>existing</em> <code>inv_loc</code> records via this API has not been verified. For updating existing location fields (GL accounts, product group, etc.), the Interactive API Item window or direct SQL may be required.</p>
-</li>
-<li>
-<p><strong>No <code>/new</code> template</strong> — Unlike the Entity API, there is no template endpoint. You must know the required fields for POST.</p>
+<p><strong>No <code>/new</code> template</strong> — Unlike the Entity API, there is no template endpoint. You must know the required fields for POST (see <a href="#minimum-create-payload">Minimum Create Payload</a>).</p>
 </li>
 <li>
 <p><strong>List endpoint performance</strong> — Always use <code>$query</code> filtering. The unfiltered list endpoint attempts to load all inventory and times out.</p>

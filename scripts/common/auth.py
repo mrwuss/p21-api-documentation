@@ -54,7 +54,7 @@ def get_token(
     username: Optional[str] = None,
     password: Optional[str] = None,
     consumer_key: Optional[str] = None,
-    use_v2: bool = False
+    use_v2: bool = True
 ) -> dict:
     """
     Obtain an access token from P21.

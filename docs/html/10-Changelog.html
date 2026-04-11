@@ -380,6 +380,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-04-10">2026-04-10</a></li>
 <li><a href="#2026-04-04">2026-04-04</a></li>
 <li><a href="#2026-03-06">2026-03-06</a></li>
 <li><a href="#2026-02-25">2026-02-25</a></li>
@@ -413,6 +414,14 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-04-10">2026-04-10</h2>
+<ul>
+<li><strong>docs:</strong> Correct Inventory REST API — existing <code>inv_loc</code> fields CAN be updated via GET → modify → PUT (previously documented as append-only), add ItemDesc 40-char limit, POST 307 redirect, location soft-delete via <code>Delete: "Y"</code>, PurchaseDiscountGroup/SalesDiscountGroup fields, minimum create payload — Fixes #31 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add JobContractPricing service documentation — full-service structure (25 DataElements), multi-line break interleaving pattern, 15-tier break structure, non-break vs break line patterns, Status "Existing" NullReferenceException (platform-wide bug), commission cost column limitations — Fixes #32 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add Assembly service documentation — full-service structure (15 DataElements), component_type valid values (hose-specific), copy_item_id field, item-must-exist-first validation, Part + Assembly creation workflow, Status "Existing" bug — Fixes #33 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add Interactive API operational patterns — tab unlock sequences (JobContractPricing example), add_row Status=2 creates row despite failure status, response window type taxonomy (button-only vs form+button vs message box), UOM auto-population best practice, timeout recommendations — Fixes #34 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Expand authentication documentation — token TTL and reuse patterns, multi-API token reuse, TokenManager class examples (Python + C#)</li>
+</ul>
 <h2 id="2026-04-04">2026-04-04</h2>
 <ul>
 <li><strong>docs:</strong> Expand consumer key authentication documentation — verified consumer key + username works for Interactive API sessions, added SOA Admin configuration fields, JWT token claims, API-specific behavior table, scope behavior, Python and C# code examples — <em>@mrwuss</em></li>

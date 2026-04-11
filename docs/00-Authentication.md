@@ -21,13 +21,13 @@ POST https://{hostname}/api/security/token/v2
 
 The V2 endpoint accepts credentials in the request body.
 
-### V1 Endpoint (Deprecated)
+### V1 Endpoint (Deprecated — Security Risk)
 
 ```http
 POST https://{hostname}/api/security/token
 ```
 
-The V1 endpoint accepts credentials as headers. While still functional, Epicor recommends migrating to V2.
+> **Security Warning:** The V1 endpoint transmits credentials in HTTP **headers**. Headers are routinely logged by reverse proxies, load balancers, WAFs, and middleware — meaning usernames and passwords can end up in access logs, error logs, and monitoring dashboards. **Always use V2** for new integrations. V1 is documented here only for reference with legacy systems.
 
 ---
 
@@ -62,7 +62,9 @@ Accept: application/json
 }
 ```
 
-### V1 Request (Legacy)
+### V1 Request (Legacy — Not Recommended)
+
+> **Credentials are in headers — see [security warning above](#v1-endpoint-deprecated-security-risk).**
 
 **Request:**
 ```http
@@ -505,15 +507,48 @@ var body = await response.Content.ReadAsStringAsync();
 
 ---
 
-## Token Expiration
+## Token Lifetime and Reuse
 
-| Property | Value |
-|----------|-------|
-| Default lifetime | 24 hours (86400 seconds) |
-| Returned in | `ExpiresInSeconds` field |
-| Refresh token | Provided for token renewal |
+### Token TTL
 
-### Handling Expiration
+The token response includes an expiry field indicating how long the token remains valid, in seconds. The field name varies by auth flow and middleware format: user credential JSON responses use `ExpiresInSeconds`, consumer key JSON responses use `ExpiresIn`, and XML responses also use `ExpiresIn`. Always check for both field names when parsing (see the `TokenManager` examples below).
+
+| Auth Method | Typical TTL | Notes |
+|-------------|-------------|-------|
+| **User Credentials** | 86,400 seconds (24 hours) | Configurable per server |
+| **Consumer Key** | 630,720,000 seconds (20 years) | When set to "Never Expire" in SOA Admin |
+
+> **Important:** Always read the expiry field (`ExpiresInSeconds` or `ExpiresIn`) from the response rather than hardcoding a TTL value. The default varies by server configuration and P21 version.
+
+### Why Reuse Tokens
+
+Authenticate **once** at the start of your application or script and reuse that token for all subsequent API calls.
+
+- **Middleware sessions** — each call to `/api/security/token/v2` creates a new middleware session. Excessive token requests waste server resources and may invalidate previous sessions.
+- **Rate limiting** — frequent authentication requests may trigger server-side throttling.
+- **Performance** — token acquisition involves a network round-trip and credential validation. Reusing a cached token avoids this overhead on every API call.
+
+### Multi-API Reuse
+
+A single token works across **all** P21 APIs. You do not need separate tokens per API.
+
+| API | Same Token? |
+|-----|-------------|
+| OData | Yes |
+| Transaction | Yes |
+| Interactive | Yes (requires username in token request) |
+| Entity | Yes |
+| Inventory REST | Yes |
+
+### Token Refresh
+
+When a token expires or is about to expire, re-authenticate to get a new one. The token response may include a `RefreshToken` field, but most P21 integrations simply re-authenticate with credentials since the token endpoint is lightweight.
+
+**Recommended approach:** Check the token's remaining lifetime before each request and re-authenticate when the token is within 5 minutes of expiry. This avoids mid-request failures from an expired token.
+
+### Token Manager Pattern
+
+The following pattern caches the token, checks expiry with a 5-minute buffer before each request, and automatically re-authenticates when needed.
 
 <!-- tabs -->
 
@@ -521,40 +556,115 @@ var body = await response.Content.ReadAsStringAsync();
 
 ```python
 import time
+import httpx
+
+# Buffer in seconds — re-authenticate this far before actual expiry
+TOKEN_REFRESH_BUFFER = 300  # 5 minutes
+
 
 class TokenManager:
-    def __init__(self, base_url, username, password):
+    """Manages P21 token lifecycle with automatic refresh.
+
+    Caches the token and re-authenticates when the token is
+    within TOKEN_REFRESH_BUFFER seconds of expiry.
+    """
+
+    def __init__(self, base_url: str, username: str, password: str) -> None:
         self.base_url = base_url
         self.username = username
         self.password = password
-        self.token_data = None
-        self.token_time = 0
+        self._token_data: dict | None = None
+        self._token_acquired_at: float = 0.0
+
+    def _is_token_valid(self) -> bool:
+        """Check if the cached token is still valid (with buffer)."""
+        if self._token_data is None:
+            return False
+        expires_raw = self._token_data.get(
+            "ExpiresInSeconds",
+            self._token_data.get("ExpiresIn", 0),
+        )
+        try:
+            expires_in = int(expires_raw)
+        except (TypeError, ValueError):
+            expires_in = 3600
+        elapsed = time.time() - self._token_acquired_at
+        return elapsed < (expires_in - TOKEN_REFRESH_BUFFER)
+
+    def _authenticate(self) -> None:
+        """Request a new token from the P21 token endpoint."""
+        response = httpx.post(
+            f"{self.base_url}/api/security/token/v2",
+            json={"username": self.username, "password": self.password},
+            headers={"Accept": "application/json"},
+        )
+        response.raise_for_status()
+        self._token_data = response.json()
+        self._token_acquired_at = time.time()
 
     def get_token(self) -> str:
-        """Get valid token, refreshing if needed."""
-        now = time.time()
-        expires = self.token_data.get("ExpiresInSeconds", 0) if self.token_data else 0
+        """Get a valid access token, refreshing if needed."""
+        if not self._is_token_valid():
+            self._authenticate()
+        return self._token_data["AccessToken"]
 
-        # Refresh if expired or expiring in 5 minutes
-        if not self.token_data or (now - self.token_time) > (expires - 300):
-            self.token_data = get_token_v2(
-                self.base_url, self.username, self.password
-            )
-            self.token_time = now
+    def get_headers(self) -> dict[str, str]:
+        """Get authorization headers with a valid token."""
+        return {
+            "Authorization": f"Bearer {self.get_token()}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
 
-        return self.token_data["AccessToken"]
+
+# Usage — authenticate once, reuse for all API calls
+manager = TokenManager(
+    base_url="https://play.p21server.com",
+    username="api_user",
+    password="your_password",
+)
+
+# OData query
+odata_resp = httpx.get(
+    "https://play.p21server.com/odataservice/odata/table/supplier",
+    headers=manager.get_headers(),
+)
+odata_resp.raise_for_status()
+
+# Entity API query — same token, no re-authentication
+entity_resp = httpx.get(
+    "https://play.p21server.com/api/entity/customers/",
+    headers=manager.get_headers(),
+)
+entity_resp.raise_for_status()
 ```
 
 **C#:**
 
 ```csharp
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+/// <summary>
+/// Manages P21 token lifecycle with automatic refresh.
+/// Caches the token and re-authenticates when the token is
+/// within RefreshBufferSeconds of expiry.
+/// </summary>
 public class TokenManager
 {
+    // Re-authenticate this far before actual expiry
+    private const int RefreshBufferSeconds = 300; // 5 minutes
+
     private readonly string _baseUrl;
     private readonly string _username;
     private readonly string _password;
     private JObject? _tokenData;
-    private DateTime _tokenTime = DateTime.MinValue;
+    private DateTime _tokenAcquiredAt = DateTime.MinValue;
 
     public TokenManager(string baseUrl, string username, string password)
     {
@@ -563,23 +673,73 @@ public class TokenManager
         _password = password;
     }
 
-    /// <summary>Get valid token, refreshing if needed.</summary>
+    private bool IsTokenValid()
+    {
+        if (_tokenData == null) return false;
+        var expiresIn = _tokenData["ExpiresInSeconds"]?.Value<int>()
+                     ?? _tokenData["ExpiresIn"]?.Value<int>()
+                     ?? 0;
+        var elapsed = (DateTime.UtcNow - _tokenAcquiredAt).TotalSeconds;
+        return elapsed < (expiresIn - RefreshBufferSeconds);
+    }
+
+    private async Task AuthenticateAsync()
+    {
+        // Short-lived HttpClient is acceptable here — token refresh is infrequent
+        // (once per TTL, typically 24h+ for user credentials, 20y for consumer keys).
+        using var client = new HttpClient();
+        var body = new { username = _username, password = _password };
+        var content = new StringContent(
+            JsonConvert.SerializeObject(body),
+            Encoding.UTF8, "application/json");
+        client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+        var response = await client.PostAsync(
+            $"{_baseUrl}/api/security/token/v2", content);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        _tokenData = JObject.Parse(json);
+        _tokenAcquiredAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Get a valid access token, refreshing if needed.</summary>
     public async Task<string> GetTokenAsync()
     {
-        var expires = _tokenData?["ExpiresInSeconds"]?.Value<int>() ?? 0;
-        var elapsed = (DateTime.UtcNow - _tokenTime).TotalSeconds;
+        if (!IsTokenValid())
+            await AuthenticateAsync();
+        return _tokenData!["AccessToken"]!.ToString();
+    }
 
-        // Refresh if expired or expiring in 5 minutes
-        if (_tokenData == null || elapsed > expires - 300)
-        {
-            _tokenData = await P21Auth.GetTokenV2Async(
-                _baseUrl, _username, _password);
-            _tokenTime = DateTime.UtcNow;
-        }
-
-        return _tokenData["AccessToken"]!.ToString();
+    /// <summary>Apply auth to a request, refreshing the token if needed.</summary>
+    public async Task ApplyAuthAsync(HttpRequestMessage request)
+    {
+        var token = await GetTokenAsync();
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        if (!request.Headers.Contains("Accept"))
+            request.Headers.Add("Accept", "application/json");
     }
 }
+
+// Usage — one long-lived HttpClient, per-request auth (always fresh token)
+var manager = new TokenManager(
+    "https://play.p21server.com", "api_user", "your_password");
+using var client = new HttpClient();
+
+// OData query
+var odataReq = new HttpRequestMessage(
+    HttpMethod.Get, "https://play.p21server.com/odataservice/odata/table/supplier");
+await manager.ApplyAuthAsync(odataReq);
+var odataResp = await client.SendAsync(odataReq);
+odataResp.EnsureSuccessStatusCode();
+
+// Entity API query — same token, no re-authentication
+var entityReq = new HttpRequestMessage(
+    HttpMethod.Get, "https://play.p21server.com/api/entity/customers/");
+await manager.ApplyAuthAsync(entityReq);
+var entityResp = await client.SendAsync(entityReq);
+entityResp.EnsureSuccessStatusCode();
 ```
 
 <!-- /tabs -->
@@ -656,7 +816,7 @@ Some P21 middleware instances return **XML instead of JSON** for token endpoints
 </TokenResponse>
 ```
 
-> **Note:** The XML response uses `ExpiresIn` while the JSON response uses `ExpiresInSeconds`. Both represent the token lifetime in seconds.
+> **Note:** XML responses use `ExpiresIn`, user credential JSON responses use `ExpiresInSeconds`, and consumer key JSON responses use `ExpiresIn`. All represent the token lifetime in seconds.
 
 ### Handling Both Formats
 
@@ -753,10 +913,10 @@ public static JObject ParseTokenResponse(HttpResponseMessage response)
 
 1. **Use V2 endpoint** for new integrations
 2. **Store credentials securely** — use environment variables, not code
-3. **Handle token expiration** — refresh 5 minutes before expiry to avoid failed requests
+3. **Handle token expiration** — refresh 5 minutes before expiry to avoid failed requests (see [Token Lifetime and Reuse](#token-lifetime-and-reuse))
 4. **Use consumer keys** for service accounts — no password rotation needed
 5. **Include username** when using consumer keys with Interactive or Transaction APIs — this provides audit trail attribution and is required for session creation
-6. **Reuse tokens** — each call to the token endpoint creates a new middleware session; get one token and reuse it rather than requesting new tokens per-request
+6. **Reuse tokens** — each call to the token endpoint creates a new middleware session; get one token and reuse it across all P21 APIs rather than requesting new tokens per-request (see [Token Lifetime and Reuse](#token-lifetime-and-reuse))
 7. **Restrict scopes** to minimum required access
 8. **Disable SSL verification** only in development (`verify=False`)
 9. **Handle both JSON and XML** token responses for maximum middleware compatibility

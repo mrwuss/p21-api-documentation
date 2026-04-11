@@ -8,6 +8,14 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-04-10
+
+- **docs:** Correct Inventory REST API — existing `inv_loc` fields CAN be updated via GET → modify → PUT (previously documented as append-only), add ItemDesc 40-char limit, POST 307 redirect, location soft-delete via `Delete: "Y"`, PurchaseDiscountGroup/SalesDiscountGroup fields, minimum create payload — Fixes #31 — *@mrwuss*
+- **docs:** Add JobContractPricing service documentation — full-service structure (25 DataElements), multi-line break interleaving pattern, 15-tier break structure, non-break vs break line patterns, Status "Existing" NullReferenceException (platform-wide bug), commission cost column limitations — Fixes #32 — *@mrwuss*
+- **docs:** Add Assembly service documentation — full-service structure (15 DataElements), component_type valid values (hose-specific), copy_item_id field, item-must-exist-first validation, Part + Assembly creation workflow, Status "Existing" bug — Fixes #33 — *@mrwuss*
+- **docs:** Add Interactive API operational patterns — tab unlock sequences (JobContractPricing example), add_row Status=2 creates row despite failure status, response window type taxonomy (button-only vs form+button vs message box), UOM auto-population best practice, timeout recommendations — Fixes #34 — *@mrwuss*
+- **docs:** Expand authentication documentation — token TTL and reuse patterns, multi-API token reuse, TokenManager class examples (Python + C#)
+
 ## 2026-04-04
 
 - **docs:** Expand consumer key authentication documentation — verified consumer key + username works for Interactive API sessions, added SOA Admin configuration fields, JWT token claims, API-specific behavior table, scope behavior, Python and C# code examples — *@mrwuss*

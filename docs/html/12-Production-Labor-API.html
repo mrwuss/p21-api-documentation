@@ -402,6 +402,7 @@
 <li><a href="#additional-dataelements">Additional DataElements</a></li>
 </ul>
 </li>
+<li><a href="#assembly-service-cross-reference">Assembly Service (Cross-Reference)</a></li>
 <li><a href="#labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</a><ul>
 <li><a href="#key-field">Key Field</a></li>
 <li><a href="#header-fields">Header Fields</a></li>
@@ -541,7 +542,7 @@
 </tr>
 <tr>
 <td><code>JobContractPricing</code></td>
-<td>Job contract pricing</td>
+<td>Job contract pricing (see <a href="03-Transaction-API.html#jobcontractpricing-service">detailed docs</a>)</td>
 </tr>
 <tr>
 <td><code>WorkCenter</code></td>
@@ -557,7 +558,7 @@
 </tr>
 <tr>
 <td><code>Assembly</code></td>
-<td>Assembly maintenance</td>
+<td>Assembly/BOM definitions (see <a href="03-Transaction-API.html#assembly-service">detailed docs</a>)</td>
 </tr>
 <tr>
 <td><code>AssemblyClass</code></td>
@@ -1357,6 +1358,14 @@
 <li><strong>PO linkage</strong> -- Links to purchase orders for components</li>
 </ul>
 <p>Use <code>GET /api/v2/definition/ProductionOrder</code> to see the complete list of DataElements and all available fields.</p>
+<hr />
+<h2 id="assembly-service-cross-reference">Assembly Service (Cross-Reference)</h2>
+<p>Assembly definitions (BOM/bill of materials) are a prerequisite for production orders -- you cannot create a production order for an item that does not have an assembly definition. The <code>Assembly</code> Transaction API service creates these definitions, specifying which components make up an assembled product along with routing steps and cost estimates.</p>
+<p><strong>Full documentation:</strong> See <a href="03-Transaction-API.html#assembly-service">Transaction API -- Assembly Service</a> for the complete service structure, field reference, known limitations, and code examples.</p>
+<p><strong>Typical workflow:</strong>
+1. Create the inventory item via Inventory REST API (<code>POST /api/inventory/parts</code>)
+2. Create the assembly/BOM definition via Transaction API (<code>Assembly</code> service)
+3. Create production orders via Transaction API (<code>ProductionOrder</code> service) referencing the assembled item</p>
 <hr />
 <h2 id="labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</h2>
 <p>The <code>Labor</code> service manages labor code definitions including rates, types, and cost structures.</p>
