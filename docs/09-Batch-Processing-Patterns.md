@@ -1159,14 +1159,8 @@ class P21Client:
         """Obtain a bearer token from P21."""
         client = self._get_client()
         response = await client.post(
-            f"{self.base_url}/api/security/token",
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "username": self.username,
-                "password": self.password,
-            },
-            content="",
+            f"{self.base_url}/api/security/token/v2",
+            json={"username": self.username, "password": self.password},
         )
         response.raise_for_status()
         self.token = response.json()["AccessToken"]
@@ -1324,13 +1318,9 @@ public class P21Client : IAsyncDisposable
     /// <summary>Obtain a bearer token from P21.</summary>
     public async Task AuthenticateAsync()
     {
-        var request = new HttpRequestMessage(HttpMethod.Post,
-            $"{_baseUrl}/api/security/token");
-        request.Content = new StringContent("", Encoding.UTF8, "application/json");
-        request.Headers.Add("username", _username);
-        request.Headers.Add("password", _password);
-
-        var response = await _httpClient.SendAsync(request);
+        var body = new JObject { ["username"] = _username, ["password"] = _password };
+        var content = new StringContent(body.ToString(), Encoding.UTF8, "application/json");
+        var response = await _httpClient.PostAsync($"{_baseUrl}/api/security/token/v2", content);
         response.EnsureSuccessStatusCode();
 
         var json = JObject.Parse(await response.Content.ReadAsStringAsync());

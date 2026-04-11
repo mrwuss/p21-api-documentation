@@ -383,12 +383,12 @@
 <li><a href="#overview">Overview</a></li>
 <li><a href="#token-endpoints">Token Endpoints</a><ul>
 <li><a href="#v2-endpoint-recommended">V2 Endpoint (Recommended)</a></li>
-<li><a href="#v1-endpoint-deprecated">V1 Endpoint (Deprecated)</a></li>
+<li><a href="#v1-endpoint-deprecated-security-risk">V1 Endpoint (Deprecated — Security Risk)</a></li>
 </ul>
 </li>
 <li><a href="#method-1-user-credentials">Method 1: User Credentials</a><ul>
 <li><a href="#v2-request-recommended">V2 Request (Recommended)</a></li>
-<li><a href="#v1-request-legacy">V1 Request (Legacy)</a></li>
+<li><a href="#v1-request-legacy-not-recommended">V1 Request (Legacy — Not Recommended)</a></li>
 <li><a href="#code-examples">Code Examples</a></li>
 </ul>
 </li>
@@ -458,11 +458,13 @@
 </code></pre></div>
 
 <p>The V2 endpoint accepts credentials in the request body.</p>
-<h3 id="v1-endpoint-deprecated">V1 Endpoint (Deprecated)</h3>
+<h3 id="v1-endpoint-deprecated-security-risk">V1 Endpoint (Deprecated — Security Risk)</h3>
 <div class="highlight"><pre><span></span><code><span class="err">POST https://{hostname}/api/security/token</span>
 </code></pre></div>
 
-<p>The V1 endpoint accepts credentials as headers. While still functional, Epicor recommends migrating to V2.</p>
+<blockquote>
+<p><strong>Security Warning:</strong> The V1 endpoint transmits credentials in HTTP <strong>headers</strong>. Headers are routinely logged by reverse proxies, load balancers, WAFs, and middleware — meaning usernames and passwords can end up in access logs, error logs, and monitoring dashboards. <strong>Always use V2</strong> for new integrations. V1 is documented here only for reference with legacy systems.</p>
+</blockquote>
 <hr />
 <h2 id="method-1-user-credentials">Method 1: User Credentials</h2>
 <p>Use when you have a P21 username and password. The user must be:
@@ -490,7 +492,10 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<h3 id="v1-request-legacy">V1 Request (Legacy)</h3>
+<h3 id="v1-request-legacy-not-recommended">V1 Request (Legacy — Not Recommended)</h3>
+<blockquote>
+<p><strong>Credentials are in headers — see <a href="#v1-endpoint-deprecated--security-risk">security warning above</a>.</strong></p>
+</blockquote>
 <p><strong>Request:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
 <span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>

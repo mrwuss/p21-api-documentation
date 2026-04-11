@@ -433,13 +433,8 @@ class InteractiveClient:
 
     def authenticate(self):
         response = httpx.post(
-            f"{self.base_url}/api/security/token",
-            headers={
-                "username": self.username,
-                "password": self.password,
-                "Content-Type": "application/json"
-            },
-            content="",
+            f"{self.base_url}/api/security/token/v2",
+            json={"username": self.username, "password": self.password},
             verify=self.verify_ssl
         )
         response.raise_for_status()
@@ -505,16 +500,13 @@ public class InteractiveClient
 
     public async Task AuthenticateAsync()
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/security/token");
-        request.Headers.Add("username", _username);
-        request.Headers.Add("password", _password);
-        request.Content = new StringContent("", System.Text.Encoding.UTF8, "application/json");
-
-        var response = await _http.SendAsync(request);
+        var body = new JObject { ["username"] = _username, ["password"] = _password };
+        var content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
+        var response = await _http.PostAsync($"{_baseUrl}/api/security/token/v2", content);
         response.EnsureSuccessStatusCode();
 
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        _token = body["AccessToken"]!.ToString();
+        var parsed = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _token = parsed["AccessToken"]!.ToString();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
     }
 
@@ -643,15 +635,11 @@ class P21Client:
         return self._client
 
     async def authenticate(self) -> dict:
-        url = f"{self.base_url}/api/security/token"
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "username": self.username,
-            "password": self.password
-        }
+        url = f"{self.base_url}/api/security/token/v2"
         client = self._get_client()
-        response = await client.post(url, headers=headers, content="")
+        response = await client.post(
+            url, json={"username": self.username, "password": self.password}
+        )
         response.raise_for_status()
         self.token = response.json()
         return self.token
@@ -728,19 +716,15 @@ public class P21Client : IAsyncDisposable
 
     public async Task<JObject> AuthenticateAsync()
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/security/token");
-        request.Headers.Add("username", _username);
-        request.Headers.Add("password", _password);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Content = new StringContent("", System.Text.Encoding.UTF8, "application/json");
-
-        var response = await _http!.SendAsync(request);
+        var body = new JObject { ["username"] = _username, ["password"] = _password };
+        var content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
+        var response = await _http!.PostAsync($"{_baseUrl}/api/security/token/v2", content);
         response.EnsureSuccessStatusCode();
 
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        _token = body["AccessToken"]!.ToString();
+        var parsed = JObject.Parse(await response.Content.ReadAsStringAsync());
+        _token = parsed["AccessToken"]!.ToString();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-        return body;
+        return parsed;
     }
 
     public async Task StartSessionAsync()

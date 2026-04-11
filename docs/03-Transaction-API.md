@@ -648,9 +648,8 @@ import httpx
 # Authenticate and get UI server URL
 base_url = "https://play.p21server.com"
 auth_resp = httpx.post(
-    f"{base_url}/api/security/token",
-    headers={"username": "api_user", "password": "api_pass", "Content-Type": "application/json"},
-    content="",
+    f"{base_url}/api/security/token/v2",
+    json={"username": "api_user", "password": "api_pass"},
     verify=False,
 )
 auth_resp.raise_for_status()
@@ -777,13 +776,10 @@ using Newtonsoft.Json.Linq;
 using var httpClient = new HttpClient();
 httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-var authRequest = new HttpRequestMessage(HttpMethod.Post,
-    "https://play.p21server.com/api/security/token");
-authRequest.Headers.Add("username", "api_user");
-authRequest.Headers.Add("password", "api_pass");
-authRequest.Content = new StringContent("", Encoding.UTF8, "application/json");
-
-var authResp = await httpClient.SendAsync(authRequest);
+var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
+var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
+var authResp = await httpClient.PostAsync(
+    "https://play.p21server.com/api/security/token/v2", authContent);
 authResp.EnsureSuccessStatusCode();
 var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
 var token = authJson["AccessToken"]!.ToString();
@@ -1016,9 +1012,8 @@ import httpx
 # Authenticate and get UI server URL
 base_url = "https://play.p21server.com"
 auth_resp = httpx.post(
-    f"{base_url}/api/security/token",
-    headers={"username": "api_user", "password": "api_pass", "Content-Type": "application/json"},
-    content="",
+    f"{base_url}/api/security/token/v2",
+    json={"username": "api_user", "password": "api_pass"},
     verify=False,
 )
 auth_resp.raise_for_status()
@@ -1112,13 +1107,10 @@ using Newtonsoft.Json.Linq;
 using var httpClient = new HttpClient();
 httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-var authRequest = new HttpRequestMessage(HttpMethod.Post,
-    "https://play.p21server.com/api/security/token");
-authRequest.Headers.Add("username", "api_user");
-authRequest.Headers.Add("password", "api_pass");
-authRequest.Content = new StringContent("", Encoding.UTF8, "application/json");
-
-var authResp = await httpClient.SendAsync(authRequest);
+var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
+var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
+var authResp = await httpClient.PostAsync(
+    "https://play.p21server.com/api/security/token/v2", authContent);
 authResp.EnsureSuccessStatusCode();
 var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
 var token = authJson["AccessToken"]!.ToString();

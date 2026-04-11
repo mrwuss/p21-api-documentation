@@ -60,14 +60,9 @@ class SessionPoolTester:
     async def authenticate(self, client: httpx.AsyncClient) -> None:
         """Get authentication token."""
         resp = await client.post(
-            f"{self.base_url}/api/security/token",
-            headers={
-                "username": self.username,
-                "password": self.password,
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            content="",
+            f"{self.base_url}/api/security/token/v2",
+            json={"username": self.username, "password": self.password},
+            headers={"Accept": "application/json"},
             follow_redirects=True
         )
         resp.raise_for_status()

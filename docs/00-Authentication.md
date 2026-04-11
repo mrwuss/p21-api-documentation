@@ -21,13 +21,13 @@ POST https://{hostname}/api/security/token/v2
 
 The V2 endpoint accepts credentials in the request body.
 
-### V1 Endpoint (Deprecated)
+### V1 Endpoint (Deprecated — Security Risk)
 
 ```http
 POST https://{hostname}/api/security/token
 ```
 
-The V1 endpoint accepts credentials as headers. While still functional, Epicor recommends migrating to V2.
+> **Security Warning:** The V1 endpoint transmits credentials in HTTP **headers**. Headers are routinely logged by reverse proxies, load balancers, WAFs, and middleware — meaning usernames and passwords can end up in access logs, error logs, and monitoring dashboards. **Always use V2** for new integrations. V1 is documented here only for reference with legacy systems.
 
 ---
 
@@ -62,7 +62,9 @@ Accept: application/json
 }
 ```
 
-### V1 Request (Legacy)
+### V1 Request (Legacy — Not Recommended)
+
+> **Credentials are in headers — see [security warning above](#v1-endpoint-deprecated--security-risk).**
 
 **Request:**
 ```http
