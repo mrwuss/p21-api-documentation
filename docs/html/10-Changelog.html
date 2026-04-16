@@ -373,6 +373,7 @@
         <li class="active"><a href="10-Changelog.html">Changelog</a></li>
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -380,6 +381,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-04-16">2026-04-16</a></li>
 <li><a href="#2026-04-10">2026-04-10</a></li>
 <li><a href="#2026-04-04">2026-04-04</a></li>
 <li><a href="#2026-03-06">2026-03-06</a></li>
@@ -414,6 +416,16 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-04-16">2026-04-16</h2>
+<ul>
+<li><strong>docs:</strong> Add Interactive API response window handling for tabless windows — <code>TabName: null</code> pattern for changing fields on popup dialogs, common response window buttons — <em>Jon Christie</em> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add window discovery techniques section — GetState, GetTools, GetData, result event inspection, P21 SQL Information dialog, browser DevTools — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add V1 REST endpoint reference table — internal SDK endpoints for debugging and network trace analysis — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Expand 25.2 DatawindowName breaking change — add ConvertPOToVoucher (<em>Jeff Patterson, Josiah Shollenberger</em>), Order Entry (<em>Neil Timmerman</em>), Clippership Auto Shipping (<em>Josh Owen</em>), Doc Links (<em>Jaime Nelson</em>) to affected windows list; bug confirmed through 25.2.5776.1, acknowledged by Epicor as development bug; add PO Receiving Group fix example — <em>David Sokoloski (first discovered 4-param workaround), Jeff Patterson (confirmed fix)</em> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add PDF Report Generation section to Transaction API — <code>/api/v2/process/pdfreport</code> endpoint for generating base64-encoded PDF documents (purchase orders, pick tickets), verified services <code>m_reprintpurchaseorders</code> and <code>m_reprintpicktickets</code>, Python and C# examples — <em>Jeff Poss (endpoint discovery), @mrwuss</em></li>
+<li><strong>docs:</strong> Add Stored Procedure Executor section to Transaction API — <code>m_storedprocedureexecutor</code> service for loading SP definitions via Transaction API, UID lookup workflow, <code>argument_list</code> parameter discovery, database tables (<code>stored_procedure_def</code>, <code>spe_parameter_info</code>, <code>spe_procedure_info</code>) — <em>Felipe Maurer, Kevin Landry, Brad Vandenbogaerde, @mrwuss</em></li>
+<li><strong>docs:</strong> Add DynaChange and Popup Handling section to Transaction API — DynaChange enforcement in TAPI workflows, popup suppression pattern for API user profiles, Visual Rule limitations with response/callback attributes, "Column is disabled" root causes, HTTP 200 response validation gotcha — <em>Felipe Maurer, Brad Vandenbogaerde, Justin Cassidy, Neil Timmerman, @mrwuss</em></li>
+</ul>
 <h2 id="2026-04-10">2026-04-10</h2>
 <ul>
 <li><strong>docs:</strong> Correct Inventory REST API — existing <code>inv_loc</code> fields CAN be updated via GET → modify → PUT (previously documented as append-only), add ItemDesc 40-char limit, POST 307 redirect, location soft-delete via <code>Delete: "Y"</code>, PurchaseDiscountGroup/SalesDiscountGroup fields, minimum create payload — Fixes #31 — <em>@mrwuss</em></li>
@@ -556,6 +568,36 @@
 <td>NextTWis</td>
 <td><a href="https://github.com/NextTWis">@NextTWis</a></td>
 <td>Postman Collection for P21 API verification (<a href="https://github.com/mrwuss/p21-api-documentation/pull/24">PR #24</a>)</td>
+</tr>
+<tr>
+<td>Jeff Poss</td>
+<td></td>
+<td>PDF Report Generation endpoint discovery</td>
+</tr>
+<tr>
+<td>Felipe Maurer</td>
+<td></td>
+<td>Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI</td>
+</tr>
+<tr>
+<td>Kevin Landry</td>
+<td></td>
+<td>Stored Procedure Executor execution via Interactive API</td>
+</tr>
+<tr>
+<td>Brad Vandenbogaerde</td>
+<td></td>
+<td>SP Executor database tables, Visual Rule response/callback TAPI limitation</td>
+</tr>
+<tr>
+<td>Justin Cassidy</td>
+<td></td>
+<td>DynaChange as root cause for "Column is disabled" errors</td>
+</tr>
+<tr>
+<td>Neil Timmerman</td>
+<td></td>
+<td>TAPI HTTP 200 response validation gotcha</td>
 </tr>
 </tbody>
 </table>

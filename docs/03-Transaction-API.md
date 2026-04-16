@@ -46,6 +46,7 @@ Then use the returned URL as base:
 | `/api/v2/transaction/async/callback` | POST | Async with callback URL |
 | `/api/v2/transaction/async?id={id}` | GET | Check async request status |
 | `/api/v2/commands` | POST | Process special commands (see [Commands Endpoint](#commands-endpoint)) |
+| `/api/v2/process/pdfreport` | POST | Generate PDF reports (see [PDF Report Generation](#pdf-report-generation)) |
 
 > **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
@@ -159,6 +160,14 @@ Each **Edit** object supports:
 | `PurchaseOrder` | Purchase Order Entry | Create POs |
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
+| `m_storedprocedureexecutor` | Stored Procedure Executor | Load and execute stored procedure definitions (see [Stored Procedure Executor](#stored-procedure-executor)) |
+
+### Report Services
+
+| Service | P21 Window | Purpose |
+|---------|------------|---------|
+| `m_reprintpurchaseorders` | PO Reprint | Purchase order PDF reprints (see [PDF Report Generation](#pdf-report-generation)) |
+| `m_reprintpicktickets` | Pick Ticket Reprint | Pick ticket PDF reprints |
 
 ### Production, Assembly & Labor Services
 
@@ -1221,6 +1230,463 @@ if ((int)result["Summary"]!["Failed"]! > 0)
         foreach (var msg in messages)
             Console.WriteLine($"  Message: {msg}");
     }
+}
+```
+<!-- /tabs -->
+
+---
+
+## PDF Report Generation
+
+The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.
+
+**Endpoint:** `POST {ui_server}/api/v2/process/pdfreport`
+
+### Verified Report Services
+
+| Service Name | Report Type |
+|-------------|-------------|
+| `m_reprintpurchaseorders` | Purchase Order reprints |
+| `m_reprintpicktickets` | Pick Ticket reprints |
+
+> **Discovery:** Use `GET /api/v2/services?type=report` to list available report services. Use `GET /api/v2/definition/{service_name}` to inspect the DataElement structure and field names for each report.
+
+### Request Structure
+
+The payload follows the standard TransactionSet format. Report-specific criteria go in the DataElement's `Edits` array:
+
+```json
+{
+    "Name": "m_reprintpurchaseorders",
+    "Transactions": [{
+        "DataElements": [{
+            "Keys": [],
+            "Name": "TABPAGE_1.poreportcriteriadw",
+            "Rows": [{
+                "Edits": [
+                    {"Name": "company_id", "Value": "ACME"},
+                    {"Name": "beg_po_no", "Value": "500100"},
+                    {"Name": "end_po_no", "Value": "500100"},
+                    {"Name": "reprint_flag", "Value": "Y"}
+                ]
+            }],
+            "Type": 0
+        }],
+        "Status": 0
+    }],
+    "UseCodeValues": false
+}
+```
+
+### Response
+
+The response contains a `DocumentData` field with the base64-encoded PDF content. Decode this field and write the bytes to a `.pdf` file.
+
+### Example: Generate and Save a PO Reprint
+
+<!-- tabs -->
+```python
+import base64
+import httpx
+
+# Authenticate and get UI server URL
+base_url = "https://play.p21server.com"
+auth_resp = httpx.post(
+    f"{base_url}/api/security/token/v2",
+    json={"username": "api_user", "password": "api_pass"},
+    verify=False,
+)
+auth_resp.raise_for_status()
+token = auth_resp.json()["AccessToken"]
+
+router_resp = httpx.get(
+    f"{base_url}/api/ui/router/v1?urlType=external",
+    headers={"Authorization": f"Bearer {token}"},
+    verify=False,
+)
+router_resp.raise_for_status()
+ui_server_url = router_resp.json()["Url"].rstrip("/")
+
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+}
+
+# Generate PO reprint PDF
+payload = {
+    "Name": "m_reprintpurchaseorders",
+    "Transactions": [{
+        "DataElements": [{
+            "Keys": [],
+            "Name": "TABPAGE_1.poreportcriteriadw",
+            "Rows": [{
+                "Edits": [
+                    {"Name": "company_id", "Value": "ACME"},
+                    {"Name": "beg_po_no", "Value": "500100"},
+                    {"Name": "end_po_no", "Value": "500100"},
+                    {"Name": "reprint_flag", "Value": "Y"},
+                ]
+            }],
+            "Type": 0,
+        }],
+        "Status": 0,
+    }],
+    "UseCodeValues": False,
+}
+
+response = httpx.post(
+    f"{ui_server_url}/api/v2/process/pdfreport",
+    headers=headers,
+    json=payload,
+    verify=False,
+)
+response.raise_for_status()
+result = response.json()
+
+# Decode and save the PDF
+if result.get("DocumentData"):
+    pdf_bytes = base64.b64decode(result["DocumentData"])
+    with open("PO_500100.pdf", "wb") as f:
+        f.write(pdf_bytes)
+    print(f"Saved PO_500100.pdf ({len(pdf_bytes)} bytes)")
+else:
+    print("No document data returned")
+    print(f"Messages: {result.get('Messages', [])}")
+```
+
+```csharp
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Text;
+using Newtonsoft.Json.Linq;
+
+// Authenticate and get UI server URL
+using var httpClient = new HttpClient();
+httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+
+var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
+var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
+var authResp = await httpClient.PostAsync(
+    "https://play.p21server.com/api/security/token/v2", authContent);
+authResp.EnsureSuccessStatusCode();
+var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
+var token = authJson["AccessToken"]!.ToString();
+
+httpClient.DefaultRequestHeaders.Authorization =
+    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+var routerResp = await httpClient.GetAsync(
+    "https://play.p21server.com/api/ui/router/v1?urlType=external");
+routerResp.EnsureSuccessStatusCode();
+var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
+var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
+
+// Generate PO reprint PDF
+var payload = new JObject
+{
+    ["Name"] = "m_reprintpurchaseorders",
+    ["Transactions"] = new JArray
+    {
+        new JObject
+        {
+            ["DataElements"] = new JArray
+            {
+                new JObject
+                {
+                    ["Keys"] = new JArray(),
+                    ["Name"] = "TABPAGE_1.poreportcriteriadw",
+                    ["Rows"] = new JArray
+                    {
+                        new JObject
+                        {
+                            ["Edits"] = new JArray
+                            {
+                                new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
+                                new JObject { ["Name"] = "beg_po_no", ["Value"] = "500100" },
+                                new JObject { ["Name"] = "end_po_no", ["Value"] = "500100" },
+                                new JObject { ["Name"] = "reprint_flag", ["Value"] = "Y" },
+                            }
+                        }
+                    },
+                    ["Type"] = 0
+                }
+            },
+            ["Status"] = 0
+        }
+    },
+    ["UseCodeValues"] = false
+};
+
+var content = new StringContent(
+    payload.ToString(), Encoding.UTF8, "application/json");
+var response = await httpClient.PostAsync(
+    $"{uiServerUrl}/api/v2/process/pdfreport", content);
+response.EnsureSuccessStatusCode();
+
+var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+
+// Decode and save the PDF
+var documentData = result["DocumentData"]?.ToString();
+if (!string.IsNullOrEmpty(documentData))
+{
+    var pdfBytes = Convert.FromBase64String(documentData);
+    await File.WriteAllBytesAsync("PO_500100.pdf", pdfBytes);
+    Console.WriteLine($"Saved PO_500100.pdf ({pdfBytes.Length} bytes)");
+}
+else
+{
+    Console.WriteLine("No document data returned");
+    Console.WriteLine($"Messages: {result["Messages"]}");
+}
+```
+<!-- /tabs -->
+
+> **Credit:** Jeff Poss discovered the `/api/v2/process/pdfreport` endpoint and payload structure.
+
+---
+
+## Stored Procedure Executor
+
+The `m_storedprocedureexecutor` service provides Transaction API access to P21's Stored Procedure Executor, allowing you to discover and load stored procedure definitions configured in the P21 UI.
+
+### Discovery
+
+```http
+GET {ui_server}/api/v2/definition/m_storedprocedureexecutor
+GET {ui_server}/api/v2/defaults/m_storedprocedureexecutor
+```
+
+### Loading a Stored Procedure Definition
+
+Use `POST /api/v2/transaction/get` with the `stored_procedure_def_uid` key to retrieve a specific stored procedure definition and its parameters:
+
+<!-- tabs -->
+```python
+import httpx
+
+# Authenticate and get UI server URL (see Authentication examples above)
+base_url = "https://play.p21server.com"
+auth_resp = httpx.post(
+    f"{base_url}/api/security/token/v2",
+    json={"username": "api_user", "password": "api_pass"},
+    verify=False,
+)
+auth_resp.raise_for_status()
+token = auth_resp.json()["AccessToken"]
+
+router_resp = httpx.get(
+    f"{base_url}/api/ui/router/v1?urlType=external",
+    headers={"Authorization": f"Bearer {token}"},
+    verify=False,
+)
+router_resp.raise_for_status()
+ui_server_url = router_resp.json()["Url"].rstrip("/")
+
+headers = {
+    "Authorization": f"Bearer {token}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+}
+
+# Load a stored procedure definition by UID
+sp_uid = "12345"  # Found in P21 Stored Procedure Executor UI
+payload = {
+    "ServiceName": "m_storedprocedureexecutor",
+    "TransactionStates": [{
+        "DataElementName": "DEFINITION.stored_procedure_def",
+        "Keys": [{
+            "Name": "stored_procedure_def_uid",
+            "Value": sp_uid,
+        }],
+    }],
+}
+
+response = httpx.post(
+    f"{ui_server_url}/api/v2/transaction/get",
+    headers=headers,
+    json=payload,
+    verify=False,
+)
+response.raise_for_status()
+result = response.json()
+
+# The response includes the SP definition and its argument_list parameters
+for txn in result.get("Transactions", []):
+    for de in txn.get("DataElements", []):
+        print(f"DataElement: {de['Name']}")
+        for row in de.get("Rows", []):
+            for edit in row.get("Edits", []):
+                print(f"  {edit['Name']}: {edit['Value']}")
+```
+
+```csharp
+using System;
+using System.Net.Http;
+using System.Text;
+using Newtonsoft.Json.Linq;
+
+// Authenticate and get UI server URL (see Authentication examples above)
+using var httpClient = new HttpClient();
+httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+
+var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
+var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
+var authResp = await httpClient.PostAsync(
+    "https://play.p21server.com/api/security/token/v2", authContent);
+authResp.EnsureSuccessStatusCode();
+var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
+var token = authJson["AccessToken"]!.ToString();
+
+httpClient.DefaultRequestHeaders.Authorization =
+    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+var routerResp = await httpClient.GetAsync(
+    "https://play.p21server.com/api/ui/router/v1?urlType=external");
+routerResp.EnsureSuccessStatusCode();
+var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
+var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
+
+// Load a stored procedure definition by UID
+var spUid = "12345"; // Found in P21 Stored Procedure Executor UI
+var payload = new JObject
+{
+    ["ServiceName"] = "m_storedprocedureexecutor",
+    ["TransactionStates"] = new JArray
+    {
+        new JObject
+        {
+            ["DataElementName"] = "DEFINITION.stored_procedure_def",
+            ["Keys"] = new JArray
+            {
+                new JObject
+                {
+                    ["Name"] = "stored_procedure_def_uid",
+                    ["Value"] = spUid
+                }
+            }
+        }
+    }
+};
+
+var content = new StringContent(
+    payload.ToString(), Encoding.UTF8, "application/json");
+var response = await httpClient.PostAsync(
+    $"{uiServerUrl}/api/v2/transaction/get", content);
+response.EnsureSuccessStatusCode();
+
+var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+
+// The response includes the SP definition and its argument_list parameters
+var transactions = result["Transactions"] as JArray;
+if (transactions != null)
+{
+    foreach (var txn in transactions)
+    {
+        var dataElements = txn["DataElements"] as JArray;
+        if (dataElements == null) continue;
+        foreach (var de in dataElements)
+        {
+            Console.WriteLine($"DataElement: {de["Name"]}");
+            var rows = de["Rows"] as JArray;
+            if (rows == null) continue;
+            foreach (var row in rows)
+            {
+                var edits = row["Edits"] as JArray;
+                if (edits == null) continue;
+                foreach (var edit in edits)
+                    Console.WriteLine($"  {edit["Name"]}: {edit["Value"]}");
+            }
+        }
+    }
+}
+```
+<!-- /tabs -->
+
+### Key Notes
+
+- **Finding the UID:** The `stored_procedure_def_uid` is found in the P21 Stored Procedure Executor UI -- double-click the Executor Definition ID field to see it. UIDs are only created after first saving an SP definition in the P21 UI, and they differ across environments (dev vs production). *(Credit: Felipe Maurer)*
+- **Parameters:** The SP's configurable parameters are returned in the `argument_list` section of the response.
+- **Execution:** Loading an SP definition via the Transaction API retrieves its metadata and parameters, but actually executing the stored procedure may require the Interactive API (the Execute button must be clicked in the SP Executor window). *(Credit: Kevin Landry)*
+- **Database tables:** The underlying tables are `stored_procedure_def` (UIDs), `spe_parameter_info` (parameter definitions), and `spe_procedure_info` (procedure names). These can be queried via OData for bulk discovery. *(Credit: Brad Vandenbogaerde)*
+
+---
+
+## DynaChange and Popup Handling
+
+The Transaction API respects and enforces **all DynaChange configurations** -- menu changes, screen changes, required user-defined fields, and on-event business rules all fire during TAPI processing, just as they would in the P21 desktop client. *(Credit: Felipe Maurer)*
+
+### Popup Suppression Pattern
+
+When a TAPI workflow triggers a popup dialog (e.g., a DynaChange rule showing a confirmation), the transaction may fail or behave unexpectedly. The recommended pattern is to deploy **Popup Suppression rules** on the API user's profile to handle these dialogs without needing the Interactive API.
+
+Key characteristics:
+- Suppression rules can be **conditional** -- configure them to fire only for the TAPI user's profile, leaving desktop users unaffected
+- Suppression rules are configured in P21's DynaChange module (not via the API itself)
+- This approach avoids the complexity of opening an Interactive API session just to dismiss a dialog
+
+### Limitations
+
+| Scenario | Workaround |
+|----------|-----------|
+| Visual Rules with response/callback attributes | These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. *(Credit: Brad Vandenbogaerde)* |
+| Wizard-type popups requiring user input | Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input |
+| "Column is disabled" errors | Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. *(Credit: Justin Cassidy)* |
+
+### Response Validation
+
+> **Important:** The Transaction API returns **HTTP 200 even for failed transactions**. Always check the `Summary` and `Messages` sections of the response body -- never rely on the HTTP status code alone to determine success or failure. *(Credit: Neil Timmerman)*
+
+<!-- tabs -->
+```python
+response = httpx.post(
+    f"{ui_server_url}/api/v2/transaction",
+    headers=headers,
+    json=payload,
+    verify=False,
+)
+# HTTP 200 does NOT mean the transaction succeeded
+response.raise_for_status()
+result = response.json()
+
+# Always check the Summary
+succeeded = result["Summary"]["Succeeded"]
+failed = result["Summary"]["Failed"]
+
+if failed > 0:
+    print(f"Transaction failed ({failed} failures)")
+    for msg in result.get("Messages", []):
+        print(f"  Error: {msg}")
+else:
+    print(f"Transaction succeeded ({succeeded} records)")
+```
+
+```csharp
+var response = await httpClient.PostAsync(
+    $"{uiServerUrl}/api/v2/transaction", content);
+// HTTP 200 does NOT mean the transaction succeeded
+response.EnsureSuccessStatusCode();
+
+var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+
+// Always check the Summary
+var succeeded = (int)result["Summary"]!["Succeeded"]!;
+var failed = (int)result["Summary"]!["Failed"]!;
+
+if (failed > 0)
+{
+    Console.WriteLine($"Transaction failed ({failed} failures)");
+    var messages = result["Messages"] as JArray;
+    if (messages != null)
+    {
+        foreach (var msg in messages)
+            Console.WriteLine($"  Error: {msg}");
+    }
+}
+else
+{
+    Console.WriteLine($"Transaction succeeded ({succeeded} records)");
 }
 ```
 <!-- /tabs -->

@@ -212,7 +212,33 @@ PUT /api/ui/interactive/v2/change
 
 > **Note:** v2 uses `List` with `TabName`, while v1 uses `ChangeRequests` with `DataWindowName`. The `DatawindowName` field in v2 uses lowercase 'w'.
 
-> **P21 25.2+ Breaking Change:** `DatawindowName` is now effectively **required** for v2 change requests. The 3-parameter form (TabName + FieldName + Value) stopped working after the 25.2 upgrade — you must include `DatawindowName` as the 4th field. This affects multiple windows including Item, PO Receiving Group, Delivery List, and Group Pick Ticket. Window data structures changed in 25.2 so the server can no longer auto-resolve the target datawindow from TabName alone. **Always include `DatawindowName` in change requests.**
+> **P21 25.2+ Breaking Change:** `DatawindowName` is now effectively **required** for v2 change requests. The 3-parameter form (TabName + FieldName + Value) stopped working after the 25.2 upgrade — you must include `DatawindowName` as the 4th field. Window data structures changed in 25.2 so the server can no longer auto-resolve the target datawindow from TabName alone. **Always include `DatawindowName` in change requests.**
+>
+> **Affected windows (confirmed):**
+>
+> | Window | Affected Field | Reporter |
+> |--------|---------------|----------|
+> | Item | Various | Community reports |
+> | PO Receiving Group | `po_criteria_id` on `Criteria` tab | Jeff Patterson, Josiah Shollenberger |
+> | Delivery List | Various | Community reports |
+> | Group Pick Ticket | Various | Community reports |
+> | ConvertPOToVoucher | `po_no` on `Voucher Information` tab | Jeff Patterson, Josiah Shollenberger |
+> | Order Entry | `order_no` on `Order` tab | Neil Timmerman |
+> | Clippership Auto Shipping | `pick_ticket_no` | Josh Owen |
+> | Doc Links | Various | Jaime Nelson |
+>
+> The bug persists through at least version **25.2.5776.1**. Epicor has acknowledged this as a development bug.
+>
+> **Fix example (C# SDK):**
+> ```csharp
+> // Broken in 25.2+:
+> porgwindow.ChangeData("Criteria", "po_criteria_id", "20");
+>
+> // Fixed — include DatawindowName:
+> porgwindow.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
+> ```
+>
+> *Credit: David Sokoloski (first discovered 4-param workaround), Jeff Patterson (confirmed fix)*
 
 #### ValueType
 
@@ -296,6 +322,119 @@ To find the correct field and datawindow names:
 
 ---
 
+## Window Discovery Techniques
+
+Understanding a window's structure is essential before automating it. These techniques help you discover datawindow names, field names, available tools, and current data.
+
+### 1. Get Window State
+
+After opening a window, call `GetState()` (SDK) or `GET /api/ui/interactive/v2/window?id={windowId}` (REST) to retrieve the full window definition. This returns all datawindows, fields, tabs, enabled states, and current data structure.
+
+<!-- tabs -->
+
+#### Python
+
+```python
+async def get_window_state(
+    client: httpx.AsyncClient,
+    ui_url: str,
+    headers: dict[str, str],
+    window_id: str,
+) -> dict:
+    """Get full window state including datawindows, fields, and tabs.
+
+    Args:
+        client: httpx async client.
+        ui_url: UI server base URL.
+        headers: Request headers with auth token.
+        window_id: The window ID to inspect.
+
+    Returns:
+        Parsed window definition dict.
+    """
+    response = await client.get(
+        f"{ui_url}/api/ui/interactive/v2/window",
+        headers=headers,
+        params={"id": window_id},
+    )
+    response.raise_for_status()
+    state = response.json()
+
+    # Enumerate datawindows and their fields
+    for dw in state.get("Datawindows", []):
+        dw_name = dw.get("Name")
+        parent_tab = dw.get("ParentPage")
+        fields = [f.get("Name") for f in dw.get("Fields", [])]
+        logger.info(
+            "Datawindow %s (tab: %s) — fields: %s",
+            dw_name, parent_tab, fields,
+        )
+
+    return state
+```
+
+#### C\#
+
+```csharp
+public async Task<JObject> GetWindowStateAsync(
+    HttpClient http,
+    string uiUrl,
+    string windowId)
+{
+    // Get full window state including datawindows, fields, and tabs.
+    var response = await http.GetAsync(
+        $"{uiUrl}/api/ui/interactive/v2/window?id={windowId}");
+    response.EnsureSuccessStatusCode();
+
+    var state = JObject.Parse(await response.Content.ReadAsStringAsync());
+
+    // Enumerate datawindows and their fields
+    foreach (var dw in state["Datawindows"] ?? new JArray())
+    {
+        var dwName = dw["Name"]?.ToString();
+        var parentTab = dw["ParentPage"]?.ToString();
+        var fields = (dw["Fields"] as JArray)?
+            .Select(f => f["Name"]?.ToString())
+            .ToList() ?? new List<string?>();
+
+        _logger.LogInformation(
+            "Datawindow {DwName} (tab: {ParentTab}) — fields: {Fields}",
+            dwName, parentTab, string.Join(", ", fields));
+    }
+
+    return state;
+}
+```
+
+<!-- /tabs -->
+
+### 2. Get Available Tools
+
+Call `GetTools()` (SDK) or `GET /api/ui/interactive/v2/tools?windowId={windowId}` (REST) to see available buttons. Tools can be queried at window, datawindow, and field levels by adding `dwName`, `fieldName`, and `row` parameters.
+
+### 3. Get Current Data
+
+Call `GetData()` (SDK) or `GET /api/ui/interactive/v2/data?id={windowId}` (REST) to retrieve the current data in each datawindow on the active tab. Returns column names, row data, active row index, and total row count.
+
+### 4. Check Result Events
+
+Every API response includes an `Events` collection. When a response window opens, look for `Name: "windowopened"` events. When tabs become enabled, look for `Name: "tabpageenabled"` events. When a new record is saved, look for `Name: "keygenerated"` events.
+
+### 5. P21 SQL Information
+
+In the P21 desktop or web client, right-click any field and select **Help > SQL Information**. This dialog shows:
+- **Datawindow name** — the name to use in `DatawindowName` for change requests
+- **Column name** — the field name to use in `FieldName`
+- **Table name** — the underlying database table
+
+This is the most reliable way to determine the exact names the API expects.
+
+### 6. Browser DevTools
+
+When using the P21 Web Client, open your browser's Developer Tools (F12) and watch the **Network** tab. Every action you perform in the UI generates REST calls to the Interactive API. This lets you see the exact payloads, endpoints, and field names the web client uses — which you can replicate in your automation.
+
+---
+
 ## Response Windows
 
 Response windows (dialogs) can pop up during operations. When this happens:
@@ -327,6 +466,125 @@ Example response with blocked status:
 
 > **Note:** The `Events[].Data` field uses a key-value list format:
 > `[{"Key": "windowid", "Value": "..."}]`
+
+### Response Window Handling (Tabless Windows)
+
+Response windows (popup dialogs) have **no tabs**. When you receive `Status: 3` (Blocked), a response window has appeared and you must interact with it before continuing. The critical difference from normal windows is that change requests on response windows require `TabName = null` because there are no tabs to reference.
+
+**REST API pattern:**
+
+Include `"TabName": null` in the change request payload:
+
+```json
+PUT /api/ui/interactive/v2/change
+{
+    "WindowId": "w_response_123",
+    "List": [
+        {
+            "TabName": null,
+            "DatawindowName": "datawindow_name",
+            "FieldName": "field_name",
+            "Value": "value"
+        }
+    ]
+}
+```
+
+**C# SDK pattern:**
+
+<!-- tabs -->
+
+#### Python
+
+```python
+async def change_response_window_field(
+    client: httpx.AsyncClient,
+    ui_url: str,
+    headers: dict[str, str],
+    response_window_id: str,
+    datawindow_name: str,
+    field_name: str,
+    value: str,
+) -> dict:
+    """Change a field on a tabless response window.
+
+    Args:
+        client: httpx async client.
+        ui_url: UI server base URL.
+        headers: Request headers with auth token.
+        response_window_id: The response window ID from the windowopened event.
+        datawindow_name: Datawindow name within the response window.
+        field_name: Field to change.
+        value: New value.
+
+    Returns:
+        Parsed response dict.
+    """
+    response = await client.put(
+        f"{ui_url}/api/ui/interactive/v2/change",
+        headers=headers,
+        json={
+            "WindowId": response_window_id,
+            "List": [
+                {
+                    "TabName": None,
+                    "DatawindowName": datawindow_name,
+                    "FieldName": field_name,
+                    "Value": value,
+                }
+            ],
+        },
+    )
+    response.raise_for_status()
+    return response.json()
+```
+
+#### C\#
+
+```csharp
+public async Task<JObject> ChangeResponseWindowFieldAsync(
+    HttpClient http,
+    string uiUrl,
+    string responseWindowId,
+    string datawindowName,
+    string fieldName,
+    string value)
+{
+    // Response windows have no tabs — use ChangeRequests with TabName = null
+    var requests = new ChangeRequests(responseWindowId);
+    requests.List.Add(new ChangeRequest(datawindowName, fieldName, value) { TabName = null });
+    window.ChangeData(requests);
+
+    // REST equivalent:
+    var payload = new JObject
+    {
+        ["WindowId"] = responseWindowId,
+        ["List"] = new JArray
+        {
+            new JObject
+            {
+                ["TabName"] = null,
+                ["DatawindowName"] = datawindowName,
+                ["FieldName"] = fieldName,
+                ["Value"] = value
+            }
+        }
+    };
+    var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+    var response = await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/change", content);
+    response.EnsureSuccessStatusCode();
+
+    return JObject.Parse(await response.Content.ReadAsStringAsync());
+}
+```
+
+<!-- /tabs -->
+
+**Common response window buttons:** `cb_ok`, `cb_cancel`, `cb_finish`, `cb_yes`, `cb_no`
+
+Use `GET /api/ui/interactive/v2/tools?windowId={responseWindowId}` to discover which buttons are available, then `POST /api/ui/interactive/v2/tools` to click them. See the [Response Window Types](#response-window-types) section below for dismissal patterns.
+
+*Credit: Jon Christie*
 
 ---
 
@@ -1260,6 +1518,31 @@ https://{ui-server-host}/ui/interactive/v1/help
 ```
 
 > **Tip:** These are useful for discovering endpoints and verifying parameter names on your specific P21 version.
+
+---
+
+## V1 REST Endpoint Reference (SDK Internal)
+
+The C# SDK (`P21.UI.Service.Client`) calls these V1 REST endpoints internally. They are listed here for reference — the V2 endpoints documented [above](#window-operations-v2) are recommended for direct REST access. Understanding the V1 paths is useful when debugging SDK behavior or reading network traces.
+
+| Method | V1 Endpoint | Purpose |
+|--------|-------------|---------|
+| POST | `/uiserver0/ui/common/v1/sessions` | Create session |
+| DELETE | `/uiserver0/ui/common/v1/sessions` | End session |
+| POST | `/uiserver0/ui/interactive/v1/window` | Open window |
+| GET | `/uiserver0/ui/interactive/v1/window` | Get state |
+| DELETE | `/uiserver0/ui/interactive/v1/window` | Close window |
+| PUT | `/uiserver0/ui/interactive/v1/change` | Change data |
+| PUT | `/uiserver0/ui/interactive/v1/data` | Save data |
+| GET | `/uiserver0/ui/interactive/v1/data` | Get data |
+| DELETE | `/uiserver0/ui/interactive/v1/data` | Clear data |
+| PUT | `/uiserver0/ui/interactive/v1/tab` | Change tab |
+| GET | `/uiserver0/ui/interactive/v1/tools` | Get tools |
+| POST | `/uiserver0/ui/interactive/v1/tools` | Run tool |
+| POST | `/uiserver0/ui/interactive/v1/row` | Add row |
+| PUT | `/uiserver0/ui/interactive/v1/row` | Change row |
+
+> **Note:** The `uiserver0` prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check `GET /api/ui/router/v1?urlType=external` to obtain the correct base URL.
 
 ---
 

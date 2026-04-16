@@ -51,7 +51,8 @@ Example: `https://play.p21server.com/api/inventory/parts`
 | `PUT` | `/api/inventory/parts/{ItemId}` | Update item (append locations/suppliers) | Yes |
 | `POST` | `/api/inventory/parts` | Create new item (see [307 redirect note](#4-post-returns-307-redirect)) | Yes |
 | `GET` | `/api/inventory/parts/{ItemId}/availability` | Item availability | Not tested |
-| `GET` | `/api/inventory/parts/{ItemId}/price` | Item pricing | Not tested |
+| `GET` | `/api/inventory/parts/{ItemId}/v2/price` | Single item pricing (V2) | Yes |
+| `GET` | `/api/inventory/v2/parts/v2/price/{ItemId}` | Single item pricing (alternative path) | Yes |
 | `POST` | `/api/inventory/parts/itemsAvailability` | Batch availability | Not tested |
 | `POST` | `/api/inventory/parts/prices` | Batch pricing | Not tested |
 
@@ -1006,6 +1007,50 @@ For large datasets (thousands of items):
 
 ---
 
+## Pricing Endpoints
+
+> **Added April 2026** — Community-sourced discovery. Credit: Felipe Maurer, John Kennedy.
+
+The Inventory REST API provides multiple pricing endpoints for retrieving customer-specific pricing.
+
+### Single Item Pricing
+
+Two URL patterns are available for single-item pricing:
+
+```http
+GET /api/inventory/parts/{ItemId}/v2/price?companyId=ACME&customerId=10&salesLocId=100&sourceLocId=100&uom=EA&priceUom=EA&unitQuantity=1
+```
+
+```http
+GET /api/inventory/v2/parts/v2/price/{ItemId}?companyid=ACME&customerId=10&sourceLocId=100&salesLocId=100
+```
+
+Both endpoints accept the same query parameters and return customer-specific pricing.
+
+**Required parameters:**
+- `companyId` — Company ID
+- `customerId` — Customer ID for pricing lookup
+- `salesLocId` — Sales location ID
+- `sourceLocId` — Source/ship location ID
+- `uom` — Unit of measure (e.g., `EA`)
+- `priceUom` — Price unit of measure (e.g., `EA`)
+- `unitQuantity` — Quantity for price break calculation
+
+### URL Encoding for Special Characters
+
+When item IDs contain special characters, URL encoding is required:
+
+| Character | Encoding | Status |
+|-----------|----------|--------|
+| `#` | `%23` | **Works** — e.g., `ORDER%23TEST` |
+| `/` | `%2F` | **Broken** — returns 404 "Endpoint not found" |
+| `&` | `%26` | Use standard URL encoding |
+| `+` | `%2B` | Use standard URL encoding |
+
+> **Known Issue**: Forward slash (`/`) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets `%2F` as a literal path separator, returning 404. There is no known workaround for items containing `/` in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)
+
+---
+
 ## Known Limitations
 
 1. **No `/new` template** — Unlike the Entity API, there is no template endpoint. You must know the required fields for POST (see [Minimum Create Payload](#minimum-create-payload)).
@@ -1013,6 +1058,8 @@ For large datasets (thousands of items):
 2. **List endpoint performance** — Always use `$query` filtering. The unfiltered list endpoint attempts to load all inventory and times out.
 
 3. **Item accessibility** — Some items that exist in `inv_mast` (visible via OData) return 404 from this API. This may be related to item status or configuration.
+
+4. **Forward slash in item IDs** — The `%2F` URL encoding for `/` is interpreted as a path separator by IIS, causing 404 errors on pricing and other endpoints that include the item ID in the URL path. This affects both pricing endpoint URL patterns.
 
 ---
 
