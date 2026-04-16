@@ -445,6 +445,7 @@
 <li><a href="#stored-procedure-executor">Stored Procedure Executor</a><ul>
 <li><a href="#discovery">Discovery</a></li>
 <li><a href="#loading-a-stored-procedure-definition">Loading a Stored Procedure Definition</a></li>
+<li><a href="#verified-service-definition">Verified Service Definition</a></li>
 <li><a href="#endpoint-status">Endpoint Status</a></li>
 <li><a href="#key-notes">Key Notes</a></li>
 </ul>
@@ -2315,16 +2316,39 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 
 <h3 id="response">Response</h3>
-<p>The response contains a <code>DocumentData</code> field with the base64-encoded PDF content. Decode this field and write the bytes to a <code>.pdf</code> file.</p>
-<p><strong>Success response</strong> (PDF generated):</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;Succeeded&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Document generated successfully&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;DocumentData&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JVBERi0xLjQKJeLjz9MK... (base64-encoded PDF bytes)&quot;</span>
-<span class="p">}</span>
+<p>The response is a <strong>JSON array</strong> (even for a single document). Each element contains document metadata and the base64-encoded PDF content. Decode the <code>DocumentData</code> field and write the bytes to a <code>.pdf</code> file.</p>
+<p><strong>Verified success response</strong> (generalized from live PO reprint):</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ClientId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;9a58084c-b2e5-451f-a8d3-6564594017f2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO500100 PURCHASE_ORDER&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentFormat&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO500100 PURCHASE_ORDER&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;FileName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO500100 PURCHASE_ORDER.pdf&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentContentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/pdf&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentData&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JVBERi0xLjQK... (base64-encoded PDF bytes, ~150KB for a typical PO)&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ResponseStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;StatusCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Success&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form request &#39;&#39; for Form ID PO500100 PURCHASE_ORDER has completed.&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;StackTrace&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Batch&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentAssociations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
 </code></pre></div>
 
+<p><strong>Key notes:</strong></p>
+<ul>
+<li>Response is a <strong>JSON array</strong>, not a single object -- even when generating one document</li>
+<li><code>DocumentData</code> contains the base64-encoded PDF bytes (~150KB for a typical PO)</li>
+<li><code>FileName</code> includes the <code>.pdf</code> extension (e.g., <code>"PO500100 PURCHASE_ORDER.pdf"</code>)</li>
+<li><code>ResponseStatus.StatusCode</code> is <code>"Success"</code> on success</li>
+<li><code>DocumentFormat</code> value <code>5</code> corresponds to PDF format</li>
+<li><code>DocumentContentType</code> is <code>"application/pdf"</code></li>
+</ul>
 <p><strong>Error response</strong> (e.g., PO not found):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Date(1776344580327)/&quot;</span><span class="p">,</span>
@@ -2403,15 +2427,22 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
-<span class="c1"># Decode and save the PDF</span>
-<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">):</span>
-    <span class="n">pdf_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">])</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;PO_500100.pdf&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved PO_500100.pdf (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes)&quot;</span><span class="p">)</span>
+<span class="c1"># Response is a JSON array -- even for a single document</span>
+<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ResponseStatus&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;StatusCode&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;Success&quot;</span> <span class="ow">and</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">):</span>
+        <span class="n">pdf_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">])</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;FileName&quot;</span><span class="p">,</span> <span class="s2">&quot;PO_500100.pdf&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes)&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ResponseStatus&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Message&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown error&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Report failed: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No document data returned&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Messages: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">[])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No documents returned&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -2484,20 +2515,31 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/v2/process/pdfreport&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
 <span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 
-<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resultArray</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JArray</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
 
-<span class="c1">// Decode and save the PDF</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">documentData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;DocumentData&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
-<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">documentData</span><span class="p">))</span>
+<span class="c1">// Response is a JSON array -- even for a single document</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">resultArray</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">pdfBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Convert</span><span class="p">.</span><span class="n">FromBase64String</span><span class="p">(</span><span class="n">documentData</span><span class="p">);</span>
-<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">File</span><span class="p">.</span><span class="n">WriteAllBytesAsync</span><span class="p">(</span><span class="s">&quot;PO_500100.pdf&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">pdfBytes</span><span class="p">);</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Saved PO_500100.pdf ({pdfBytes.Length} bytes)&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resultArray</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JObject</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;ResponseStatus&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;StatusCode&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">documentData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;DocumentData&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Success&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">documentData</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">pdfBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Convert</span><span class="p">.</span><span class="n">FromBase64String</span><span class="p">(</span><span class="n">documentData</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">filename</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;FileName&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;PO_500100.pdf&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">File</span><span class="p">.</span><span class="n">WriteAllBytesAsync</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">pdfBytes</span><span class="p">);</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Saved {filename} ({pdfBytes.Length} bytes)&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;ResponseStatus&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Message&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;Unknown error&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Report failed: {msg}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 <span class="k">else</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;No document data returned&quot;</span><span class="p">);</span>
-<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Messages: {result[&quot;</span><span class="n">Messages</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;No documents returned&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -2661,9 +2703,56 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 </div>
 </div>
+<h3 id="verified-service-definition">Verified Service Definition</h3>
+<p>The definition endpoint returns the following structure for the <code>DEFINITION.stored_procedure_def</code> DataElement:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stored_procedure_def_uid</code></td>
+<td>Long</td>
+<td>Key</td>
+<td>Unique identifier for the SP definition</td>
+</tr>
+<tr>
+<td><code>stored_procedure_description</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Human-readable description of the stored procedure</td>
+</tr>
+<tr>
+<td><code>stored_procedure_default_timeout</code></td>
+<td>Long</td>
+<td>No</td>
+<td>Default execution timeout (seconds)</td>
+</tr>
+<tr>
+<td><code>row_status_flag</code></td>
+<td>Long</td>
+<td>No</td>
+<td>Record status (ValidValues: <code>Active</code>, <code>Delete</code>)</td>
+</tr>
+<tr>
+<td><code>stored_procedure</code></td>
+<td>Char</td>
+<td>Yes</td>
+<td>The stored procedure name to execute</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The key field is <code>stored_procedure_def_uid</code>, which is a Long (not a string). The <code>stored_procedure</code> field is the only required field besides the key.</p>
+</blockquote>
 <h3 id="endpoint-status">Endpoint Status</h3>
 <ul>
-<li><code>GET /api/v2/definition/m_storedprocedureexecutor</code> -- returns HTTP 200 with DataElements list describing the service structure.</li>
+<li><code>GET /api/v2/definition/m_storedprocedureexecutor</code> -- returns HTTP 200 with DataElements list describing the service structure, including the fields above.</li>
 <li><code>GET /api/v2/defaults/m_storedprocedureexecutor</code> -- returns HTTP 200 with ~30KB response containing full default field values.</li>
 </ul>
 <blockquote>

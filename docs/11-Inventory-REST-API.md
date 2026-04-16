@@ -1040,6 +1040,69 @@ Both endpoints accept the same query parameters and return customer-specific pri
 - `priceUom` — Price unit of measure (e.g., `EA`)
 - `unitQuantity` — Quantity for price break calculation
 
+### Verified Pricing Response
+
+The pricing endpoint returns both pricing AND availability data for the requested location in a single response:
+
+```json
+{
+    "UnitPrice": 15.750000000,
+    "BaseUnitPrice": 15.750000000,
+    "UOM": "EA",
+    "UOMUnitSize": 1.000000000,
+    "PricePageUid": 0,
+    "PriceUOM": "EA",
+    "PriceUnitSize": 1.000000000,
+    "ExtendedPrice": 15.750000000,
+    "CalcValue": 1.000000000,
+    "UnitCommissionCost": 8.500000000,
+    "UnitOtherCost": 8.500000000,
+    "UnitSalesCost": 8.500000000,
+    "LotCosted": "N",
+    "ItemId": "WIDGET-001",
+    "CompanyId": null,
+    "LocationId": 100,
+    "QuantityAvailable": 250.000000000,
+    "QuantityOnHand": 300.000000000,
+    "QuantityAllocated": 50.000000000,
+    "QuantityNonPickable": 0.0,
+    "QuantityQuarantined": 0.0,
+    "QuantityFrozen": 0.0,
+    "LocationType": "Standard"
+}
+```
+
+> **Note:** The response includes both pricing AND availability data for the requested location. `QuantityAvailable` = `QuantityOnHand` - `QuantityAllocated` (minus non-pickable, quarantined, and frozen). `CompanyId` may be `null` in the response even when specified in the request.
+
+**Key fields:**
+
+| Field | Description |
+|-------|-------------|
+| `UnitPrice` | Customer-specific unit price after price page evaluation |
+| `BaseUnitPrice` | Base unit price before customer-specific adjustments |
+| `ExtendedPrice` | `UnitPrice` x `unitQuantity` from request |
+| `UnitCommissionCost` / `UnitOtherCost` / `UnitSalesCost` | Cost breakdown for margin calculations |
+| `PricePageUid` | Price page that determined the price (`0` = no price page matched) |
+| `QuantityAvailable` | Available to sell (on hand minus allocated/holds) |
+| `QuantityOnHand` | Physical quantity at the location |
+| `LocationType` | Location type (e.g., `"Standard"`) |
+
+### Pricing Error Response
+
+When the item is not valid or not defined at the requested location, the API returns the standard P21 error envelope:
+
+```json
+{
+    "DateTimeStamp": "/Date(1776347610527)/",
+    "ErrorMessage": "Item is not valid or not defined at this location",
+    "ErrorType": "P21.Business.Common.BusinessException",
+    "HostName": "p21web-22",
+    "InnerException": null
+}
+```
+
+> **Note:** The `DateTimeStamp` uses the Microsoft JSON date format (`/Date(milliseconds)/`). The `ErrorType` for pricing errors is `P21.Business.Common.BusinessException`, distinct from the `P21.Common.Exceptions.Prophet21Exception` used by item CRUD errors.
+
 ### URL Encoding for Special Characters
 
 When item IDs contain special characters, URL encoding is required:

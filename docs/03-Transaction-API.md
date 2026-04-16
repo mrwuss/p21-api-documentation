@@ -1280,18 +1280,41 @@ The payload follows the standard TransactionSet format. Report-specific criteria
 
 ### Response
 
-The response contains a `DocumentData` field with the base64-encoded PDF content. Decode this field and write the bytes to a `.pdf` file.
+The response is a **JSON array** (even for a single document). Each element contains document metadata and the base64-encoded PDF content. Decode the `DocumentData` field and write the bytes to a `.pdf` file.
 
-**Success response** (PDF generated):
+**Verified success response** (generalized from live PO reprint):
 
 ```json
-{
-    "Succeeded": 1,
-    "Failed": 0,
-    "Summary": "Document generated successfully",
-    "DocumentData": "JVBERi0xLjQKJeLjz9MK... (base64-encoded PDF bytes)"
-}
+[
+  {
+    "ClientId": "9a58084c-b2e5-451f-a8d3-6564594017f2",
+    "RequestId": null,
+    "DocumentType": 1,
+    "DocumentId": "PO500100 PURCHASE_ORDER",
+    "DocumentFormat": 5,
+    "DocumentName": "PO500100 PURCHASE_ORDER",
+    "FileName": "PO500100 PURCHASE_ORDER.pdf",
+    "DocumentContentType": "application/pdf",
+    "DocumentData": "JVBERi0xLjQK... (base64-encoded PDF bytes, ~150KB for a typical PO)",
+    "ResponseStatus": {
+      "StatusCode": "Success",
+      "Message": "Form request '' for Form ID PO500100 PURCHASE_ORDER has completed.",
+      "StackTrace": null
+    },
+    "Batch": null,
+    "DocumentAssociations": []
+  }
+]
 ```
+
+**Key notes:**
+
+- Response is a **JSON array**, not a single object -- even when generating one document
+- `DocumentData` contains the base64-encoded PDF bytes (~150KB for a typical PO)
+- `FileName` includes the `.pdf` extension (e.g., `"PO500100 PURCHASE_ORDER.pdf"`)
+- `ResponseStatus.StatusCode` is `"Success"` on success
+- `DocumentFormat` value `5` corresponds to PDF format
+- `DocumentContentType` is `"application/pdf"`
 
 **Error response** (e.g., PO not found):
 
@@ -1369,15 +1392,22 @@ response = httpx.post(
 response.raise_for_status()
 result = response.json()
 
-# Decode and save the PDF
-if result.get("DocumentData"):
-    pdf_bytes = base64.b64decode(result["DocumentData"])
-    with open("PO_500100.pdf", "wb") as f:
-        f.write(pdf_bytes)
-    print(f"Saved PO_500100.pdf ({len(pdf_bytes)} bytes)")
+# Response is a JSON array -- even for a single document
+if isinstance(result, list) and len(result) > 0:
+    doc = result[0]
+    status = doc.get("ResponseStatus", {}).get("StatusCode")
+    if status == "Success" and doc.get("DocumentData"):
+        pdf_bytes = base64.b64decode(doc["DocumentData"])
+        filename = doc.get("FileName", "PO_500100.pdf")
+        with open(filename, "wb") as f:
+            f.write(pdf_bytes)
+        print(f"Saved {filename} ({len(pdf_bytes)} bytes)")
+    else:
+        msg = doc.get("ResponseStatus", {}).get("Message", "Unknown error")
+        print(f"Report failed: {msg}")
 else:
-    print("No document data returned")
-    print(f"Messages: {result.get('Messages', [])}")
+    print("No documents returned")
+    print(f"Response: {result}")
 ```
 
 ```csharp
@@ -1450,20 +1480,31 @@ var response = await httpClient.PostAsync(
     $"{uiServerUrl}/api/v2/process/pdfreport", content);
 response.EnsureSuccessStatusCode();
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+var resultArray = JArray.Parse(await response.Content.ReadAsStringAsync());
 
-// Decode and save the PDF
-var documentData = result["DocumentData"]?.ToString();
-if (!string.IsNullOrEmpty(documentData))
+// Response is a JSON array -- even for a single document
+if (resultArray.Count > 0)
 {
-    var pdfBytes = Convert.FromBase64String(documentData);
-    await File.WriteAllBytesAsync("PO_500100.pdf", pdfBytes);
-    Console.WriteLine($"Saved PO_500100.pdf ({pdfBytes.Length} bytes)");
+    var doc = resultArray[0] as JObject;
+    var status = doc?["ResponseStatus"]?["StatusCode"]?.ToString();
+    var documentData = doc?["DocumentData"]?.ToString();
+
+    if (status == "Success" && !string.IsNullOrEmpty(documentData))
+    {
+        var pdfBytes = Convert.FromBase64String(documentData);
+        var filename = doc?["FileName"]?.ToString() ?? "PO_500100.pdf";
+        await File.WriteAllBytesAsync(filename, pdfBytes);
+        Console.WriteLine($"Saved {filename} ({pdfBytes.Length} bytes)");
+    }
+    else
+    {
+        var msg = doc?["ResponseStatus"]?["Message"]?.ToString() ?? "Unknown error";
+        Console.WriteLine($"Report failed: {msg}");
+    }
 }
 else
 {
-    Console.WriteLine("No document data returned");
-    Console.WriteLine($"Messages: {result["Messages"]}");
+    Console.WriteLine("No documents returned");
 }
 ```
 <!-- /tabs -->
@@ -1629,9 +1670,23 @@ if (transactions != null)
 ```
 <!-- /tabs -->
 
+### Verified Service Definition
+
+The definition endpoint returns the following structure for the `DEFINITION.stored_procedure_def` DataElement:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `stored_procedure_def_uid` | Long | Key | Unique identifier for the SP definition |
+| `stored_procedure_description` | Char | No | Human-readable description of the stored procedure |
+| `stored_procedure_default_timeout` | Long | No | Default execution timeout (seconds) |
+| `row_status_flag` | Long | No | Record status (ValidValues: `Active`, `Delete`) |
+| `stored_procedure` | Char | Yes | The stored procedure name to execute |
+
+> **Note:** The key field is `stored_procedure_def_uid`, which is a Long (not a string). The `stored_procedure` field is the only required field besides the key.
+
 ### Endpoint Status
 
-- `GET /api/v2/definition/m_storedprocedureexecutor` -- returns HTTP 200 with DataElements list describing the service structure.
+- `GET /api/v2/definition/m_storedprocedureexecutor` -- returns HTTP 200 with DataElements list describing the service structure, including the fields above.
 - `GET /api/v2/defaults/m_storedprocedureexecutor` -- returns HTTP 200 with ~30KB response containing full default field values.
 
 > **Tip:** The defaults endpoint returns the full field structure (~30KB). Use the definition and defaults endpoints to discover available fields before constructing payloads.
