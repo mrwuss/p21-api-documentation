@@ -10,6 +10,8 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ## 2026-04-16
 
+- **docs:** Add UDT Service API documentation (`docs/13-UDT-Service-API.md`) — complete CRUD documentation for `/udtservice/api/udtdata/` endpoints (insert, update, delete), OData read patterns, response format quirks, SQL keyword false positives, SaaS hostname differences, Python and C# examples — *Felipe Maurer (discovery and testing), David Sokoloski (P21 help docs reference), Brad Vandenbogaerde (database tables, SaaS hostname fix), John Kennedy (SQL keyword issue), Jon Christie (response format quirk), @mrwuss*
+- **docs:** Add Inventory REST API pricing endpoints — two verified V2 pricing URL patterns, URL encoding requirements for special characters, forward slash (`/`) encoding confirmed broken (returns 404), verified pricing response structure with availability data — *Felipe Maurer, John Kennedy, @mrwuss*
 - **docs:** Add Interactive API response window handling for tabless windows — `TabName: null` pattern for changing fields on popup dialogs, common response window buttons — *Jon Christie* — *@mrwuss*
 - **docs:** Add window discovery techniques section — GetState, GetTools, GetData, result event inspection, P21 SQL Information dialog, browser DevTools — *@mrwuss*
 - **docs:** Add V1 REST endpoint reference table — internal SDK endpoints for debugging and network trace analysis — *@mrwuss*
