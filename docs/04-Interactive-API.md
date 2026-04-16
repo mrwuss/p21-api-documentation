@@ -228,16 +228,17 @@ PUT /api/ui/interactive/v2/change
 > | Doc Links | Various | Jaime Nelson |
 >
 > The bug persists through at least version **25.2.5776.1**. Epicor has acknowledged this as a development bug.
->
-> **Fix example (C# SDK):**
-> ```csharp
-> // Broken in 25.2+:
-> porgwindow.ChangeData("Criteria", "po_criteria_id", "20");
->
-> // Fixed — include DatawindowName:
-> porgwindow.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
-> ```
->
+
+**Fix example (C# SDK):**
+
+```csharp
+// Broken in 25.2+:
+porgwindow.ChangeData("Criteria", "po_criteria_id", "20");
+
+// Fixed — include DatawindowName:
+porgwindow.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
+```
+
 > *Credit: David Sokoloski (first discovered 4-param workaround), Jeff Patterson (confirmed fix)*
 
 #### ValueType
@@ -408,9 +409,43 @@ public async Task<JObject> GetWindowStateAsync(
 
 <!-- /tabs -->
 
+**Example response** (sanitized, structure varies by window):
+
+```json
+{
+  "Definition": {
+    "Title": "Order Entry",
+    "Datawindows": {
+      "form": {
+        "Fields": {
+          "order_no": {"Label": "Order No", "Enabled": true, "DataType": 1},
+          "customer_id": {"Label": "Customer ID", "Enabled": true, "DataType": 1}
+        }
+      }
+    },
+    "TabPageList": [
+      {"Name": "Order", "DisplayText": "Order"},
+      {"Name": "Line_Items", "DisplayText": "Line Items"}
+    ]
+  }
+}
+```
+
+> **Tip:** Response windows return an empty `TabPageList` — that is how you can distinguish them from normal windows programmatically.
+
 ### 2. Get Available Tools
 
 Call `GetTools()` (SDK) or `GET /api/ui/interactive/v2/tools?windowId={windowId}` (REST) to see available buttons. Tools can be queried at window, datawindow, and field levels by adding `dwName`, `fieldName`, and `row` parameters.
+
+**Example response:**
+
+```json
+[
+  {"ToolName": "cb_ok", "DatawindowName": null, "FieldName": null},
+  {"ToolName": "cb_cancel", "DatawindowName": null, "FieldName": null},
+  {"ToolName": "m_addlink", "DatawindowName": "Document_Link", "FieldName": null}
+]
+```
 
 ### 3. Get Current Data
 
@@ -490,7 +525,7 @@ PUT /api/ui/interactive/v2/change
 }
 ```
 
-**C# SDK pattern:**
+**REST examples (Python / C#):**
 
 <!-- tabs -->
 
@@ -550,12 +585,7 @@ public async Task<JObject> ChangeResponseWindowFieldAsync(
     string fieldName,
     string value)
 {
-    // Response windows have no tabs — use ChangeRequests with TabName = null
-    var requests = new ChangeRequests(responseWindowId);
-    requests.List.Add(new ChangeRequest(datawindowName, fieldName, value) { TabName = null });
-    window.ChangeData(requests);
-
-    // REST equivalent:
+    // Response windows have no tabs — set TabName to null
     var payload = new JObject
     {
         ["WindowId"] = responseWindowId,
@@ -579,6 +609,8 @@ public async Task<JObject> ChangeResponseWindowFieldAsync(
 ```
 
 <!-- /tabs -->
+
+> **Note:** The `TabName: null` pattern applies to response windows that accept change requests (editable dialogs with Status: 3/Blocked). `w_message` dialogs cannot be edited programmatically. Use `ResponseWindowHandlingEnabled: false` in the session configuration to auto-answer message box dialogs with their default button.
 
 **Common response window buttons:** `cb_ok`, `cb_cancel`, `cb_finish`, `cb_yes`, `cb_no`
 

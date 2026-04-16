@@ -1661,9 +1661,13 @@
 <h3 id="single-item-pricing">Single Item Pricing</h3>
 <p>Two URL patterns are available for single-item pricing:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/parts/{ItemId}/v2/price?companyId=ACME&amp;customerId=10&amp;salesLocId=100&amp;sourceLocId=100&amp;uom=EA&amp;priceUom=EA&amp;unitQuantity=1</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Accept: application/json</span>
 </code></pre></div>
 
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/v2/parts/v2/price/{ItemId}?companyid=ACME&amp;customerId=10&amp;sourceLocId=100&amp;salesLocId=100</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Accept: application/json</span>
 </code></pre></div>
 
 <p>Both endpoints accept the same query parameters and return customer-specific pricing.</p>

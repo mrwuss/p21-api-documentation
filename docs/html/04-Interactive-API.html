@@ -939,13 +939,16 @@
 </tbody>
 </table>
 <p>The bug persists through at least version <strong>25.2.5776.1</strong>. Epicor has acknowledged this as a development bug.</p>
-<p><strong>Fix example (C# SDK):</strong>
-```csharp
-// Broken in 25.2+:
-porgwindow.ChangeData("Criteria", "po_criteria_id", "20");</p>
-<p>// Fixed — include DatawindowName:
-porgwindow.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
-```</p>
+</blockquote>
+<p><strong>Fix example (C# SDK):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Broken in 25.2+:</span>
+<span class="n">porgwindow</span><span class="p">.</span><span class="n">ChangeData</span><span class="p">(</span><span class="s">&quot;Criteria&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_criteria_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;20&quot;</span><span class="p">);</span>
+
+<span class="c1">// Fixed — include DatawindowName:</span>
+<span class="n">porgwindow</span><span class="p">.</span><span class="n">ChangeData</span><span class="p">(</span><span class="s">&quot;Criteria&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_criteria_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;20&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<blockquote>
 <p><em>Credit: David Sokoloski (first discovered 4-param workaround), Jeff Patterson (confirmed fix)</em></p>
 </blockquote>
 <h4 id="valuetype">ValueType</h4>
@@ -1106,8 +1109,39 @@ porgwindow.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
 </code></pre></div>
 </div>
 </div>
+<p><strong>Example response</strong> (sanitized, structure varies by window):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Definition&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order Entry&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Datawindows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;form&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;order_no&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order No&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataType&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
+<span class="w">          </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Customer ID&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataType&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;TabPageList&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DisplayText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Line_Items&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DisplayText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Line Items&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Tip:</strong> Response windows return an empty <code>TabPageList</code> — that is how you can distinguish them from normal windows programmatically.</p>
+</blockquote>
 <h3 id="2-get-available-tools">2. Get Available Tools</h3>
 <p>Call <code>GetTools()</code> (SDK) or <code>GET /api/ui/interactive/v2/tools?windowId={windowId}</code> (REST) to see available buttons. Tools can be queried at window, datawindow, and field levels by adding <code>dwName</code>, <code>fieldName</code>, and <code>row</code> parameters.</p>
+<p><strong>Example response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cb_ok&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cb_cancel&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_addlink&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Document_Link&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
 <h3 id="3-get-current-data">3. Get Current Data</h3>
 <p>Call <code>GetData()</code> (SDK) or <code>GET /api/ui/interactive/v2/data?id={windowId}</code> (REST) to retrieve the current data in each datawindow on the active tab. Returns column names, row data, active row index, and total row count.</p>
 <h3 id="4-check-result-events">4. Check Result Events</h3>
@@ -1171,7 +1205,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <span class="p">}</span>
 </code></pre></div>
 
-<p><strong>C# SDK pattern:</strong></p>
+<p><strong>REST examples (Python / C#):</strong></p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -1229,12 +1263,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span>
 <span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="c1">// Response windows have no tabs — use ChangeRequests with TabName = null</span>
-<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">requests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ChangeRequests</span><span class="p">(</span><span class="n">responseWindowId</span><span class="p">);</span>
-<span class="w">    </span><span class="n">requests</span><span class="p">.</span><span class="n">List</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">ChangeRequest</span><span class="p">(</span><span class="n">datawindowName</span><span class="p">,</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">TabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="p">});</span>
-<span class="w">    </span><span class="n">window</span><span class="p">.</span><span class="n">ChangeData</span><span class="p">(</span><span class="n">requests</span><span class="p">);</span>
-
-<span class="w">    </span><span class="c1">// REST equivalent:</span>
+<span class="w">    </span><span class="c1">// Response windows have no tabs — set TabName to null</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseWindowId</span><span class="p">,</span>
@@ -1258,6 +1287,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </code></pre></div>
 </div>
 </div>
+<blockquote>
+<p><strong>Note:</strong> The <code>TabName: null</code> pattern applies to response windows that accept change requests (editable dialogs with Status: 3/Blocked). <code>w_message</code> dialogs cannot be edited programmatically. Use <code>ResponseWindowHandlingEnabled: false</code> in the session configuration to auto-answer message box dialogs with their default button.</p>
+</blockquote>
 <p><strong>Common response window buttons:</strong> <code>cb_ok</code>, <code>cb_cancel</code>, <code>cb_finish</code>, <code>cb_yes</code>, <code>cb_no</code></p>
 <p>Use <code>GET /api/ui/interactive/v2/tools?windowId={responseWindowId}</code> to discover which buttons are available, then <code>POST /api/ui/interactive/v2/tools</code> to click them. See the <a href="#response-window-types">Response Window Types</a> section below for dismissal patterns.</p>
 <p><em>Credit: Jon Christie</em></p>

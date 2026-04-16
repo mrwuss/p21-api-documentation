@@ -1019,10 +1019,14 @@ Two URL patterns are available for single-item pricing:
 
 ```http
 GET /api/inventory/parts/{ItemId}/v2/price?companyId=ACME&customerId=10&salesLocId=100&sourceLocId=100&uom=EA&priceUom=EA&unitQuantity=1
+Authorization: Bearer {token}
+Accept: application/json
 ```
 
 ```http
 GET /api/inventory/v2/parts/v2/price/{ItemId}?companyid=ACME&customerId=10&sourceLocId=100&salesLocId=100
+Authorization: Bearer {token}
+Accept: application/json
 ```
 
 Both endpoints accept the same query parameters and return customer-specific pricing.

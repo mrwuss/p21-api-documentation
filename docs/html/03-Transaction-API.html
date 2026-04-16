@@ -445,6 +445,7 @@
 <li><a href="#stored-procedure-executor">Stored Procedure Executor</a><ul>
 <li><a href="#discovery">Discovery</a></li>
 <li><a href="#loading-a-stored-procedure-definition">Loading a Stored Procedure Definition</a></li>
+<li><a href="#endpoint-status">Endpoint Status</a></li>
 <li><a href="#key-notes">Key Notes</a></li>
 </ul>
 </li>
@@ -2315,6 +2316,28 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 
 <h3 id="response">Response</h3>
 <p>The response contains a <code>DocumentData</code> field with the base64-encoded PDF content. Decode this field and write the bytes to a <code>.pdf</code> file.</p>
+<p><strong>Success response</strong> (PDF generated):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Succeeded&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Document generated successfully&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentData&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JVBERi0xLjQKJeLjz9MK... (base64-encoded PDF bytes)&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Error response</strong> (e.g., PO not found):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Date(1776344580327)/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unexpected results generating document request from criteria. --&gt; Messages returned during document request processing: &lt;No records to print for this range.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.UI.BulkEditor.BulkEditException&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-22&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> Error responses use the standard P21 error envelope (with <code>ErrorType</code> and <code>ErrorMessage</code>), not the <code>Summary</code>/<code>Messages</code> format used by the <code>/transaction</code> endpoint.</p>
+</blockquote>
 <h3 id="example-generate-and-save-a-po-reprint">Example: Generate and Save a PO Reprint</h3>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -2638,6 +2661,14 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 </div>
 </div>
+<h3 id="endpoint-status">Endpoint Status</h3>
+<ul>
+<li><code>GET /api/v2/definition/m_storedprocedureexecutor</code> -- returns HTTP 200 with DataElements list describing the service structure.</li>
+<li><code>GET /api/v2/defaults/m_storedprocedureexecutor</code> -- returns HTTP 200 with ~30KB response containing full default field values.</li>
+</ul>
+<blockquote>
+<p><strong>Tip:</strong> The defaults endpoint returns the full field structure (~30KB). Use the definition and defaults endpoints to discover available fields before constructing payloads.</p>
+</blockquote>
 <h3 id="key-notes">Key Notes</h3>
 <ul>
 <li><strong>Finding the UID:</strong> The <code>stored_procedure_def_uid</code> is found in the P21 Stored Procedure Executor UI -- double-click the Executor Definition ID field to see it. UIDs are only created after first saving an SP definition in the P21 UI, and they differ across environments (dev vs production). <em>(Credit: Felipe Maurer)</em></li>
@@ -2648,6 +2679,10 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <hr />
 <h2 id="dynachange-and-popup-handling">DynaChange and Popup Handling</h2>
 <p>The Transaction API respects and enforces <strong>all DynaChange configurations</strong> -- menu changes, screen changes, required user-defined fields, and on-event business rules all fire during TAPI processing, just as they would in the P21 desktop client. <em>(Credit: Felipe Maurer)</em></p>
+<blockquote>
+<p><strong>Source</strong>: Community-verified patterns. Tested on P21 version 25.2. Applies to all Transaction API endpoints.
+<strong>Discovery date</strong>: April 2026 (documented); pattern in production use by multiple organizations.</p>
+</blockquote>
 <h3 id="popup-suppression-pattern">Popup Suppression Pattern</h3>
 <p>When a TAPI workflow triggers a popup dialog (e.g., a DynaChange rule showing a confirmation), the transaction may fail or behave unexpectedly. The recommended pattern is to deploy <strong>Popup Suppression rules</strong> on the API user's profile to handle these dialogs without needing the Interactive API.</p>
 <p>Key characteristics:
@@ -2665,15 +2700,15 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <tbody>
 <tr>
 <td>Visual Rules with response/callback attributes</td>
-<td>These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. <em>(Credit: Brad Vandenbogaerde)</em></td>
+<td>(Community-reported) These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. <em>(Credit: Brad Vandenbogaerde)</em></td>
 </tr>
 <tr>
 <td>Wizard-type popups requiring user input</td>
-<td>Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input</td>
+<td>(Verified) Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input</td>
 </tr>
 <tr>
 <td>"Column is disabled" errors</td>
-<td>Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. <em>(Credit: Justin Cassidy)</em></td>
+<td>(Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. <em>(Credit: Justin Cassidy)</em></td>
 </tr>
 </tbody>
 </table>

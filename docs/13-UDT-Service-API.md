@@ -10,6 +10,8 @@
 
 ## Overview
 
+> **Source**: Official P21 Help Documentation (Zendesk) + community working code + actual API testing (April 2026).
+
 P21 provides a **UDT Service API** at `/udtservice/api/udtdata/` for writing to User Defined Tables (UDTs). UDTs are custom tables created through P21's User Defined Table Maintenance window, prefixed with `udt_` in the database.
 
 The UDT Service API handles **write operations** (insert, update, delete). For **reading** UDT data, use the [OData API](02-OData-API.md) — UDT tables are queryable via Data Services like any other P21 table.
@@ -191,7 +193,7 @@ token_resp = httpx.post(
     f"{base_url}/api/security/token/v2",
     json={"username": "api_user", "password": "password"},
     headers={"Accept": "application/json"},
-    verify=False,
+    # verify=False,  # Only for dev environments with self-signed certs
 )
 token = token_resp.json()["AccessToken"]
 
@@ -201,7 +203,7 @@ client = httpx.Client(
         "Accept": "application/json",
         "Content-Type": "application/json",
     },
-    verify=False,
+    # verify=False,  # Only for dev environments with self-signed certs
 )
 
 payload = {
@@ -245,7 +247,7 @@ var baseUrl = "https://play.p21server.com";
 // Get token (see Authentication docs)
 var handler = new HttpClientHandler
 {
-    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+    // ServerCertificateCustomValidationCallback = (_, _, _, _) => true  // Only for dev with self-signed certs
 };
 var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
 client.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -675,29 +677,70 @@ else
 
 ## Known Issues
 
+> **Source**: Community-reported issues, verified via actual API testing (April 2026). Tested on P21 version 25.2. Applies to all `/udtservice/api/udtdata/` endpoints.
+
 ### 1. Success Messages in errorMessage Field
+
+| | |
+|---|---|
+| **Discovery** | April 2026 (community-reported) |
+| **Affected versions** | All known versions with UDT support |
+| **Tested endpoints** | `insertudtdata`, `updateudtdata`, `deleteudtdata` |
+| **Workaround** | Check `errorNo == 0` for success, not the field name |
 
 The API returns success messages in the `errorMessage` field (e.g., `"[1] row inserted in [udt_custom_orders] table successfully..!"`). Always check `errorNo == 0` for success, not the field name. Credit: Jon Christie.
 
 ### 2. SQL Keyword False Positives
 
-Values containing SQL keywords like `"drop"`, `"insert"`, `"delete"`, `"update"`, or `"select"` may be blocked by the API's SQL injection filter, even when they appear in legitimate data. For example, a product description containing `"drop tube"` or `"insert fitting"` could be rejected.
+| | |
+|---|---|
+| **Discovery** | April 2026 (community-reported) |
+| **Affected versions** | All known versions with UDT support |
+| **Tested endpoints** | `insertudtdata`, `updateudtdata` |
+| **Workaround** | No known workaround — abbreviate or encode values |
 
-There is no known workaround for this limitation. If you encounter this issue, consider abbreviating or encoding the problematic values. Credit: John Kennedy.
+Values containing SQL keywords like `"drop"`, `"insert"`, `"delete"`, `"update"`, or `"select"` may be blocked by the API's SQL injection filter, even when they appear in legitimate data. For example, a product description containing `"drop tube"` or `"insert fitting"` could be rejected. Credit: John Kennedy.
 
 ### 3. Update/Delete Only Accept UIDs as Conditions
+
+| | |
+|---|---|
+| **Discovery** | April 2026 (community-reported) |
+| **Affected versions** | All known versions with UDT support |
+| **Tested endpoints** | `updateudtdata`, `deleteudtdata` |
+| **Workaround** | Query via OData first to obtain `row_uid` |
 
 The `conditions` array for update and delete operations only reliably works with `row_uid`. Attempting to use other column values as conditions may produce unexpected results or errors. Always query via OData first to obtain the `row_uid` of the target row.
 
 ### 4. All Non-Nullable Columns Required on Insert
 
+| | |
+|---|---|
+| **Discovery** | April 2026 (from official documentation) |
+| **Affected versions** | All known versions with UDT support |
+| **Tested endpoints** | `insertudtdata` |
+| **Workaround** | Include all non-nullable columns in the payload |
+
 When inserting, every column that is defined as non-nullable in the UDT must be included in the `columns` array. Columns that are omitted from the payload will be set to NULL, which will fail if the column has a NOT NULL constraint.
 
 ### 5. Epicor Documentation JSON Typos
 
+| | |
+|---|---|
+| **Discovery** | April 2026 (community-reported) |
+| **Affected versions** | Official documentation as of April 2026 |
+| **Workaround** | Validate JSON before sending |
+
 The official Epicor documentation examples for this API contain JSON syntax errors (extra trailing commas, mismatched brackets). If copying from the official docs, validate your JSON before sending. Credit: Felipe Maurer.
 
 ### 6. SaaS Hostname Difference
+
+| | |
+|---|---|
+| **Discovery** | April 2026 (community-reported, Epicor support confirmed) |
+| **Affected versions** | SaaS-hosted environments |
+| **Tested endpoints** | `insertudtdata` |
+| **Workaround** | Add `-api` to the FQDN hostname |
 
 SaaS-hosted P21 environments may require `-api` in the FQDN hostname for the UDT Service endpoint. For example:
 
@@ -725,7 +768,7 @@ token_resp = httpx.post(
     f"{base_url}/api/security/token/v2",
     json={"username": "api_user", "password": "password"},
     headers={"Accept": "application/json"},
-    verify=False,
+    # verify=False,  # Only for dev environments with self-signed certs
 )
 token = token_resp.json()["AccessToken"]
 
@@ -735,7 +778,7 @@ client = httpx.Client(
         "Accept": "application/json",
         "Content-Type": "application/json",
     },
-    verify=False,
+    # verify=False,  # Only for dev environments with self-signed certs
     follow_redirects=True,
 )
 
@@ -835,7 +878,7 @@ var table = "udt_custom_orders";
 var handler = new HttpClientHandler
 {
     AllowAutoRedirect = true,
-    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+    // ServerCertificateCustomValidationCallback = (_, _, _, _) => true  // Only for dev with self-signed certs
 };
 var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
 client.DefaultRequestHeaders.Add("Accept", "application/json");

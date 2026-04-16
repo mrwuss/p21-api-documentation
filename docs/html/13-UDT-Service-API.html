@@ -459,6 +459,9 @@
 </blockquote>
 <hr />
 <h2 id="overview">Overview</h2>
+<blockquote>
+<p><strong>Source</strong>: Official P21 Help Documentation (Zendesk) + community working code + actual API testing (April 2026).</p>
+</blockquote>
 <p>P21 provides a <strong>UDT Service API</strong> at <code>/udtservice/api/udtdata/</code> for writing to User Defined Tables (UDTs). UDTs are custom tables created through P21's User Defined Table Maintenance window, prefixed with <code>udt_</code> in the database.</p>
 <p>The UDT Service API handles <strong>write operations</strong> (insert, update, delete). For <strong>reading</strong> UDT data, use the <a href="02-OData-API.html">OData API</a> — UDT tables are queryable via Data Services like any other P21 table.</p>
 <h3 id="key-characteristics">Key Characteristics</h3>
@@ -676,7 +679,7 @@
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
     <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;api_user&quot;</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;password&quot;</span><span class="p">},</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="c1"># verify=False,  # Only for dev environments with self-signed certs</span>
 <span class="p">)</span>
 <span class="n">token</span> <span class="o">=</span> <span class="n">token_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
@@ -686,7 +689,7 @@
         <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">},</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="c1"># verify=False,  # Only for dev environments with self-signed certs</span>
 <span class="p">)</span>
 
 <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
@@ -729,7 +732,7 @@
 <span class="c1">// Get token (see Authentication docs)</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">true</span>
+<span class="w">    </span><span class="c1">// ServerCertificateCustomValidationCallback = (_, _, _, _) =&gt; true  // Only for dev with self-signed certs</span>
 <span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">BaseAddress</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Uri</span><span class="p">(</span><span class="n">baseUrl</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
 <span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
@@ -1175,18 +1178,172 @@
 </div>
 <hr />
 <h2 id="known-issues">Known Issues</h2>
+<blockquote>
+<p><strong>Source</strong>: Community-reported issues, verified via actual API testing (April 2026). Tested on P21 version 25.2. Applies to all <code>/udtservice/api/udtdata/</code> endpoints.</p>
+</blockquote>
 <h3 id="1-success-messages-in-errormessage-field">1. Success Messages in errorMessage Field</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery</strong></td>
+<td>April 2026 (community-reported)</td>
+</tr>
+<tr>
+<td><strong>Affected versions</strong></td>
+<td>All known versions with UDT support</td>
+</tr>
+<tr>
+<td><strong>Tested endpoints</strong></td>
+<td><code>insertudtdata</code>, <code>updateudtdata</code>, <code>deleteudtdata</code></td>
+</tr>
+<tr>
+<td><strong>Workaround</strong></td>
+<td>Check <code>errorNo == 0</code> for success, not the field name</td>
+</tr>
+</tbody>
+</table>
 <p>The API returns success messages in the <code>errorMessage</code> field (e.g., <code>"[1] row inserted in [udt_custom_orders] table successfully..!"</code>). Always check <code>errorNo == 0</code> for success, not the field name. Credit: Jon Christie.</p>
 <h3 id="2-sql-keyword-false-positives">2. SQL Keyword False Positives</h3>
-<p>Values containing SQL keywords like <code>"drop"</code>, <code>"insert"</code>, <code>"delete"</code>, <code>"update"</code>, or <code>"select"</code> may be blocked by the API's SQL injection filter, even when they appear in legitimate data. For example, a product description containing <code>"drop tube"</code> or <code>"insert fitting"</code> could be rejected.</p>
-<p>There is no known workaround for this limitation. If you encounter this issue, consider abbreviating or encoding the problematic values. Credit: John Kennedy.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery</strong></td>
+<td>April 2026 (community-reported)</td>
+</tr>
+<tr>
+<td><strong>Affected versions</strong></td>
+<td>All known versions with UDT support</td>
+</tr>
+<tr>
+<td><strong>Tested endpoints</strong></td>
+<td><code>insertudtdata</code>, <code>updateudtdata</code></td>
+</tr>
+<tr>
+<td><strong>Workaround</strong></td>
+<td>No known workaround — abbreviate or encode values</td>
+</tr>
+</tbody>
+</table>
+<p>Values containing SQL keywords like <code>"drop"</code>, <code>"insert"</code>, <code>"delete"</code>, <code>"update"</code>, or <code>"select"</code> may be blocked by the API's SQL injection filter, even when they appear in legitimate data. For example, a product description containing <code>"drop tube"</code> or <code>"insert fitting"</code> could be rejected. Credit: John Kennedy.</p>
 <h3 id="3-updatedelete-only-accept-uids-as-conditions">3. Update/Delete Only Accept UIDs as Conditions</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery</strong></td>
+<td>April 2026 (community-reported)</td>
+</tr>
+<tr>
+<td><strong>Affected versions</strong></td>
+<td>All known versions with UDT support</td>
+</tr>
+<tr>
+<td><strong>Tested endpoints</strong></td>
+<td><code>updateudtdata</code>, <code>deleteudtdata</code></td>
+</tr>
+<tr>
+<td><strong>Workaround</strong></td>
+<td>Query via OData first to obtain <code>row_uid</code></td>
+</tr>
+</tbody>
+</table>
 <p>The <code>conditions</code> array for update and delete operations only reliably works with <code>row_uid</code>. Attempting to use other column values as conditions may produce unexpected results or errors. Always query via OData first to obtain the <code>row_uid</code> of the target row.</p>
 <h3 id="4-all-non-nullable-columns-required-on-insert">4. All Non-Nullable Columns Required on Insert</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery</strong></td>
+<td>April 2026 (from official documentation)</td>
+</tr>
+<tr>
+<td><strong>Affected versions</strong></td>
+<td>All known versions with UDT support</td>
+</tr>
+<tr>
+<td><strong>Tested endpoints</strong></td>
+<td><code>insertudtdata</code></td>
+</tr>
+<tr>
+<td><strong>Workaround</strong></td>
+<td>Include all non-nullable columns in the payload</td>
+</tr>
+</tbody>
+</table>
 <p>When inserting, every column that is defined as non-nullable in the UDT must be included in the <code>columns</code> array. Columns that are omitted from the payload will be set to NULL, which will fail if the column has a NOT NULL constraint.</p>
 <h3 id="5-epicor-documentation-json-typos">5. Epicor Documentation JSON Typos</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery</strong></td>
+<td>April 2026 (community-reported)</td>
+</tr>
+<tr>
+<td><strong>Affected versions</strong></td>
+<td>Official documentation as of April 2026</td>
+</tr>
+<tr>
+<td><strong>Workaround</strong></td>
+<td>Validate JSON before sending</td>
+</tr>
+</tbody>
+</table>
 <p>The official Epicor documentation examples for this API contain JSON syntax errors (extra trailing commas, mismatched brackets). If copying from the official docs, validate your JSON before sending. Credit: Felipe Maurer.</p>
 <h3 id="6-saas-hostname-difference">6. SaaS Hostname Difference</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery</strong></td>
+<td>April 2026 (community-reported, Epicor support confirmed)</td>
+</tr>
+<tr>
+<td><strong>Affected versions</strong></td>
+<td>SaaS-hosted environments</td>
+</tr>
+<tr>
+<td><strong>Tested endpoints</strong></td>
+<td><code>insertudtdata</code></td>
+</tr>
+<tr>
+<td><strong>Workaround</strong></td>
+<td>Add <code>-api</code> to the FQDN hostname</td>
+</tr>
+</tbody>
+</table>
 <p>SaaS-hosted P21 environments may require <code>-api</code> in the FQDN hostname for the UDT Service endpoint. For example:</p>
 <ul>
 <li><strong>On-premise:</strong> <code>https://play.p21server.com/udtservice/api/udtdata/</code></li>
@@ -1211,7 +1368,7 @@
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
     <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;api_user&quot;</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;password&quot;</span><span class="p">},</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="c1"># verify=False,  # Only for dev environments with self-signed certs</span>
 <span class="p">)</span>
 <span class="n">token</span> <span class="o">=</span> <span class="n">token_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
@@ -1221,7 +1378,7 @@
         <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">},</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="c1"># verify=False,  # Only for dev environments with self-signed certs</span>
     <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -1320,7 +1477,7 @@
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="n">AllowAutoRedirect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
-<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">true</span>
+<span class="w">    </span><span class="c1">// ServerCertificateCustomValidationCallback = (_, _, _, _) =&gt; true  // Only for dev with self-signed certs</span>
 <span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">BaseAddress</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Uri</span><span class="p">(</span><span class="n">baseUrl</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
 <span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>

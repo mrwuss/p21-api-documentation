@@ -1282,6 +1282,31 @@ The payload follows the standard TransactionSet format. Report-specific criteria
 
 The response contains a `DocumentData` field with the base64-encoded PDF content. Decode this field and write the bytes to a `.pdf` file.
 
+**Success response** (PDF generated):
+
+```json
+{
+    "Succeeded": 1,
+    "Failed": 0,
+    "Summary": "Document generated successfully",
+    "DocumentData": "JVBERi0xLjQKJeLjz9MK... (base64-encoded PDF bytes)"
+}
+```
+
+**Error response** (e.g., PO not found):
+
+```json
+{
+    "DateTimeStamp": "/Date(1776344580327)/",
+    "ErrorMessage": "Unexpected results generating document request from criteria. --> Messages returned during document request processing: <No records to print for this range.",
+    "ErrorType": "P21.UI.BulkEditor.BulkEditException",
+    "HostName": "p21web-22",
+    "InnerException": null
+}
+```
+
+> **Note:** Error responses use the standard P21 error envelope (with `ErrorType` and `ErrorMessage`), not the `Summary`/`Messages` format used by the `/transaction` endpoint.
+
 ### Example: Generate and Save a PO Reprint
 
 <!-- tabs -->
@@ -1604,6 +1629,13 @@ if (transactions != null)
 ```
 <!-- /tabs -->
 
+### Endpoint Status
+
+- `GET /api/v2/definition/m_storedprocedureexecutor` -- returns HTTP 200 with DataElements list describing the service structure.
+- `GET /api/v2/defaults/m_storedprocedureexecutor` -- returns HTTP 200 with ~30KB response containing full default field values.
+
+> **Tip:** The defaults endpoint returns the full field structure (~30KB). Use the definition and defaults endpoints to discover available fields before constructing payloads.
+
 ### Key Notes
 
 - **Finding the UID:** The `stored_procedure_def_uid` is found in the P21 Stored Procedure Executor UI -- double-click the Executor Definition ID field to see it. UIDs are only created after first saving an SP definition in the P21 UI, and they differ across environments (dev vs production). *(Credit: Felipe Maurer)*
@@ -1616,6 +1648,9 @@ if (transactions != null)
 ## DynaChange and Popup Handling
 
 The Transaction API respects and enforces **all DynaChange configurations** -- menu changes, screen changes, required user-defined fields, and on-event business rules all fire during TAPI processing, just as they would in the P21 desktop client. *(Credit: Felipe Maurer)*
+
+> **Source**: Community-verified patterns. Tested on P21 version 25.2. Applies to all Transaction API endpoints.
+> **Discovery date**: April 2026 (documented); pattern in production use by multiple organizations.
 
 ### Popup Suppression Pattern
 
@@ -1630,9 +1665,9 @@ Key characteristics:
 
 | Scenario | Workaround |
 |----------|-----------|
-| Visual Rules with response/callback attributes | These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. *(Credit: Brad Vandenbogaerde)* |
-| Wizard-type popups requiring user input | Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input |
-| "Column is disabled" errors | Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. *(Credit: Justin Cassidy)* |
+| Visual Rules with response/callback attributes | (Community-reported) These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. *(Credit: Brad Vandenbogaerde)* |
+| Wizard-type popups requiring user input | (Verified) Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input |
+| "Column is disabled" errors | (Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. *(Credit: Justin Cassidy)* |
 
 ### Response Validation
 
