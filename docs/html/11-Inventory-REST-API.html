@@ -373,6 +373,7 @@
         <li><a href="10-Changelog.html">Changelog</a></li>
         <li class="active"><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -425,6 +426,13 @@
 </li>
 <li><a href="#automation-example">Automation Example</a><ul>
 <li><a href="#batch-processing-tips">Batch Processing Tips</a></li>
+</ul>
+</li>
+<li><a href="#pricing-endpoints">Pricing Endpoints</a><ul>
+<li><a href="#single-item-pricing">Single Item Pricing</a></li>
+<li><a href="#verified-pricing-response">Verified Pricing Response</a></li>
+<li><a href="#pricing-error-response">Pricing Error Response</a></li>
+<li><a href="#url-encoding-for-special-characters">URL Encoding for Special Characters</a></li>
 </ul>
 </li>
 <li><a href="#known-limitations">Known Limitations</a></li>
@@ -516,9 +524,15 @@
 </tr>
 <tr>
 <td><code>GET</code></td>
-<td><code>/api/inventory/parts/{ItemId}/price</code></td>
-<td>Item pricing</td>
-<td>Not tested</td>
+<td><code>/api/inventory/parts/{ItemId}/v2/price</code></td>
+<td>Single item pricing (V2)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inventory/v2/parts/v2/price/{ItemId}</code></td>
+<td>Single item pricing (alternative path)</td>
+<td>Yes</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -1641,6 +1655,158 @@
 <li><strong>Retry logic</strong> — P21 may return transient lock errors; retry with a short delay (1–2 seconds)</li>
 </ol>
 <hr />
+<h2 id="pricing-endpoints">Pricing Endpoints</h2>
+<blockquote>
+<p><strong>Added April 2026</strong> — Community-sourced discovery. Credit: Felipe Maurer, John Kennedy.</p>
+</blockquote>
+<p>The Inventory REST API provides multiple pricing endpoints for retrieving customer-specific pricing.</p>
+<h3 id="single-item-pricing">Single Item Pricing</h3>
+<p>Two URL patterns are available for single-item pricing:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/parts/{ItemId}/v2/price?companyId=ACME&amp;customerId=10&amp;salesLocId=100&amp;sourceLocId=100&amp;uom=EA&amp;priceUom=EA&amp;unitQuantity=1</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Accept: application/json</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/v2/parts/v2/price/{ItemId}?companyid=ACME&amp;customerId=10&amp;sourceLocId=100&amp;salesLocId=100</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Accept: application/json</span>
+</code></pre></div>
+
+<p>Both endpoints accept the same query parameters and return customer-specific pricing.</p>
+<p><strong>Required parameters:</strong>
+- <code>companyId</code> — Company ID
+- <code>customerId</code> — Customer ID for pricing lookup
+- <code>salesLocId</code> — Sales location ID
+- <code>sourceLocId</code> — Source/ship location ID
+- <code>uom</code> — Unit of measure (e.g., <code>EA</code>)
+- <code>priceUom</code> — Price unit of measure (e.g., <code>EA</code>)
+- <code>unitQuantity</code> — Quantity for price break calculation</p>
+<h3 id="verified-pricing-response">Verified Pricing Response</h3>
+<p>The pricing endpoint returns both pricing AND availability data for the requested location in a single response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;UnitPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.750000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;BaseUnitPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.750000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UOM&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EA&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UOMUnitSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.000000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PricePageUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PriceUOM&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EA&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PriceUnitSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.000000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ExtendedPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.750000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CalcValue&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.000000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UnitCommissionCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">8.500000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UnitOtherCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">8.500000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UnitSalesCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">8.500000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LotCosted&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LocationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;QuantityAvailable&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">250.000000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;QuantityOnHand&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">300.000000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;QuantityAllocated&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.000000000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;QuantityNonPickable&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;QuantityQuarantined&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;QuantityFrozen&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LocationType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> The response includes both pricing AND availability data for the requested location. <code>QuantityAvailable</code> = <code>QuantityOnHand</code> - <code>QuantityAllocated</code> (minus non-pickable, quarantined, and frozen). <code>CompanyId</code> may be <code>null</code> in the response even when specified in the request.</p>
+</blockquote>
+<p><strong>Key fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UnitPrice</code></td>
+<td>Customer-specific unit price after price page evaluation</td>
+</tr>
+<tr>
+<td><code>BaseUnitPrice</code></td>
+<td>Base unit price before customer-specific adjustments</td>
+</tr>
+<tr>
+<td><code>ExtendedPrice</code></td>
+<td><code>UnitPrice</code> x <code>unitQuantity</code> from request</td>
+</tr>
+<tr>
+<td><code>UnitCommissionCost</code> / <code>UnitOtherCost</code> / <code>UnitSalesCost</code></td>
+<td>Cost breakdown for margin calculations</td>
+</tr>
+<tr>
+<td><code>PricePageUid</code></td>
+<td>Price page that determined the price (<code>0</code> = no price page matched)</td>
+</tr>
+<tr>
+<td><code>QuantityAvailable</code></td>
+<td>Available to sell (on hand minus allocated/holds)</td>
+</tr>
+<tr>
+<td><code>QuantityOnHand</code></td>
+<td>Physical quantity at the location</td>
+</tr>
+<tr>
+<td><code>LocationType</code></td>
+<td>Location type (e.g., <code>"Standard"</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pricing-error-response">Pricing Error Response</h3>
+<p>When the item is not valid or not defined at the requested location, the API returns the standard P21 error envelope:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Date(1776347610527)/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Item is not valid or not defined at this location&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Business.Common.BusinessException&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-22&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> The <code>DateTimeStamp</code> uses the Microsoft JSON date format (<code>/Date(milliseconds)/</code>). The <code>ErrorType</code> for pricing errors is <code>P21.Business.Common.BusinessException</code>, distinct from the <code>P21.Common.Exceptions.Prophet21Exception</code> used by item CRUD errors.</p>
+</blockquote>
+<h3 id="url-encoding-for-special-characters">URL Encoding for Special Characters</h3>
+<p>When item IDs contain special characters, URL encoding is required:</p>
+<table>
+<thead>
+<tr>
+<th>Character</th>
+<th>Encoding</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>#</code></td>
+<td><code>%23</code></td>
+<td><strong>Works</strong> — e.g., <code>ORDER%23TEST</code></td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td><code>%2F</code></td>
+<td><strong>Broken</strong> — returns 404 "Endpoint not found"</td>
+</tr>
+<tr>
+<td><code>&amp;</code></td>
+<td><code>%26</code></td>
+<td>Use standard URL encoding</td>
+</tr>
+<tr>
+<td><code>+</code></td>
+<td><code>%2B</code></td>
+<td>Use standard URL encoding</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Known Issue</strong>: Forward slash (<code>/</code>) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets <code>%2F</code> as a literal path separator, returning 404. There is no known workaround for items containing <code>/</code> in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)</p>
+</blockquote>
+<hr />
 <h2 id="known-limitations">Known Limitations</h2>
 <ol>
 <li>
@@ -1651,6 +1817,9 @@
 </li>
 <li>
 <p><strong>Item accessibility</strong> — Some items that exist in <code>inv_mast</code> (visible via OData) return 404 from this API. This may be related to item status or configuration.</p>
+</li>
+<li>
+<p><strong>Forward slash in item IDs</strong> — The <code>%2F</code> URL encoding for <code>/</code> is interpreted as a path separator by IIS, causing 404 errors on pricing and other endpoints that include the item ID in the URL path. This affects both pricing endpoint URL patterns.</p>
 </li>
 </ol>
 <hr />

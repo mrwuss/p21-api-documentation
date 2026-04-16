@@ -373,6 +373,7 @@
         <li><a href="10-Changelog.html">Changelog</a></li>
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -403,7 +404,19 @@
 </ul>
 </li>
 <li><a href="#finding-field-names">Finding Field Names</a></li>
-<li><a href="#response-windows">Response Windows</a></li>
+<li><a href="#window-discovery-techniques">Window Discovery Techniques</a><ul>
+<li><a href="#1-get-window-state">1. Get Window State</a></li>
+<li><a href="#2-get-available-tools">2. Get Available Tools</a></li>
+<li><a href="#3-get-current-data">3. Get Current Data</a></li>
+<li><a href="#4-check-result-events">4. Check Result Events</a></li>
+<li><a href="#5-p21-sql-information">5. P21 SQL Information</a></li>
+<li><a href="#6-browser-devtools">6. Browser DevTools</a></li>
+</ul>
+</li>
+<li><a href="#response-windows">Response Windows</a><ul>
+<li><a href="#response-window-handling-tabless-windows">Response Window Handling (Tabless Windows)</a></li>
+</ul>
+</li>
 <li><a href="#changing-tabs">Changing Tabs</a></li>
 <li><a href="#running-tools-buttons">Running Tools (Buttons)</a><ul>
 <li><a href="#get-available-tools">Get Available Tools</a></li>
@@ -434,6 +447,7 @@
 </ul>
 </li>
 <li><a href="#self-documenting-help-endpoints">Self-Documenting Help Endpoints</a></li>
+<li><a href="#v1-rest-endpoint-reference-sdk-internal">V1 REST Endpoint Reference (SDK Internal)</a></li>
 <li><a href="#best-practices">Best Practices</a></li>
 <li><a href="#common-errors">Common Errors</a></li>
 <li><a href="#session-vs-transaction-api">Session vs Transaction API</a></li>
@@ -871,7 +885,71 @@
 
 <blockquote>
 <p><strong>Note:</strong> v2 uses <code>List</code> with <code>TabName</code>, while v1 uses <code>ChangeRequests</code> with <code>DataWindowName</code>. The <code>DatawindowName</code> field in v2 uses lowercase 'w'.</p>
-<p><strong>P21 25.2+ Breaking Change:</strong> <code>DatawindowName</code> is now effectively <strong>required</strong> for v2 change requests. The 3-parameter form (TabName + FieldName + Value) stopped working after the 25.2 upgrade — you must include <code>DatawindowName</code> as the 4th field. This affects multiple windows including Item, PO Receiving Group, Delivery List, and Group Pick Ticket. Window data structures changed in 25.2 so the server can no longer auto-resolve the target datawindow from TabName alone. <strong>Always include <code>DatawindowName</code> in change requests.</strong></p>
+<p><strong>P21 25.2+ Breaking Change:</strong> <code>DatawindowName</code> is now effectively <strong>required</strong> for v2 change requests. The 3-parameter form (TabName + FieldName + Value) stopped working after the 25.2 upgrade — you must include <code>DatawindowName</code> as the 4th field. Window data structures changed in 25.2 so the server can no longer auto-resolve the target datawindow from TabName alone. <strong>Always include <code>DatawindowName</code> in change requests.</strong></p>
+<p><strong>Affected windows (confirmed):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Window</th>
+<th>Affected Field</th>
+<th>Reporter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Item</td>
+<td>Various</td>
+<td>Community reports</td>
+</tr>
+<tr>
+<td>PO Receiving Group</td>
+<td><code>po_criteria_id</code> on <code>Criteria</code> tab</td>
+<td>Jeff Patterson, Josiah Shollenberger</td>
+</tr>
+<tr>
+<td>Delivery List</td>
+<td>Various</td>
+<td>Community reports</td>
+</tr>
+<tr>
+<td>Group Pick Ticket</td>
+<td>Various</td>
+<td>Community reports</td>
+</tr>
+<tr>
+<td>ConvertPOToVoucher</td>
+<td><code>po_no</code> on <code>Voucher Information</code> tab</td>
+<td>Jeff Patterson, Josiah Shollenberger</td>
+</tr>
+<tr>
+<td>Order Entry</td>
+<td><code>order_no</code> on <code>Order</code> tab</td>
+<td>Neil Timmerman</td>
+</tr>
+<tr>
+<td>Clippership Auto Shipping</td>
+<td><code>pick_ticket_no</code></td>
+<td>Josh Owen</td>
+</tr>
+<tr>
+<td>Doc Links</td>
+<td>Various</td>
+<td>Jaime Nelson</td>
+</tr>
+</tbody>
+</table>
+<p>The bug persists through at least version <strong>25.2.5776.1</strong>. Epicor has acknowledged this as a development bug.</p>
+</blockquote>
+<p><strong>Fix example (C# SDK):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Broken in 25.2+:</span>
+<span class="n">porgwindow</span><span class="p">.</span><span class="n">ChangeData</span><span class="p">(</span><span class="s">&quot;Criteria&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_criteria_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;20&quot;</span><span class="p">);</span>
+
+<span class="c1">// Fixed — include DatawindowName:</span>
+<span class="n">porgwindow</span><span class="p">.</span><span class="n">ChangeData</span><span class="p">(</span><span class="s">&quot;Criteria&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_criteria_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;20&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<blockquote>
+<p><em>Credit: David Sokoloski (first discovered 4-param workaround), Jeff Patterson (confirmed fix)</em></p>
 </blockquote>
 <h4 id="valuetype">ValueType</h4>
 <p>Each change request supports an optional <code>ValueType</code> field:</p>
@@ -951,6 +1029,135 @@
 <li>Note the datawindow name and column name</li>
 </ol>
 <hr />
+<h2 id="window-discovery-techniques">Window Discovery Techniques</h2>
+<blockquote>
+<p><strong>Source</strong>: Community working code + actual API testing (April 2026). Credit: Jon Christie.</p>
+</blockquote>
+<p>Understanding a window's structure is essential before automating it. These techniques help you discover datawindow names, field names, available tools, and current data.</p>
+<h3 id="1-get-window-state">1. Get Window State</h3>
+<p>After opening a window, call <code>GetState()</code> (SDK) or <code>GET /api/ui/interactive/v2/window?id={windowId}</code> (REST) to retrieve the full window definition. This returns all datawindows, fields, tabs, enabled states, and current data structure.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_window_state</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span>
+    <span class="n">ui_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get full window state including datawindows, fields, and tabs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        client: httpx async client.</span>
+<span class="sd">        ui_url: UI server base URL.</span>
+<span class="sd">        headers: Request headers with auth token.</span>
+<span class="sd">        window_id: The window ID to inspect.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Parsed window definition dict.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/window&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+    <span class="c1"># Enumerate datawindows and their fields</span>
+    <span class="k">for</span> <span class="n">dw</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Datawindows&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="n">dw_name</span> <span class="o">=</span> <span class="n">dw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span>
+        <span class="n">parent_tab</span> <span class="o">=</span> <span class="n">dw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ParentPage&quot;</span><span class="p">)</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">dw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Fields&quot;</span><span class="p">,</span> <span class="p">[])]</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;Datawindow </span><span class="si">%s</span><span class="s2"> (tab: </span><span class="si">%s</span><span class="s2">) — fields: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">dw_name</span><span class="p">,</span> <span class="n">parent_tab</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">state</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetWindowStateAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">http</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">uiUrl</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Get full window state including datawindows, fields, and tabs.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{uiUrl}/api/ui/interactive/v2/window?id={windowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="w">    </span><span class="c1">// Enumerate datawindows and their fields</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">dw</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">state</span><span class="p">[</span><span class="s">&quot;Datawindows&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">dwName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dw</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">parentTab</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dw</span><span class="p">[</span><span class="s">&quot;ParentPage&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">dw</span><span class="p">[</span><span class="s">&quot;Fields&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">)</span><span class="o">?</span>
+<span class="w">            </span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">f</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">f</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">())</span>
+<span class="w">            </span><span class="p">.</span><span class="n">ToList</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string?</span><span class="o">&gt;</span><span class="p">();</span>
+
+<span class="w">        </span><span class="n">_logger</span><span class="p">.</span><span class="n">LogInformation</span><span class="p">(</span>
+<span class="w">            </span><span class="s">&quot;Datawindow {DwName} (tab: {ParentTab}) — fields: {Fields}&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">dwName</span><span class="p">,</span><span class="w"> </span><span class="n">parentTab</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="p">.</span><span class="n">Join</span><span class="p">(</span><span class="s">&quot;, &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">fields</span><span class="p">));</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">state</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p><strong>Example response</strong> (sanitized, structure varies by window):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Definition&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order Entry&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Datawindows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;form&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Fields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;order_no&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order No&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataType&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
+<span class="w">          </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Customer ID&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataType&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;TabPageList&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DisplayText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Line_Items&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DisplayText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Line Items&quot;</span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Tip:</strong> Response windows return an empty <code>TabPageList</code> — that is how you can distinguish them from normal windows programmatically.</p>
+</blockquote>
+<h3 id="2-get-available-tools">2. Get Available Tools</h3>
+<p>Call <code>GetTools()</code> (SDK) or <code>GET /api/ui/interactive/v2/tools?windowId={windowId}</code> (REST) to see available buttons. Tools can be queried at window, datawindow, and field levels by adding <code>dwName</code>, <code>fieldName</code>, and <code>row</code> parameters.</p>
+<p><strong>Example response:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cb_ok&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cb_cancel&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_addlink&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Document_Link&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3 id="3-get-current-data">3. Get Current Data</h3>
+<p>Call <code>GetData()</code> (SDK) or <code>GET /api/ui/interactive/v2/data?id={windowId}</code> (REST) to retrieve the current data in each datawindow on the active tab. Returns column names, row data, active row index, and total row count.</p>
+<h3 id="4-check-result-events">4. Check Result Events</h3>
+<p>Every API response includes an <code>Events</code> collection. When a response window opens, look for <code>Name: "windowopened"</code> events. When tabs become enabled, look for <code>Name: "tabpageenabled"</code> events. When a new record is saved, look for <code>Name: "keygenerated"</code> events.</p>
+<h3 id="5-p21-sql-information">5. P21 SQL Information</h3>
+<p>In the P21 desktop or web client, right-click any field and select <strong>Help &gt; SQL Information</strong>. This dialog shows:
+- <strong>Datawindow name</strong> — the name to use in <code>DatawindowName</code> for change requests
+- <strong>Column name</strong> — the field name to use in <code>FieldName</code>
+- <strong>Table name</strong> — the underlying database table</p>
+<p>This is the most reliable way to determine the exact names the API expects.</p>
+<h3 id="6-browser-devtools">6. Browser DevTools</h3>
+<p>When using the P21 Web Client, open your browser's Developer Tools (F12) and watch the <strong>Network</strong> tab. Every action you perform in the UI generates REST calls to the Interactive API. This lets you see the exact payloads, endpoints, and field names the web client uses — which you can replicate in your automation.</p>
+<hr />
 <h2 id="response-windows">Response Windows</h2>
 <p>Response windows (dialogs) can pop up during operations. When this happens:</p>
 <ol>
@@ -983,6 +1190,112 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <p><strong>Note:</strong> The <code>Events[].Data</code> field uses a key-value list format:
 <code>[{"Key": "windowid", "Value": "..."}]</code></p>
 </blockquote>
+<h3 id="response-window-handling-tabless-windows">Response Window Handling (Tabless Windows)</h3>
+<p>Response windows (popup dialogs) have <strong>no tabs</strong>. When you receive <code>Status: 3</code> (Blocked), a response window has appeared and you must interact with it before continuing. The critical difference from normal windows is that change requests on response windows require <code>TabName = null</code> because there are no tabs to reference.</p>
+<p><strong>REST API pattern:</strong></p>
+<p>Include <code>"TabName": null</code> in the change request payload:</p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/cha</span><span class="kc">n</span><span class="err">ge</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_response_123&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;List&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;datawindow_name&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;field_name&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>REST examples (Python / C#):</strong></p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">change_response_window_field</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span>
+    <span class="n">ui_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">response_window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">datawindow_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Change a field on a tabless response window.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        client: httpx async client.</span>
+<span class="sd">        ui_url: UI server base URL.</span>
+<span class="sd">        headers: Request headers with auth token.</span>
+<span class="sd">        response_window_id: The response window ID from the windowopened event.</span>
+<span class="sd">        datawindow_name: Datawindow name within the response window.</span>
+<span class="sd">        field_name: Field to change.</span>
+<span class="sd">        value: New value.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Parsed response dict.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/change&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">response_window_id</span><span class="p">,</span>
+            <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">datawindow_name</span><span class="p">,</span>
+                    <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="n">field_name</span><span class="p">,</span>
+                    <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ChangeResponseWindowFieldAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">http</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">uiUrl</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">responseWindowId</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Response windows have no tabs — set TabName to null</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseWindowId</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{uiUrl}/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Note:</strong> The <code>TabName: null</code> pattern applies to response windows that accept change requests (editable dialogs with Status: 3/Blocked). <code>w_message</code> dialogs cannot be edited programmatically. Use <code>ResponseWindowHandlingEnabled: false</code> in the session configuration to auto-answer message box dialogs with their default button.</p>
+</blockquote>
+<p><strong>Common response window buttons:</strong> <code>cb_ok</code>, <code>cb_cancel</code>, <code>cb_finish</code>, <code>cb_yes</code>, <code>cb_no</code></p>
+<p>Use <code>GET /api/ui/interactive/v2/tools?windowId={responseWindowId}</code> to discover which buttons are available, then <code>POST /api/ui/interactive/v2/tools</code> to click them. See the <a href="#response-window-types">Response Window Types</a> section below for dismissal patterns.</p>
+<p><em>Credit: Jon Christie</em></p>
 <hr />
 <h2 id="changing-tabs">Changing Tabs</h2>
 <p>Before changing fields on a different tab, select the tab first:</p>
@@ -2155,6 +2468,93 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 
 <blockquote>
 <p><strong>Tip:</strong> These are useful for discovering endpoints and verifying parameter names on your specific P21 version.</p>
+</blockquote>
+<hr />
+<h2 id="v1-rest-endpoint-reference-sdk-internal">V1 REST Endpoint Reference (SDK Internal)</h2>
+<p>The C# SDK (<code>P21.UI.Service.Client</code>) calls these V1 REST endpoints internally. They are listed here for reference — the V2 endpoints documented <a href="#window-operations-v2">above</a> are recommended for direct REST access. Understanding the V1 paths is useful when debugging SDK behavior or reading network traces.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>V1 Endpoint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/uiserver0/ui/common/v1/sessions</code></td>
+<td>Create session</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/uiserver0/ui/common/v1/sessions</code></td>
+<td>End session</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/uiserver0/ui/interactive/v1/window</code></td>
+<td>Open window</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/uiserver0/ui/interactive/v1/window</code></td>
+<td>Get state</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/uiserver0/ui/interactive/v1/window</code></td>
+<td>Close window</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/uiserver0/ui/interactive/v1/change</code></td>
+<td>Change data</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/uiserver0/ui/interactive/v1/data</code></td>
+<td>Save data</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/uiserver0/ui/interactive/v1/data</code></td>
+<td>Get data</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/uiserver0/ui/interactive/v1/data</code></td>
+<td>Clear data</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/uiserver0/ui/interactive/v1/tab</code></td>
+<td>Change tab</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/uiserver0/ui/interactive/v1/tools</code></td>
+<td>Get tools</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/uiserver0/ui/interactive/v1/tools</code></td>
+<td>Run tool</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/uiserver0/ui/interactive/v1/row</code></td>
+<td>Add row</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/uiserver0/ui/interactive/v1/row</code></td>
+<td>Change row</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The <code>uiserver0</code> prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check <code>GET /api/ui/router/v1?urlType=external</code> to obtain the correct base URL.</p>
 </blockquote>
 <hr />
 <h2 id="best-practices">Best Practices</h2>

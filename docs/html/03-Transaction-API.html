@@ -373,6 +373,7 @@
         <li><a href="10-Changelog.html">Changelog</a></li>
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -396,6 +397,7 @@
 </ul>
 </li>
 <li><a href="#common-services">Common Services</a><ul>
+<li><a href="#report-services">Report Services</a></li>
 <li><a href="#production-assembly-labor-services">Production, Assembly &amp; Labor Services</a></li>
 </ul>
 </li>
@@ -431,6 +433,27 @@
 <li><a href="#service-reference">Service Reference</a><ul>
 <li><a href="#jobcontractpricing-service">JobContractPricing Service</a></li>
 <li><a href="#assembly-service">Assembly Service</a></li>
+</ul>
+</li>
+<li><a href="#pdf-report-generation">PDF Report Generation</a><ul>
+<li><a href="#verified-report-services">Verified Report Services</a></li>
+<li><a href="#request-structure_1">Request Structure</a></li>
+<li><a href="#response">Response</a></li>
+<li><a href="#example-generate-and-save-a-po-reprint">Example: Generate and Save a PO Reprint</a></li>
+</ul>
+</li>
+<li><a href="#stored-procedure-executor">Stored Procedure Executor</a><ul>
+<li><a href="#discovery">Discovery</a></li>
+<li><a href="#loading-a-stored-procedure-definition">Loading a Stored Procedure Definition</a></li>
+<li><a href="#verified-service-definition">Verified Service Definition</a></li>
+<li><a href="#endpoint-status">Endpoint Status</a></li>
+<li><a href="#key-notes">Key Notes</a></li>
+</ul>
+</li>
+<li><a href="#dynachange-and-popup-handling">DynaChange and Popup Handling</a><ul>
+<li><a href="#popup-suppression-pattern">Popup Suppression Pattern</a></li>
+<li><a href="#limitations">Limitations</a></li>
+<li><a href="#response-validation">Response Validation</a></li>
 </ul>
 </li>
 <li><a href="#code-examples">Code Examples</a></li>
@@ -532,6 +555,11 @@
 <td><code>/api/v2/commands</code></td>
 <td>POST</td>
 <td>Process special commands (see <a href="#commands-endpoint">Commands Endpoint</a>)</td>
+</tr>
+<tr>
+<td><code>/api/v2/process/pdfreport</code></td>
+<td>POST</td>
+<td>Generate PDF reports (see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -777,6 +805,33 @@
 <td><code>Task</code></td>
 <td>Task Entry</td>
 <td>Create tasks/activities</td>
+</tr>
+<tr>
+<td><code>m_storedprocedureexecutor</code></td>
+<td>Stored Procedure Executor</td>
+<td>Load and execute stored procedure definitions (see <a href="#stored-procedure-executor">Stored Procedure Executor</a>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="report-services">Report Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>P21 Window</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>m_reprintpurchaseorders</code></td>
+<td>PO Reprint</td>
+<td>Purchase order PDF reprints (see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
+</tr>
+<tr>
+<td><code>m_reprintpicktickets</code></td>
+<td>Pick Ticket Reprint</td>
+<td>Pick ticket PDF reprints</td>
 </tr>
 </tbody>
 </table>
@@ -2206,6 +2261,603 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">messages</span><span class="p">)</span>
 <span class="w">            </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  Message: {msg}&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<hr />
+<h2 id="pdf-report-generation">PDF Report Generation</h2>
+<p>The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.</p>
+<p><strong>Endpoint:</strong> <code>POST {ui_server}/api/v2/process/pdfreport</code></p>
+<h3 id="verified-report-services">Verified Report Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service Name</th>
+<th>Report Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>m_reprintpurchaseorders</code></td>
+<td>Purchase Order reprints</td>
+</tr>
+<tr>
+<td><code>m_reprintpicktickets</code></td>
+<td>Pick Ticket reprints</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Discovery:</strong> Use <code>GET /api/v2/services?type=report</code> to list available report services. Use <code>GET /api/v2/definition/{service_name}</code> to inspect the DataElement structure and field names for each report.</p>
+</blockquote>
+<h3 id="request-structure_1">Request Structure</h3>
+<p>The payload follows the standard TransactionSet format. Report-specific criteria go in the DataElement's <code>Edits</code> array:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_reprintpurchaseorders&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">            </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">            </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.poreportcriteriadw&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">                </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;beg_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;end_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">}</span>
+<span class="w">                </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}],</span>
+<span class="w">            </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">        </span><span class="p">}],</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="p">}],</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="response">Response</h3>
+<p>The response is a <strong>JSON array</strong> (even for a single document). Each element contains document metadata and the base64-encoded PDF content. Decode the <code>DocumentData</code> field and write the bytes to a <code>.pdf</code> file.</p>
+<p><strong>Verified success response</strong> (generalized from live PO reprint):</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ClientId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;9a58084c-b2e5-451f-a8d3-6564594017f2&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO500100 PURCHASE_ORDER&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentFormat&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO500100 PURCHASE_ORDER&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;FileName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO500100 PURCHASE_ORDER.pdf&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentContentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/pdf&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentData&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JVBERi0xLjQK... (base64-encoded PDF bytes, ~150KB for a typical PO)&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ResponseStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;StatusCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Success&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form request &#39;&#39; for Form ID PO500100 PURCHASE_ORDER has completed.&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;StackTrace&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;Batch&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DocumentAssociations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p><strong>Key notes:</strong></p>
+<ul>
+<li>Response is a <strong>JSON array</strong>, not a single object -- even when generating one document</li>
+<li><code>DocumentData</code> contains the base64-encoded PDF bytes (~150KB for a typical PO)</li>
+<li><code>FileName</code> includes the <code>.pdf</code> extension (e.g., <code>"PO500100 PURCHASE_ORDER.pdf"</code>)</li>
+<li><code>ResponseStatus.StatusCode</code> is <code>"Success"</code> on success</li>
+<li><code>DocumentFormat</code> value <code>5</code> corresponds to PDF format</li>
+<li><code>DocumentContentType</code> is <code>"application/pdf"</code></li>
+</ul>
+<p><strong>Error response</strong> (e.g., PO not found):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Date(1776344580327)/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unexpected results generating document request from criteria. --&gt; Messages returned during document request processing: &lt;No records to print for this range.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.UI.BulkEditor.BulkEditException&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-22&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> Error responses use the standard P21 error envelope (with <code>ErrorType</code> and <code>ErrorMessage</code>), not the <code>Summary</code>/<code>Messages</code> format used by the <code>/transaction</code> endpoint.</p>
+</blockquote>
+<h3 id="example-generate-and-save-a-po-reprint">Example: Generate and Save a PO Reprint</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># Authenticate and get UI server URL</span>
+<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">auth_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;api_user&quot;</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;api_pass&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">auth_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">token</span> <span class="o">=</span> <span class="n">auth_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+
+<span class="n">router_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">router_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">router_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Generate PO reprint PDF</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;m_reprintpurchaseorders&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.poreportcriteriadw&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+                    <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;beg_po_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;500100&quot;</span><span class="p">},</span>
+                    <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;end_po_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;500100&quot;</span><span class="p">},</span>
+                    <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;Y&quot;</span><span class="p">},</span>
+                <span class="p">]</span>
+            <span class="p">}],</span>
+            <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}],</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/v2/process/pdfreport&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># Response is a JSON array -- even for a single document</span>
+<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ResponseStatus&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;StatusCode&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;Success&quot;</span> <span class="ow">and</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">):</span>
+        <span class="n">pdf_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">])</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;FileName&quot;</span><span class="p">,</span> <span class="s2">&quot;PO_500100.pdf&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">)</span><span class="si">}</span><span class="s2"> bytes)&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ResponseStatus&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Message&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown error&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Report failed: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No documents returned&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.IO</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
+
+<span class="c1">// Authenticate and get UI server URL</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">httpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
+<span class="n">httpClient</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">authBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;username&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;password&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">authContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">authBody</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">authResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">httpClient</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com/api/security/token/v2&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">authContent</span><span class="p">);</span>
+<span class="n">authResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">authJson</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">authResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">authJson</span><span class="p">[</span><span class="s">&quot;AccessToken&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+
+<span class="n">httpClient</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Net</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">routerResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">httpClient</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com/api/ui/router/v1?urlType=external&quot;</span><span class="p">);</span>
+<span class="n">routerResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">routerJson</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">routerResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServerUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">routerJson</span><span class="p">[</span><span class="s">&quot;Url&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">().</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+
+<span class="c1">// Generate PO reprint PDF</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;m_reprintpurchaseorders&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;Transactions&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;DataElements&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.poreportcriteriadw&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;beg_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;500100&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;end_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;500100&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">}</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="na">[&quot;Status&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="na">[&quot;UseCodeValues&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">    </span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">httpClient</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/v2/process/pdfreport&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">resultArray</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JArray</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="c1">// Response is a JSON array -- even for a single document</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">resultArray</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resultArray</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JObject</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;ResponseStatus&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;StatusCode&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">documentData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;DocumentData&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Success&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">documentData</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">pdfBytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Convert</span><span class="p">.</span><span class="n">FromBase64String</span><span class="p">(</span><span class="n">documentData</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">filename</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;FileName&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;PO_500100.pdf&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">File</span><span class="p">.</span><span class="n">WriteAllBytesAsync</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">pdfBytes</span><span class="p">);</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Saved {filename} ({pdfBytes.Length} bytes)&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">else</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;ResponseStatus&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Message&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;Unknown error&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Report failed: {msg}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="k">else</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;No documents returned&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Credit:</strong> Jeff Poss discovered the <code>/api/v2/process/pdfreport</code> endpoint and payload structure.</p>
+</blockquote>
+<hr />
+<h2 id="stored-procedure-executor">Stored Procedure Executor</h2>
+<p>The <code>m_storedprocedureexecutor</code> service provides Transaction API access to P21's Stored Procedure Executor, allowing you to discover and load stored procedure definitions configured in the P21 UI.</p>
+<h3 id="discovery">Discovery</h3>
+<div class="highlight"><pre><span></span><code><span class="err">GET {ui_server}/api/v2/definition/m_storedprocedureexecutor</span>
+<span class="err">GET {ui_server}/api/v2/defaults/m_storedprocedureexecutor</span>
+</code></pre></div>
+
+<h3 id="loading-a-stored-procedure-definition">Loading a Stored Procedure Definition</h3>
+<p>Use <code>POST /api/v2/transaction/get</code> with the <code>stored_procedure_def_uid</code> key to retrieve a specific stored procedure definition and its parameters:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># Authenticate and get UI server URL (see Authentication examples above)</span>
+<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">auth_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;api_user&quot;</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;api_pass&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">auth_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">token</span> <span class="o">=</span> <span class="n">auth_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+
+<span class="n">router_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">router_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">router_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Load a stored procedure definition by UID</span>
+<span class="n">sp_uid</span> <span class="o">=</span> <span class="s2">&quot;12345&quot;</span>  <span class="c1"># Found in P21 Stored Procedure Executor UI</span>
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;m_storedprocedureexecutor&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TransactionStates&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;DataElementName&quot;</span><span class="p">:</span> <span class="s2">&quot;DEFINITION.stored_procedure_def&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;stored_procedure_def_uid&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">sp_uid</span><span class="p">,</span>
+        <span class="p">}],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/v2/transaction/get&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># The response includes the SP definition and its argument_list parameters</span>
+<span class="k">for</span> <span class="n">txn</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Transactions&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+    <span class="k">for</span> <span class="n">de</span> <span class="ow">in</span> <span class="n">txn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DataElements&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DataElement: </span><span class="si">{</span><span class="n">de</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">de</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Rows&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">for</span> <span class="n">edit</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Edits&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">edit</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">edit</span><span class="p">[</span><span class="s1">&#39;Value&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
+
+<span class="c1">// Authenticate and get UI server URL (see Authentication examples above)</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">httpClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
+<span class="n">httpClient</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">authBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;username&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;password&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">authContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">authBody</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">authResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">httpClient</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com/api/security/token/v2&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">authContent</span><span class="p">);</span>
+<span class="n">authResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">authJson</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">authResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">authJson</span><span class="p">[</span><span class="s">&quot;AccessToken&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+
+<span class="n">httpClient</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Net</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">routerResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">httpClient</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com/api/ui/router/v1?urlType=external&quot;</span><span class="p">);</span>
+<span class="n">routerResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">routerJson</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">routerResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServerUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">routerJson</span><span class="p">[</span><span class="s">&quot;Url&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">().</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+
+<span class="c1">// Load a stored procedure definition by UID</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">spUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;12345&quot;</span><span class="p">;</span><span class="w"> </span><span class="c1">// Found in P21 Stored Procedure Executor UI</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;ServiceName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;m_storedprocedureexecutor&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;TransactionStates&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;DataElementName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;DEFINITION.stored_procedure_def&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;stored_procedure_def_uid&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">spUid</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">    </span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">httpClient</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/v2/transaction/get&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="c1">// The response includes the SP definition and its argument_list parameters</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">transactions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Transactions&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">transactions</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">txn</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">transactions</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">dataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">txn</span><span class="p">[</span><span class="s">&quot;DataElements&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">dataElements</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">null</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">de</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">dataElements</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;DataElement: {de[&quot;</span><span class="n">Name</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">de</span><span class="p">[</span><span class="s">&quot;Rows&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rows</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">null</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">rows</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="kt">var</span><span class="w"> </span><span class="n">edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">[</span><span class="s">&quot;Edits&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">edits</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">null</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">                </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">edit</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">edits</span><span class="p">)</span>
+<span class="w">                    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  {edit[&quot;</span><span class="n">Name</span><span class="s">&quot;]}: {edit[&quot;</span><span class="n">Value</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<h3 id="verified-service-definition">Verified Service Definition</h3>
+<p>The definition endpoint returns the following structure for the <code>DEFINITION.stored_procedure_def</code> DataElement:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stored_procedure_def_uid</code></td>
+<td>Long</td>
+<td>Key</td>
+<td>Unique identifier for the SP definition</td>
+</tr>
+<tr>
+<td><code>stored_procedure_description</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Human-readable description of the stored procedure</td>
+</tr>
+<tr>
+<td><code>stored_procedure_default_timeout</code></td>
+<td>Long</td>
+<td>No</td>
+<td>Default execution timeout (seconds)</td>
+</tr>
+<tr>
+<td><code>row_status_flag</code></td>
+<td>Long</td>
+<td>No</td>
+<td>Record status (ValidValues: <code>Active</code>, <code>Delete</code>)</td>
+</tr>
+<tr>
+<td><code>stored_procedure</code></td>
+<td>Char</td>
+<td>Yes</td>
+<td>The stored procedure name to execute</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The key field is <code>stored_procedure_def_uid</code>, which is a Long (not a string). The <code>stored_procedure</code> field is the only required field besides the key.</p>
+</blockquote>
+<h3 id="endpoint-status">Endpoint Status</h3>
+<ul>
+<li><code>GET /api/v2/definition/m_storedprocedureexecutor</code> -- returns HTTP 200 with DataElements list describing the service structure, including the fields above.</li>
+<li><code>GET /api/v2/defaults/m_storedprocedureexecutor</code> -- returns HTTP 200 with ~30KB response containing full default field values.</li>
+</ul>
+<blockquote>
+<p><strong>Tip:</strong> The defaults endpoint returns the full field structure (~30KB). Use the definition and defaults endpoints to discover available fields before constructing payloads.</p>
+</blockquote>
+<h3 id="key-notes">Key Notes</h3>
+<ul>
+<li><strong>Finding the UID:</strong> The <code>stored_procedure_def_uid</code> is found in the P21 Stored Procedure Executor UI -- double-click the Executor Definition ID field to see it. UIDs are only created after first saving an SP definition in the P21 UI, and they differ across environments (dev vs production). <em>(Credit: Felipe Maurer)</em></li>
+<li><strong>Parameters:</strong> The SP's configurable parameters are returned in the <code>argument_list</code> section of the response.</li>
+<li><strong>Execution:</strong> Loading an SP definition via the Transaction API retrieves its metadata and parameters, but actually executing the stored procedure may require the Interactive API (the Execute button must be clicked in the SP Executor window). <em>(Credit: Kevin Landry)</em></li>
+<li><strong>Database tables:</strong> The underlying tables are <code>stored_procedure_def</code> (UIDs), <code>spe_parameter_info</code> (parameter definitions), and <code>spe_procedure_info</code> (procedure names). These can be queried via OData for bulk discovery. <em>(Credit: Brad Vandenbogaerde)</em></li>
+</ul>
+<hr />
+<h2 id="dynachange-and-popup-handling">DynaChange and Popup Handling</h2>
+<p>The Transaction API respects and enforces <strong>all DynaChange configurations</strong> -- menu changes, screen changes, required user-defined fields, and on-event business rules all fire during TAPI processing, just as they would in the P21 desktop client. <em>(Credit: Felipe Maurer)</em></p>
+<blockquote>
+<p><strong>Source</strong>: Community-verified patterns. Tested on P21 version 25.2. Applies to all Transaction API endpoints.
+<strong>Discovery date</strong>: April 2026 (documented); pattern in production use by multiple organizations.</p>
+</blockquote>
+<h3 id="popup-suppression-pattern">Popup Suppression Pattern</h3>
+<p>When a TAPI workflow triggers a popup dialog (e.g., a DynaChange rule showing a confirmation), the transaction may fail or behave unexpectedly. The recommended pattern is to deploy <strong>Popup Suppression rules</strong> on the API user's profile to handle these dialogs without needing the Interactive API.</p>
+<p>Key characteristics:
+- Suppression rules can be <strong>conditional</strong> -- configure them to fire only for the TAPI user's profile, leaving desktop users unaffected
+- Suppression rules are configured in P21's DynaChange module (not via the API itself)
+- This approach avoids the complexity of opening an Interactive API session just to dismiss a dialog</p>
+<h3 id="limitations">Limitations</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Workaround</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Visual Rules with response/callback attributes</td>
+<td>(Community-reported) These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. <em>(Credit: Brad Vandenbogaerde)</em></td>
+</tr>
+<tr>
+<td>Wizard-type popups requiring user input</td>
+<td>(Verified) Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input</td>
+</tr>
+<tr>
+<td>"Column is disabled" errors</td>
+<td>(Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. <em>(Credit: Justin Cassidy)</em></td>
+</tr>
+</tbody>
+</table>
+<h3 id="response-validation">Response Validation</h3>
+<blockquote>
+<p><strong>Important:</strong> The Transaction API returns <strong>HTTP 200 even for failed transactions</strong>. Always check the <code>Summary</code> and <code>Messages</code> sections of the response body -- never rely on the HTTP status code alone to determine success or failure. <em>(Credit: Neil Timmerman)</em></p>
+</blockquote>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># HTTP 200 does NOT mean the transaction succeeded</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># Always check the Summary</span>
+<span class="n">succeeded</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">][</span><span class="s2">&quot;Succeeded&quot;</span><span class="p">]</span>
+<span class="n">failed</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">][</span><span class="s2">&quot;Failed&quot;</span><span class="p">]</span>
+
+<span class="k">if</span> <span class="n">failed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transaction failed (</span><span class="si">{</span><span class="n">failed</span><span class="si">}</span><span class="s2"> failures)&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Error: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transaction succeeded (</span><span class="si">{</span><span class="n">succeeded</span><span class="si">}</span><span class="s2"> records)&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">httpClient</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/v2/transaction&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="c1">// HTTP 200 does NOT mean the transaction succeeded</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="c1">// Always check the Summary</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">succeeded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Summary&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;Succeeded&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">failed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Summary&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;Failed&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">;</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">failed</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Transaction failed ({failed} failures)&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Messages&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">messages</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">messages</span><span class="p">)</span>
+<span class="w">            </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  Error: {msg}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="k">else</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Transaction succeeded ({succeeded} records)&quot;</span><span class="p">);</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>

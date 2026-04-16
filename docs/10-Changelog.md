@@ -8,6 +8,16 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-04-16
+
+- **docs:** Add Interactive API response window handling for tabless windows — `TabName: null` pattern for changing fields on popup dialogs, common response window buttons — *Jon Christie* — *@mrwuss*
+- **docs:** Add window discovery techniques section — GetState, GetTools, GetData, result event inspection, P21 SQL Information dialog, browser DevTools — *@mrwuss*
+- **docs:** Add V1 REST endpoint reference table — internal SDK endpoints for debugging and network trace analysis — *@mrwuss*
+- **docs:** Expand 25.2 DatawindowName breaking change — add ConvertPOToVoucher (*Jeff Patterson, Josiah Shollenberger*), Order Entry (*Neil Timmerman*), Clippership Auto Shipping (*Josh Owen*), Doc Links (*Jaime Nelson*) to affected windows list; bug confirmed through 25.2.5776.1, acknowledged by Epicor as development bug; add PO Receiving Group fix example — *David Sokoloski (first discovered 4-param workaround), Jeff Patterson (confirmed fix)* — *@mrwuss*
+- **docs:** Add PDF Report Generation section to Transaction API — `/api/v2/process/pdfreport` endpoint for generating base64-encoded PDF documents (purchase orders, pick tickets), verified services `m_reprintpurchaseorders` and `m_reprintpicktickets`, Python and C# examples — *Jeff Poss (endpoint discovery), @mrwuss*
+- **docs:** Add Stored Procedure Executor section to Transaction API — `m_storedprocedureexecutor` service for loading SP definitions via Transaction API, UID lookup workflow, `argument_list` parameter discovery, database tables (`stored_procedure_def`, `spe_parameter_info`, `spe_procedure_info`) — *Felipe Maurer, Kevin Landry, Brad Vandenbogaerde, @mrwuss*
+- **docs:** Add DynaChange and Popup Handling section to Transaction API — DynaChange enforcement in TAPI workflows, popup suppression pattern for API user profiles, Visual Rule limitations with response/callback attributes, "Column is disabled" root causes, HTTP 200 response validation gotcha — *Felipe Maurer, Brad Vandenbogaerde, Justin Cassidy, Neil Timmerman, @mrwuss*
+
 ## 2026-04-10
 
 - **docs:** Correct Inventory REST API — existing `inv_loc` fields CAN be updated via GET → modify → PUT (previously documented as append-only), add ItemDesc 40-char limit, POST 307 redirect, location soft-delete via `Delete: "Y"`, PurchaseDiscountGroup/SalesDiscountGroup fields, minimum create payload — Fixes #31 — *@mrwuss*
@@ -127,6 +137,12 @@ All notable changes to this documentation project are listed below, grouped by d
 | Claude Jones | [@RadAJones](https://github.com/RadAJones) | Reusable P21 API client with sync/async support ([PR #16](https://github.com/mrwuss/p21-api-documentation/pull/16)) |
 | Sibin Francis | [@sibinfrancisaj](https://github.com/sibinfrancisaj) | Inventory REST API documentation ([PR #23](https://github.com/mrwuss/p21-api-documentation/pull/23)) |
 | NextTWis | [@NextTWis](https://github.com/NextTWis) | Postman Collection for P21 API verification ([PR #24](https://github.com/mrwuss/p21-api-documentation/pull/24)) |
+| Jeff Poss | | PDF Report Generation endpoint discovery |
+| Felipe Maurer | | Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI |
+| Kevin Landry | | Stored Procedure Executor execution via Interactive API |
+| Brad Vandenbogaerde | | SP Executor database tables, Visual Rule response/callback TAPI limitation |
+| Justin Cassidy | | DynaChange as root cause for "Column is disabled" errors |
+| Neil Timmerman | | TAPI HTTP 200 response validation gotcha |
 
 ---
 
