@@ -519,6 +519,8 @@ else
 
 ## Reading UDT Data (OData)
 
+> **Source**: Official P21 Help Documentation + community working code.
+
 The UDT Service API does not provide read endpoints. To query UDT data, use the [OData API](02-OData-API.md) with the `udt_` table prefix via Data Services.
 
 ### Prerequisites

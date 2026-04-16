@@ -1030,6 +1030,9 @@
 </ol>
 <hr />
 <h2 id="window-discovery-techniques">Window Discovery Techniques</h2>
+<blockquote>
+<p><strong>Source</strong>: Community working code + actual API testing (April 2026). Credit: Jon Christie.</p>
+</blockquote>
 <p>Understanding a window's structure is essential before automating it. These techniques help you discover datawindow names, field names, available tools, and current data.</p>
 <h3 id="1-get-window-state">1. Get Window State</h3>
 <p>After opening a window, call <code>GetState()</code> (SDK) or <code>GET /api/ui/interactive/v2/window?id={windowId}</code> (REST) to retrieve the full window definition. This returns all datawindows, fields, tabs, enabled states, and current data structure.</p>

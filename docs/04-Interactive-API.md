@@ -325,6 +325,8 @@ To find the correct field and datawindow names:
 
 ## Window Discovery Techniques
 
+> **Source**: Community working code + actual API testing (April 2026). Credit: Jon Christie.
+
 Understanding a window's structure is essential before automating it. These techniques help you discover datawindow names, field names, available tools, and current data.
 
 ### 1. Get Window State
