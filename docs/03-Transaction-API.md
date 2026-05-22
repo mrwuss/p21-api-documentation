@@ -522,7 +522,7 @@ var response = await client.PostAsync(
 
 ### JobContractPricing Service
 
-The `JobContractPricing` service creates job contract price pages -- customer-specific pricing agreements with optional quantity breaks. It has 25 DataElements; the key ones are documented below.
+The `JobContractPricing` service creates **and updates** job contract price pages -- customer-specific pricing agreements with optional quantity breaks. It has 25 DataElements; the key ones are documented below.
 
 #### Service Definition
 
@@ -642,11 +642,80 @@ DataElements:
 
 The `JOBPRICECOST` DataElement includes `commission_cost_value` and related commission fields, but these are **disabled** -- the API returns "Column is disabled: commission_cost_value". Commission costs must be set via the Interactive API (JobContractPricing window) after contract creation.
 
+#### Updating an Existing Contract
+
+Use `Status = "New"` to update existing contracts -- there is no separate "Update" or "Existing" status. The Transaction API distinguishes create from update by whether the FORM key fields land on an existing record:
+
+- Leave the FORM `Keys` array empty.
+- Send the FORM key fields (`company_id`, `contract_no`, `job_no`) inside `Edits`.
+- Also include `end_date` in `Edits` -- the API validates required fields on every submit and rejects with `"Required value missing for End Date"` if it's absent.
+- On `JOBPRICELINE`, set `Keys: ["item_id"]` and put the `item_id` value in `Edits` alongside the fields you're changing.
+
+> Empirically verified 2026-05-14: 173 successful price updates against contract `A120-12` on a production tenant. Each call returned HTTP 200 with `Summary.Succeeded = 1`, and OData confirmed each `job_price_line.price` matched the submitted value.
+
+**Example -- update one line's price:**
+
+```python
+payload = {
+    "Name": "JobContractPricing",
+    "UseCodeValues": False,
+    "Transactions": [{
+        "Status": "New",                          # still "New" for updates
+        "DataElements": [
+            {
+                "Name": "FORM.d_dw_job_price_hdr",
+                "Type": "Form",
+                "Keys": [],                       # empty
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "company_id",  "Value": "ACME"},
+                        {"Name": "contract_no", "Value": "A120-12"},
+                        {"Name": "job_no",      "Value": "31"},
+                        {"Name": "end_date",    "Value": "2030-01-01"},
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            },
+            {
+                "Name": "JOBPRICELINE.jobpriceline",
+                "Type": "List",
+                "Keys": ["item_id"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "item_id",        "Value": "WIDGET-001"},
+                        {"Name": "uom",            "Value": "EA"},
+                        {"Name": "pricing_method", "Value": "Price"},
+                        {"Name": "price",          "Value": "36.58"},
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            },
+        ],
+    }],
+}
+```
+
+**Notes:**
+
+- **Converting `pricing_method` from `"Source"` to `"Price"`** works in the same call. The previously-set `source_price` and `multiplier` are NOT auto-cleared on the row, but become dormant since the `"Price"` method only reads `price`.
+- **Use `POST /api/v2/transaction/get`** to retrieve the existing FORM values (`company_id`, `job_no`, `end_date`) before submitting the update:
+
+  ```json
+  {
+    "ServiceName": "JobContractPricing",
+    "TransactionStates": [{
+      "DataElementName": "FORM.d_dw_job_price_hdr",
+      "Keys": [{"Name": "contract_no", "Value": "A120-12"}]
+    }]
+  }
+  ```
+- **Per-line latency** observed at ~0.8s. For bulk updates, single-line calls are easier to retry on failure than batches.
+
 #### Known Limitations
 
-- **Status "Existing" returns HTTP 500:** Attempting to retrieve existing contracts via `Transaction.Status = "Existing"` returns a `NullReferenceException` at `ToInternalBeSpecification`. This is a platform-wide bug affecting multiple services. Use `POST /api/v2/transaction/get` with `TransactionStates` to retrieve existing records, and the Interactive API for modifications.
 - **Commission fields disabled:** Cannot set commission costs via Transaction API (see above).
 - **`corp_address_id` read-only after save:** Must be set during initial creation.
+- **Status `"Existing"` is not a valid Transaction status:** Setting `Transactions[0].Status = "Existing"` (or `"Update"`, `"Change"`) returns HTTP 500 (`NullReferenceException` at `ToInternalBeSpecification`). Use `"New"` for both create and update -- see [Updating an Existing Contract](#updating-an-existing-contract).
 
 #### Example: Create a Job Contract with Break and Non-Break Lines
 
