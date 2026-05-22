@@ -8,6 +8,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-05-22
+
+- **fix:** Correct JobContractPricing update guidance — Transaction API **does** update existing `job_price_line` rows when called with `Status: "New"` and the FORM key fields (`company_id`, `contract_no`, `job_no`, `end_date`) in `Edits` (not `Keys`); previous docs incorrectly deflected readers to the Interactive API. Adds *Updating an Existing Contract* subsection with verified payload shape, notes that `pricing_method` Source → Price conversion works in the same call, and inlines a `/api/v2/transaction/get` retrieval example. Empirically verified by 173 successful price updates against contract `A120-12` on a production tenant (HTTP 200, OData re-read confirmed). The `Status: "Existing"` 500 caveat remains as an "unused — use New instead" note, no longer a write ban — Fixes #44 — *@mrwuss* via [PR #45](https://github.com/mrwuss/p21-api-documentation/pull/45)
+
 ## 2026-04-16
 
 - **docs:** Add UDT Service API documentation (`docs/13-UDT-Service-API.md`) — complete CRUD documentation for `/udtservice/api/udtdata/` endpoints (insert, update, delete), OData read patterns, response format quirks, SQL keyword false positives, SaaS hostname differences, Python and C# examples — *Felipe Maurer (discovery and testing), David Sokoloski (P21 help docs reference), Brad Vandenbogaerde (database tables, SaaS hostname fix), John Kennedy (SQL keyword issue), Jon Christie (response format quirk), @mrwuss*

@@ -381,6 +381,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-05-22">2026-05-22</a></li>
 <li><a href="#2026-04-16">2026-04-16</a></li>
 <li><a href="#2026-04-10">2026-04-10</a></li>
 <li><a href="#2026-04-04">2026-04-04</a></li>
@@ -416,6 +417,10 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-05-22">2026-05-22</h2>
+<ul>
+<li><strong>fix:</strong> Correct JobContractPricing update guidance — Transaction API <strong>does</strong> update existing <code>job_price_line</code> rows when called with <code>Status: "New"</code> and the FORM key fields (<code>company_id</code>, <code>contract_no</code>, <code>job_no</code>, <code>end_date</code>) in <code>Edits</code> (not <code>Keys</code>); previous docs incorrectly deflected readers to the Interactive API. Adds <em>Updating an Existing Contract</em> subsection with verified payload shape, notes that <code>pricing_method</code> Source → Price conversion works in the same call, and inlines a <code>/api/v2/transaction/get</code> retrieval example. Empirically verified by 173 successful price updates against contract <code>A120-12</code> on a production tenant (HTTP 200, OData re-read confirmed). The <code>Status: "Existing"</code> 500 caveat remains as an "unused — use New instead" note, no longer a write ban — Fixes #44 — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/45">PR #45</a></li>
+</ul>
 <h2 id="2026-04-16">2026-04-16</h2>
 <ul>
 <li><strong>docs:</strong> Add UDT Service API documentation (<code>docs/13-UDT-Service-API.md</code>) — complete CRUD documentation for <code>/udtservice/api/udtdata/</code> endpoints (insert, update, delete), OData read patterns, response format quirks, SQL keyword false positives, SaaS hostname differences, Python and C# examples — <em>Felipe Maurer (discovery and testing), David Sokoloski (P21 help docs reference), Brad Vandenbogaerde (database tables, SaaS hostname fix), John Kennedy (SQL keyword issue), Jon Christie (response format quirk), @mrwuss</em></li>

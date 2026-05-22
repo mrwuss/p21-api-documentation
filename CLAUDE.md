@@ -179,8 +179,10 @@ window.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
 
 `POST /api/v2/transaction` with `Status: "Existing"` returns HTTP 500 `NullReferenceException` at `ToInternalBeSpecification`. This is a **platform-wide bug**, not service-specific — confirmed on JobContractPricing, Assembly, SalesPricePage, and TimeEntry.
 
-**Workaround**: Use `POST /api/v2/transaction/get` with `TransactionStates` to retrieve existing records. Use the Interactive API for modifications to existing records.
+**Retrieval**: Use `POST /api/v2/transaction/get` with `TransactionStates` to read existing records.
+
+**Updates**: `Status: "Existing"` is *unused*, not a write ban. For JobContractPricing the verified update path is `Status: "New"` with FORM key fields (`company_id`, `contract_no`, `job_no`, `end_date`) in `Edits` and List `Keys` identifying the row by `item_id` — see [JobContractPricing > Updating an Existing Contract](docs/03-Transaction-API.md#updating-an-existing-contract) (Fixes #44, May 2026). Other services (Assembly, SalesPricePage, TimeEntry) are untested but likely follow the same pattern; the Interactive API remains a fallback.
 
 ---
 
-*Last updated: 2026-04-10*
+*Last updated: 2026-05-22*

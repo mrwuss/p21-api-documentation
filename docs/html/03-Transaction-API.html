@@ -1255,7 +1255,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <hr />
 <h2 id="service-reference">Service Reference</h2>
 <h3 id="jobcontractpricing-service">JobContractPricing Service</h3>
-<p>The <code>JobContractPricing</code> service creates job contract price pages -- customer-specific pricing agreements with optional quantity breaks. It has 25 DataElements; the key ones are documented below.</p>
+<p>The <code>JobContractPricing</code> service creates <strong>and updates</strong> job contract price pages -- customer-specific pricing agreements with optional quantity breaks. It has 25 DataElements; the key ones are documented below.</p>
 <h4 id="service-definition">Service Definition</h4>
 <div class="highlight"><pre><span></span><code><span class="err">GET /api/v2/definition/JobContractPricing</span>
 </code></pre></div>
@@ -1566,11 +1566,76 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 
 <h4 id="commission-costs">Commission Costs</h4>
 <p>The <code>JOBPRICECOST</code> DataElement includes <code>commission_cost_value</code> and related commission fields, but these are <strong>disabled</strong> -- the API returns "Column is disabled: commission_cost_value". Commission costs must be set via the Interactive API (JobContractPricing window) after contract creation.</p>
+<h4 id="updating-an-existing-contract">Updating an Existing Contract</h4>
+<p>Use <code>Status = "New"</code> to update existing contracts -- there is no separate "Update" or "Existing" status. The Transaction API distinguishes create from update by whether the FORM key fields land on an existing record:</p>
+<ul>
+<li>Leave the FORM <code>Keys</code> array empty.</li>
+<li>Send the FORM key fields (<code>company_id</code>, <code>contract_no</code>, <code>job_no</code>) inside <code>Edits</code>.</li>
+<li>Also include <code>end_date</code> in <code>Edits</code> -- the API validates required fields on every submit and rejects with <code>"Required value missing for End Date"</code> if it's absent.</li>
+<li>On <code>JOBPRICELINE</code>, set <code>Keys: ["item_id"]</code> and put the <code>item_id</code> value in <code>Edits</code> alongside the fields you're changing.</li>
+</ul>
+<blockquote>
+<p>Empirically verified 2026-05-14: 173 successful price updates against contract <code>A120-12</code> on a production tenant. Each call returned HTTP 200 with <code>Summary.Succeeded = 1</code>, and OData confirmed each <code>job_price_line.price</code> matched the submitted value.</p>
+</blockquote>
+<p><strong>Example -- update one line's price:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;JobContractPricing&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>                          <span class="c1"># still &quot;New&quot; for updates</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;FORM.d_dw_job_price_hdr&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>                       <span class="c1"># empty</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span>  <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;contract_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;A120-12&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;job_no&quot;</span><span class="p">,</span>      <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;31&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;end_date&quot;</span><span class="p">,</span>    <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2030-01-01&quot;</span><span class="p">},</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">}],</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;JOBPRICELINE.jobpriceline&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;item_id&quot;</span><span class="p">,</span>        <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;uom&quot;</span><span class="p">,</span>            <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;EA&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;pricing_method&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;Price&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;price&quot;</span><span class="p">,</span>          <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;36.58&quot;</span><span class="p">},</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">}],</span>
+            <span class="p">},</span>
+        <span class="p">],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Notes:</strong></p>
+<ul>
+<li><strong>Converting <code>pricing_method</code> from <code>"Source"</code> to <code>"Price"</code></strong> works in the same call. The previously-set <code>source_price</code> and <code>multiplier</code> are NOT auto-cleared on the row, but become dormant since the <code>"Price"</code> method only reads <code>price</code>.</li>
+<li><strong>Use <code>POST /api/v2/transaction/get</code></strong> to retrieve the existing FORM values (<code>company_id</code>, <code>job_no</code>, <code>end_date</code>) before submitting the update:</li>
+</ul>
+<p><code>json
+  {
+    "ServiceName": "JobContractPricing",
+    "TransactionStates": [{
+      "DataElementName": "FORM.d_dw_job_price_hdr",
+      "Keys": [{"Name": "contract_no", "Value": "A120-12"}]
+    }]
+  }</code>
+- <strong>Per-line latency</strong> observed at ~0.8s. For bulk updates, single-line calls are easier to retry on failure than batches.</p>
 <h4 id="known-limitations">Known Limitations</h4>
 <ul>
-<li><strong>Status "Existing" returns HTTP 500:</strong> Attempting to retrieve existing contracts via <code>Transaction.Status = "Existing"</code> returns a <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code>. This is a platform-wide bug affecting multiple services. Use <code>POST /api/v2/transaction/get</code> with <code>TransactionStates</code> to retrieve existing records, and the Interactive API for modifications.</li>
 <li><strong>Commission fields disabled:</strong> Cannot set commission costs via Transaction API (see above).</li>
 <li><strong><code>corp_address_id</code> read-only after save:</strong> Must be set during initial creation.</li>
+<li><strong>Status <code>"Existing"</code> is not a valid Transaction status:</strong> Setting <code>Transactions[0].Status = "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) returns HTTP 500 (<code>NullReferenceException</code> at <code>ToInternalBeSpecification</code>). Use <code>"New"</code> for both create and update -- see <a href="#updating-an-existing-contract">Updating an Existing Contract</a>.</li>
 </ul>
 <h4 id="example-create-a-job-contract-with-break-and-non-break-lines">Example: Create a Job Contract with Break and Non-Break Lines</h4>
 <div class="code-tabs">
