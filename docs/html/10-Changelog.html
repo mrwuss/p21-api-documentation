@@ -381,6 +381,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-06-15">2026-06-15</a></li>
 <li><a href="#2026-05-22">2026-05-22</a></li>
 <li><a href="#2026-04-16">2026-04-16</a></li>
 <li><a href="#2026-04-10">2026-04-10</a></li>
@@ -417,6 +418,10 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-06-15">2026-06-15</h2>
+<ul>
+<li><strong>docs:</strong> Document Inventory REST API <code>ItemDesc</code> character-set and whitespace behavior — empirically verified that the API enforces <strong>no symbol restriction</strong> (all printable ASCII <code>" ' \</code> &amp; &lt; &gt; # / \ | , ; : . ( ) [ ] { } * + = % $ @ ! ? ~ ^ _ -<code>and Unicode such as</code>é<code>,</code>½<code>,</code>°` round-trip intact via GET → PUT → GET); only the 40-char limit (41+ <strong>silently discarded</strong> on PUT, HTTP 200) and trailing-whitespace trim apply; clarifies that symbol restrictions users encounter originate from the P21 desktop UI / DynaChange or downstream consumers, not the REST API. Includes a round-trip probe snippet. Verified against Prophet21Play — Fixes #47 — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-05-22">2026-05-22</h2>
 <ul>
 <li><strong>fix:</strong> Correct JobContractPricing update guidance — Transaction API <strong>does</strong> update existing <code>job_price_line</code> rows when called with <code>Status: "New"</code> and the FORM key fields (<code>company_id</code>, <code>contract_no</code>, <code>job_no</code>, <code>end_date</code>) in <code>Edits</code> (not <code>Keys</code>); previous docs incorrectly deflected readers to the Interactive API. Adds <em>Updating an Existing Contract</em> subsection with verified payload shape, notes that <code>pricing_method</code> Source → Price conversion works in the same call, and inlines a <code>/api/v2/transaction/get</code> retrieval example. Empirically verified by 173 successful price updates against contract <code>A120-12</code> on a production tenant (HTTP 200, OData re-read confirmed). The <code>Status: "Existing"</code> 500 caveat remains as an "unused — use New instead" note, no longer a write ban — Fixes #44 — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/45">PR #45</a></li>

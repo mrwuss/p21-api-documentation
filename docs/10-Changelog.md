@@ -8,6 +8,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-06-15
+
+- **docs:** Document Inventory REST API `ItemDesc` character-set and whitespace behavior — empirically verified that the API enforces **no symbol restriction** (all printable ASCII `" ' \` & < > # / \ | , ; : . ( ) [ ] { } * + = % $ @ ! ? ~ ^ _ -` and Unicode such as `é`, `½`, `°` round-trip intact via GET → PUT → GET); only the 40-char limit (41+ **silently discarded** on PUT, HTTP 200) and trailing-whitespace trim apply; clarifies that symbol restrictions users encounter originate from the P21 desktop UI / DynaChange or downstream consumers, not the REST API. Includes a round-trip probe snippet. Verified against Prophet21Play — Fixes #47 — *@mrwuss*
+
 ## 2026-05-22
 
 - **fix:** Correct JobContractPricing update guidance — Transaction API **does** update existing `job_price_line` rows when called with `Status: "New"` and the FORM key fields (`company_id`, `contract_no`, `job_no`, `end_date`) in `Edits` (not `Keys`); previous docs incorrectly deflected readers to the Interactive API. Adds *Updating an Existing Contract* subsection with verified payload shape, notes that `pricing_method` Source → Price conversion works in the same call, and inlines a `/api/v2/transaction/get` retrieval example. Empirically verified by 173 successful price updates against contract `A120-12` on a production tenant (HTTP 200, OData re-read confirmed). The `Status: "Existing"` 500 caveat remains as an "unused — use New instead" note, no longer a write ban — Fixes #44 — *@mrwuss* via [PR #45](https://github.com/mrwuss/p21-api-documentation/pull/45)
