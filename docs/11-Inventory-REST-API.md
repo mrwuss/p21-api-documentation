@@ -759,13 +759,15 @@ static string ValidateItemDesc(string desc)
 
 #### Character set and whitespace (verified)
 
-The Inventory REST API enforces **no character restriction** on `ItemDesc`. Every printable ASCII symbol round-trips intact through GET → PUT → GET — including characters that commonly trip up other layers:
+On a **26.1** tenant, the Inventory REST API enforces **no character restriction** on `ItemDesc`. Every printable ASCII symbol round-trips intact through GET → PUT → GET — including characters that commonly trip up other layers:
 
 ```
 " ' ` & < > # / \ | , ; : . ( ) [ ] { } * + = % $ @ ! ? ~ ^ _ -
 ```
 
 Extended/Unicode characters (e.g. `é`, `½`, `°`) also store and read back unchanged.
+
+> ⚠️ **Version- and pipeline-dependent.** This was verified on a 26.1 tenant. **25.x tenants and downstream consumers (reporting, label/barcode printing, EDI) may reject characters the 26.1 REST API accepts** — the double-quote `"` is a known offender. If you target 25.x or feed any reporting/printing flow, strip risky symbols (notably `"`) from descriptions **and** part numbers before writing, rather than relying on the API's permissiveness.
 
 Two behaviors **are** enforced at this layer:
 
@@ -774,7 +776,7 @@ Two behaviors **are** enforced at this layer:
 
 > **If your environment rejects certain symbols in item descriptions, the restriction is _not_ coming from the Inventory REST API.** Look instead at the P21 desktop UI / DynaChange validation rules or the specific downstream consumer (EDI, label/barcode printing, report formatting).
 
-Verified against **Prophet21Play** by setting each candidate symbol on a live item via PUT and confirming the value on a fresh GET (then restoring the original description):
+Verified against **Prophet21Play (26.1)** by setting each candidate symbol on a live item via PUT and confirming the value on a fresh GET (then restoring the original description):
 
 ```python
 # Probe whether a symbol survives a round-trip (PUT then GET).

@@ -10,7 +10,7 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ## 2026-06-15
 
-- **docs:** Document Inventory REST API `ItemDesc` character-set and whitespace behavior — empirically verified that the API enforces **no symbol restriction** (all printable ASCII `" ' \` & < > # / \ | , ; : . ( ) [ ] { } * + = % $ @ ! ? ~ ^ _ -` and Unicode such as `é`, `½`, `°` round-trip intact via GET → PUT → GET); only the 40-char limit (41+ **silently discarded** on PUT, HTTP 200) and trailing-whitespace trim apply; clarifies that symbol restrictions users encounter originate from the P21 desktop UI / DynaChange or downstream consumers, not the REST API. Includes a round-trip probe snippet. Verified against Prophet21Play — Fixes #47 — *@mrwuss*
+- **docs:** Document Inventory REST API `ItemDesc` character-set and whitespace behavior — on a **26.1** tenant the API enforces **no symbol restriction** (all printable ASCII `" ' \` & < > # / \ | , ; : . ( ) [ ] { } * + = % $ @ ! ? ~ ^ _ -` and Unicode such as `é`, `½`, `°` round-trip intact via GET → PUT → GET); only the 40-char limit (41+ **silently discarded** on PUT, HTTP 200) and trailing-whitespace trim apply. **Version/pipeline caveat:** 25.x tenants and downstream consumers (reporting, label printing, EDI) may reject characters the 26.1 REST API accepts — the double-quote `"` is a known offender — so strip risky symbols from descriptions and part numbers before writing if targeting 25.x or feeding reporting. Includes a round-trip probe snippet. Verified against Prophet21Play (26.1) — Fixes #47 — *@mrwuss*
 
 ## 2026-05-22
 
