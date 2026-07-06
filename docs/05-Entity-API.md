@@ -4,15 +4,30 @@
 
 ---
 
-> **Status Update (February 2026):** The Entity API is **functional**. Previous reports of it being non-functional were due to incorrect endpoint URLs. The correct base path is `/api/entity/`, not `/api/sales/` or `/api/inventory/`.
+> **Status Update (February 2026):** The Entity API is **functional**. Previous reports of it being non-functional were due to incorrect endpoint URLs. The customer/vendor/contact/address entities live under `/api/entity/`.
+
+---
+
+## Terminology — Epicor's Naming (July 2026)
+
+Epicor's own use of **"Entity API"** is broader than this document. In Epicor's naming (per the SOA middleware admin site):
+
+- **"Entity API"** is an **umbrella term** covering two APIs:
+  - the **REST API** — which includes the `/api/entity/`, `/api/inventory/`, and `/api/sales/` endpoint families, and
+  - the **eCommerce API** (also called the Entity SOAP API).
+- **URL segments are arbitrary** — the word "entity" in a URL has no relationship to the "Entity API" term. Don't infer API boundaries from URL paths.
+- This document covers the **`/api/entity/` endpoint family** of the REST API. The [Inventory REST API](11-Inventory-REST-API.md) (`/api/inventory/parts`) is **part of the same REST API**, not a separate API — the two docs are split for readability only.
+- Epicor briefly subdivided the REST API into "V1 API" / "V2 API" — short-lived naming you may still hear; it has **no relation** to `/v2/` segments in eCommerce SOAP URLs.
+
+*Credit: Felipe Maurer ([P21WWUG profile](https://forums.p21ww.org/UserInfo10045.aspx)) — taxonomy correction and 25.1 middleware evidence in [this forum topic](https://forums.p21ww.org/Topic245514-3.aspx); endpoint behavior re-verified live July 2026.*
 
 ---
 
 ## Overview
 
-The Entity API is a **stateless REST** API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports **four entities**: Customer, Vendor, Contact, and Address.
+This document covers the **stateless REST** endpoints at `/api/entity/` for CRUD (Create, Read, Update, Delete) operations on P21 business objects. They use domain object models and support **four entities**: Customer, Vendor, Contact, and Address.
 
-P21 also provides a separate **Inventory REST API** at `/api/inventory/parts` — see [Inventory REST API](11-Inventory-REST-API.md) for full documentation.
+The same REST API also provides `/api/inventory/parts` — see [Inventory REST API](11-Inventory-REST-API.md) — and an `/api/sales/orders` endpoint family (see [Other REST Endpoint Families](#other-rest-endpoint-families) below).
 
 ### Key Characteristics
 
@@ -33,8 +48,8 @@ P21 also provides a separate **Inventory REST API** at `/api/inventory/parts` �
 
 ### Limitations
 
-- **Only 4 entities** at `/api/entity/` - No orders, invoices, POs, or other business objects
-- **Inventory is separate** - Lives at `/api/inventory/parts`, not `/api/entity/` (see [Inventory REST API](11-Inventory-REST-API.md))
+- **Only 4 entities** at `/api/entity/` - Orders live at `/api/sales/orders` (see [Other REST Endpoint Families](#other-rest-endpoint-families)); no invoices, POs, or other business objects found
+- **Inventory documented separately** - Lives at `/api/inventory/parts`, part of the same REST API (see [Inventory REST API](11-Inventory-REST-API.md))
 - **Limited coverage** - For broad data access, use OData (read) or Transaction API (write)
 
 ---
@@ -51,7 +66,7 @@ Examples:
 - `https://play.p21server.com/api/entity/contacts`
 - `https://play.p21server.com/api/entity/addresses`
 
-> **Warning:** Older documentation (including Epicor SDK reference guides) may show category-based URLs like `/api/sales/customers` or `/api/inventory/parts`. These **do not work** as Entity API endpoints. Always use `/api/entity/`. The Inventory REST API at `/api/inventory/parts` is a **separate API** documented in [Inventory REST API](11-Inventory-REST-API.md).
+> **Warning:** Customer/vendor/contact/address records are served **only** from `/api/entity/` — category-style URLs for those records (e.g., `/api/sales/customers`) return 404. But do **not** generalize that to "category URLs don't work": `/api/sales/orders` **exists and responds** (verified July 2026 — see [Other REST Endpoint Families](#other-rest-endpoint-families)), and `/api/inventory/parts` is fully functional ([Inventory REST API](11-Inventory-REST-API.md)). All of these are endpoint families of the same REST API.
 
 ---
 
@@ -66,7 +81,7 @@ Only four entities are available via the Entity API:
 | **Contacts** | `/api/entity/contacts` | `{Id}` (simple numeric) | 40 |
 | **Addresses** | `/api/entity/addresses` | `{AddressId}` (simple numeric) | 27 |
 
-Additionally, the **[Inventory REST API](11-Inventory-REST-API.md)** provides CRUD access to inventory items at `/api/inventory/parts`.
+Additionally, the same REST API provides inventory items at `/api/inventory/parts` (**[Inventory REST API](11-Inventory-REST-API.md)**) and sales orders at `/api/sales/orders` ([below](#other-rest-endpoint-families)).
 
 ### Composite Keys
 
@@ -1139,6 +1154,30 @@ When troubleshooting 400/500 errors, check the server-side log files:
 
 ---
 
+## Other REST Endpoint Families
+
+The REST API exposes more than `/api/entity/` and `/api/inventory/parts`. Verified against a 25.2 tenant (July 2026):
+
+### `/api/sales/orders` — exists and responds
+
+| Call | Result |
+|------|--------|
+| `GET /api/sales/orders/ping` | 200 |
+| `GET /api/sales/orders/new` | 200 — full order template (Lines, Notes, Salesreps, BuilderSelectionSheets, Samples, …) |
+| `GET /api/sales/orders/{order_no}` | 200 — ~70 top-level fields |
+| `GET /api/sales/orders/{order_no}/approve` | 405 — route exists; the middleware documents PUT for this action (PUT untested) |
+| `GET /api/sales/orders/?$query=...` | 500 with an unrecognized field name — list query syntax not yet discovered |
+
+Writes and the approve action are **untested** — treat this family as read-verified only until documented further.
+
+### Families that 404 on the tested tenant
+
+`sales/customers`, `sales/quotes`, `sales/invoices`, `sales/shipments`, `sales/payments`, `purchasing/*`, `ar/*`, `inventory/items`, `inventory/lots` — all returned 404 on ping. Availability may vary by version; the SOA middleware admin site lists the endpoint families your server actually exposes.
+
+*Credit: Felipe Maurer ([P21WWUG profile](https://forums.p21ww.org/UserInfo10045.aspx)) — surfaced `/api/sales/orders` and the middleware endpoint listing in [this forum topic](https://forums.p21ww.org/Topic245514-3.aspx).*
+
+---
+
 ## Common Errors
 
 | Error | Cause | Solution |
@@ -1151,11 +1190,11 @@ When troubleshooting 400/500 errors, check the server-side log files:
 
 ### Common Mistakes
 
-1. **Wrong URL pattern** - Use `/api/entity/customers`, NOT `/api/sales/customers`
+1. **Wrong URL pattern for the 4 entities** - Use `/api/entity/customers`, NOT `/api/sales/customers`
 2. **Simple ID for customers** - Use `ACME_10`, NOT just `10`
 3. **Missing redirect handling** - List endpoints return 307, must follow redirect
 4. **Confusing VendorId with supplier_id** - These are different database tables
-5. **Expecting orders/items** - Only 4 entities exist at `/api/entity/` (customers, vendors, contacts, addresses). Inventory uses `/api/inventory/parts` (see [Inventory REST API](11-Inventory-REST-API.md))
+5. **Expecting orders/items at `/api/entity/`** - Only 4 entities exist there (customers, vendors, contacts, addresses). Inventory uses `/api/inventory/parts` ([Inventory REST API](11-Inventory-REST-API.md)); orders use `/api/sales/orders` ([Other REST Endpoint Families](#other-rest-endpoint-families))
 
 ---
 

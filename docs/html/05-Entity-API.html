@@ -381,6 +381,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#terminology-epicors-naming-july-2026">Terminology — Epicor's Naming (July 2026)</a></li>
 <li><a href="#overview">Overview</a><ul>
 <li><a href="#key-characteristics">Key Characteristics</a></li>
 <li><a href="#when-to-use">When to Use</a></li>
@@ -465,6 +466,11 @@
 <li><a href="#log-file-locations">Log File Locations</a></li>
 </ul>
 </li>
+<li><a href="#other-rest-endpoint-families">Other REST Endpoint Families</a><ul>
+<li><a href="#apisalesorders-exists-and-responds">/api/sales/orders — exists and responds</a></li>
+<li><a href="#families-that-404-on-the-tested-tenant">Families that 404 on the tested tenant</a></li>
+</ul>
+</li>
 <li><a href="#common-errors">Common Errors</a><ul>
 <li><a href="#common-mistakes">Common Mistakes</a></li>
 </ul>
@@ -486,12 +492,24 @@
 </blockquote>
 <hr />
 <blockquote>
-<p><strong>Status Update (February 2026):</strong> The Entity API is <strong>functional</strong>. Previous reports of it being non-functional were due to incorrect endpoint URLs. The correct base path is <code>/api/entity/</code>, not <code>/api/sales/</code> or <code>/api/inventory/</code>.</p>
+<p><strong>Status Update (February 2026):</strong> The Entity API is <strong>functional</strong>. Previous reports of it being non-functional were due to incorrect endpoint URLs. The customer/vendor/contact/address entities live under <code>/api/entity/</code>.</p>
 </blockquote>
 <hr />
+<h2 id="terminology-epicors-naming-july-2026">Terminology — Epicor's Naming (July 2026)</h2>
+<p>Epicor's own use of <strong>"Entity API"</strong> is broader than this document. In Epicor's naming (per the SOA middleware admin site):</p>
+<ul>
+<li><strong>"Entity API"</strong> is an <strong>umbrella term</strong> covering two APIs:</li>
+<li>the <strong>REST API</strong> — which includes the <code>/api/entity/</code>, <code>/api/inventory/</code>, and <code>/api/sales/</code> endpoint families, and</li>
+<li>the <strong>eCommerce API</strong> (also called the Entity SOAP API).</li>
+<li><strong>URL segments are arbitrary</strong> — the word "entity" in a URL has no relationship to the "Entity API" term. Don't infer API boundaries from URL paths.</li>
+<li>This document covers the <strong><code>/api/entity/</code> endpoint family</strong> of the REST API. The <a href="11-Inventory-REST-API.html">Inventory REST API</a> (<code>/api/inventory/parts</code>) is <strong>part of the same REST API</strong>, not a separate API — the two docs are split for readability only.</li>
+<li>Epicor briefly subdivided the REST API into "V1 API" / "V2 API" — short-lived naming you may still hear; it has <strong>no relation</strong> to <code>/v2/</code> segments in eCommerce SOAP URLs.</li>
+</ul>
+<p><em>Credit: Felipe Maurer (<a href="https://forums.p21ww.org/UserInfo10045.aspx">P21WWUG profile</a>) — taxonomy correction and 25.1 middleware evidence in <a href="https://forums.p21ww.org/Topic245514-3.aspx">this forum topic</a>; endpoint behavior re-verified live July 2026.</em></p>
+<hr />
 <h2 id="overview">Overview</h2>
-<p>The Entity API is a <strong>stateless REST</strong> API for CRUD (Create, Read, Update, Delete) operations on P21 business objects. It uses domain object models and supports <strong>four entities</strong>: Customer, Vendor, Contact, and Address.</p>
-<p>P21 also provides a separate <strong>Inventory REST API</strong> at <code>/api/inventory/parts</code> — see <a href="11-Inventory-REST-API.html">Inventory REST API</a> for full documentation.</p>
+<p>This document covers the <strong>stateless REST</strong> endpoints at <code>/api/entity/</code> for CRUD (Create, Read, Update, Delete) operations on P21 business objects. They use domain object models and support <strong>four entities</strong>: Customer, Vendor, Contact, and Address.</p>
+<p>The same REST API also provides <code>/api/inventory/parts</code> — see <a href="11-Inventory-REST-API.html">Inventory REST API</a> — and an <code>/api/sales/orders</code> endpoint family (see <a href="#other-rest-endpoint-families">Other REST Endpoint Families</a> below).</p>
 <h3 id="key-characteristics">Key Characteristics</h3>
 <ul>
 <li><strong>Stateless</strong> - No session management required</li>
@@ -511,8 +529,8 @@
 </ul>
 <h3 id="limitations">Limitations</h3>
 <ul>
-<li><strong>Only 4 entities</strong> at <code>/api/entity/</code> - No orders, invoices, POs, or other business objects</li>
-<li><strong>Inventory is separate</strong> - Lives at <code>/api/inventory/parts</code>, not <code>/api/entity/</code> (see <a href="11-Inventory-REST-API.html">Inventory REST API</a>)</li>
+<li><strong>Only 4 entities</strong> at <code>/api/entity/</code> - Orders live at <code>/api/sales/orders</code> (see <a href="#other-rest-endpoint-families">Other REST Endpoint Families</a>); no invoices, POs, or other business objects found</li>
+<li><strong>Inventory documented separately</strong> - Lives at <code>/api/inventory/parts</code>, part of the same REST API (see <a href="11-Inventory-REST-API.html">Inventory REST API</a>)</li>
 <li><strong>Limited coverage</strong> - For broad data access, use OData (read) or Transaction API (write)</li>
 </ul>
 <hr />
@@ -526,7 +544,7 @@
 - <code>https://play.p21server.com/api/entity/contacts</code>
 - <code>https://play.p21server.com/api/entity/addresses</code></p>
 <blockquote>
-<p><strong>Warning:</strong> Older documentation (including Epicor SDK reference guides) may show category-based URLs like <code>/api/sales/customers</code> or <code>/api/inventory/parts</code>. These <strong>do not work</strong> as Entity API endpoints. Always use <code>/api/entity/</code>. The Inventory REST API at <code>/api/inventory/parts</code> is a <strong>separate API</strong> documented in <a href="11-Inventory-REST-API.html">Inventory REST API</a>.</p>
+<p><strong>Warning:</strong> Customer/vendor/contact/address records are served <strong>only</strong> from <code>/api/entity/</code> — category-style URLs for those records (e.g., <code>/api/sales/customers</code>) return 404. But do <strong>not</strong> generalize that to "category URLs don't work": <code>/api/sales/orders</code> <strong>exists and responds</strong> (verified July 2026 — see <a href="#other-rest-endpoint-families">Other REST Endpoint Families</a>), and <code>/api/inventory/parts</code> is fully functional (<a href="11-Inventory-REST-API.html">Inventory REST API</a>). All of these are endpoint families of the same REST API.</p>
 </blockquote>
 <hr />
 <h2 id="available-entities">Available Entities</h2>
@@ -567,7 +585,7 @@
 </tr>
 </tbody>
 </table>
-<p>Additionally, the <strong><a href="11-Inventory-REST-API.html">Inventory REST API</a></strong> provides CRUD access to inventory items at <code>/api/inventory/parts</code>.</p>
+<p>Additionally, the same REST API provides inventory items at <code>/api/inventory/parts</code> (<strong><a href="11-Inventory-REST-API.html">Inventory REST API</a></strong>) and sales orders at <code>/api/sales/orders</code> (<a href="#other-rest-endpoint-families">below</a>).</p>
 <h3 id="composite-keys">Composite Keys</h3>
 <p>Customers and Vendors require a <strong>composite key</strong> combining <code>CompanyId</code> and the entity ID, separated by an underscore:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10</span>
@@ -2929,6 +2947,44 @@
 </tbody>
 </table>
 <hr />
+<h2 id="other-rest-endpoint-families">Other REST Endpoint Families</h2>
+<p>The REST API exposes more than <code>/api/entity/</code> and <code>/api/inventory/parts</code>. Verified against a 25.2 tenant (July 2026):</p>
+<h3 id="apisalesorders-exists-and-responds"><code>/api/sales/orders</code> — exists and responds</h3>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/sales/orders/ping</code></td>
+<td>200</td>
+</tr>
+<tr>
+<td><code>GET /api/sales/orders/new</code></td>
+<td>200 — full order template (Lines, Notes, Salesreps, BuilderSelectionSheets, Samples, …)</td>
+</tr>
+<tr>
+<td><code>GET /api/sales/orders/{order_no}</code></td>
+<td>200 — ~70 top-level fields</td>
+</tr>
+<tr>
+<td><code>GET /api/sales/orders/{order_no}/approve</code></td>
+<td>405 — route exists; the middleware documents PUT for this action (PUT untested)</td>
+</tr>
+<tr>
+<td><code>GET /api/sales/orders/?$query=...</code></td>
+<td>500 with an unrecognized field name — list query syntax not yet discovered</td>
+</tr>
+</tbody>
+</table>
+<p>Writes and the approve action are <strong>untested</strong> — treat this family as read-verified only until documented further.</p>
+<h3 id="families-that-404-on-the-tested-tenant">Families that 404 on the tested tenant</h3>
+<p><code>sales/customers</code>, <code>sales/quotes</code>, <code>sales/invoices</code>, <code>sales/shipments</code>, <code>sales/payments</code>, <code>purchasing/*</code>, <code>ar/*</code>, <code>inventory/items</code>, <code>inventory/lots</code> — all returned 404 on ping. Availability may vary by version; the SOA middleware admin site lists the endpoint families your server actually exposes.</p>
+<p><em>Credit: Felipe Maurer (<a href="https://forums.p21ww.org/UserInfo10045.aspx">P21WWUG profile</a>) — surfaced <code>/api/sales/orders</code> and the middleware endpoint listing in <a href="https://forums.p21ww.org/Topic245514-3.aspx">this forum topic</a>.</em></p>
+<hr />
 <h2 id="common-errors">Common Errors</h2>
 <table>
 <thead>
@@ -2968,11 +3024,11 @@
 </table>
 <h3 id="common-mistakes">Common Mistakes</h3>
 <ol>
-<li><strong>Wrong URL pattern</strong> - Use <code>/api/entity/customers</code>, NOT <code>/api/sales/customers</code></li>
+<li><strong>Wrong URL pattern for the 4 entities</strong> - Use <code>/api/entity/customers</code>, NOT <code>/api/sales/customers</code></li>
 <li><strong>Simple ID for customers</strong> - Use <code>ACME_10</code>, NOT just <code>10</code></li>
 <li><strong>Missing redirect handling</strong> - List endpoints return 307, must follow redirect</li>
 <li><strong>Confusing VendorId with supplier_id</strong> - These are different database tables</li>
-<li><strong>Expecting orders/items</strong> - Only 4 entities exist at <code>/api/entity/</code> (customers, vendors, contacts, addresses). Inventory uses <code>/api/inventory/parts</code> (see <a href="11-Inventory-REST-API.html">Inventory REST API</a>)</li>
+<li><strong>Expecting orders/items at <code>/api/entity/</code></strong> - Only 4 entities exist there (customers, vendors, contacts, addresses). Inventory uses <code>/api/inventory/parts</code> (<a href="11-Inventory-REST-API.html">Inventory REST API</a>); orders use <code>/api/sales/orders</code> (<a href="#other-rest-endpoint-families">Other REST Endpoint Families</a>)</li>
 </ol>
 <hr />
 <h2 id="entity-api-vs-other-apis">Entity API vs Other APIs</h2>
