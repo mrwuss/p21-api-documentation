@@ -778,6 +778,10 @@ Two behaviors **are** enforced at this layer:
 
 Verified against **Prophet21Play (26.1)** by setting each candidate symbol on a live item via PUT and confirming the value on a fresh GET (then restoring the original description):
 
+<!-- tabs -->
+
+**Python**
+
 ```python
 # Probe whether a symbol survives a round-trip (PUT then GET).
 def symbol_round_trips(client, base_url, headers, item_id, symbol):
@@ -790,6 +794,29 @@ def symbol_round_trips(client, base_url, headers, item_id, symbol):
     after = client.get(f"{base_url}/api/inventory/parts/{item_id}", headers=headers).json()["ItemDesc"]
     return after == test          # True => allowed; baseline value => silently discarded
 ```
+
+**C#**
+
+```csharp
+// Probe whether a symbol survives a round-trip (PUT then GET).
+static async Task<bool> SymbolRoundTrips(HttpClient client, string baseUrl,
+                                         string itemId, string symbol)
+{
+    var url = $"{baseUrl}/api/inventory/parts/{itemId}";
+    var part = JObject.Parse(await client.GetStringAsync(
+        $"{url}?extendedproperties=Locations,Suppliers,LocationSuppliers"));
+
+    var test = $"AA{symbol}BB";
+    part["ItemDesc"] = test;
+    await client.PutAsync(url,
+        new StringContent(part.ToString(), Encoding.UTF8, "application/json"));
+
+    var after = JObject.Parse(await client.GetStringAsync(url))["ItemDesc"]?.ToString();
+    return after == test;         // true => allowed; baseline value => silently discarded
+}
+```
+
+<!-- /tabs -->
 
 ### 4. POST Returns 307 Redirect
 
