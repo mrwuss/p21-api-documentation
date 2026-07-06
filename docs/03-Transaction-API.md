@@ -50,6 +50,8 @@ Then use the returned URL as base:
 
 > **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
+> **Read-after-write verification:** `POST /api/v2/transaction/get` is also the recommended way to verify that an Interactive API write actually persisted — a save can report success without persisting a sub-record, and the read-back is the only way to recover a server-generated key. See [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) in the Interactive API guide.
+
 ---
 
 ## Authentication
@@ -423,6 +425,20 @@ var definition = JObject.Parse(
 // definition["TransactionDefinition"] - field definitions with valid values
 ```
 <!-- /tabs -->
+
+The definition is the **authoritative schema map** for a service. For each DataElement it returns:
+
+| Field | Description |
+|-------|-------------|
+| `Name` | DataElement name used in payloads (e.g., `TABPAGE_7.tp_7_dw_7`) |
+| `DatawindowName` | Underlying datawindow (e.g., `d_update_po_hdr_notes_po_entry`) |
+| `Type` | `Form` or `List` |
+| `KeyFields` | Fields that identify a row in `Keys` |
+| `FieldDefinitions[]` | Every writable field — `Name`, `DbColumnName`, `DataType`, `Required` |
+
+Use it to discover which tab/datawindow a given table lives on and exactly which column names and required fields a write needs. The API field `Name` is frequently **not** what you'd guess from the underlying table column — check `DbColumnName` in `FieldDefinitions` to map between the two.
+
+> **Warning — Interactive vs Transaction tab numbering:** The `TABPAGE_N` index in a live **Interactive** window does **not** line up with the `TABPAGE_N` in the **Transaction API** service definition for the same window. The same tab index can address different sheets in the two APIs, and a grid can sit on `TABPAGE_2` in the Interactive window while carrying a datawindow named `tp_17_dw_17`. **The stable identifier is the datawindow name** (`tp_N_dw_N` / `d_...`), not the tab index — match on the datawindow name when cross-referencing the definition against live Interactive calls.
 
 ### Create Order
 

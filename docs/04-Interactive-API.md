@@ -470,6 +470,12 @@ This is the most reliable way to determine the exact names the API expects.
 
 When using the P21 Web Client, open your browser's Developer Tools (F12) and watch the **Network** tab. Every action you perform in the UI generates REST calls to the Interactive API. This lets you see the exact payloads, endpoints, and field names the web client uses — which you can replicate in your automation.
 
+### 7. Transaction API Service Definition
+
+For windows that also exist as Transaction API services (Order, PurchaseOrder, Item, etc.), `GET /api/v2/definition/{ServiceName}` returns the full schema: every DataElement with its `DatawindowName`, `Type` (`Form`/`List`), `KeyFields`, and `FieldDefinitions[]` (field `Name`, `DbColumnName`, `DataType`, `Required`). This is the fastest way to enumerate which datawindows exist and which column names a write needs. See [Get Service Definition](03-Transaction-API.md#get-service-definition) in the Transaction API guide.
+
+> **Warning — tab numbering mismatch:** The `TABPAGE_N` index in the live Interactive window does **not** line up with the `TABPAGE_N` in the Transaction API service definition. The same index can address different sheets in the two APIs, and a grid can sit on `TABPAGE_2` in the Interactive window while carrying a datawindow named `tp_17_dw_17`. Cross-reference on the **datawindow name** (`tp_N_dw_N` / `d_...`) — it is stable across both APIs; the tab index is not.
+
 ---
 
 ## Response Windows
@@ -1456,6 +1462,64 @@ public class BookLookupCache
 
 ---
 
+## PurchaseOrder Notepad Writes (Header vs Line)
+
+The PurchaseOrder window exposes **two separate notepad surfaces**, and they use **different tabs and different tools**. Conflating them silently writes to the wrong place with no error.
+
+| | Header notes | Line notes |
+|---|---|---|
+| **Table** | `po_hdr_notepad` | `po_line_notes` |
+| **Keyed by** | `po_no` only | `po_no` + line |
+| **Tab** | "PO Note" tab | Line-notes tab (select a line first) |
+| **Datawindow** | `tp_7_dw_7` (`d_update_po_hdr_notes_po_entry`) | `tp_21_dw_21` (`d_update_po_line_notes_po_entry`) |
+| **Add / Edit tools** | `cb_add` / `cb_edit` | `cb_add_line` / `cb_edit_line` |
+
+> **Warning — silent misfile:** Both tools are labelled **"Add Note"**, but they are distinct. Using `cb_add_line` (the line tool) when you intend a header note **files the note against the currently-selected line** (line 1 after a fresh load) — a perfectly valid *line* note. The call returns HTTP 200 with no error, and the row simply never appears in `po_hdr_notepad`. Symptom: "header note write succeeds but the note is never there." Verified against P21 25.2; reproduced on 26.1.
+
+> **Tip:** The `TABPAGE_N` index for these tabs varies between the Interactive window and the Transaction API definition (see [tab numbering mismatch](#7-transaction-api-service-definition)). Identify the target tab by its **datawindow name** in the window state (`GET /api/ui/interactive/v2/window?id={windowId}`), not by index.
+
+### Recipe: Add a Header Note
+
+1. Open the `PurchaseOrder` window and load the PO.
+2. Switch to the **PO Note** tab — the tab whose datawindow is `tp_7_dw_7`:
+
+   ```json
+   PUT /api/ui/interactive/v2/tab
+   {"WindowId": "{windowId}", "PageName": "{poNoteTabPage}"}
+   ```
+
+3. Run the **header** add tool. This opens the shared **Notepad Entry** popup (datawindow `_dw_hdr`):
+
+   ```json
+   POST /api/ui/interactive/v2/tools
+   {"WindowId": "{windowId}", "ToolName": "cb_add", "ToolText": "Add Note"}
+   ```
+
+4. In the popup, set `topic` and `note`, then run `cb_select_all` followed by `cb_ok`.
+5. Save the window (`PUT /api/ui/interactive/v2/data`).
+
+### Recipe: Add a Line Note
+
+1. Open the `PurchaseOrder` window and load the PO.
+2. **Select the target line row** in the line grid (`tp_17_dw_17`):
+
+   ```json
+   PUT /api/ui/interactive/v2/row
+   {"WindowId": "{windowId}", "DatawindowName": "tp_17_dw_17", "Row": 0}
+   ```
+
+3. Switch to the line-notes tab — the tab whose datawindow is `tp_21_dw_21`.
+4. Run the **line** add tool:
+
+   ```json
+   POST /api/ui/interactive/v2/tools
+   {"WindowId": "{windowId}", "ToolName": "cb_add_line", "ToolText": "Add Note"}
+   ```
+
+5. Complete the Notepad Entry popup (`topic`, `note`, `cb_select_all`, `cb_ok`) and save.
+
+---
+
 ## Data Structures Reference
 
 ### Result Object
@@ -1580,6 +1644,20 @@ The C# SDK (`P21.UI.Service.Client`) calls these V1 REST endpoints internally. T
 
 ---
 
+## Verifying Writes (Don't Trust Save Status Alone)
+
+An Interactive save (`PUT /api/ui/interactive/v2/data`) can return `Status: 1` with a `savesucceeded` event for the **primary** datawindow (`tp_1_dw_1`) even when a change staged into a **child grid** on another tab never actually persisted. The overall call looks fully successful.
+
+Why status alone is not a reliable "it persisted" signal:
+
+- `savesucceeded` / `Status` reflect the main-window save, not necessarily every sub-record you touched.
+- Status-code semantics differ across P21 versions (e.g., an empty/not-found record surfaces differently on 25.2 vs 26.1), so status alone is not portable.
+- The Interactive API does **not** return the new auto-generated key (e.g., `note_id`) for an inserted child row.
+
+**Recommendation:** for records where correctness matters, **read the record back after writing** and confirm it exists before treating the write as done — e.g., `POST /api/v2/transaction/get` for the target DataElement (see [Transaction API](03-Transaction-API.md)), or an OData/report read where the table is exposed. The read-back is also the only way to recover the server-generated key. This is version-proof, unlike trusting the save's status.
+
+---
+
 ## Best Practices
 
 1. **Always end sessions** - Use context managers or try/finally
@@ -1590,6 +1668,7 @@ The C# SDK (`P21.UI.Service.Client`) calls these V1 REST endpoints internally. T
 6. **Keep sessions short** - Long sessions consume server resources (pool default: 5 instances)
 7. **Log window IDs** - Helps debugging
 8. **Use SessionType wisely** - `Auto` for background processes, `User` for interactive integrations
+9. **Read back after writing** - Save status can report success without persisting a sub-record (see [Verifying Writes](#verifying-writes-dont-trust-save-status-alone))
 
 ---
 
