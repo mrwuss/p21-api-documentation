@@ -20,6 +20,7 @@ This project provides developer-focused documentation for Prophet 21's integrati
 | **Entity API** | CRUD on domain objects (customer, vendor, contact, address) | Simple record operations on 4 entities | Working (`/api/entity/`) |
 | **Inventory REST API** | CRUD on inventory items, multi-company workflows | Item reads, appending locations/suppliers | Working (`/api/inventory/parts`) |
 | **Production & Labor** | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking | Working (Transaction + Interactive) |
+| **UDT Service API** | CRUD on user-defined tables | Custom table maintenance | Working (`/udtservice/api/udtdata/`) |
 
 ---
 
@@ -41,6 +42,7 @@ p21-api-documentation/
 │   ├── 10-Changelog.md
 │   ├── 11-Inventory-REST-API.md
 │   ├── 12-Production-Labor-API.md
+│   ├── 13-UDT-Service-API.md
 │   └── html/                    # Generated HTML versions
 │
 ├── examples/
@@ -126,6 +128,8 @@ All documentation is derived from:
 
 **Workaround (February 2026)**: For non-message-box response windows (e.g., `w_inventory_scan_lookup`, `w_popup_processing_msg`), discover available buttons via `GET /api/ui/interactive/v2/tools?windowId={id}` and click them via `POST /api/ui/interactive/v2/tools`. Verified working on `w_inventory_scan_lookup` (returns `cb_ok`, `cb_cancel`, etc.). Message box dialogs (`w_message`) remain unresolved.
 
+**Editable response windows (July 2026)**: Form-style response windows are fully drivable when the session has `ResponseWindowHandlingEnabled: true` — the triggering call returns `Status: 3` with a `windowopened` event carrying the popup's window ID; edit its fields with `TabName: null` and click its tools. Verified end-to-end on `w_notepad_response_lite` (PurchaseOrder notepad — see [Interactive API guide](docs/04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line)). With `ResponseWindowHandlingEnabled: false`, tools that open such windows fail with HTTP 400 "Unexpected response window".
+
 ### Interactive API - ResultStatus Enum (February 2026)
 
 **Official status codes** from `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
@@ -185,4 +189,4 @@ window.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
 
 ---
 
-*Last updated: 2026-05-22*
+*Last updated: 2026-07-06*

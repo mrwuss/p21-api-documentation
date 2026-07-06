@@ -20,6 +20,7 @@ This repository provides developer-focused documentation for P21's integration A
 | [Entity API](docs/05-Entity-API.md) | Simple CRUD on business objects | Basic record operations |
 | [Inventory REST API](docs/11-Inventory-REST-API.md) | Inventory item CRUD, multi-company workflows | Item reads, appending locations/suppliers |
 | [Production & Labor](docs/12-Production-Labor-API.md) | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking |
+| [UDT Service API](docs/13-UDT-Service-API.md) | CRUD on user-defined tables | Custom table maintenance |
 
 ## Quick Start
 
@@ -52,6 +53,7 @@ python scripts/odata/01_basic_query.py
 - [Entity API](docs/05-Entity-API.md) - Entity CRUD operations
 - [Inventory REST API](docs/11-Inventory-REST-API.md) - Inventory CRUD, multi-company workflows
 - [Production & Labor API](docs/12-Production-Labor-API.md) - Production orders, labor tracking
+- [UDT Service API](docs/13-UDT-Service-API.md) - User-defined table CRUD via `/udtservice/api/udtdata/`
 
 ### Troubleshooting
 - [Error Handling](docs/06-Error-Handling.md) - HTTP codes, error responses
