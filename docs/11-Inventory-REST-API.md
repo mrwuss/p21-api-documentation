@@ -757,6 +757,67 @@ static string ValidateItemDesc(string desc)
 
 <!-- /tabs -->
 
+#### Character set and whitespace (verified)
+
+On a **26.1** tenant, the Inventory REST API enforces **no character restriction** on `ItemDesc`. Every printable ASCII symbol round-trips intact through GET → PUT → GET — including characters that commonly trip up other layers:
+
+```
+" ' ` & < > # / \ | , ; : . ( ) [ ] { } * + = % $ @ ! ? ~ ^ _ -
+```
+
+Extended/Unicode characters (e.g. `é`, `½`, `°`) also store and read back unchanged.
+
+> ⚠️ **Version- and pipeline-dependent.** This was verified on a 26.1 tenant. **25.x tenants and downstream consumers (reporting, label/barcode printing, EDI) may reject characters the 26.1 REST API accepts** — the double-quote `"` is a known offender. If you target 25.x or feed any reporting/printing flow, strip risky symbols (notably `"`) from descriptions **and** part numbers before writing, rather than relying on the API's permissiveness.
+
+Two behaviors **are** enforced at this layer:
+
+- **Length** — exactly 40 characters is accepted; **41 or more is silently discarded** on PUT (HTTP 200, but the value is *not* written and the previous description is retained). POST with >40 fails with the misleading `"Required value missing for Item Description"`.
+- **Trailing whitespace is trimmed**; leading whitespace is preserved.
+
+> **If your environment rejects certain symbols in item descriptions, the restriction is _not_ coming from the Inventory REST API.** Look instead at the P21 desktop UI / DynaChange validation rules or the specific downstream consumer (EDI, label/barcode printing, report formatting).
+
+Verified against **Prophet21Play (26.1)** by setting each candidate symbol on a live item via PUT and confirming the value on a fresh GET (then restoring the original description):
+
+<!-- tabs -->
+
+**Python**
+
+```python
+# Probe whether a symbol survives a round-trip (PUT then GET).
+def symbol_round_trips(client, base_url, headers, item_id, symbol):
+    part = client.get(f"{base_url}/api/inventory/parts/{item_id}",
+                      headers=headers,
+                      params={"extendedproperties": "Locations,Suppliers,LocationSuppliers"}).json()
+    test = f"AA{symbol}BB"
+    part["ItemDesc"] = test
+    client.put(f"{base_url}/api/inventory/parts/{item_id}", headers=headers, json=part)
+    after = client.get(f"{base_url}/api/inventory/parts/{item_id}", headers=headers).json()["ItemDesc"]
+    return after == test          # True => allowed; baseline value => silently discarded
+```
+
+**C#**
+
+```csharp
+// Probe whether a symbol survives a round-trip (PUT then GET).
+static async Task<bool> SymbolRoundTrips(HttpClient client, string baseUrl,
+                                         string itemId, string symbol)
+{
+    var url = $"{baseUrl}/api/inventory/parts/{itemId}";
+    var part = JObject.Parse(await client.GetStringAsync(
+        $"{url}?extendedproperties=Locations,Suppliers,LocationSuppliers"));
+
+    var test = $"AA{symbol}BB";
+    part["ItemDesc"] = test;
+    await client.PutAsync(url,
+        new StringContent(part.ToString(), Encoding.UTF8, "application/json"));
+
+    var after = JObject.Parse(await client.GetStringAsync(url))["ItemDesc"]?.ToString();
+    return after == test;         // true => allowed; baseline value => silently discarded
+}
+```
+
+<!-- /tabs -->
+
 ### 4. POST Returns 307 Redirect
 
 `POST /api/inventory/parts` (without trailing slash) returns **307 Temporary Redirect** to `/api/inventory/parts/`. Most HTTP clients do not follow redirects on POST by default.
