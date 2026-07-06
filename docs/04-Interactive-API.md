@@ -470,6 +470,12 @@ This is the most reliable way to determine the exact names the API expects.
 
 When using the P21 Web Client, open your browser's Developer Tools (F12) and watch the **Network** tab. Every action you perform in the UI generates REST calls to the Interactive API. This lets you see the exact payloads, endpoints, and field names the web client uses — which you can replicate in your automation.
 
+### 7. Transaction API Service Definition
+
+For windows that also exist as Transaction API services (Order, PurchaseOrder, Item, etc.), `GET /api/v2/definition/{ServiceName}` returns the full schema: every DataElement with its `DatawindowName`, `Type` (`Form`/`List`), `KeyFields`, and `FieldDefinitions[]` (field `Name`, `DbColumnName`, `DataType`, `Required`). This is the fastest way to enumerate which datawindows exist and which column names a write needs. See [Get Service Definition](03-Transaction-API.md#get-service-definition) in the Transaction API guide.
+
+> **Warning — don't derive `TABPAGE_N` from the visible tab order:** The `TABPAGE_N` names are **not** sequential with the tabs you see in the UI. The PurchaseOrder window, for example, has 37 tab pages — many disabled or hidden, split across the header and detail bands — so the Items grid that *looks* like the second tab is actually `TABPAGE_17` (`tp_17_dw_17`). Counting visible tabs gives you the wrong name. Read the `TabPageList` from the window state (`GET /api/ui/interactive/v2/window?id={windowId}`) or cross-reference on the **datawindow name** (`tp_N_dw_N` / `d_...`). On the servers tested (25.2/26.x), the Interactive window's `TABPAGE_N` names matched the Transaction API definition's 1:1 — the datawindow name remains the safest identifier either way.
+
 ---
 
 ## Response Windows
@@ -1456,6 +1462,104 @@ public class BookLookupCache
 
 ---
 
+## PurchaseOrder Notepad Writes (Header vs Line)
+
+The PurchaseOrder window exposes **two separate notepad surfaces**, and they use **different tabs and different tools**. Conflating them silently writes to the wrong place with no error.
+
+| | Header notes | Line notes |
+|---|---|---|
+| **Table** | `po_hdr_notepad` | `po_line_notes` |
+| **Keyed by** | `po_no` only | `po_no` + line |
+| **Tab** | "PO Note" tab | Line-notes tab (select a line first) |
+| **Datawindow** | `tp_7_dw_7` (`d_update_po_hdr_notes_po_entry`) | `tp_21_dw_21` (`d_update_po_line_notes_po_entry`) |
+| **Add / Edit tools** | `cb_add` / `cb_edit` | `cb_add_line` / `cb_edit_line` |
+
+> **Warning — silent misfile:** Both tools are labelled **"Add Note"**, but they are distinct. Using `cb_add_line` (the line tool) when you intend a header note **files the note against the currently-selected line** (line 1 after a fresh load) — a perfectly valid *line* note. Every call returns HTTP 200 / `Status: 1` including the save (`savesucceeded`), and the row simply never appears in `po_hdr_notepad`. Symptom: "header note write succeeds but the note is never there." Verified against P21 25.2; reproduced end-to-end July 2026 (misfiled note landed in `tp_21_dw_21` / `po_line_notes` bound to line 1).
+
+> **Requirement — `ResponseWindowHandlingEnabled: true`:** Both add tools open the **Notepad Entry** popup (`w_notepad_response_lite`), which is a response window. The session must be created with `"ResponseWindowHandlingEnabled": true`. With `false`, the tool call fails with HTTP 400: `"Unexpected response window: Notepad Entry Window. Window class: w_notepad_response_lite"`.
+
+> **Tip:** Identify the target tab by its **datawindow name** in the window state (`GET /api/ui/interactive/v2/window?id={windowId}`), not by counting tabs in the UI — the window has 37 tab pages, many disabled or hidden (see [tab identification](#7-transaction-api-service-definition)). On the servers tested, the PO Notes tab is `TABPAGE_7` and the PO Line Notes tab is `TABPAGE_21`, matching the Transaction API definition.
+
+### The Notepad Entry Popup
+
+Both recipes go through the same popup. Running the add tool returns `Status: 3` (Blocked) with a `windowopened` event carrying the popup's window ID:
+
+```json
+{
+    "Status": 3,
+    "Events": [
+        {"Name": "windowopened", "Data": [{"Key": "windowid", "Value": "{popupWindowId}"}]}
+    ]
+}
+```
+
+The popup (`w_notepad_response_lite`, title "Notepad Entry Window") is tabless and has three datawindows:
+
+| Datawindow | Purpose |
+|------------|---------|
+| `_dw_hdr` | The note itself — `topic`, `note`, plus prefilled `po_no`, dates, `mandatory`, `delete_flag`. **The line-note variant additionally carries `line_no` and `item_id`** — check for these columns to confirm which surface you opened |
+| `_dw_areas` | Available P21 areas the note can appear in (e.g., "Purchase Order Entry", "Purchase Order Receipts") |
+| `_dw_select` | Areas currently selected |
+
+Popup tools: `cb_select`, `cb_select_all`, `cb_deselect`, `cb_deselect_all`, `cb_ok`, `cb_cancel`.
+
+Changes to the popup use the **popup's** window ID with `TabName: null` (it is tabless). `cb_ok` closes the popup (a `close` event with `is_response: true`) and stages the new row into the parent grid — the new `note_id` is already assigned and visible in the parent window's data at this point, **before** saving.
+
+### Recipe: Add a Header Note
+
+1. Start the session with `"ResponseWindowHandlingEnabled": true`, open the `PurchaseOrder` window, and load the PO (change `po_no` on `TABPAGE_1`/`tp_1_dw_1`).
+2. Switch to the **PO Notes** tab (`tp_7_dw_7`):
+
+   ```json
+   PUT /api/ui/interactive/v2/tab
+   {"WindowId": "{windowId}", "PageName": "TABPAGE_7"}
+   ```
+
+3. Run the **header** add tool — returns `Status: 3` with the popup's window ID in the `windowopened` event:
+
+   ```json
+   POST /api/ui/interactive/v2/tools
+   {"WindowId": "{windowId}", "ToolName": "cb_add", "ToolText": "Add Note"}
+   ```
+
+4. In the popup, set `topic` and `note` on `_dw_hdr` (note `TabName: null` and the **popup's** window ID):
+
+   ```json
+   PUT /api/ui/interactive/v2/change
+   {
+       "WindowId": "{popupWindowId}",
+       "List": [
+           {"TabName": null, "DatawindowName": "_dw_hdr", "FieldName": "topic", "Value": "MY TOPIC"},
+           {"TabName": null, "DatawindowName": "_dw_hdr", "FieldName": "note", "Value": "Note text"}
+       ]
+   }
+   ```
+
+5. Run `cb_select_all` then `cb_ok` on the popup window ID (`POST /api/ui/interactive/v2/tools`). The popup closes and the staged row (with its new `note_id`) appears in `tp_7_dw_7`.
+6. Save the window (`PUT /api/ui/interactive/v2/data`) and [verify the write](#verifying-writes-dont-trust-save-status-alone).
+
+### Recipe: Add a Line Note
+
+1. Start the session with `"ResponseWindowHandlingEnabled": true`, open the `PurchaseOrder` window, and load the PO.
+2. **Select the target line row** in the line grid (`tp_17_dw_17`):
+
+   ```json
+   PUT /api/ui/interactive/v2/row
+   {"WindowId": "{windowId}", "DatawindowName": "tp_17_dw_17", "Row": 0}
+   ```
+
+3. Switch to the **PO Line Notes** tab (`tp_21_dw_21`, `PageName: "TABPAGE_21"`).
+4. Run the **line** add tool:
+
+   ```json
+   POST /api/ui/interactive/v2/tools
+   {"WindowId": "{windowId}", "ToolName": "cb_add_line", "ToolText": "Add Note"}
+   ```
+
+5. Complete the Notepad Entry popup exactly as in the header recipe (`topic`/`note` on `_dw_hdr` with `TabName: null`, then `cb_select_all`, `cb_ok`) — the popup's `_dw_hdr` shows which `line_no`/`item_id` the note will attach to. Save and verify.
+
+---
+
 ## Data Structures Reference
 
 ### Result Object
@@ -1580,6 +1684,20 @@ The C# SDK (`P21.UI.Service.Client`) calls these V1 REST endpoints internally. T
 
 ---
 
+## Verifying Writes (Don't Trust Save Status Alone)
+
+An Interactive save (`PUT /api/ui/interactive/v2/data`) can return `Status: 1` with a `savesucceeded` event for the **primary** datawindow (`tp_1_dw_1`) even when a change staged into a **child grid** on another tab never actually persisted. The overall call looks fully successful.
+
+Why status alone is not a reliable "it persisted" signal:
+
+- `savesucceeded` / `Status` reflect the main-window save, not necessarily every sub-record you touched. Verified live: a save that persisted a `po_hdr_notepad` child row still reported `savesucceeded` only for `tp_1_dw_1` — and a save whose note had silently misfiled to the *wrong* table looked byte-for-byte identical (`Status: 1`, `savesucceeded`).
+- Status-code semantics differ across P21 versions (e.g., an empty/not-found record surfaces differently on 25.2 vs 26.1), so status alone is not portable.
+- The **save response** does not include the new auto-generated key (e.g., `note_id`) for an inserted child row. For notepad rows the key is visible earlier — it appears in the parent grid's data (`GET /api/ui/interactive/v2/window?id=`) as soon as the popup commits — but only a read-back proves it actually reached the database.
+
+**Recommendation:** for records where correctness matters, **read the record back after writing** and confirm it exists before treating the write as done — e.g., `POST /api/v2/transaction/get` for the target DataElement (see [Transaction API](03-Transaction-API.md)), or an OData/report read where the table is exposed. Verified live: after the header-note recipe, `transaction/get` keyed by `po_no` returned the `TABPAGE_7.tp_7_dw_7` row with its server-generated `note_id`, and after the misfile scenario it proved the note was in `tp_21_dw_21` instead. This is version-proof, unlike trusting the save's status.
+
+---
+
 ## Best Practices
 
 1. **Always end sessions** - Use context managers or try/finally
@@ -1590,6 +1708,7 @@ The C# SDK (`P21.UI.Service.Client`) calls these V1 REST endpoints internally. T
 6. **Keep sessions short** - Long sessions consume server resources (pool default: 5 instances)
 7. **Log window IDs** - Helps debugging
 8. **Use SessionType wisely** - `Auto` for background processes, `User` for interactive integrations
+9. **Read back after writing** - Save status can report success without persisting a sub-record (see [Verifying Writes](#verifying-writes-dont-trust-save-status-alone))
 
 ---
 

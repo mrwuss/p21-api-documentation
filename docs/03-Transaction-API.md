@@ -50,6 +50,8 @@ Then use the returned URL as base:
 
 > **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
+> **Read-after-write verification:** `POST /api/v2/transaction/get` is also the recommended way to verify that an Interactive API write actually persisted — a save can report success without persisting a sub-record, and the read-back is the only way to recover a server-generated key. See [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) in the Interactive API guide.
+
 ---
 
 ## Authentication
@@ -423,6 +425,21 @@ var definition = JObject.Parse(
 // definition["TransactionDefinition"] - field definitions with valid values
 ```
 <!-- /tabs -->
+
+The definition is the **authoritative schema map** for a service. The response shape is `{"Name": ..., "TransactionDefinition": {"KeyDefinitions": [...], "DataElementDefinitions": [...]}, "Template": {...}}` — the elements live under `TransactionDefinition.DataElementDefinitions`. Each element carries:
+
+| Field | Description |
+|-------|-------------|
+| `Name` | DataElement name used in payloads (e.g., `TABPAGE_7.tp_7_dw_7`) |
+| `DatawindowName` | Underlying datawindow (e.g., `d_update_po_hdr_notes_po_entry`) |
+| `Type` | `Form` or `List` |
+| `KeyFields` | Fields that identify a row in `Keys` (e.g., `["note_id"]`) |
+| `FieldDefinitions[]` | Every writable field — `Name`, `DbColumnName`, `DataType`, `Required` |
+| `ParentText`, `BusinessObjectName` | Display/back-end context for the element |
+
+Use it to discover which tab/datawindow a given table lives on and exactly which column names and required fields a write needs. The API field `Name` is frequently **not** what you'd guess from the underlying table column — check `DbColumnName` in `FieldDefinitions` to map between the two.
+
+> **Warning — don't derive `TABPAGE_N` from the visible tab order:** `TABPAGE_N` names are **not** sequential with the tabs visible in the P21 UI — windows carry many disabled/hidden tab pages (PurchaseOrder has 37), so the grid that *looks* like the second tab can be `TABPAGE_17` (`tp_17_dw_17`). When cross-referencing the definition against live Interactive calls, match on the **datawindow name** (`tp_N_dw_N` / `d_...`) or read the Interactive window's `TabPageList` (`GET /api/ui/interactive/v2/window?id={windowId}`) — never count tabs on screen. On the servers tested (25.2/26.x), the Interactive window's `TABPAGE_N` names matched the definition's 1:1.
 
 ### Create Order
 
