@@ -1158,7 +1158,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 </div>
 </div>
-<p>The definition is the <strong>authoritative schema map</strong> for a service. For each DataElement it returns:</p>
+<p>The definition is the <strong>authoritative schema map</strong> for a service. The response shape is <code>{"Name": ..., "TransactionDefinition": {"KeyDefinitions": [...], "DataElementDefinitions": [...]}, "Template": {...}}</code> — the elements live under <code>TransactionDefinition.DataElementDefinitions</code>. Each element carries:</p>
 <table>
 <thead>
 <tr>
@@ -1181,17 +1181,21 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </tr>
 <tr>
 <td><code>KeyFields</code></td>
-<td>Fields that identify a row in <code>Keys</code></td>
+<td>Fields that identify a row in <code>Keys</code> (e.g., <code>["note_id"]</code>)</td>
 </tr>
 <tr>
 <td><code>FieldDefinitions[]</code></td>
 <td>Every writable field — <code>Name</code>, <code>DbColumnName</code>, <code>DataType</code>, <code>Required</code></td>
 </tr>
+<tr>
+<td><code>ParentText</code>, <code>BusinessObjectName</code></td>
+<td>Display/back-end context for the element</td>
+</tr>
 </tbody>
 </table>
 <p>Use it to discover which tab/datawindow a given table lives on and exactly which column names and required fields a write needs. The API field <code>Name</code> is frequently <strong>not</strong> what you'd guess from the underlying table column — check <code>DbColumnName</code> in <code>FieldDefinitions</code> to map between the two.</p>
 <blockquote>
-<p><strong>Warning — Interactive vs Transaction tab numbering:</strong> The <code>TABPAGE_N</code> index in a live <strong>Interactive</strong> window does <strong>not</strong> line up with the <code>TABPAGE_N</code> in the <strong>Transaction API</strong> service definition for the same window. The same tab index can address different sheets in the two APIs, and a grid can sit on <code>TABPAGE_2</code> in the Interactive window while carrying a datawindow named <code>tp_17_dw_17</code>. <strong>The stable identifier is the datawindow name</strong> (<code>tp_N_dw_N</code> / <code>d_...</code>), not the tab index — match on the datawindow name when cross-referencing the definition against live Interactive calls.</p>
+<p><strong>Warning — don't derive <code>TABPAGE_N</code> from the visible tab order:</strong> <code>TABPAGE_N</code> names are <strong>not</strong> sequential with the tabs visible in the P21 UI — windows carry many disabled/hidden tab pages (PurchaseOrder has 37), so the grid that <em>looks</em> like the second tab can be <code>TABPAGE_17</code> (<code>tp_17_dw_17</code>). When cross-referencing the definition against live Interactive calls, match on the <strong>datawindow name</strong> (<code>tp_N_dw_N</code> / <code>d_...</code>) or read the Interactive window's <code>TabPageList</code> (<code>GET /api/ui/interactive/v2/window?id={windowId}</code>) — never count tabs on screen. On the servers tested (25.2/26.x), the Interactive window's <code>TABPAGE_N</code> names matched the definition's 1:1.</p>
 </blockquote>
 <h3 id="create-order">Create Order</h3>
 <div class="code-tabs">

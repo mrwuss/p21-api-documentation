@@ -426,19 +426,20 @@ var definition = JObject.Parse(
 ```
 <!-- /tabs -->
 
-The definition is the **authoritative schema map** for a service. For each DataElement it returns:
+The definition is the **authoritative schema map** for a service. The response shape is `{"Name": ..., "TransactionDefinition": {"KeyDefinitions": [...], "DataElementDefinitions": [...]}, "Template": {...}}` — the elements live under `TransactionDefinition.DataElementDefinitions`. Each element carries:
 
 | Field | Description |
 |-------|-------------|
 | `Name` | DataElement name used in payloads (e.g., `TABPAGE_7.tp_7_dw_7`) |
 | `DatawindowName` | Underlying datawindow (e.g., `d_update_po_hdr_notes_po_entry`) |
 | `Type` | `Form` or `List` |
-| `KeyFields` | Fields that identify a row in `Keys` |
+| `KeyFields` | Fields that identify a row in `Keys` (e.g., `["note_id"]`) |
 | `FieldDefinitions[]` | Every writable field — `Name`, `DbColumnName`, `DataType`, `Required` |
+| `ParentText`, `BusinessObjectName` | Display/back-end context for the element |
 
 Use it to discover which tab/datawindow a given table lives on and exactly which column names and required fields a write needs. The API field `Name` is frequently **not** what you'd guess from the underlying table column — check `DbColumnName` in `FieldDefinitions` to map between the two.
 
-> **Warning — Interactive vs Transaction tab numbering:** The `TABPAGE_N` index in a live **Interactive** window does **not** line up with the `TABPAGE_N` in the **Transaction API** service definition for the same window. The same tab index can address different sheets in the two APIs, and a grid can sit on `TABPAGE_2` in the Interactive window while carrying a datawindow named `tp_17_dw_17`. **The stable identifier is the datawindow name** (`tp_N_dw_N` / `d_...`), not the tab index — match on the datawindow name when cross-referencing the definition against live Interactive calls.
+> **Warning — don't derive `TABPAGE_N` from the visible tab order:** `TABPAGE_N` names are **not** sequential with the tabs visible in the P21 UI — windows carry many disabled/hidden tab pages (PurchaseOrder has 37), so the grid that *looks* like the second tab can be `TABPAGE_17` (`tp_17_dw_17`). When cross-referencing the definition against live Interactive calls, match on the **datawindow name** (`tp_N_dw_N` / `d_...`) or read the Interactive window's `TabPageList` (`GET /api/ui/interactive/v2/window?id={windowId}`) — never count tabs on screen. On the servers tested (25.2/26.x), the Interactive window's `TABPAGE_N` names matched the definition's 1:1.
 
 ### Create Order
 
