@@ -1420,6 +1420,62 @@
 </code></pre></div>
 </div>
 </div>
+<h4 id="character-set-and-whitespace-verified">Character set and whitespace (verified)</h4>
+<p>On a <strong>26.1</strong> tenant, the Inventory REST API enforces <strong>no character restriction</strong> on <code>ItemDesc</code>. Every printable ASCII symbol round-trips intact through GET → PUT → GET — including characters that commonly trip up other layers:</p>
+<div class="highlight"><pre><span></span><code>&quot; &#39; ` &amp; &lt; &gt; # / \ | , ; : . ( ) [ ] { } * + = % $ @ ! ? ~ ^ _ -
+</code></pre></div>
+
+<p>Extended/Unicode characters (e.g. <code>é</code>, <code>½</code>, <code>°</code>) also store and read back unchanged.</p>
+<blockquote>
+<p>⚠️ <strong>Version- and pipeline-dependent.</strong> This was verified on a 26.1 tenant. <strong>25.x tenants and downstream consumers (reporting, label/barcode printing, EDI) may reject characters the 26.1 REST API accepts</strong> — the double-quote <code>"</code> is a known offender. If you target 25.x or feed any reporting/printing flow, strip risky symbols (notably <code>"</code>) from descriptions <strong>and</strong> part numbers before writing, rather than relying on the API's permissiveness.</p>
+</blockquote>
+<p>Two behaviors <strong>are</strong> enforced at this layer:</p>
+<ul>
+<li><strong>Length</strong> — exactly 40 characters is accepted; <strong>41 or more is silently discarded</strong> on PUT (HTTP 200, but the value is <em>not</em> written and the previous description is retained). POST with &gt;40 fails with the misleading <code>"Required value missing for Item Description"</code>.</li>
+<li><strong>Trailing whitespace is trimmed</strong>; leading whitespace is preserved.</li>
+</ul>
+<blockquote>
+<p><strong>If your environment rejects certain symbols in item descriptions, the restriction is <em>not</em> coming from the Inventory REST API.</strong> Look instead at the P21 desktop UI / DynaChange validation rules or the specific downstream consumer (EDI, label/barcode printing, report formatting).</p>
+</blockquote>
+<p>Verified against <strong>Prophet21Play (26.1)</strong> by setting each candidate symbol on a live item via PUT and confirming the value on a fresh GET (then restoring the original description):</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="c1"># Probe whether a symbol survives a round-trip (PUT then GET).</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">symbol_round_trips</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">base_url</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">item_id</span><span class="p">,</span> <span class="n">symbol</span><span class="p">):</span>
+    <span class="n">part</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/inventory/parts/</span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                      <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+                      <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;extendedproperties&quot;</span><span class="p">:</span> <span class="s2">&quot;Locations,Suppliers,LocationSuppliers&quot;</span><span class="p">})</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">test</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;AA</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2">BB&quot;</span>
+    <span class="n">part</span><span class="p">[</span><span class="s2">&quot;ItemDesc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/inventory/parts/</span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">part</span><span class="p">)</span>
+    <span class="n">after</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/inventory/parts/</span><span class="si">{</span><span class="n">item_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;ItemDesc&quot;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">after</span> <span class="o">==</span> <span class="n">test</span>          <span class="c1"># True =&gt; allowed; baseline value =&gt; silently discarded</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Probe whether a symbol survives a round-trip (PUT then GET).</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="w"> </span><span class="n">SymbolRoundTrips</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span>
+<span class="w">                                         </span><span class="kt">string</span><span class="w"> </span><span class="n">itemId</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">symbol</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{baseUrl}/api/inventory/parts/{itemId}&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">part</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{url}?extendedproperties=Locations,Suppliers,LocationSuppliers&quot;</span><span class="p">));</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">test</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;AA{symbol}BB&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">part</span><span class="p">[</span><span class="s">&quot;ItemDesc&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">test</span><span class="p">;</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="n">url</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">part</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span><span class="n">url</span><span class="p">))[</span><span class="s">&quot;ItemDesc&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">after</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">test</span><span class="p">;</span><span class="w">         </span><span class="c1">// true =&gt; allowed; baseline value =&gt; silently discarded</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <h3 id="4-post-returns-307-redirect">4. POST Returns 307 Redirect</h3>
 <p><code>POST /api/inventory/parts</code> (without trailing slash) returns <strong>307 Temporary Redirect</strong> to <code>/api/inventory/parts/</code>. Most HTTP clients do not follow redirects on POST by default.</p>
 <p><strong>Fix:</strong> Either add a trailing slash to the URL, or configure your client to follow redirects:</p>
