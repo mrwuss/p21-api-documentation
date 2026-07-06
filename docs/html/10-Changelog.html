@@ -381,6 +381,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-07-06">2026-07-06</a></li>
 <li><a href="#2026-05-22">2026-05-22</a></li>
 <li><a href="#2026-04-16">2026-04-16</a></li>
 <li><a href="#2026-04-10">2026-04-10</a></li>
@@ -417,6 +418,12 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-07-06">2026-07-06</h2>
+<ul>
+<li><strong>docs:</strong> Add PurchaseOrder notepad writes documentation (Interactive API) — header notes (<code>po_hdr_notepad</code>, PO Note tab, datawindow <code>tp_7_dw_7</code>, tools <code>cb_add</code>/<code>cb_edit</code>) vs line notes (<code>po_line_notes</code>, datawindow <code>tp_21_dw_21</code> after selecting a row in <code>tp_17_dw_17</code>, tools <code>cb_add_line</code>/<code>cb_edit_line</code>), side-by-side recipes, and the silent-misfile warning: both tools are labelled "Add Note" but <code>cb_add_line</code> files the note against the currently-selected line with HTTP 200 and no error. Verified on 25.2, reproduced on 26.1 — Fixes #49 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Document <code>GET /api/v2/definition/{Service}</code> as the authoritative schema map — DataElement <code>Name</code>, <code>DatawindowName</code>, <code>Type</code>, <code>KeyFields</code>, and <code>FieldDefinitions[]</code> (<code>Name</code>, <code>DbColumnName</code>, <code>DataType</code>, <code>Required</code>); added as window discovery technique #7 in the Interactive API guide. Warning boxes in both guides: Interactive <code>TABPAGE_N</code> indices do <strong>not</strong> line up with Transaction API definition <code>TABPAGE_N</code> — match on the datawindow name (<code>tp_N_dw_N</code> / <code>d_...</code>), the stable identifier — Fixes #50 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Add "Verifying Writes" section to Interactive API guide — a save can return <code>Status: 1</code> with <code>savesucceeded</code> for the primary datawindow while a child-grid change never persists; status semantics vary across P21 versions and inserted child keys (e.g., <code>note_id</code>) are never returned. Recommendation: read the record back via <code>POST /api/v2/transaction/get</code> (or OData) before treating the write as done; cross-linked from the Transaction API guide — Fixes #51 — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-05-22">2026-05-22</h2>
 <ul>
 <li><strong>fix:</strong> Correct JobContractPricing update guidance — Transaction API <strong>does</strong> update existing <code>job_price_line</code> rows when called with <code>Status: "New"</code> and the FORM key fields (<code>company_id</code>, <code>contract_no</code>, <code>job_no</code>, <code>end_date</code>) in <code>Edits</code> (not <code>Keys</code>); previous docs incorrectly deflected readers to the Interactive API. Adds <em>Updating an Existing Contract</em> subsection with verified payload shape, notes that <code>pricing_method</code> Source → Price conversion works in the same call, and inlines a <code>/api/v2/transaction/get</code> retrieval example. Empirically verified by 173 successful price updates against contract <code>A120-12</code> on a production tenant (HTTP 200, OData re-read confirmed). The <code>Status: "Existing"</code> 500 caveat remains as an "unused — use New instead" note, no longer a write ban — Fixes #44 — <em>@mrwuss</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/45">PR #45</a></li>

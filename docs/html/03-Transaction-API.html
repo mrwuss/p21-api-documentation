@@ -565,6 +565,7 @@
 </table>
 <blockquote>
 <p><strong>Service Explorer:</strong> The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.</p>
+<p><strong>Read-after-write verification:</strong> <code>POST /api/v2/transaction/get</code> is also the recommended way to verify that an Interactive API write actually persisted — a save can report success without persisting a sub-record, and the read-back is the only way to recover a server-generated key. See <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> in the Interactive API guide.</p>
 </blockquote>
 <hr />
 <h2 id="authentication">Authentication</h2>
@@ -1157,6 +1158,41 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 </div>
 </div>
+<p>The definition is the <strong>authoritative schema map</strong> for a service. For each DataElement it returns:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name</code></td>
+<td>DataElement name used in payloads (e.g., <code>TABPAGE_7.tp_7_dw_7</code>)</td>
+</tr>
+<tr>
+<td><code>DatawindowName</code></td>
+<td>Underlying datawindow (e.g., <code>d_update_po_hdr_notes_po_entry</code>)</td>
+</tr>
+<tr>
+<td><code>Type</code></td>
+<td><code>Form</code> or <code>List</code></td>
+</tr>
+<tr>
+<td><code>KeyFields</code></td>
+<td>Fields that identify a row in <code>Keys</code></td>
+</tr>
+<tr>
+<td><code>FieldDefinitions[]</code></td>
+<td>Every writable field — <code>Name</code>, <code>DbColumnName</code>, <code>DataType</code>, <code>Required</code></td>
+</tr>
+</tbody>
+</table>
+<p>Use it to discover which tab/datawindow a given table lives on and exactly which column names and required fields a write needs. The API field <code>Name</code> is frequently <strong>not</strong> what you'd guess from the underlying table column — check <code>DbColumnName</code> in <code>FieldDefinitions</code> to map between the two.</p>
+<blockquote>
+<p><strong>Warning — Interactive vs Transaction tab numbering:</strong> The <code>TABPAGE_N</code> index in a live <strong>Interactive</strong> window does <strong>not</strong> line up with the <code>TABPAGE_N</code> in the <strong>Transaction API</strong> service definition for the same window. The same tab index can address different sheets in the two APIs, and a grid can sit on <code>TABPAGE_2</code> in the Interactive window while carrying a datawindow named <code>tp_17_dw_17</code>. <strong>The stable identifier is the datawindow name</strong> (<code>tp_N_dw_N</code> / <code>d_...</code>), not the tab index — match on the datawindow name when cross-referencing the definition against live Interactive calls.</p>
+</blockquote>
 <h3 id="create-order">Create Order</h3>
 <div class="code-tabs">
   <div class="tab-buttons">

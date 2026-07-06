@@ -8,6 +8,12 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-07-06
+
+- **docs:** Add PurchaseOrder notepad writes documentation (Interactive API) — header notes (`po_hdr_notepad`, PO Note tab, datawindow `tp_7_dw_7`, tools `cb_add`/`cb_edit`) vs line notes (`po_line_notes`, datawindow `tp_21_dw_21` after selecting a row in `tp_17_dw_17`, tools `cb_add_line`/`cb_edit_line`), side-by-side recipes, and the silent-misfile warning: both tools are labelled "Add Note" but `cb_add_line` files the note against the currently-selected line with HTTP 200 and no error. Verified on 25.2, reproduced on 26.1 — Fixes #49 — *@mrwuss*
+- **docs:** Document `GET /api/v2/definition/{Service}` as the authoritative schema map — DataElement `Name`, `DatawindowName`, `Type`, `KeyFields`, and `FieldDefinitions[]` (`Name`, `DbColumnName`, `DataType`, `Required`); added as window discovery technique #7 in the Interactive API guide. Warning boxes in both guides: Interactive `TABPAGE_N` indices do **not** line up with Transaction API definition `TABPAGE_N` — match on the datawindow name (`tp_N_dw_N` / `d_...`), the stable identifier — Fixes #50 — *@mrwuss*
+- **docs:** Add "Verifying Writes" section to Interactive API guide — a save can return `Status: 1` with `savesucceeded` for the primary datawindow while a child-grid change never persists; status semantics vary across P21 versions and inserted child keys (e.g., `note_id`) are never returned. Recommendation: read the record back via `POST /api/v2/transaction/get` (or OData) before treating the write as done; cross-linked from the Transaction API guide — Fixes #51 — *@mrwuss*
+
 ## 2026-05-22
 
 - **fix:** Correct JobContractPricing update guidance — Transaction API **does** update existing `job_price_line` rows when called with `Status: "New"` and the FORM key fields (`company_id`, `contract_no`, `job_no`, `end_date`) in `Edits` (not `Keys`); previous docs incorrectly deflected readers to the Interactive API. Adds *Updating an Existing Contract* subsection with verified payload shape, notes that `pricing_method` Source → Price conversion works in the same call, and inlines a `/api/v2/transaction/get` retrieval example. Empirically verified by 173 successful price updates against contract `A120-12` on a production tenant (HTTP 200, OData re-read confirmed). The `Status: "Existing"` 500 caveat remains as an "unused — use New instead" note, no longer a write ban — Fixes #44 — *@mrwuss* via [PR #45](https://github.com/mrwuss/p21-api-documentation/pull/45)
