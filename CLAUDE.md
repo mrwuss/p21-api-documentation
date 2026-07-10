@@ -8,6 +8,16 @@
 
 This project provides developer-focused documentation for Prophet 21's integration APIs. All content is based on official Epicor SDK documentation and verified working implementations - no guesses or assumptions.
 
+## How to Navigate (read this before opening docs)
+
+The numbered docs are the deep *manual* — several exceed 1,000 lines. **Do not read a whole doc for one task.** The routing flow is:
+
+1. Read this file (you're here).
+2. Open **[docs/INDEX.md](docs/INDEX.md)** — a task → section-anchor map.
+3. Load **only the linked section(s)** your task needs.
+
+When editing docs, keep INDEX.md's anchors in sync (renaming a heading breaks its index entry), and add an index row for any new task-worthy section.
+
 ---
 
 ## APIs Covered

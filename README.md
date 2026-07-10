@@ -42,6 +42,8 @@ python scripts/odata/01_basic_query.py
 
 ## Documentation
 
+> **Start with the [Task Index](docs/INDEX.md)** — a "what do you want to do" → exact-section map. The docs below are the deep manual; the index gets you to the right 50 lines instead of the right 2,000.
+
 ### Getting Started
 - [Authentication](docs/00-Authentication.md) - Token generation, credentials vs consumer key, Interactive API auth
 - [API Selection Guide](docs/01-API-Selection-Guide.md) - Which API to use when

@@ -1,0 +1,139 @@
+# Task Index — Find the Right Section Fast
+
+> **How to use this repo without drowning in it:** the numbered docs are the deep *manual* — most are over 1,000 lines. Don't read a whole doc for one task. Find your task below and open **only the linked section**. If you're an AI assistant: read `CLAUDE.md`, then this index, then just the sections your task needs.
+
+Every task assumes you already have a token and (for Transaction/Interactive) the UI server URL — see [Getting a token](#first-call-of-any-session) below.
+
+---
+
+## First call of any session
+
+| Task | Where |
+|------|-------|
+| Get a bearer token (v2, credentials in body) | [00 § Method 1: User Credentials](00-Authentication.md#method-1-user-credentials) |
+| Authenticate with a consumer key | [00 § Method 2: Consumer Key](00-Authentication.md#method-2-consumer-key) |
+| Get the UI server URL (Transaction/Interactive base) — 307 redirect gotcha | [00 § UI Server URL](00-Authentication.md#ui-server-url) |
+| Token TTL / reuse across APIs | [00 § Token Lifetime and Reuse](00-Authentication.md#token-lifetime-and-reuse) |
+| Fix "not authorized" (P21 user permissions) | [00 § P21 Permissions](00-Authentication.md#p21-permissions-user-credential-auth) |
+| Pick which API to use for a task | [01 API Selection Guide](01-API-Selection-Guide.md) (short — read whole) |
+
+## Read data (OData)
+
+| Task | Where |
+|------|-------|
+| Query a table or view | [02 § Query Parameters](02-OData-API.md#query-parameters) |
+| Filter syntax, operators, string functions | [02 § Filter Expressions](02-OData-API.md#filter-expressions) |
+| Only active rows (`row_status_flag eq 704`) | [02 § Active Record Filter](02-OData-API.md#active-record-filter) |
+| Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins--chain-queries-by-uid) |
+| Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
+| Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
+| New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |
+
+## Create / update records (Transaction API)
+
+| Task | Where |
+|------|-------|
+| Payload anatomy (TransactionSet / DataElements / Edits) | [03 § Request Structure](03-Transaction-API.md#request-structure) |
+| Get a service's schema, template, defaults | [03 § Endpoints](03-Transaction-API.md#endpoints) |
+| **Update an existing record** (Status `"New"` + keys; `"Existing"` is broken) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) |
+| **Insert new keyed rows (upsert)** + one-tx-per-POST rule | [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) |
+| Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) |
+| Field order silently changing values | [03 § Field Order Matters](03-Transaction-API.md#field-order-matters) |
+| Labels vs code_no (`UseCodeValues`, `code_p21`) | [03 § UseCodeValues](03-Transaction-API.md#usecodevalues) |
+| Check success properly (HTTP 200 lies; per-tx pass/fail) | [03 § Response Format](03-Transaction-API.md#response-format) · [06 § Transaction API Errors](06-Error-Handling.md#transaction-api-errors) |
+| Read a record back / verify a write | [03 § Endpoints — `/transaction/get`](03-Transaction-API.md#endpoints) |
+| Long-running / async transactions | [03 § Async Operations](03-Transaction-API.md#async-operations) |
+| DynaChange rules & popup suppression for the API user | [03 § DynaChange and Popup Handling](03-Transaction-API.md#dynachange-and-popup-handling) |
+| Run a stored procedure via API | [03 § Stored Procedure Executor](03-Transaction-API.md#stored-procedure-executor) |
+
+### By record type
+
+| Task | Where |
+|------|-------|
+| Create a **sales order** + gotchas (source_loc_id, dates, DynaChange) | [03 § Create Order](03-Transaction-API.md#create-order) · [03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas) |
+| Order with an **assembly line** (explode / spawn prod order) | [04 § Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines) |
+| **Job contract**: create, lines, breaks | [03 § JobContractPricing Service](03-Transaction-API.md#jobcontractpricing-service) |
+| Job contract: update / add lines | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) · [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) |
+| Job contract: **bin quantities** | [03 § Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract) (Interactive fallback: [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences)) |
+| Job contract: commission costs | [03 § Commission Costs](03-Transaction-API.md#commission-costs) |
+| **Assembly / BOM** definition | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
+| Item: **primary bin / primary supplier** at a location | [03 § Item Service](03-Transaction-API.md#item-service----nested-location-edits) |
+| **Create warehouse bins** | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service----creating-bins) |
+| **Sales price pages** (codes, breaks, field order) | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) |
+| Customers / vendors / contacts / addresses (simple CRUD) | [05 § CRUD Operations](05-Entity-API.md#crud-operations) |
+| Inventory items: read / create / update locations | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
+| User-defined tables (UDT) rows | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) |
+
+## Drive a window (Interactive API)
+
+| Task | Where |
+|------|-------|
+| Session → window → change → save lifecycle | [04 § Session Lifecycle](04-Interactive-API.md#session-lifecycle) |
+| v2 payload shapes (save body is the bare GUID, etc.) | [04 § v1 vs v2 API Differences](04-Interactive-API.md#v1-vs-v2-api-differences) |
+| Find field / tab / datawindow names | [04 § Finding Field Names](04-Interactive-API.md#finding-field-names) · [04 § Window Discovery](04-Interactive-API.md#window-discovery-techniques) |
+| **Handle popups / response windows** (Status 3, windowopened) | [04 § Response Windows](04-Interactive-API.md#response-windows) · [04 § Response Window Types](04-Interactive-API.md#response-window-types) |
+| Answer a rule-callback dialog ("Item Issues Detected") | [04 § Worked Example](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) |
+| Fill fields in a popup (`TabName: null`) | [04 § Response Window Handling (Tabless)](04-Interactive-API.md#response-window-handling-tabless-windows) |
+| Buttons / tools (`?windowId=`, not `?id=`) | [04 § Running Tools](04-Interactive-API.md#running-tools-buttons) |
+| Unlock a disabled tab | [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences) |
+| Row selection traps (sync bug, detail-form rebind, row 0) | [04 § Known Issues and Workarounds](04-Interactive-API.md#known-issues-and-workarounds) |
+| Key field silently swallowing later edits | [04 § Key Fields Commit the Cursor](04-Interactive-API.md#key-fields-commit-the-cursor-later-fields-silently-ignored) |
+| Verify a save actually persisted | [04 § Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) |
+| PO notepad notes (header vs line) | [04 § PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line) |
+| Bulk/batch interactive work (session reuse, error recovery) | [09 Batch Processing Patterns](09-Batch-Processing-Patterns.md) |
+| Intermittent "Unexpected Response Window" in production | [07 Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) |
+
+## Production & manufacturing
+
+| Task | Where |
+|------|-------|
+| Service catalog & schemas (ProductionOrder, TimeEntry, …) | [12 § Available Services](12-Production-Labor-API.md#available-services) |
+| Assembly behavior flags (prod-order vs kit vs build-to-stock) | [12 § Assembly Behavior Flags](12-Production-Labor-API.md#assembly-behavior-flags) |
+| **Full runbook: create → print → confirm → complete → ship** | [12 § Production Order Lifecycle](12-Production-Labor-API.md#production-order-lifecycle-end-to-end) |
+| Pick ticket won't generate (make loc vs stock loc) | [12 § Printing the Pick Ticket](12-Production-Labor-API.md#printing-the-pick-ticket-and-form) · [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
+| Confirm a pick (shell-confirm trap — use Interactive) | [12 § Confirming the Pick](12-Production-Labor-API.md#confirming-the-pick--use-the-interactive-api) |
+| Complete / production receipt (+ per-component cost override) | [12 § Completing the Production Order](12-Production-Labor-API.md#completing-the-production-order-production-receipt) |
+| Record labor hours | [12 § Recording Labor Hours](12-Production-Labor-API.md#recording-labor-hours-timeentry-service) · [12 § Time Entry Against a Production Order](12-Production-Labor-API.md#time-entry-against-a-production-order-quick-time-entry) |
+| Ship + invoice | [12 § Shipping and Invoicing](12-Production-Labor-API.md#shipping-and-invoicing-the-linked-sales-order) |
+| Inventory write-off / adjustment | [12 § Inventory Adjustment](12-Production-Labor-API.md#inventory-adjustment-write-offs) |
+| Why COGS doesn't match the receipt | [12 § Cost Model](12-Production-Labor-API.md#cost-model--know-this-before-trusting-cogs) |
+
+## Documents & reports (PDF)
+
+| Task | Where |
+|------|-------|
+| Generate any `m_*` report as PDF | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) |
+| Discover callable report names (hidden from /services) | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) (Discovery note) |
+| Production pick ticket at a specific location | [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
+| PDFs from print flags on a normal transaction | [03 § PDFs from the /transaction endpoint](03-Transaction-API.md#pdfs-from-the-transaction-endpoint-print-flags) |
+
+## When something breaks
+
+| Task | Where |
+|------|-------|
+| Error catalog by API | [06 Error Handling](06-Error-Handling.md) (per-API sections) |
+| Quick symptom → cause table | [06 § Common Issues Quick Reference](06-Error-Handling.md#common-issues-quick-reference) |
+| Auth failures | [06 § Authentication Errors](06-Error-Handling.md#authentication-errors) |
+| Intermittent interactive failures under load | [07 Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) |
+| What changed in these docs recently | [10 Changelog](10-Changelog.md) |
+
+---
+
+## Doc inventory (what each file is)
+
+| Doc | Scope | Size |
+|-----|-------|------|
+| [00-Authentication](00-Authentication.md) | Tokens (v2/consumer key), permissions, UI server URL | large |
+| [01-API-Selection-Guide](01-API-Selection-Guide.md) | Which API for which job | small — read whole |
+| [02-OData-API](02-OData-API.md) | Read-only queries | large |
+| [03-Transaction-API](03-Transaction-API.md) | Stateless create/update + service reference + PDF reports | very large — use anchors |
+| [04-Interactive-API](04-Interactive-API.md) | Stateful window driving, popups, traps | very large — use anchors |
+| [05-Entity-API](05-Entity-API.md) | REST CRUD on 4 entities | medium |
+| [06-Error-Handling](06-Error-Handling.md) | Errors across all APIs | large |
+| [07-Session-Pool-Troubleshooting](07-Session-Pool-Troubleshooting.md) | One deep-dive: session pool contamination | medium — single topic |
+| [08-SalesPricePage-Codes](08-SalesPricePage-Codes.md) | SalesPricePage field codes/order | medium — single service |
+| [09-Batch-Processing-Patterns](09-Batch-Processing-Patterns.md) | Interactive bulk patterns + async client | very large |
+| [10-Changelog](10-Changelog.md) | Doc change history | small |
+| [11-Inventory-REST-API](11-Inventory-REST-API.md) | `/api/inventory/parts` read/append/update | large |
+| [12-Production-Labor-API](12-Production-Labor-API.md) | Production services + end-to-end lifecycle | large |
+| [13-UDT-Service-API](13-UDT-Service-API.md) | User-defined table CRUD | large |
