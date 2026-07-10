@@ -445,6 +445,7 @@
 <li><a href="#recipe-add-a-line-note">Recipe: Add a Line Note</a></li>
 </ul>
 </li>
+<li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>
 <li><a href="#messages">Messages</a></li>
@@ -2367,6 +2368,24 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <ol>
 <li>Complete the Notepad Entry popup exactly as in the header recipe (<code>topic</code>/<code>note</code> on <code>_dw_hdr</code> with <code>TabName: null</code>, then <code>cb_select_all</code>, <code>cb_ok</code>) — the popup's <code>_dw_hdr</code> shows which <code>line_no</code>/<code>item_id</code> the note will attach to. Save and verify.</li>
 </ol>
+<hr />
+<h2 id="sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</h2>
+<p>Use the Interactive API to create a sales order when a line is an <strong>assembly</strong> that should explode into components and/or spawn a <strong>production order</strong>. The Transaction API cannot do this: entering an assembly item fires an <em>"add as assembly?"</em> prompt, and the stateless API auto-answers <strong>No</strong>, killing the explode (see <a href="03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a>). Verified end-to-end: interactive order entry created a sales order whose assembly line (<code>oe_line.assembly = 'P'</code>) auto-linked to a new production order.</p>
+<p>The flow (session started with <code>ResponseWindowHandlingEnabled: true</code>):</p>
+<ol>
+<li><strong>Header</strong> on <code>TabName: "TABPAGE_1"</code>, <code>DatawindowName: "order"</code> — set <code>quote</code> (<code>OFF</code> = real order, <code>ON</code> = quote), <code>sales_loc_id</code>, <code>source_loc_id</code>, <code>customer_id</code>, <code>ship_to_id</code>, <code>contact_id</code>, <code>order_date</code>, <code>requested_date</code>, <code>po_no</code>, <code>taker</code>.</li>
+<li><strong><code>taker</code> defaults to the API user</strong> — override it with the real salesperson or the order is attributed to the service account.</li>
+<li><strong>Setting the dates fires a date-cascade prompt</strong> (<code>w_response_common</code>, buttons <code>cb_ok</code>/<code>cb_cancel</code>) <em>even on a brand-new order</em>. Answer <strong><code>cb_ok</code></strong> via the popup's window ID (see <a href="#response-windows">Response Windows</a>).</li>
+<li><strong>Lines</strong>: <code>change_tab</code> to <code>TP_ITEMS</code>, then set fields on the <strong>existing</strong> <code>items</code> row (<code>DatawindowName: "items"</code> — do <strong>not</strong> add a row for the first line):</li>
+<li>Setting <code>oe_order_item_id</code> on an assembly item fires the <strong>assembly prompt</strong> (buttons <code>cb_1</code> = Yes / <code>cb_2</code> = No / <code>cb_3</code> = Cancel). Answer <strong><code>cb_1</code></strong> to explode the assembly / link a production order.</li>
+<li>Then set <code>unit_quantity</code>.</li>
+<li><strong>Do NOT use the quickmode datawindow</strong> (<code>d_dw_quickmode_*</code>) to enter lines — it <strong>bypasses the assembly prompt entirely</strong>, and the line lands without the explode.</li>
+<li><strong>Save</strong>, answering any follow-on prompts with their proceed button. Read the generated <code>order_no</code> from the window data (<code>GET /v2/data</code>).</li>
+</ol>
+<p>Assembly behavior is item-level (<code>assembly_hdr</code>): <code>production_order_processing</code> <code>Y</code> = production-order assembly / <code>N</code> = kit; <code>auto_create_prod_order</code> <code>Y</code> = auto-create and link the production order at save. On the saved order, <code>oe_line.assembly</code> codes: <code>B</code> = kit parent, <code>N</code> = component, <code>P</code> = production-order line, <code>S</code> = build-to-stock allocation. The production-order link is <code>prod_order_line_link</code> (<code>transaction_uid = oe_line.oe_line_uid</code>, <code>trans_type = 'O'</code>). See the <a href="12-Production-Labor-API.html">Production &amp; Labor API guide</a> for the full production lifecycle.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — flow and gotchas verified end-to-end on a play environment (June 2026).</p>
+</blockquote>
 <hr />
 <h2 id="data-structures-reference">Data Structures Reference</h2>
 <h3 id="result-object">Result Object</h3>

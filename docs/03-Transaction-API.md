@@ -570,6 +570,17 @@ var response = await client.PostAsync(
 ```
 <!-- /tabs -->
 
+#### Order Service Gotchas
+
+All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
+
+- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A realistic header sets `customer_id`, `sales_loc_id`, `source_loc_id`, `order_date`, `requested_date`, `po_no`, `taker`, `ship_to_id`, and `contact_id`.
+- **`requested_date` must be after `order_date`.** The same date trips a date-cascade prompt, which the stateless API can't answer.
+- **`company_id` is a disabled column** on the Order window — don't send it.
+- **DynaChange prompts are auto-answered with the default** (usually "No"), which silently discards the affected line — e.g. *"order line does not have a PO Cost… proceed? [No]"*. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see [DynaChange and Popup Handling](#dynachange-and-popup-handling).
+- **Assembly items cannot be entered via the Transaction API** when they should explode or spawn a production order — the *"add as assembly?"* prompt is auto-answered **No**, killing the explode. Use the Interactive API for those lines: see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
+- The created `order_no` comes back in the result rows; check `Summary.Succeeded`, not the HTTP status.
+
 ---
 
 ## Service Reference
