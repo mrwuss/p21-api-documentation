@@ -403,7 +403,23 @@
 <li><a href="#additional-dataelements">Additional DataElements</a></li>
 </ul>
 </li>
-<li><a href="#assembly-service-cross-reference">Assembly Service (Cross-Reference)</a></li>
+<li><a href="#assembly-service-cross-reference">Assembly Service (Cross-Reference)</a><ul>
+<li><a href="#assembly-behavior-flags">Assembly Behavior Flags</a></li>
+</ul>
+</li>
+<li><a href="#production-order-lifecycle-end-to-end">Production Order Lifecycle (End-to-End)</a><ul>
+<li><a href="#how-production-orders-get-created">How Production Orders Get Created</a></li>
+<li><a href="#printing-the-pick-ticket-and-form">Printing the Pick Ticket and Form</a></li>
+<li><a href="#labor-timing-log-labor-before-printing">Labor Timing — Log Labor BEFORE Printing</a></li>
+<li><a href="#confirming-the-pick-use-the-interactive-api">Confirming the Pick — Use the Interactive API</a></li>
+<li><a href="#completing-the-production-order-production-receipt">Completing the Production Order (Production Receipt)</a></li>
+<li><a href="#time-entry-against-a-production-order-quick-time-entry">Time Entry Against a Production Order (Quick Time Entry)</a></li>
+<li><a href="#shipping-and-invoicing-the-linked-sales-order">Shipping and Invoicing the Linked Sales Order</a></li>
+<li><a href="#inventory-adjustment-write-offs">Inventory Adjustment (Write-Offs)</a></li>
+<li><a href="#cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</a></li>
+<li><a href="#key-tables">Key Tables</a></li>
+</ul>
+</li>
 <li><a href="#labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</a><ul>
 <li><a href="#key-field">Key Field</a></li>
 <li><a href="#header-fields">Header Fields</a></li>
@@ -1367,6 +1383,102 @@
 1. Create the inventory item via Inventory REST API (<code>POST /api/inventory/parts</code>)
 2. Create the assembly/BOM definition via Transaction API (<code>Assembly</code> service)
 3. Create production orders via Transaction API (<code>ProductionOrder</code> service) referencing the assembled item</p>
+<h3 id="assembly-behavior-flags">Assembly Behavior Flags</h3>
+<p>Three ON/OFF flags on the assembly header (<code>assembly_hdr</code>, header datawindow <code>assemblyhdr</code>, key <code>inv_mast_item_id</code>) control how the item behaves at order entry and in production:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th><code>Y</code></th>
+<th><code>N</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>production_order_processing</code></td>
+<td>Production-order assembly (a sales order line spawns/links a production order)</td>
+<td>Kit — explodes to components on the order, no production order</td>
+</tr>
+<tr>
+<td><code>auto_create_prod_order</code></td>
+<td>Auto-create and link the production order when the sales order saves</td>
+<td>Create and link the production order manually</td>
+</tr>
+<tr>
+<td><code>assembly_for_stock</code></td>
+<td>Build-to-stock item (units dwell in inventory)</td>
+<td>Make-to-order</td>
+</tr>
+</tbody>
+</table>
+<p>On a saved sales order, <code>oe_line.assembly</code> reflects the outcome: <code>B</code> = kit parent, <code>N</code> = kit component, <code>P</code> = production-order line, <code>S</code> = build-to-stock line allocated from on-hand.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — flag semantics verified end-to-end.</p>
+</blockquote>
+<hr />
+<h2 id="production-order-lifecycle-end-to-end">Production Order Lifecycle (End-to-End)</h2>
+<p>Everything in this section was verified live against a P21 test environment (credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>, June–July 2026). It covers the behavior the schema tables above don't: how orders spawn, why pick tickets go missing, why a "confirmed" pick can move no stock, and how costs flow to the invoice.</p>
+<h3 id="how-production-orders-get-created">How Production Orders Get Created</h3>
+<p><strong>Path A — Sales order auto-create (make-to-order).</strong> A sales order line for a <code>production_order_processing = Y</code> assembly gets <code>oe_line.assembly = 'P'</code>. With <code>auto_create_prod_order = Y</code>, P21 <strong>nets against available stock</strong>:</p>
+<ul>
+<li>Stock on hand → the line <strong>allocates it and no production order spawns</strong> (<code>qty_allocated &gt; 0</code>, no link).</li>
+<li>Short → a production order spawns <strong>for the shortfall</strong>, linked via <code>prod_order_line_link</code> (<code>transaction_uid = oe_line.oe_line_uid</code>, <code>trans_type = 'O'</code>).</li>
+</ul>
+<p>Neither min/max settings nor <code>make = 'Y'</code> is required for this path. Gotchas: the customer's <strong>salesrep must be valid at the sales location</strong> (a DynaChange rule blocks the order otherwise), and the <strong>order date must differ from the required date</strong>. Enter the order via the Interactive API when the line must explode — see <a href="04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a>.</p>
+<p><strong>Path B — Direct build-to-stock.</strong> Drive the <code>ProductionOrder</code> window: set the header <code>source_loc_id</code> (the make location — where components are stocked <em>and</em> the finished item exists) plus any required user-defined fields, then on <code>TABPAGE_17.tp_17_dw_17</code> set <code>assembly_item_id</code> and <code>qty_to_make</code> (add a row and select it for each additional line). No sales order involved. If the finished item isn't set up at the source location, the save fails with <em>"item ID does not exist at your source location."</em></p>
+<p>Location notes: the production order's make location comes from <code>prod_order_hdr.source_location_id</code>. Physical components source from the stocking location; <strong>intangible components</strong> (labor, burden, charge items) can source from a paired non-stock location if the environment is configured that way — which is why a production order commonly has <strong>two pick tickets</strong> (parts + labor/intangibles). Dates stay synced between a linked sales order and its production order; quantities are copied once at entry and then move independently.</p>
+<h3 id="printing-the-pick-ticket-and-form">Printing the Pick Ticket and Form</h3>
+<p>Print via a <code>ProductionOrder</code> transaction with <code>print_pick_ticket = ON</code> and <code>print_form = ON</code> on <code>TABPAGE_1.tp_1_dw_1</code>. This creates the pick ticket, sets <code>prod_order_hdr.printed = 'Y'</code>, and returns the PDFs in the response — see <a href="03-Transaction-API.html#pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint</a>.</p>
+<ul>
+<li><strong><code>print_pick_ticket</code> emits only at the MAKE location.</strong> If the components stock at a different location, you get the form but no usable pick ticket. Generate the ticket at the stock location with the <code>m_picktickets</code> report instead — see <a href="03-Transaction-API.html#example-generate-a-production-order-pick-ticket-m_picktickets">the worked example</a>.</li>
+<li>A <strong>parts</strong> pick ticket generates only if the components have <strong>stock at the source location</strong> — <code>assembly_for_stock</code> is not required.</li>
+<li>Documents only return on a <strong>savable</strong> order; a bare reprint with nothing new to pick errors <em>"Save is not enabled."</em></li>
+</ul>
+<h3 id="labor-timing-log-labor-before-printing">Labor Timing — Log Labor BEFORE Printing</h3>
+<p>Labor posted through Time Entry becomes a labor charge component on the production order, and that component <strong>must land on a pick ticket to be consumed at completion</strong>:</p>
+<ul>
+<li><strong>Log labor → then print</strong> (the ticket picks up the labor), <strong>or reprint after adding labor</strong> — the reprint generates a separate <strong>labor/intangibles pick ticket</strong> for allocated-but-unticketed labor.</li>
+<li>If you print first and add labor after (without reprinting), the labor is allocated but on no ticket (<code>qty_on_pick_tickets = 0</code>) → completion fails with <em>"components have a quantity used of 0."</em> Fix: reprint, confirm the new ticket.</li>
+</ul>
+<h3 id="confirming-the-pick-use-the-interactive-api">Confirming the Pick — Use the Interactive API</h3>
+<p>Confirm with the <code>ProductionOrderPicking</code> window: header <code>tp_prodpickticketconf</code> (key <code>prod_pick_ticket_number</code>), set the Confirm Pick field <code>row_status_flag</code> to <code>"Confirm"</code>, and save. Confirm <strong>every</strong> ticket (parts and labor/intangibles).</p>
+<blockquote>
+<p>⚠️ <strong>Shell-confirm warning — do NOT confirm with a bare Transaction API POST.</strong> Posting <code>row_status_flag = 'Confirm'</code> through <code>/api/v2/transaction</code> flips the ticket status (1962) and stamps <code>qty_confirmed</code>, but leaves <strong><code>qty_applied = 0</code> and moves no stock</strong> — a shell confirm. The per-bin posted quantities live in a disabled <code>TP_BIN</code> grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves the picked components to the make location's WIP bin (<code>inv_loc.primary_bin</code> at <code>prod_order_hdr.source_location_id</code>; bin <code>0</code> when no primary is set).</p>
+</blockquote>
+<p>Pick ticket status codes (<code>prod_pick_ticket_hdr.row_status_flag</code>): <code>702</code> = Open, <code>1962</code> = Confirmed, <code>1268</code> = Completed. Detail rows: <code>704</code> = normal, <code>1268</code> at completion.</p>
+<h3 id="completing-the-production-order-production-receipt">Completing the Production Order (Production Receipt)</h3>
+<p>Complete with the <code>ProductionOrderProcessing</code> window:</p>
+<ol>
+<li>Select the line on <code>TABPAGE_17.tp_17_dw_17</code> and set <strong><code>qty_to_complete</code></strong> (partial completion is supported). <code>qty_completed</code> is a read-only rollup.</li>
+<li>Set the receiving bin on <code>TABPAGE_ASSEMBLY_BIN.tabpage_assembly_bin</code>: <strong><code>bin_cd</code></strong> (the finished item's <code>inv_loc.primary_bin</code>, often <code>0</code>) and <strong><code>unit_quantity</code></strong> (= the completion quantity) — <strong>as two separate change calls.</strong> Combining them in one call drops the quantity, and a subsequent completion errors <em>"sum of bin quantity ... does not equal quantity made."</em></li>
+<li>Save → the assembly is received into inventory (<code>inv_tran</code> type <code>PROP</code>) and the ticketed components are consumed.</li>
+</ol>
+<p><strong>Per-component cost override at completion:</strong> once <code>qty_to_complete</code> is set, the component grid (<code>TABPAGE_18.tp_18_dw_18</code>) exposes an editable <strong><code>new_cost</code></strong> per component (the read-only <code>inventory_cost</code> beside it is the current moving average). A <code>new_cost</code> override flows: <code>new_cost</code> → <code>PROP</code> receipt cost → the finished item's moving average → invoice COGS. Use it to book an agreed cost (e.g. a rebated component cost) instead of the moving average.</p>
+<h3 id="time-entry-against-a-production-order-quick-time-entry">Time Entry Against a Production Order (Quick Time Entry)</h3>
+<p>Complementing the <a href="#recording-labor-hours-timeentry-service">TimeEntry service reference</a> above, the production-order labor grid path has strict mechanics:</p>
+<ul>
+<li>Header <code>TP_TECHNICIAN.tp_technician</code>: <code>company_id</code>, <code>technician_id</code> — <strong>a contact ID</strong>, not a user ID — and <code>entry_date</code>.</li>
+<li>Labor grid <code>prod_order_line_comp_labor</code>: enter fields <strong>in this order</strong> — <code>prod_order_number</code> → <code>item_id</code> (the assembly line's item) → <code>component_labor_id</code> (the labor component) → <code>start_time</code> → <code>end_time</code>. Out of order, the downstream fields stay disabled.</li>
+<li>Time is stored per line in hours/minutes at minute granularity and <strong>accumulates</strong> across entries; cost = minutes × the labor code's rate.</li>
+<li>⚠️ <strong>The accounting period for <code>entry_date</code> must be open</strong>, or the save fails.</li>
+</ul>
+<h3 id="shipping-and-invoicing-the-linked-sales-order">Shipping and Invoicing the Linked Sales Order</h3>
+<ol>
+<li>Print the sales order pick ticket: <code>Order</code> service transaction with <code>print_tix = ON</code> on <code>TP_FRONTCOUNTER.tp_frontcounter</code> (creates <code>oe_pick_ticket</code>).</li>
+<li>Ship + invoice: the <code>Shipping</code> service, header <code>tp_1_dw_1</code> keyed by <code>pick_ticket_no</code> — retrieve and <strong>save</strong>. <code>create_invoice</code> defaults ON, so the save ships the order <strong>and</strong> creates the invoice in one step. Partial shipments are supported. The item needs a <strong>packaging code</strong> or the save fails.</li>
+</ol>
+<p>Contract pricing note: leave <code>unit_price</code> unset on the sales order line and P21 auto-fills the job-contract price, binding <code>oe_line.job_price_hdr_uid</code> — the contract must cover that <strong>specific ship-to</strong>. Works for production-order assemblies, not just kits.</p>
+<h3 id="inventory-adjustment-write-offs">Inventory Adjustment (Write-Offs)</h3>
+<p>The <code>InventoryAdjustment</code> service posts on-hand adjustments with no invoice: header <code>tp_1_dw_1</code> takes <code>location_id</code> and <code>reason_id</code> (pass the reason's <strong>display text</strong>, not its code, with <code>UseCodeValues: false</code>); line <code>tp_17_dw_17</code> takes <code>item_id</code> and <code>unit_quantity</code> = the signed delta (e.g. negative on-hand to zero it out). Save posts the adjustment.</p>
+<h3 id="cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</h3>
+<ul>
+<li><strong>Assembly receipt cost</strong> (<code>inv_tran</code> <code>PROP</code> <code>unit_cost_amt</code>) = component costs <strong>+ labor posted before completion</strong>. Labor logged after completion misses the receipt.</li>
+<li><strong>Shipment COGS</strong> (<code>invoice_line.cogs_amount</code>, <code>inv_tran</code> <code>WO</code>) = the item's <strong>moving-average cost at ship time</strong>, NOT that order's specific receipt.</li>
+<li><strong>Moving-average pooling:</strong> while two or more units of the same item sit in stock, a cost added to one (e.g. a labor overrun) smears across all of them — an unrelated unit ships at a blended cost. Make-to-order (one in, one out) is largely immune; <strong>build-to-stock is exposed by design</strong>. True per-job cost is the <code>PROP</code> receipt, not the invoice COGS.</li>
+<li><strong>Labor posted after invoicing</strong> generates a separate <em>"Post Freight/Labor Prod. Order: NNNN"</em> invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched.</li>
+</ul>
+<h3 id="key-tables">Key Tables</h3>
+<p><code>assembly_hdr</code> / <code>assembly_line</code> (BOM + behavior flags) · <code>oe_hdr</code> / <code>oe_line</code> (<code>assembly</code> B/N/P/S) · <code>prod_order_line_link</code> · <code>prod_order_hdr</code> / <code>prod_order_line</code> / <code>prod_order_line_component</code> · <code>prod_pick_ticket_hdr</code> / <code>prod_pick_ticket_detail</code> · <code>oe_pick_ticket</code> · <code>prod_order_line_comp_labor</code> · <code>invoice_hdr</code> / <code>invoice_line</code> · <code>inv_loc</code> (min/max, moving average, primary bin) · <code>inv_tran</code> (<code>PROP</code> receipt / <code>WO</code> ship).</p>
 <hr />
 <h2 id="labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</h2>
 <p>The <code>Labor</code> service manages labor code definitions including rates, types, and cost structures.</p>
