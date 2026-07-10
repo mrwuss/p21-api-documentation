@@ -398,6 +398,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-07-10-v110">2026-07-10 — v1.1.0</a></li>
 <li><a href="#2026-07-10-v100">2026-07-10 — v1.0.0</a></li>
 <li><a href="#2026-07-06">2026-07-06</a></li>
 <li><a href="#2026-06-15">2026-06-15</a></li>
@@ -437,6 +438,13 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-07-10-v110">2026-07-10 — v1.1.0</h2>
+<p>Example-layout reorg: the repo now serves all four consumption styles symmetrically — Python, C#, JSON, XML.</p>
+<ul>
+<li><strong>refactor:</strong> Python examples moved from <code>scripts/</code> to <strong><code>examples/python/</code></strong> (clean git renames) for symmetry with <code>examples/csharp/</code>; <code>scripts/</code> now holds repo tooling only (<code>generate_html.py</code>, <code>fetch_definitions.py</code>, <code>validate_payload.py</code>). All path references updated across docs, recipe pages, README, CLAUDE.md, C# header comments, and <code>.gitignore</code>; new <code>examples/python/README.md</code> mirrors the C# one — Fixes #87 — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> New <strong><code>examples/payloads/</code></strong> library — 11 JSON + 9 XML standalone, copy-ready request bodies for the documented tasks, generated from one source of truth (the XML can never drift out of DataContract element order) and <strong>every file machine-verified</strong> with <code>scripts/validate_payload.py</code>. Report (<code>pdfreport</code>) payloads ship JSON-only pending XML verification of that endpoint. Recipe pages link their payload files alongside the end-to-end code files — Fixes #87 — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <code>validate_payload.py</code> now recognizes <code>POST /api/v2/transaction/get</code> request bodies (<code>ServiceName</code>/<code>TransactionStates</code> shape with object-style <code>Keys</code>) — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-07-10-v100">2026-07-10 — v1.0.0</h2>
 <p>First tagged release. This wave cross-checked the docs against a community process playbook — every disputed claim was live-verified against a 25.2 test tenant — and restructured the repo for progressive disclosure: task routing, a schema library, a recipes cookbook, end-to-end example files, and payload-correctness tooling. Verified findings credit: <em><a href="https://github.com/AWestemeier">Alex Westemeier</a></em>.</p>
 <p><strong>Corrections (our docs were wrong):</strong></p>
