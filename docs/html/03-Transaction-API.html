@@ -412,7 +412,10 @@
 </ul>
 </li>
 <li><a href="#ignoredisabled">IgnoreDisabled</a></li>
-<li><a href="#usecodevalues">UseCodeValues</a></li>
+<li><a href="#usecodevalues">UseCodeValues</a><ul>
+<li><a href="#labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores (code_p21)</a></li>
+</ul>
+</li>
 <li><a href="#async-operations">Async Operations</a><ul>
 <li><a href="#submit-async-request">Submit Async Request</a></li>
 <li><a href="#check-status">Check Status</a></li>
@@ -571,6 +574,7 @@
 </table>
 <blockquote>
 <p><strong>Service Explorer:</strong> The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.</p>
+<p><strong>Definition endpoint 500s for unavailable windows:</strong> <code>GET /api/v2/definition/{name}</code> can return HTTP 500 with <em>"Window &lt;&lt;X&gt;&gt; is not available or user does not have permission to open it"</em> for a service that <code>/api/v2/services</code> lists. Despite the wording, this is usually <strong>not a grantable permission problem</strong> — the same window fails for fully-privileged users in the Service Explorer. It means the window isn't available in that environment (unlicensed or undeployed module), and which services fail differs per environment. On one 25.2 test system, 238 of the 299 listed services had fetchable definitions. <em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>)</em></p>
 <p><strong>Read-after-write verification:</strong> <code>POST /api/v2/transaction/get</code> is also the recommended way to verify that an Interactive API write actually persisted — a save can report success without persisting a sub-record, and the read-back is the only way to recover a server-generated key. See <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> in the Interactive API guide.</p>
 </blockquote>
 <hr />
@@ -1022,7 +1026,38 @@
 </tr>
 </tbody>
 </table>
-<p><strong>Recommendation</strong>: Use <code>false</code> (display values) for better readability.</p>
+<p><strong>Recommendation</strong>: Use <code>false</code> (display values) for better readability. (Exception: some report services require code values — see <a href="#pdf-report-generation">PDF Report Generation</a>.)</p>
+<h3 id="labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores (code_p21)</h3>
+<p>For enum-style columns, the API's display labels come from the <strong><code>code_p21</code></strong> table (<code>language_id = 9</code>), but the database stores the integer <strong><code>code_no</code></strong> — which is what OData reads return. When you verify a write via OData, map the numbers back to labels with:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">code_no</span><span class="p">,</span><span class="w"> </span><span class="n">code_description</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">code_p21</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">language_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;9&#39;</span><span class="p">;</span>
+</code></pre></div>
+
+<p>Verified examples (JobContractPricing cost/pricing enums):</p>
+<table>
+<thead>
+<tr>
+<th>Enum</th>
+<th>Label → code_no</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cost type (<code>*_cost_type_cd</code>)</td>
+<td><code>Order</code>=222, <code>Source</code>=220, <code>Value</code>=227, <code>None</code>=300</td>
+</tr>
+<tr>
+<td>Pricing method (<code>job_price_line.pricing_method</code>)</td>
+<td><code>Price</code>=221, <code>Source</code>=220, <code>Pricing Libraries</code>=234, <code>None</code>=300</td>
+</tr>
+<tr>
+<td>Calc method (<code>*_calc_method_cd</code>)</td>
+<td><code>Multiplier</code>=211, <code>Percentage</code>=230, <code>Difference</code>=228, <code>Mark up</code>=229</td>
+</tr>
+</tbody>
+</table>
+<p><em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a> — maps verified against <code>code_p21</code>.)</em></p>
 <hr />
 <h2 id="async-operations">Async Operations</h2>
 <p>For long-running operations, use the async endpoint. Async requests run in a dedicated session (avoiding session pool contamination) but have a limited queue.</p>
