@@ -1,0 +1,14 @@
+{
+  "ServiceName": "JobContractPricing",
+  "TransactionStates": [
+    {
+      "DataElementName": "FORM.d_dw_job_price_hdr",
+      "Keys": [
+        {
+          "Name": "contract_no",
+          "Value": "A120-12"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionStateRequest xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <ServiceName>JobContractPricing</ServiceName>
+  <TransactionStates>
+    <TransactionState>
+      <DataElementName>FORM.d_dw_job_price_hdr</DataElementName>
+      <Keys>
+        <Key>
+          <Name>contract_no</Name>
+          <Value>A120-12</Value>
+        </Key>
+      </Keys>
+    </TransactionState>
+  </TransactionStates>
+</TransactionStateRequest>

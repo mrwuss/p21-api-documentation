@@ -195,6 +195,8 @@ else
 ```
 <!-- /tabs -->
 
+> **Payload files:** bin [JSON](../../examples/payloads/json/set-primary-bin.json) · [XML](../../examples/payloads/xml/set-primary-bin.xml); supplier [JSON](../../examples/payloads/json/set-primary-supplier.json) · [XML](../../examples/payloads/xml/set-primary-supplier.xml) — validator-verified, see [payloads README](../../examples/payloads/README.md).
+>
 > **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/set_primary_bin_supplier.py`](../../examples/python/recipes/set_primary_bin_supplier.py) · [`examples/csharp/Recipes/SetPrimaryBinSupplier.cs`](../../examples/csharp/Recipes/SetPrimaryBinSupplier.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 
 ## Gotchas

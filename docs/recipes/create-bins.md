@@ -221,6 +221,8 @@ foreach (var batch in toCreate.Chunk(BatchSize))
 ```
 <!-- /tabs -->
 
+> **Payload files:** [JSON](../../examples/payloads/json/create-bins.json) · [XML](../../examples/payloads/xml/create-bins.xml) — validator-verified, see [payloads README](../../examples/payloads/README.md).
+>
 > **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/create_bins.py`](../../examples/python/recipes/create_bins.py) · [`examples/csharp/Recipes/CreateBins.cs`](../../examples/csharp/Recipes/CreateBins.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 
 ## Gotchas

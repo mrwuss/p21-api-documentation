@@ -1,0 +1,69 @@
+{
+  "Name": "TimeEntry",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TP_TECHNICIAN.tp_technician",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "technician_id",
+                  "Value": "300"
+                },
+                {
+                  "Name": "entry_date",
+                  "Value": "2030-01-05"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TP_LABORRECORDING.prod_order_line_comp_labor",
+          "Type": "List",
+          "Keys": [
+            "prod_order_number"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "prod_order_number",
+                  "Value": "1000123"
+                },
+                {
+                  "Name": "item_id",
+                  "Value": "ASSY-100"
+                },
+                {
+                  "Name": "component_labor_id",
+                  "Value": "LABOR-SHOP"
+                },
+                {
+                  "Name": "start_time",
+                  "Value": "2030-01-05T08:00:00"
+                },
+                {
+                  "Name": "end_time",
+                  "Value": "2030-01-05T09:30:00"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "Name": "m_picktickets",
+  "UseCodeValues": true,
+  "Transactions": [
+    {
+      "Status": 0,
+      "DataElements": [
+        {
+          "Keys": [],
+          "Type": 0,
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "create_pick_ticket_type",
+                  "Value": "P"
+                },
+                {
+                  "Name": "beg_prod_order",
+                  "Value": "1000123"
+                },
+                {
+                  "Name": "end_prod_order",
+                  "Value": "1000123"
+                },
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <IgnoreDisabled>true</IgnoreDisabled>
+  <Name>JobContractPricing</Name>
+  <Transactions>
+    <Transaction>
+      <DataElements>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+          <Name>FORM.d_dw_job_price_hdr</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>company_id</Name>
+                  <Value>ACME</Value>
+                </Edit>
+                <Edit>
+                  <Name>contract_no</Name>
+                  <Value>A120-12</Value>
+                </Edit>
+                <Edit>
+                  <Name>job_no</Name>
+                  <Value>31</Value>
+                </Edit>
+                <Edit>
+                  <Name>end_date</Name>
+                  <Value>2030-01-01</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+            <a:string>item_id</a:string>
+          </Keys>
+          <Name>JOBPRICELINE.jobpriceline</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>item_id</Name>
+                  <Value>WIDGET-001</Value>
+                </Edit>
+                <Edit>
+                  <Name>uom</Name>
+                  <Value>EA</Value>
+                </Edit>
+                <Edit>
+                  <Name>pricing_method</Name>
+                  <Value>Price</Value>
+                </Edit>
+                <Edit>
+                  <Name>price</Name>
+                  <Value>36.58</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>List</Type>
+        </DataElement>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+            <a:string>item_id</a:string>
+          </Keys>
+          <Name>JOBPRICECOST.jobpricecost</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>item_id</Name>
+                  <Value>WIDGET-001</Value>
+                </Edit>
+                <Edit>
+                  <Name>commission_cost_type_cd</Name>
+                  <Value>Value</Value>
+                </Edit>
+                <Edit>
+                  <Name>commission_cost_value</Name>
+                  <Value>17.19</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+      </DataElements>
+      <Status>New</Status>
+    </Transaction>
+  </Transactions>
+  <UseCodeValues>false</UseCodeValues>
+</TransactionSet>

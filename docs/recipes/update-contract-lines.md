@@ -293,6 +293,8 @@ foreach (var l in lines)
 ```
 <!-- /tabs -->
 
+> **Payload files:** [JSON](../../examples/payloads/json/update-contract-lines.json) · [XML](../../examples/payloads/xml/update-contract-lines.xml) — validator-verified, see [payloads README](../../examples/payloads/README.md).
+>
 > **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/update_contract_lines.py`](../../examples/python/recipes/update_contract_lines.py) · [`examples/csharp/Recipes/UpdateContractLines.cs`](../../examples/csharp/Recipes/UpdateContractLines.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 
 ## Gotchas

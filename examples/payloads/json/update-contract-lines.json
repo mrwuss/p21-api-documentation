@@ -1,0 +1,96 @@
+{
+  "Name": "JobContractPricing",
+  "UseCodeValues": false,
+  "IgnoreDisabled": true,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.d_dw_job_price_hdr",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "contract_no",
+                  "Value": "A120-12"
+                },
+                {
+                  "Name": "job_no",
+                  "Value": "31"
+                },
+                {
+                  "Name": "end_date",
+                  "Value": "2030-01-01"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "JOBPRICELINE.jobpriceline",
+          "Type": "List",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "uom",
+                  "Value": "EA"
+                },
+                {
+                  "Name": "pricing_method",
+                  "Value": "Price"
+                },
+                {
+                  "Name": "price",
+                  "Value": "36.58"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "JOBPRICECOST.jobpricecost",
+          "Type": "Form",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "commission_cost_type_cd",
+                  "Value": "Value"
+                },
+                {
+                  "Name": "commission_cost_value",
+                  "Value": "17.19"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

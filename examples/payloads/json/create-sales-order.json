@@ -1,0 +1,79 @@
+{
+  "Name": "Order",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.order",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "customer_id",
+                  "Value": "100198"
+                },
+                {
+                  "Name": "sales_loc_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "source_loc_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "ship_to_id",
+                  "Value": "200"
+                },
+                {
+                  "Name": "contact_id",
+                  "Value": "300"
+                },
+                {
+                  "Name": "order_date",
+                  "Value": "2030-01-05"
+                },
+                {
+                  "Name": "requested_date",
+                  "Value": "2030-01-06"
+                },
+                {
+                  "Name": "po_no",
+                  "Value": "PO-TEST-001"
+                },
+                {
+                  "Name": "taker",
+                  "Value": "JSMITH"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TP_ITEMS.items",
+          "Type": "List",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "oe_order_item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "5"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

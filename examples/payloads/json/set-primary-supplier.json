@@ -1,0 +1,69 @@
+{
+  "Name": "Item",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.invloclist",
+          "Type": "List",
+          "Keys": [
+            "location_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "SUPPLIER_X_LOCATION.supplier_x_location",
+          "Type": "List",
+          "Keys": [
+            "supplier_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "supplier_id",
+                  "Value": "20000"
+                },
+                {
+                  "Name": "primary_supplier",
+                  "Value": "ON"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -38,6 +38,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Payload anatomy (TransactionSet / DataElements / Edits) | [03 § Request Structure](03-Transaction-API.md#request-structure) |
 | Payload rejected / values not landing (shape & type mistakes) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy----types-nesting-and-common-mistakes) |
 | Validate a payload offline before posting (JSON or XML) | [`scripts/validate_payload.py`](../scripts/validate_payload.py) · [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy----types-nesting-and-common-mistakes) |
+| Copy-ready payload files (JSON and XML, validator-verified) | [`examples/payloads/`](../examples/payloads/README.md) |
 | Send/receive **XML** instead of JSON | [03 § XML Payloads](03-Transaction-API.md#xml-payloads-content-negotiation) |
 | Get a service's schema, template, defaults | [03 § Endpoints](03-Transaction-API.md#endpoints) · committed full-field JSON in [`definitions/`](../definitions/README.md) |
 | **Update an existing record** (Status `"New"` + keys; `"Existing"` is broken) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) |

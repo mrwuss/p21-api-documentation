@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <Name>InventoryAdjustment</Name>
+  <Transactions>
+    <Transaction>
+      <DataElements>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+          <Name>TABPAGE_1.tp_1_dw_1</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>location_id</Name>
+                  <Value>10</Value>
+                </Edit>
+                <Edit>
+                  <Name>reason_id</Name>
+                  <Value>ADJUST</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+          <Name>TABPAGE_17.tp_17_dw_17</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>item_id</Name>
+                  <Value>WIDGET-001</Value>
+                </Edit>
+                <Edit>
+                  <Name>unit_quantity</Name>
+                  <Value>-5</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>List</Type>
+        </DataElement>
+      </DataElements>
+      <Status>New</Status>
+    </Transaction>
+  </Transactions>
+  <UseCodeValues>false</UseCodeValues>
+</TransactionSet>

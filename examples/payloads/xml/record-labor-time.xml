@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <Name>TimeEntry</Name>
+  <Transactions>
+    <Transaction>
+      <DataElements>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+          <Name>TP_TECHNICIAN.tp_technician</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>company_id</Name>
+                  <Value>ACME</Value>
+                </Edit>
+                <Edit>
+                  <Name>technician_id</Name>
+                  <Value>300</Value>
+                </Edit>
+                <Edit>
+                  <Name>entry_date</Name>
+                  <Value>2030-01-05</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+            <a:string>prod_order_number</a:string>
+          </Keys>
+          <Name>TP_LABORRECORDING.prod_order_line_comp_labor</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>prod_order_number</Name>
+                  <Value>1000123</Value>
+                </Edit>
+                <Edit>
+                  <Name>item_id</Name>
+                  <Value>ASSY-100</Value>
+                </Edit>
+                <Edit>
+                  <Name>component_labor_id</Name>
+                  <Value>LABOR-SHOP</Value>
+                </Edit>
+                <Edit>
+                  <Name>start_time</Name>
+                  <Value>2030-01-05T08:00:00</Value>
+                </Edit>
+                <Edit>
+                  <Name>end_time</Name>
+                  <Value>2030-01-05T09:30:00</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>List</Type>
+        </DataElement>
+      </DataElements>
+      <Status>New</Status>
+    </Transaction>
+  </Transactions>
+  <UseCodeValues>false</UseCodeValues>
+</TransactionSet>
