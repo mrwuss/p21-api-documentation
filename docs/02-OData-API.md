@@ -31,6 +31,8 @@ The OData API provides **read-only** access to P21 data using the OData v3 proto
 https://play.p21server.com/odataservice/odata/table/supplier
 ```
 
+> **Base host, not ui_server:** OData runs on the P21 **base host** — unlike the Transaction and Interactive APIs, it does **not** use the UI server URL returned by the router endpoint. Don't prefix OData paths with the ui_server.
+
 ---
 
 ## Authentication
@@ -102,6 +104,8 @@ Skip N records (combine with $top for paging):
 ```http
 /odata/table/supplier?$skip=20&$top=10
 ```
+
+> **No `@odata.nextLink`:** P21's OData responses do **not** include a continuation link. Paging is entirely client-driven with `$skip`/`$top` — loop until a page comes back with fewer rows than `$top` (or track `@odata.count`). See the [Pagination Helper](#pagination-helper).
 
 ### $count - Get Count
 
@@ -206,6 +210,22 @@ var filterExpr = $"expiration_date ge {tomorrow}";
 ```
 
 <!-- /tabs -->
+
+### No Joins — Chain Queries by UID
+
+P21 OData has **no joins**: each request hits a single table or view. To traverse relationships, chain queries on the `_uid` key columns — every child table carries its parent's uid. Example, walking a job contract down to its bins and item IDs:
+
+```text
+job_price_hdr    $filter=contract_no eq 'A120-12'          → job_price_hdr_uid
+job_price_line   $filter=job_price_hdr_uid eq {uid}        → job_price_line_uid, inv_mast_uid
+job_price_bin    $filter=job_price_line_uid eq {line_uid}  → min_qty / max_qty / reorder_qty ...
+inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
+```
+
+Two ways to avoid long chains:
+
+- **Check for a pre-joined view first.** Many `p21_view_*` views already join the common paths (e.g. `p21_view_bin`) — query `/odataservice/odata/view/{viewname}` instead of chaining tables.
+- **Batch the lookups** — collect the uids from one query and fetch the next level with an `or`-combined filter rather than one call per row (see [Avoiding N+1 Query Patterns](#avoiding-n1-query-patterns)).
 
 ---
 

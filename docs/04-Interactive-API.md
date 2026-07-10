@@ -1908,6 +1908,22 @@ public async Task SelectRowSafeAsync(Window window, int row, string datawindowNa
 
 **Important:** This is different from the [row selection synchronization bug](#row-selection-synchronization-bug-list--detail) documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.
 
+### Key Fields Commit the Cursor (Later Fields Silently Ignored)
+
+Sending a grid row's **key field** in a `change` request commits the row cursor — any field in the same `List` (or a later call) that follows the key field is **silently ignored** (the call still returns Status 0/Success). Example: on the JobContractPricing BINS grid, `contract_bin_id` is the key; if it appears before the quantity fields, the quantities never land.
+
+**Guidance:**
+
+- When only *changing* values on an already-selected row, **don't send the key field at all** — select the row, then change the non-key fields.
+- When the key field must be sent (identifying a row by value), send it **last**.
+- After the save, read the values back — a silently-dropped edit is indistinguishable from success by status code alone (see [Verifying Writes](#verifying-writes-dont-trust-save-status-alone)).
+
+*(Credit: [Alex Westemeier](https://github.com/AWestemeier))*
+
+### Numeric Values: Send Integer Strings for Whole Numbers
+
+When setting numeric fields, send whole numbers as integer strings (`"30"`), not float-formatted strings (`"30.0"`) — some windows reject or mishandle the float form. Format values the way a user would type them.
+
 ---
 
 ## v1 vs v2 API Differences
@@ -2017,6 +2033,15 @@ On window open, 7 tabs are disabled: `CUSTSHIPTOCONSIGN`, `BINS`, `VALUES`, `BIN
 3. Set `item_id` on `SHIP_TO_ITEM` and dismiss the scan lookup dialog — enables `VALUES`, `BINS`, `BIN_ITEMS`, `ITEM_BIN_NOTES` simultaneously
 
 > **Important:** P21 rejects setting `customer_id` or `ship_to_id` on the FORM header directly. You must create the combination on `CUSTOMER_SHIP_TO` first. Error: *"Before selecting a Customer ID or Ship To ID, make sure that the combination exists in the Customer/Ship To tab."*
+
+**Example: JobContractPricing — EXISTING contract (BINS editing).** The sequence above is the *creation* flow. For an existing contract, the combination already exists and the recipe differs (verified; credit: [Alex Westemeier](https://github.com/AWestemeier)):
+
+1. Load the contract by setting `job_no`, `customer_id`, and `ship_to_id` on `FORM/d_dw_job_price_hdr` (three separate change calls). **Load by `job_no`, not `contract_no`** — renewals can leave the same `contract_no` on two header rows, while `job_no` is unique.
+2. Change to the `CUSTOMER_SHIP_TO` tab and **select the ship-to's grid row** — the BINS tab only unlocks after the ship-to row is selected. Skipping this (or loading by `contract_no` alone) leaves it disabled with *"Tab page is disabled and cannot be selected."*
+3. Per line: `JOBPRICELINE` tab → select the line's row → `BINS` tab → the grid is **filtered to the selected ship-to**, so it has exactly one row per line — `select_row("bins", 1)` always targets the right bin. Edit the quantity fields.
+4. One `save()` at the end persists every edit in the session (save per ship-to on large runs so a mid-run failure doesn't lose everything).
+
+> For bulk bin-quantity changes, the Transaction API with `IgnoreDisabled: true` is faster — see [Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract). Use this interactive recipe when a Transaction-API edge case appears or the contract is expired-adjacent work that needs window logic.
 
 **Detecting tab unlock events:**
 
@@ -2228,10 +2253,11 @@ Response windows fall into distinct categories based on what interactions they s
 | Type | Example | Buttons | Field Input | Dismiss Method |
 |------|---------|---------|-------------|----------------|
 | **Button-only dialog** | `w_rule_callback_response` | `cb_1` through `cb_5` | N/A | `POST /tools` with button name |
-| **Form + button dialog** | `w_inventory_scan_lookup` | `cb_ok`, `cb_cancel` | Fields visible but **not writable** via API | `POST /tools` with button name |
+| **Form + button dialog** | `w_inventory_scan_lookup` | `cb_ok`, `cb_cancel` | See editability note below | `POST /tools` with button name |
+| **Editable form dialog** | `w_notepad_response_lite` | `cb_select_all`, `cb_ok` | **Editable with `TabName: null`** | Fill fields, then `POST /tools` |
 | **Message box** | `w_message` | Default-answered | Cannot be inspected | Auto-answered when `ResponseWindowHandlingEnabled: false` |
 
-**Key limitation (verified April 2026):** Form-type response windows can only be **dismissed** (button click), not **interacted with** (field changes). `GET /data` returns 400 and `PUT /change` returns 500 with *"Tab with name FORM does not exist"*. Workflows that depend on filling response window fields cannot be fully automated.
+**Editability (reconciled July 2026):** earlier testing (April 2026) concluded form-type response windows could only be dismissed — `GET /data` returned 400 and `PUT /change` returned 500 with *"Tab with name FORM does not exist"*. Those change attempts addressed the popup's fields with `TabName: "FORM"`. Later work showed form-style response windows **are editable** when the change request uses **`TabName: null`** with the popup's window ID — verified end-to-end on `w_notepad_response_lite` (see [PurchaseOrder Notepad Writes](#purchaseorder-notepad-writes-header-vs-line)). If a popup's fields reject edits, retry with `TabName: null` before concluding the window is dismiss-only. `w_message` boxes remain uneditable and are auto-answered.
 
 **Inspecting and dismissing response windows:**
 

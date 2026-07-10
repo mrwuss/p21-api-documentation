@@ -412,6 +412,7 @@
 <li><a href="#common-patterns">Common Patterns</a><ul>
 <li><a href="#active-record-filter">Active Record Filter</a></li>
 <li><a href="#non-expired-records">Non-Expired Records</a></li>
+<li><a href="#no-joins-chain-queries-by-uid">No Joins — Chain Queries by UID</a></li>
 </ul>
 </li>
 <li><a href="#data-type-formatting">Data Type Formatting</a><ul>
@@ -504,6 +505,9 @@
 <div class="highlight"><pre><span></span><code><span class="err">https://play.p21server.com/odataservice/odata/table/supplier</span>
 </code></pre></div>
 
+<blockquote>
+<p><strong>Base host, not ui_server:</strong> OData runs on the P21 <strong>base host</strong> — unlike the Transaction and Interactive APIs, it does <strong>not</strong> use the UI server URL returned by the router endpoint. Don't prefix OData paths with the ui_server.</p>
+</blockquote>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
@@ -552,6 +556,9 @@
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$skip=20&amp;$top=10</span>
 </code></pre></div>
 
+<blockquote>
+<p><strong>No <code>@odata.nextLink</code>:</strong> P21's OData responses do <strong>not</strong> include a continuation link. Paging is entirely client-driven with <code>$skip</code>/<code>$top</code> — loop until a page comes back with fewer rows than <code>$top</code> (or track <code>@odata.count</code>). See the <a href="#pagination-helper">Pagination Helper</a>.</p>
+</blockquote>
 <h3 id="count-get-count">$count - Get Count</h3>
 <p>Include total count in response:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$count=true</span>
@@ -695,6 +702,19 @@
 </code></pre></div>
 </div>
 </div>
+<h3 id="no-joins-chain-queries-by-uid">No Joins — Chain Queries by UID</h3>
+<p>P21 OData has <strong>no joins</strong>: each request hits a single table or view. To traverse relationships, chain queries on the <code>_uid</code> key columns — every child table carries its parent's uid. Example, walking a job contract down to its bins and item IDs:</p>
+<div class="highlight"><pre><span></span><code>job_price_hdr    $filter=contract_no eq &#39;A120-12&#39;          → job_price_hdr_uid
+job_price_line   $filter=job_price_hdr_uid eq {uid}        → job_price_line_uid, inv_mast_uid
+job_price_bin    $filter=job_price_line_uid eq {line_uid}  → min_qty / max_qty / reorder_qty ...
+inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
+</code></pre></div>
+
+<p>Two ways to avoid long chains:</p>
+<ul>
+<li><strong>Check for a pre-joined view first.</strong> Many <code>p21_view_*</code> views already join the common paths (e.g. <code>p21_view_bin</code>) — query <code>/odataservice/odata/view/{viewname}</code> instead of chaining tables.</li>
+<li><strong>Batch the lookups</strong> — collect the uids from one query and fetch the next level with an <code>or</code>-combined filter rather than one call per row (see <a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a>).</li>
+</ul>
 <hr />
 <h2 id="data-type-formatting">Data Type Formatting</h2>
 <table>
