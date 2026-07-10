@@ -8,6 +8,14 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-07-10 — v1.1.0
+
+Example-layout reorg: the repo now serves all four consumption styles symmetrically — Python, C#, JSON, XML.
+
+- **refactor:** Python examples moved from `scripts/` to **`examples/python/`** (clean git renames) for symmetry with `examples/csharp/`; `scripts/` now holds repo tooling only (`generate_html.py`, `fetch_definitions.py`, `validate_payload.py`). All path references updated across docs, recipe pages, README, CLAUDE.md, C# header comments, and `.gitignore`; new `examples/python/README.md` mirrors the C# one — Fixes #87 — *@mrwuss*
+- **feat:** New **`examples/payloads/`** library — 11 JSON + 9 XML standalone, copy-ready request bodies for the documented tasks, generated from one source of truth (the XML can never drift out of DataContract element order) and **every file machine-verified** with `scripts/validate_payload.py`. Report (`pdfreport`) payloads ship JSON-only pending XML verification of that endpoint. Recipe pages link their payload files alongside the end-to-end code files — Fixes #87 — *@mrwuss*
+- **feat:** `validate_payload.py` now recognizes `POST /api/v2/transaction/get` request bodies (`ServiceName`/`TransactionStates` shape with object-style `Keys`) — *@mrwuss*
+
 ## 2026-07-10 — v1.0.0
 
 First tagged release. This wave cross-checked the docs against a community process playbook — every disputed claim was live-verified against a 25.2 test tenant — and restructured the repo for progressive disclosure: task routing, a schema library, a recipes cookbook, end-to-end example files, and payload-correctness tooling. Verified findings credit: *[Alex Westemeier](https://github.com/AWestemeier)*.
