@@ -1,0 +1,108 @@
+{
+  "Name": "BinLocation",
+  "UseCodeValues": false,
+  "IgnoreDisabled": true,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [
+            "company_id",
+            "location_id",
+            "bin_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "bin_id",
+                  "Value": "A01-02-03"
+                },
+                {
+                  "Name": "bin_type",
+                  "Value": "SHELF"
+                },
+                {
+                  "Name": "putaway_zone_id",
+                  "Value": "ZONE-A"
+                },
+                {
+                  "Name": "pick_zone_id",
+                  "Value": "ZONE-A"
+                },
+                {
+                  "Name": "bin_length",
+                  "Value": "10"
+                },
+                {
+                  "Name": "bin_width",
+                  "Value": "10"
+                },
+                {
+                  "Name": "bin_height",
+                  "Value": "11"
+                },
+                {
+                  "Name": "warehouse_sequence",
+                  "Value": "1"
+                },
+                {
+                  "Name": "putaway_zone_sequence",
+                  "Value": "1"
+                },
+                {
+                  "Name": "pick_zone_sequence",
+                  "Value": "1"
+                },
+                {
+                  "Name": "max_unique_items",
+                  "Value": "0"
+                },
+                {
+                  "Name": "pick_locked_flag",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "put_locked_flag",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "full_flag",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "frozen_flag",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "consolidation_bin_flag",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "stage_bin_flag",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "door_bin_flag",
+                  "Value": "OFF"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

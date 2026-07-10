@@ -10,7 +10,7 @@ namespace P21Examples.Common
 {
     /// <summary>
     /// P21 API authentication — token V1/V2, XML/JSON dual parsing.
-    /// Mirrors Python scripts/common/auth.py.
+    /// Mirrors Python examples/python/common/auth.py.
     /// </summary>
     public static class P21Auth
     {

@@ -1,7 +1,7 @@
 // OData API - Pagination Examples
 //
 // Demonstrates $skip, $top, and $count for paginating large result sets.
-// Mirrors: scripts/odata/03_pagination.py
+// Mirrors: examples/python/odata/03_pagination.py
 //
 // Key concepts:
 //   $top=N      — return at most N rows

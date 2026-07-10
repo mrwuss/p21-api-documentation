@@ -16,7 +16,7 @@ namespace P21Examples.Interactive;
 ///
 /// IMPORTANT: As of P21 25.2, DatawindowName is REQUIRED in change requests.
 ///
-/// Mirrors: scripts/interactive/04_save_and_close.py
+/// Mirrors: examples/python/interactive/04_save_and_close.py
 /// </summary>
 public static class SaveAndClose
 {

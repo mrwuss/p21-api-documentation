@@ -29,7 +29,7 @@ namespace P21Examples.Interactive;
 /// 4. Attempting to continue while dialog is open results in error:
 ///    "Unable to process request on window X since response window Y blocks it"
 ///
-/// Mirrors: scripts/interactive/05_response_windows.py
+/// Mirrors: examples/python/interactive/05_response_windows.py
 /// </summary>
 public static class ResponseWindows
 {

@@ -1,0 +1,98 @@
+{
+  "Name": "JobContractPricing",
+  "UseCodeValues": false,
+  "IgnoreDisabled": true,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.d_dw_job_price_hdr",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "job_no",
+                  "Value": "31"
+                },
+                {
+                  "Name": "customer_id",
+                  "Value": "100198"
+                },
+                {
+                  "Name": "ship_to_id",
+                  "Value": "200"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "JOBPRICELINE.jobpriceline",
+          "Type": "List",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "BINS.bins",
+          "Type": "List",
+          "Keys": [
+            "contract_bin_id",
+            "customer_id",
+            "ship_to_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "contract_bin_id",
+                  "Value": "A01-02"
+                },
+                {
+                  "Name": "customer_id",
+                  "Value": "100198"
+                },
+                {
+                  "Name": "ship_to_id",
+                  "Value": "200"
+                },
+                {
+                  "Name": "min_qty",
+                  "Value": "30"
+                },
+                {
+                  "Name": "max_qty",
+                  "Value": "100"
+                },
+                {
+                  "Name": "reorder_qty",
+                  "Value": "40"
+                },
+                {
+                  "Name": "capacity",
+                  "Value": "100"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

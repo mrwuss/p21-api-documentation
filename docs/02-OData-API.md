@@ -865,4 +865,4 @@ The OData service automatically picks up changes to existing table/view schemas 
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Error Handling](06-Error-Handling.md)
 - [Batch Processing Patterns](09-Batch-Processing-Patterns.md) - Caching and N+1 query patterns
-- [scripts/odata/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/odata/) - Working examples
+- [examples/python/odata/](https://github.com/mrwuss/p21-api-documentation/tree/master/examples/python/odata/) - Working examples

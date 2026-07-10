@@ -11,7 +11,7 @@ namespace P21Examples.Common
 {
     /// <summary>
     /// Raw HttpClient wrapper for all P21 APIs.
-    /// Mirrors Python scripts/common/client.py.
+    /// Mirrors Python examples/python/common/client.py.
     ///
     /// Usage:
     ///     using var client = await P21Client.CreateAsync();

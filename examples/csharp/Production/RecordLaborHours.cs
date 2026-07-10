@@ -2,7 +2,7 @@
 //
 // Demonstrates recording labor hours against a production order using the
 // TimeEntry Transaction API service.
-// Mirrors: scripts/transaction/03_create_single.py (adapted for TimeEntry)
+// Mirrors: examples/python/transaction/03_create_single.py (adapted for TimeEntry)
 //
 // Transaction API payload structure for TimeEntry:
 //   {

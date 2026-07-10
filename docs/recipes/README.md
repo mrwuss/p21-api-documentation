@@ -103,6 +103,6 @@ public sealed class P21Session
 
 **Full field lists.** Recipes show the fields that matter for the task. For *every* field a service accepts (names, types, keys, labels, payload template), load `definitions/{Service}.json` — see the [definitions README](../../definitions/README.md).
 
-**Snippets vs end-to-end files.** The tabs on each page are self-contained snippets (portable — paste anywhere). Each recipe also links **complete runnable files** under [`scripts/recipes/`](../../scripts/recipes/README.md) (Python) and [`examples/csharp/Recipes/`](../../examples/csharp/Recipes/) (C#): they use the repo's shared config/auth helpers, run against your `.env`, **dry-run by default** (print the payload; `--execute` / typing `EXECUTE` posts), and end with the verify read-back.
+**Snippets vs end-to-end files.** The tabs on each page are self-contained snippets (portable — paste anywhere). Each recipe also links **complete runnable files** under [`examples/python/recipes/`](../../examples/python/recipes/README.md) (Python) and [`examples/csharp/Recipes/`](../../examples/csharp/Recipes/) (C#): they use the repo's shared config/auth helpers, run against your `.env`, **dry-run by default** (print the payload; `--execute` / typing `EXECUTE` posts), and end with the verify read-back.
 
 > **Credit:** the cookbook pattern and much of the verified content come from [Alex Westemeier](https://github.com/AWestemeier)'s process playbook.

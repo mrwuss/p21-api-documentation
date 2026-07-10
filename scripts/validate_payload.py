@@ -301,11 +301,50 @@ def check_transaction(txn, path: str, service: str, elements: dict[str, dict],
                                       f"{suggest(key, sorted(KNOWN_TXN_KEYS))}")
 
 
+def validate_get_request(payload: dict, definitions_dir: Path, rpt: Report) -> None:
+    """Validate a POST /api/v2/transaction/get request body."""
+    service = payload.get("ServiceName")
+    if not isinstance(service, str) or not service:
+        rpt.error("$.ServiceName", "missing service name")
+        service = ""
+    elements = element_map(load_definition(service, definitions_dir, rpt))
+    states = payload.get("TransactionStates")
+    if states is None:
+        rpt.error("$", 'missing "TransactionStates" array')
+        return
+    if not expect_list(states, "$.TransactionStates", "TransactionStates", rpt):
+        return
+    for i, state in enumerate(states):
+        path = f"$.TransactionStates[{i}]"
+        if not isinstance(state, dict):
+            rpt.error(path, f"each TransactionState must be an object, got "
+                            f"{type(state).__name__}")
+            continue
+        name = state.get("DataElementName")
+        if not isinstance(name, str) or not name:
+            rpt.error(path, 'missing "DataElementName"')
+        elif elements and name not in elements:
+            rpt.error(f"{path}.DataElementName",
+                      f'unknown DataElement "{name}"{suggest(name, list(elements))}')
+        keys = state.get("Keys")
+        if keys is not None and expect_list(keys, f"{path}.Keys", "Keys", rpt):
+            for k_i, key in enumerate(keys):
+                if not (isinstance(key, dict) and "Name" in key and "Value" in key):
+                    rpt.error(f"{path}.Keys[{k_i}]",
+                              'get-request keys are objects: '
+                              '{"Name": "field", "Value": "..."} '
+                              '(unlike TransactionSet Keys, which are strings)')
+    rpt.note("$", "transaction/get request — POST to /api/v2/transaction/get")
+
+
 def validate_payload_dict(payload: dict, definitions_dir: Path, rpt: Report) -> None:
     """Validate a parsed TransactionSet payload."""
     if not isinstance(payload, dict):
         rpt.error("$", f"payload root must be an object, got "
                        f"{type(payload).__name__}")
+        return
+    if "ServiceName" in payload or "TransactionStates" in payload:
+        validate_get_request(payload, definitions_dir, rpt)
         return
     service = payload.get("Name")
     if not isinstance(service, str) or not service:

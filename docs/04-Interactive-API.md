@@ -1094,7 +1094,7 @@ await window.CloseAsync();
 
 ## Working Example Scripts
 
-See the `scripts/interactive/` directory:
+See the `examples/python/interactive/` directory:
 
 | Script | Description |
 |--------|-------------|
@@ -2381,4 +2381,4 @@ Recommended HTTP timeouts based on production experience with large payloads:
 - [Transaction API](03-Transaction-API.md)
 - [Production & Labor API](12-Production-Labor-API.md) - TimeEntry, ProductionOrder, and labor services
 - [Batch Processing Patterns](09-Batch-Processing-Patterns.md) - Production batch processing, async client, error recovery
-- [scripts/interactive/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/interactive/) - Working examples
+- [examples/python/interactive/](https://github.com/mrwuss/p21-api-documentation/tree/master/examples/python/interactive/) - Working examples

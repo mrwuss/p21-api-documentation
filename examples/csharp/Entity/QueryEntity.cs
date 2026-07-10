@@ -1,7 +1,7 @@
 // Entity API - Query Entities
 //
 // Demonstrates querying entities with filters using the $query parameter.
-// Mirrors: scripts/entity/02_query_entity.py
+// Mirrors: examples/python/entity/02_query_entity.py
 //
 // This example shows both approaches:
 //   1. Raw HttpClient - full control, educational

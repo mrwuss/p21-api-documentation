@@ -1,7 +1,7 @@
 // OData API - Filtering Examples
 //
 // Demonstrates various $filter expressions and operators.
-// Mirrors: scripts/odata/02_filtering.py
+// Mirrors: examples/python/odata/02_filtering.py
 //
 // OData filter operators supported by P21:
 //   eq, ne, gt, ge, lt, le     — comparison

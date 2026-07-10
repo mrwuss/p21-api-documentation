@@ -1,7 +1,7 @@
 // Transaction API - Create Single Record
 //
 // Demonstrates creating a single record using the Transaction API.
-// Mirrors: scripts/transaction/03_create_single.py
+// Mirrors: examples/python/transaction/03_create_single.py
 //
 // This example creates a SalesPricePage, which is relatively safe for testing
 // as it can be easily expired/deactivated.

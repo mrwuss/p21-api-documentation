@@ -2334,7 +2334,7 @@ else
 
 ## Code Examples
 
-See the `scripts/transaction/` (Python) and `examples/csharp/Transaction/` (C#) directories for working examples:
+See the `examples/python/transaction/` (Python) and `examples/csharp/Transaction/` (C#) directories for working examples:
 
 | Script | Description |
 |--------|-------------|
@@ -2401,5 +2401,5 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Production & Labor API](12-Production-Labor-API.md) - TimeEntry, ProductionOrder, and labor services
 - [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
-- [scripts/transaction/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/transaction/) - Working examples
-- [scripts/production/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/production/) - Production & labor examples
+- [examples/python/transaction/](https://github.com/mrwuss/p21-api-documentation/tree/master/examples/python/transaction/) - Working examples
+- [examples/python/production/](https://github.com/mrwuss/p21-api-documentation/tree/master/examples/python/production/) - Production & labor examples

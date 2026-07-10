@@ -239,7 +239,9 @@ Console.WriteLine($"Created order_no: {orderNo}");
 ```
 <!-- /tabs -->
 
-> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/create_sales_order.py`](../../scripts/recipes/create_sales_order.py) · [`examples/csharp/Recipes/CreateSalesOrder.cs`](../../examples/csharp/Recipes/CreateSalesOrder.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+> **Payload files:** [JSON](../../examples/payloads/json/create-sales-order.json) · [XML](../../examples/payloads/xml/create-sales-order.xml) — validator-verified, see [payloads README](../../examples/payloads/README.md).
+>
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/create_sales_order.py`](../../examples/python/recipes/create_sales_order.py) · [`examples/csharp/Recipes/CreateSalesOrder.cs`](../../examples/csharp/Recipes/CreateSalesOrder.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 
 ## Gotchas
 

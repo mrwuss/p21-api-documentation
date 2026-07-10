@@ -1,7 +1,7 @@
 // Transaction API - Get Service Definition
 //
 // Retrieves the schema/template for a service to understand required fields.
-// Mirrors: scripts/transaction/02_get_definition.py
+// Mirrors: examples/python/transaction/02_get_definition.py
 //
 // Endpoints:
 //   GET /api/v2/definition/{serviceName}  - Field definitions and template

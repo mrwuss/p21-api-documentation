@@ -15,7 +15,7 @@ namespace P21Examples.Interactive;
 /// - ServiceName (e.g., "SalesPricePage", "Order")
 /// - Title (e.g., "Sales Price Page Entry")
 ///
-/// Mirrors: scripts/interactive/02_open_window.py
+/// Mirrors: examples/python/interactive/02_open_window.py
 /// </summary>
 public static class OpenWindow
 {

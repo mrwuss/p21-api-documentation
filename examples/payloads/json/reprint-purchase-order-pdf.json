@@ -1,0 +1,38 @@
+{
+  "Name": "m_reprintpurchaseorders",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": 0,
+      "DataElements": [
+        {
+          "Keys": [],
+          "Type": 0,
+          "Name": "TABPAGE_1.poreportcriteriadw",
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "beg_po_no",
+                  "Value": "500100"
+                },
+                {
+                  "Name": "end_po_no",
+                  "Value": "500100"
+                },
+                {
+                  "Name": "reprint_flag",
+                  "Value": "Y"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

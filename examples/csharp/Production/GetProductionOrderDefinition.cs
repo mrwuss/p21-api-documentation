@@ -2,7 +2,7 @@
 //
 // Retrieves the schema/template for the ProductionOrder service to understand
 // production order structure, especially labor-related DataElements.
-// Mirrors: scripts/transaction/02_get_definition.py (for ProductionOrder)
+// Mirrors: examples/python/transaction/02_get_definition.py (for ProductionOrder)
 //
 // Endpoints:
 //   GET /api/v2/definition/ProductionOrder  - Field definitions and template

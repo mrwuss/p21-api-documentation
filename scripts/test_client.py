@@ -18,10 +18,12 @@ Tests:
 import sys
 import os
 
-# Add project root to path so we can import scripts.common
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the Python examples tree to the path so we can import common
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "examples", "python"))
 
-from scripts.common.client import P21Client
+from common.client import P21Client
 
 import httpx
 

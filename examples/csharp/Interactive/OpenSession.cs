@@ -14,7 +14,7 @@ namespace P21Examples.Interactive;
 /// Sessions maintain state just like a real P21 user session.
 /// Always end sessions when done to free server resources.
 ///
-/// Mirrors: scripts/interactive/01_open_session.py
+/// Mirrors: examples/python/interactive/01_open_session.py
 /// </summary>
 public static class OpenSession
 {

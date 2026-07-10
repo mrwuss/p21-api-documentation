@@ -1,7 +1,7 @@
 // Transaction API - Async Operations
 //
 // Demonstrates using the async endpoint for long-running operations.
-// Mirrors: scripts/transaction/06_async_operations.py
+// Mirrors: examples/python/transaction/06_async_operations.py
 //
 // The async endpoint:
 //   POST /api/v2/transaction/async     - Submit transaction, get request ID

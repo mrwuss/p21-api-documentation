@@ -1,7 +1,7 @@
 // OData API - Complex Query Examples
 //
 // Demonstrates advanced filtering, combining conditions, and real-world queries.
-// Mirrors: scripts/odata/04_complex_queries.py
+// Mirrors: examples/python/odata/04_complex_queries.py
 //
 // Topics covered:
 //   - Multi-field filter with ordering

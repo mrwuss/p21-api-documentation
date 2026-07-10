@@ -463,7 +463,7 @@
 <li><strong>feat:</strong> Task Index routing layer — <code>docs/INDEX.md</code> maps ~80 tasks to exact section anchors so readers (and AI agents) load only what a task needs; navigation convention documented — Fixes #72 — <em>@mrwuss</em></li>
 <li><strong>feat:</strong> Service-definition schema library — <code>definitions/</code> holds sanitized full-field definition JSON (every DataElement, field, key, type, label + payload template) for all 21 documented services; <code>scripts/fetch_definitions.py</code> refreshes and <strong>sanitizes</strong> (drops environment-specific <code>ufc_*</code> fields, redacts lookup-backed <code>ValidValues</code> that carry live instance data, scrub-term gate) — Fixes #74 — <em>@mrwuss</em></li>
 <li><strong>feat:</strong> Recipes cookbook — <code>docs/recipes/</code> with 10 self-contained task pages (complete payload, full runnable Python + C# example, verified gotchas, verify read-back) plus a conventions README; INDEX routes tasks to recipes first — Fixes #76 — <em>@mrwuss</em></li>
-<li><strong>feat:</strong> End-to-end example files — <code>scripts/recipes/</code> (dry-run by default, <code>--execute</code> gates writes) and the <code>examples/csharp/Recipes/</code> solution project (menu runner, <code>EXECUTE</code>-gated writes); every recipe page links its files — Fixes #79 — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> End-to-end example files — <code>examples/python/recipes/</code> (dry-run by default, <code>--execute</code> gates writes) and the <code>examples/csharp/Recipes/</code> solution project (menu runner, <code>EXECUTE</code>-gated writes); every recipe page links its files — Fixes #79 — <em>@mrwuss</em></li>
 <li><strong>feat(site):</strong> Recipes published on the HTML site — subfolder conversion with depth-aware sidebars, a Recipes nav section and landing-page grid, and repo-file links (<code>definitions/</code>, example files) rewritten to GitHub; landing page gains the Task Index card and the previously missing Production &amp; Labor and UDT cards — Fixes #77 — <em>@mrwuss</em></li>
 <li><strong>feat:</strong> Offline payload validator — <code>scripts/validate_payload.py</code> checks JSON <strong>and</strong> XML payload files against the shape rules and <code>definitions/</code> schemas (exact paths to each problem, did-you-mean suggestions, XML namespace + element-order enforcement, verified field-order rules); <code>--self-test</code> included — Fixes #82 — <em>@mrwuss</em></li>
 </ul>
@@ -511,7 +511,7 @@
 <h2 id="2026-03-06">2026-03-06</h2>
 <ul>
 <li><strong>feat:</strong> Add Production &amp; Labor API documentation — TimeEntry service for recording labor hours against production orders, ProductionOrder service with full field definitions (54 header fields, assembly lines, components, labor entries, completions, routing), Labor/LaborProcess services for labor code maintenance, 24 production-related Transaction API services discovered, 13 Interactive API windows verified working — <em>@mrwuss</em></li>
-<li><strong>feat:</strong> Add Python example scripts for production/labor — service discovery, TimeEntry definition, labor hour recording, ProductionOrder definition (<code>scripts/production/</code>)</li>
+<li><strong>feat:</strong> Add Python example scripts for production/labor — service discovery, TimeEntry definition, labor hour recording, ProductionOrder definition (<code>examples/python/production/</code>)</li>
 <li><strong>feat:</strong> Add C# example code for production/labor — mirrors Python examples (<code>examples/csharp/Production/</code>)</li>
 <li><strong>docs:</strong> Update API Selection Guide with production/labor use cases and decision table entries</li>
 <li><strong>docs:</strong> Update Transaction API with production &amp; labor services table</li>
@@ -550,7 +550,7 @@
 </ul>
 <h2 id="2026-02-12">2026-02-12</h2>
 <ul>
-<li><strong>feat:</strong> Add reusable P21 API client (<code>scripts/common/client.py</code>) with sync/async support, namespace helpers for all 4 APIs, and auto token refresh — <em>Claude Jones (<a href="https://github.com/RadAJones">@RadAJones</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/16">PR #16</a></li>
+<li><strong>feat:</strong> Add reusable P21 API client (<code>examples/python/common/client.py</code>) with sync/async support, namespace helpers for all 4 APIs, and auto token refresh — <em>Claude Jones (<a href="https://github.com/RadAJones">@RadAJones</a>)</em> via <a href="https://github.com/mrwuss/p21-api-documentation/pull/16">PR #16</a></li>
 <li><strong>fix:</strong> Address CodeRabbit + live API testing feedback on client — duplicate parser removal, query param fixes (<code>?id=</code> vs <code>?windowId=</code>), entity address guards, response window forwarding — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Add XML token responses section, query parameter testing results, and cross-reference updates across Auth, Interactive, Entity, and Error Handling docs — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Fix Entity API address limitations, add SOAP/mobile endpoints and error codes — <em>@mrwuss</em></li>

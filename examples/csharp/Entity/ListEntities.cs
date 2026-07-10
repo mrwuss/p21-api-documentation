@@ -2,7 +2,7 @@
 //
 // Demonstrates entity discovery: ping health checks, listing records,
 // and retrieving new-record templates.
-// Mirrors: scripts/entity/01_list_entities.py
+// Mirrors: examples/python/entity/01_list_entities.py
 //
 // This example shows both approaches:
 //   1. Raw HttpClient - full control, educational

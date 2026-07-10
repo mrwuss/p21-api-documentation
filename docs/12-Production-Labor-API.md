@@ -847,7 +847,7 @@ See [OData API](02-OData-API.md) for full query syntax including `$filter`, `$se
 
 ## Code Examples
 
-See the `scripts/production/` (Python) and `examples/csharp/Production/` (C#) directories for working examples.
+See the `examples/python/production/` (Python) and `examples/csharp/Production/` (C#) directories for working examples.
 
 ---
 
