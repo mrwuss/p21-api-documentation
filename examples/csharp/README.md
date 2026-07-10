@@ -1,6 +1,6 @@
 # P21 API C# Examples
 
-C# console application examples demonstrating all P21 APIs using raw `HttpClient`.
+C# console application examples demonstrating all P21 APIs using raw `HttpClient`, plus end-to-end recipe programs mirroring the [recipes cookbook](../../docs/recipes/README.md).
 
 ## Prerequisites
 
@@ -27,6 +27,8 @@ dotnet run --project OData
 dotnet run --project Transaction
 dotnet run --project Interactive
 dotnet run --project Entity
+dotnet run --project Production
+dotnet run --project Recipes      # end-to-end tasks; writes gated behind typing EXECUTE
 ```
 
 ## Project Structure
@@ -35,7 +37,7 @@ dotnet run --project Entity
 P21Examples.sln
 Common/                     # Shared library (netstandard2.0)
   P21Config.cs              # Environment variable loading
-  P21Auth.cs                # Token V1/V2, XML/JSON dual parsing
+  P21Auth.cs                # Token auth (V2 for credentials; V1 only for consumer keys), XML/JSON dual parsing
   P21Client.cs              # HttpClient wrapper for all 4 APIs
   Models/
     InteractiveResult.cs    # Interactive API response model
@@ -44,6 +46,8 @@ OData/                      # OData API examples (net8.0)
 Transaction/                # Transaction API examples (net8.0)
 Interactive/                # Interactive API examples (net8.0)
 Entity/                     # Entity API examples (net8.0)
+Production/                 # Production & Labor examples (net8.0)
+Recipes/                    # End-to-end recipe programs (net8.0), one class per docs/recipes page
 ```
 
 ## Environment Variables

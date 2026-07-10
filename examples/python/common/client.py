@@ -941,14 +941,13 @@ class P21Client:
                 body["username"] = cfg.username
             resp = client.post(cfg.token_url_v2, json=body)
         elif cfg.password:
-            # Username/password auth via V1 endpoint
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "username": cfg.username,
-                "password": cfg.password,
-            }
-            resp = client.post(cfg.token_url, headers=headers, content="")
+            # Username/password auth via V2 endpoint (credentials in the
+            # body -- NEVER the V1 header form, which proxies/logs capture)
+            resp = client.post(
+                cfg.token_url_v2,
+                json={"username": cfg.username, "password": cfg.password},
+                headers={"Accept": "application/json"},
+            )
         else:
             raise ValueError("No consumer_key or password configured")
 
@@ -1067,13 +1066,12 @@ class AsyncP21Client:
                 body["username"] = cfg.username
             resp = await client.post(cfg.token_url_v2, json=body)
         elif cfg.password:
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "username": cfg.username,
-                "password": cfg.password,
-            }
-            resp = await client.post(cfg.token_url, headers=headers, content="")
+            # V2 endpoint -- credentials in the body, never in headers
+            resp = await client.post(
+                cfg.token_url_v2,
+                json={"username": cfg.username, "password": cfg.password},
+                headers={"Accept": "application/json"},
+            )
         else:
             raise ValueError("No consumer_key or password configured")
 

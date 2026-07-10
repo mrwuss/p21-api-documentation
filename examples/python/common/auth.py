@@ -64,7 +64,10 @@ def get_token(
         username: Override username from config
         password: Override password from config
         consumer_key: Use consumer key authentication instead of credentials
-        use_v2: Use V2 endpoint (credentials in body). Default False uses V1.
+        use_v2: Use V2 endpoint (credentials in body). Defaults to True.
+            Password auth REQUIRES V2 — the V1 endpoint puts credentials in
+            HTTP headers, which proxies and log pipelines capture. V1 is only
+            allowed for consumer-key (appkey header) authentication.
 
     Returns:
         dict: Token response containing:
@@ -108,19 +111,25 @@ def get_token(
                 headers={"Accept": "application/json"}
             )
         else:
-            # V1 endpoint - credentials in headers (legacy but widely used)
+            # V1 endpoint - only valid for consumer-key (appkey header) auth.
+            # Username/password in headers is a security risk (headers get
+            # logged by proxies) and is deliberately not supported here.
+            if not consumer_key:
+                raise ValueError(
+                    "Password authentication requires the V2 endpoint "
+                    "(credentials in the request body). The V1 endpoint puts "
+                    "username/password in HTTP headers, which get captured by "
+                    "proxies and logs. Call get_token() with use_v2=True "
+                    "(the default)."
+                )
+
             headers = {
                 "Content-Type": "application/json",
-                "Accept": "application/json"
+                "Accept": "application/json",
+                "appkey": consumer_key,
             }
-
-            if consumer_key:
-                headers["appkey"] = consumer_key
-                if username:
-                    headers["username"] = username
-            else:
-                headers["username"] = username or config.username
-                headers["password"] = password or config.password
+            if username:
+                headers["username"] = username
 
             response = client.post(
                 config.token_url,

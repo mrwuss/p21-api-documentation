@@ -61,10 +61,16 @@ def load_config() -> P21Config:
     Raises:
         ValueError: If required environment variables are missing
     """
-    # Find and load .env file
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent.parent
+    # Find and load .env file: this file lives at examples/python/common/,
+    # so the repo root is three parents up. Walk upward as a fallback so the
+    # helper keeps working if the tree moves again.
+    project_root = Path(__file__).resolve().parent.parent.parent
     env_file = project_root / ".env"
+    if not env_file.exists():
+        for parent in Path(__file__).resolve().parents:
+            if (parent / ".env").exists():
+                env_file = parent / ".env"
+                break
 
     if env_file.exists():
         load_dotenv(env_file)

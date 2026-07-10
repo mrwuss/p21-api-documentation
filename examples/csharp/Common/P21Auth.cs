@@ -15,26 +15,28 @@ namespace P21Examples.Common
     public static class P21Auth
     {
         /// <summary>
-        /// Obtain an access token using V1 endpoint (credentials in headers).
+        /// Obtain an access token using the V1 endpoint. Only valid for
+        /// consumer-key (appkey header) authentication — password auth via V1
+        /// puts credentials in HTTP headers, which proxies and log pipelines
+        /// capture, and is deliberately not supported. Use GetTokenV2Async
+        /// (or GetTokenAsync, which defaults to V2) for passwords.
         /// </summary>
         public static async Task<TokenResponse> GetTokenV1Async(
             HttpClient client, P21Config config)
         {
+            if (string.IsNullOrEmpty(config.ConsumerKey))
+                throw new InvalidOperationException(
+                    "Password authentication requires the V2 endpoint " +
+                    "(credentials in the request body). The V1 endpoint puts " +
+                    "username/password in HTTP headers, which get captured " +
+                    "by proxies and logs. Use GetTokenV2Async instead.");
+
             var request = new HttpRequestMessage(HttpMethod.Post, config.TokenUrl);
             request.Content = new StringContent("", Encoding.UTF8, "application/json");
             request.Headers.TryAddWithoutValidation("Accept", "application/json");
-
-            if (!string.IsNullOrEmpty(config.ConsumerKey))
-            {
-                request.Headers.TryAddWithoutValidation("appkey", config.ConsumerKey);
-                if (!string.IsNullOrEmpty(config.Username))
-                    request.Headers.TryAddWithoutValidation("username", config.Username);
-            }
-            else
-            {
+            request.Headers.TryAddWithoutValidation("appkey", config.ConsumerKey);
+            if (!string.IsNullOrEmpty(config.Username))
                 request.Headers.TryAddWithoutValidation("username", config.Username);
-                request.Headers.TryAddWithoutValidation("password", config.Password);
-            }
 
             var response = await client.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -81,10 +83,12 @@ namespace P21Examples.Common
         }
 
         /// <summary>
-        /// Get token using the default method (V1).
+        /// Get token using the default method (V2 — credentials in the body).
+        /// Pass useV2: false only for consumer-key (appkey header) auth;
+        /// password auth via V1 throws.
         /// </summary>
         public static async Task<TokenResponse> GetTokenAsync(
-            HttpClient client, P21Config config, bool useV2 = false)
+            HttpClient client, P21Config config, bool useV2 = true)
         {
             return useV2
                 ? await GetTokenV2Async(client, config)

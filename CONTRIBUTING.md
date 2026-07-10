@@ -30,14 +30,18 @@ Thank you for your interest in improving P21 API documentation! This project aim
 ## Guidelines
 
 ### Documentation Standards
-- **Facts only** - No guesses about undocumented behavior
+- **Facts only** - No guesses about undocumented behavior; disputed or community-reported behavior gets live-verified before it's documented
 - **Verified examples** - All code should run without errors
-- **Real payloads** - Include actual API request/response examples
+- **Real payloads** - Include actual API request/response examples (generalized placeholder data only — `ACME`, `WIDGET-001`, `play.p21server.com`; never real company/customer identifiers)
 - **Note limitations** - Document known issues and workarounds
+- **Keep the routing layer in sync** - new task-worthy sections get a row in [docs/INDEX.md](docs/INDEX.md); renaming a heading must update its index anchors
 
 ### Code Examples
-- Use Python with `httpx` for HTTP calls
-- Include error handling
+- **Both languages**: documentation code blocks come in Python (`httpx`) *and* C# (`HttpClient` + Newtonsoft) tabs — see any recipe page for the format
+- **V2 auth only** for username/password (credentials in the request body); the V1 header form leaks credentials into proxy/server logs
+- Include error handling — check `Summary.Succeeded`/`Failed`, never the HTTP status alone
+- Verify writes with a read-back (OData or `POST /api/v2/transaction/get`)
+- Validate example payloads with `python scripts/validate_payload.py <file>` (works for JSON and XML)
 - Add comments explaining P21-specific behavior
 - Test against a P21 environment before submitting
 
