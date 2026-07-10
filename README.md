@@ -2,21 +2,34 @@
 
 > **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
 
-Comprehensive documentation and working examples (Python and C#) for all Prophet 21 integration APIs.
-
-## Overview
-
-This repository provides developer-focused documentation for P21's integration APIs. All content is based on official Epicor SDK documentation and verified working implementations.
+Comprehensive documentation and working examples — **Python, C#, JSON, and XML** — for all Prophet 21 integration APIs.
 
 **[View Online Documentation](https://mrwuss.github.io/p21-api-documentation/html/)**
+
+## How This Repo Is Organized (start here)
+
+The repo is built for **progressive disclosure**: this README routes you, each area's README is the source of truth for that area, and the [Task Index](docs/INDEX.md) maps tasks to exact doc sections. Load only what your task needs — most files here are reference material you should never read end-to-end.
+
+> **If you're an AI assistant:** read [CLAUDE.md](CLAUDE.md), then [docs/INDEX.md](docs/INDEX.md), then only the sections or recipe your task needs. Don't load whole docs or whole folders; the folder READMEs below tell you what's inside without opening it.
+
+| Area | What's there | Start at |
+|------|--------------|----------|
+| [`docs/INDEX.md`](docs/INDEX.md) | "I want to…" → exact doc-section routing map | the index itself |
+| [`docs/`](docs/INDEX.md#doc-inventory-what-each-file-is) | The deep manual — 14 numbered guides (auth, each API, errors, patterns) | Task Index, not the raw files |
+| [`docs/recipes/`](docs/recipes/README.md) | Copy-and-run task pages: complete payload + runnable Python & C# + verified gotchas | [recipes README](docs/recipes/README.md) |
+| [`definitions/`](definitions/README.md) | Full-field service schemas (every DataElement, field, key, label + payload template), sanitized | [definitions README](definitions/README.md) |
+| [`examples/python/`](examples/python/README.md) | Runnable Python examples for every API + end-to-end recipe scripts (dry-run by default) | [python README](examples/python/README.md) |
+| [`examples/csharp/`](examples/csharp/README.md) | Equivalent C# console apps (`P21Examples.sln`) + shared client library | [csharp README](examples/csharp/README.md) |
+| [`examples/payloads/`](examples/payloads/README.md) | Standalone copy-ready request bodies — JSON and DataContract-correct XML, validator-verified | [payloads README](examples/payloads/README.md) |
+| [`scripts/`](scripts/README.md) | Repo tooling: payload validator, definition fetcher, HTML generator | [scripts README](scripts/README.md) |
 
 ## APIs Covered
 
 | API | Purpose | Best For |
 |-----|---------|----------|
 | [OData](docs/02-OData-API.md) | Read-only data access via standard OData protocol | Reporting, lookups, data exports |
-| [Transaction API](docs/03-Transaction-API.md) | Stateless bulk data manipulation | Bulk creates, external integrations |
-| [Interactive API](docs/04-Interactive-API.md) | Stateful window interactions with business logic | Complex workflows, validation |
+| [Transaction API](docs/03-Transaction-API.md) | Stateless data manipulation (create, update/upsert, bulk) | Creates, keyed updates, external integrations |
+| [Interactive API](docs/04-Interactive-API.md) | Stateful window interactions with business logic | Dialogs, disabled tabs, complex workflows |
 | [Entity API](docs/05-Entity-API.md) | Simple CRUD on business objects | Basic record operations |
 | [Inventory REST API](docs/11-Inventory-REST-API.md) | Inventory item CRUD, multi-company workflows | Item reads, appending locations/suppliers |
 | [Production & Labor](docs/12-Production-Labor-API.md) | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking |
@@ -25,94 +38,31 @@ This repository provides developer-focused documentation for P21's integration A
 ## Quick Start
 
 ```bash
-# Clone and setup
 git clone https://github.com/mrwuss/p21-api-documentation.git
 cd p21-api-documentation
 
-# Install dependencies
 pip install -r requirements.txt
+cp .env.example .env        # add your P21 credentials
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your P21 credentials
-
-# Run an example
+# Read something
 python examples/python/odata/01_basic_query.py
+
+# Validate a write payload before ever posting it
+python scripts/validate_payload.py examples/payloads/json/create-sales-order.json
 ```
+
+For C#: `cd examples/csharp && dotnet build`, then `dotnet run --project <Project>` — see the [csharp README](examples/csharp/README.md).
 
 ## Documentation
 
 > **Start with the [Task Index](docs/INDEX.md)** — a "what do you want to do" → exact-section map. The docs below are the deep manual; the index gets you to the right 50 lines instead of the right 2,000.
 
-### Getting Started
-- [Authentication](docs/00-Authentication.md) - Token generation, credentials vs consumer key, Interactive API auth
-- [API Selection Guide](docs/01-API-Selection-Guide.md) - Which API to use when
+- **Getting started:** [Authentication](docs/00-Authentication.md) · [API Selection Guide](docs/01-API-Selection-Guide.md)
+- **API reference:** [OData](docs/02-OData-API.md) · [Transaction](docs/03-Transaction-API.md) · [Interactive](docs/04-Interactive-API.md) · [Entity](docs/05-Entity-API.md) · [Inventory REST](docs/11-Inventory-REST-API.md) · [Production & Labor](docs/12-Production-Labor-API.md) · [UDT Service](docs/13-UDT-Service-API.md)
+- **Troubleshooting:** [Error Handling](docs/06-Error-Handling.md) · [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md)
+- **Reference:** [SalesPricePage Codes](docs/08-SalesPricePage-Codes.md) · [Batch Processing Patterns](docs/09-Batch-Processing-Patterns.md) · [Changelog](docs/10-Changelog.md)
 
-### API Reference
-- [OData API](docs/02-OData-API.md) - Query syntax, filtering, pagination
-- [Transaction API](docs/03-Transaction-API.md) - Service discovery, bulk operations
-- [Interactive API](docs/04-Interactive-API.md) - Sessions, windows, workflows
-- [Entity API](docs/05-Entity-API.md) - Entity CRUD operations
-- [Inventory REST API](docs/11-Inventory-REST-API.md) - Inventory CRUD, multi-company workflows
-- [Production & Labor API](docs/12-Production-Labor-API.md) - Production orders, labor tracking
-- [UDT Service API](docs/13-UDT-Service-API.md) - User-defined table CRUD via `/udtservice/api/udtdata/`
-
-### Troubleshooting
-- [Error Handling](docs/06-Error-Handling.md) - HTTP codes, error responses
-- [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md) - Intermittent failures
-
-### Reference
-- [SalesPricePage Dropdown Codes](docs/08-SalesPricePage-Codes.md) - Valid values for price page fields
-- [Batch Processing Patterns](docs/09-Batch-Processing-Patterns.md) - Production batch operation patterns
-- [Changelog](docs/10-Changelog.md) - All changes and contributors
-
-## Example Scripts
-
-### OData
-- `examples/python/odata/01_basic_query.py` - Simple table query
-- `examples/python/odata/02_filtering.py` - Filter expressions
-- `examples/python/odata/03_pagination.py` - Skip, top, count
-- `examples/python/odata/04_complex_queries.py` - Advanced queries
-
-### Transaction API
-- `examples/python/transaction/01_list_services.py` - Discover services
-- `examples/python/transaction/02_get_definition.py` - Get service schema
-- `examples/python/transaction/03_create_single.py` - Create one record
-- `examples/python/transaction/04_create_bulk.py` - Batch operations
-- `examples/python/transaction/test_session_pool.py` - Diagnose pool issues
-
-### Interactive API
-- `examples/python/interactive/01_open_session.py` - Session lifecycle
-- `examples/python/interactive/02_open_window.py` - Window operations
-- `examples/python/interactive/03_change_data.py` - Field manipulation
-- `examples/python/interactive/04_save_and_close.py` - Save workflow
-- `examples/python/interactive/05_response_windows.py` - Dialog handling and response windows
-- `examples/python/interactive/06_complex_workflow.py` - Multi-step workflows
-
-### Entity API
-- `examples/python/entity/01_list_entities.py` - Discover entities
-- `examples/python/entity/02_query_entity.py` - Query records
-- `examples/python/entity/03_create_entity.py` - Create record
-
-## C# Examples
-
-The `examples/csharp/` directory contains equivalent C# console applications for every Python script, plus a shared client library.
-
-```bash
-# Build all C# examples
-cd examples/csharp
-dotnet build
-
-# Run a specific example
-dotnet run --project OData
-dotnet run --project Transaction
-dotnet run --project Interactive
-dotnet run --project Entity
-```
-
-See [examples/csharp/README.md](examples/csharp/README.md) for setup details.
-
-All documentation pages include tabbed code blocks showing both Python and C# side-by-side. The [online HTML docs](https://mrwuss.github.io/p21-api-documentation/html/) support language switching with global sync across all code blocks on a page.
+All documentation pages include tabbed Python/C# code blocks; the [online docs](https://mrwuss.github.io/p21-api-documentation/html/) sync language selection across every block on a page.
 
 ## Environment Variables
 
@@ -131,7 +81,7 @@ All documentation pages include tabbed code blocks showing both Python and C# si
 All documentation is derived from:
 - **Official SDK**: Epicor P21 SDK documentation
 - **Working Code**: Verified implementations from production projects
-- **Actual Testing**: Tested against P21 test environments
+- **Actual Testing**: Tested against P21 test environments — disputed or community-reported behavior is live-verified before it's documented
 
 ## Contributing
 
