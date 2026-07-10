@@ -37,6 +37,16 @@ GITHUB_BLOB_BASE = "https://github.com/mrwuss/p21-api-documentation/blob/master/
 PAGE_INDEX: list[tuple[str, str]] = []
 RECIPE_INDEX: list[tuple[str, str]] = []
 
+# Source stems whose natural output name would collide with another output
+# file on case-insensitive filesystems (INDEX.html vs index.html -- on
+# Windows the landing page silently clobbers the Task Index page).
+OUT_STEM_MAP = {"INDEX": "task-index"}
+
+
+def out_stem(stem: str) -> str:
+    """Output filename stem for a source markdown stem."""
+    return OUT_STEM_MAP.get(stem, stem)
+
 # ---------------------------------------------------------------------------
 # Tab infrastructure for multi-language code blocks
 # ---------------------------------------------------------------------------
@@ -244,7 +254,8 @@ def build_sidebar_html(current_stem: str, toc_html: str, prefix: str = "") -> st
     nav_items = []
     for stem, title in PAGE_INDEX:
         active = ' class="active"' if stem == current_stem else ""
-        nav_items.append(f'        <li{active}><a href="{prefix}{stem}.html">{title}</a></li>')
+        nav_items.append(
+            f'        <li{active}><a href="{prefix}{out_stem(stem)}.html">{title}</a></li>')
     nav_list = "\n".join(nav_items)
 
     recipe_items = []
@@ -759,7 +770,10 @@ def rewrite_links(md_content: str, md_dir: Path) -> str:
             inside_docs = False
         if inside_docs:
             if target.endswith(".md"):
-                target = target[:-3] + ".html"
+                target = target[:-3]
+                # Apply output-stem renames (e.g. INDEX -> task-index)
+                head, _, stem = target.rpartition("/")
+                target = (f"{head}/" if head else "") + out_stem(stem) + ".html"
             return f"]({target}{anchor})"
         # Escapes docs/ -- point at the file on GitHub instead.
         try:
@@ -835,7 +849,8 @@ def convert_md_to_html(md_file: Path) -> Path:
     # Write output
     out_dir = HTML_DIR / "recipes" if is_recipe else HTML_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
-    html_file = out_dir / f"{md_file.stem}.html"
+    name = md_file.stem if is_recipe else out_stem(md_file.stem)
+    html_file = out_dir / f"{name}.html"
     html_file.write_text(full_html, encoding="utf-8")
 
     return html_file
@@ -876,7 +891,7 @@ def generate_index_page():
         if badge:
             badge_class = "badge-read" if badge == "READ" else "badge-write" if badge == "WRITE" else "badge-both"
             badge_html = f' <span class="badge {badge_class}">{badge}</span>'
-        return f"""<a href="{stem}.html" class="index-card">
+        return f"""<a href="{out_stem(stem)}.html" class="index-card">
             <h3>{title}{badge_html}</h3>
             <p>{desc}</p>
         </a>"""
