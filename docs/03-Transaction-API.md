@@ -152,6 +152,130 @@ Each **Edit** object supports:
 
 ---
 
+## Payload Anatomy -- Types, Nesting, and Common Mistakes
+
+Most first-integration failures are payload **shape** mistakes, not wrong endpoints: a string where an array is expected, a field at the wrong nesting level, or a boolean in quotes. JSON indentation is cosmetic -- what matters is the **nesting** and the **type at every level**. This skeleton annotates both:
+
+```jsonc
+{                                       // ROOT: object
+  "Name": "JobContractPricing",         // string  — the service name
+  "UseCodeValues": false,               // boolean — NOT the string "false"
+  "IgnoreDisabled": true,               // boolean — ONLY valid at THIS level
+  "Transactions": [                     // ARRAY of Transaction objects
+    {
+      "Status": "New",                  // string — "New" for create AND update
+      "DataElements": [                 // ARRAY of DataElement objects
+        {
+          "Name": "FORM.d_dw_job_price_hdr",  // string — "ELEMENT.datawindow"
+          "Type": "Form",               // string — "Form" or "List"
+          "Keys": ["item_id"],          // ARRAY of strings — even for ONE key
+          "Rows": [                     // ARRAY of Row objects — even for ONE row
+            {
+              "Edits": [                // ARRAY of Edit objects
+                { "Name": "item_id", "Value": "WIDGET-001" }   // Value: STRING
+              ],
+              "RelativeDateEdits": []   // array (may be empty)
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Common mistakes and their symptoms
+
+| Mistake | Wrong | Right | Symptom |
+|---------|-------|-------|---------|
+| `Keys` as a string | `"Keys": "item_id"` | `"Keys": ["item_id"]` | Deserialization/validation error, or keys ignored |
+| `IgnoreDisabled` inside a Transaction | `Transactions[0].IgnoreDisabled` | Top level, beside `Name` | **Silently ignored** — `Column is disabled: ...` persists ([details](#ignoredisabled)) |
+| Boolean in quotes | `"UseCodeValues": "false"` | `"UseCodeValues": false` | The string `"false"` is truthy-ish to some binders — behavior undefined |
+| `Rows`/`Edits` as an object | `"Rows": { "Edits": ... }` | `"Rows": [ { "Edits": [...] } ]` | Deserialization error or empty save |
+| `Value` as a number | `"Value": 36.58` | `"Value": "36.58"` | Every verified example sends **strings**; other types are untested territory |
+| `Status: "Existing"` | — | `"Status": "New"` | HTTP 500 `NullReferenceException` — [use "New" for updates too](#updating-an-existing-contract) |
+| Report payload to `/transaction` | — | `POST /api/v2/process/pdfreport` | Returns `Succeeded`, emits **nothing** ([details](#pdf-report-generation)) |
+| Wrong property case | `"transactions": [...]` | `"Transactions": [...]` | Property silently unbound — behaves like it was never sent |
+| Fields in UI-cascade-breaking order | `price` before `pricing_method` | Match the UI order | Value silently cleared while reporting Succeeded ([details](#field-order-matters)) |
+
+Two tools take the guesswork out:
+
+- **Start from the service's `Template`** — `GET /api/v2/definition/{Service}` (or the committed [`definitions/{Service}.json`](../definitions/README.md)) contains a `Template.TransactionSet` skeleton with every element and field already correctly shaped. Copy it, fill the `Edits` you need, delete the rest.
+- **Validate before you POST** — [`scripts/validate_payload.py`](../scripts/validate_payload.py) checks a payload file (JSON **or** XML) offline against these rules and the `definitions/` schema, with exact paths to each problem:
+
+  ```bash
+  python scripts/validate_payload.py my_payload.json
+  python scripts/validate_payload.py my_payload.xml
+  ```
+
+---
+
+## XML Payloads (Content Negotiation)
+
+The Transaction API endpoints speak **XML as well as JSON**, in both directions, negotiated per-request with standard headers (verified live on 25.2, July 2026):
+
+| You want | Headers |
+|----------|---------|
+| JSON in, JSON out | `Content-Type: application/json`, `Accept: application/json` |
+| XML in, XML out | `Content-Type: application/xml`, `Accept: application/xml` |
+| XML in, JSON out | `Content-Type: application/xml`, `Accept: application/json` |
+| JSON in, XML out | `Content-Type: application/json`, `Accept: application/xml` |
+
+All four combinations are verified working on `GET /definition`, `GET /services`, `POST /transaction`, and `POST /transaction/get`. Error responses follow the Accept header too (RFC-7807 `application/problem+xml` / `+json`).
+
+### The XML request shape (DataContract)
+
+The same TransactionSet as above, as a working XML body:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <IgnoreDisabled>false</IgnoreDisabled>
+  <Name>JobContractPricing</Name>
+  <Transactions>
+    <Transaction>
+      <DataElements>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+            <a:string>item_id</a:string>
+          </Keys>
+          <Name>JOBPRICELINE.jobpriceline</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit><Name>item_id</Name><Value>WIDGET-001</Value></Edit>
+                <Edit><Name>pricing_method</Name><Value>Price</Value></Edit>
+                <Edit><Name>price</Name><Value>36.58</Value></Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>List</Type>
+        </DataElement>
+      </DataElements>
+      <Status>New</Status>
+    </Transaction>
+  </Transactions>
+  <UseCodeValues>false</UseCodeValues>
+</TransactionSet>
+```
+
+Three rules make or break XML bodies — all verified live:
+
+1. **The root namespace is mandatory.** Without `xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2"` the body deserializes to null and the server returns 400 *"The content field is required."*
+2. **Element order is ALPHABETICAL within each parent** (WCF DataContract ordering) — note `<Name>` before `<Transactions>` before `<UseCodeValues>`, `<Keys>` before `<Name>` inside a DataElement, `<Name>` before `<Value>` inside an Edit. Violations are **not** politely rejected: a misordered top-level element returns HTTP 500, and a misordered element deeper down is **silently dropped** — the transaction then fails with *"Object reference not set to an instance of an object."*
+3. **`Keys` items use the arrays namespace**: `<a:string>` with `xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays"`.
+
+**Don't hand-build the shape — ask the server for it.** `GET /api/v2/definition/{Service}` with `Accept: application/xml` returns the service's `Template` as XML *in exactly the required element order*. Fill in the `<Value>`s and post it back.
+
+Other verified XML specifics:
+
+- `POST /api/v2/transaction/get` XML bodies use the root `<TransactionStateRequest>` (same namespace).
+- Response roots: `<TransactionSetResult>` from `/transaction`, `<ServiceDefinition>` from `/definition`, `<ArrayOfServiceInfo>` from `/services`.
+- [`scripts/validate_payload.py`](../scripts/validate_payload.py) checks XML payloads offline — namespace, element order, `Keys` item namespace, and all the JSON-level semantic rules.
+
+---
+
 ## Common Services
 
 | Service | P21 Window | Purpose |

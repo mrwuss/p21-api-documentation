@@ -413,6 +413,14 @@
 <li><a href="#row-edit-fields">Row / Edit Fields</a></li>
 </ul>
 </li>
+<li><a href="#payload-anatomy-types-nesting-and-common-mistakes">Payload Anatomy -- Types, Nesting, and Common Mistakes</a><ul>
+<li><a href="#common-mistakes-and-their-symptoms">Common mistakes and their symptoms</a></li>
+</ul>
+</li>
+<li><a href="#xml-payloads-content-negotiation">XML Payloads (Content Negotiation)</a><ul>
+<li><a href="#the-xml-request-shape-datacontract">The XML request shape (DataContract)</a></li>
+</ul>
+</li>
 <li><a href="#common-services">Common Services</a><ul>
 <li><a href="#report-services">Report Services</a></li>
 <li><a href="#production-assembly-labor-services">Production, Assembly &amp; Labor Services</a></li>
@@ -783,6 +791,188 @@
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="payload-anatomy-types-nesting-and-common-mistakes">Payload Anatomy -- Types, Nesting, and Common Mistakes</h2>
+<p>Most first-integration failures are payload <strong>shape</strong> mistakes, not wrong endpoints: a string where an array is expected, a field at the wrong nesting level, or a boolean in quotes. JSON indentation is cosmetic -- what matters is the <strong>nesting</strong> and the <strong>type at every level</strong>. This skeleton annotates both:</p>
+<div class="highlight"><pre><span></span><code>{                                       // ROOT: object
+  &quot;Name&quot;: &quot;JobContractPricing&quot;,         // string  — the service name
+  &quot;UseCodeValues&quot;: false,               // boolean — NOT the string &quot;false&quot;
+  &quot;IgnoreDisabled&quot;: true,               // boolean — ONLY valid at THIS level
+  &quot;Transactions&quot;: [                     // ARRAY of Transaction objects
+    {
+      &quot;Status&quot;: &quot;New&quot;,                  // string — &quot;New&quot; for create AND update
+      &quot;DataElements&quot;: [                 // ARRAY of DataElement objects
+        {
+          &quot;Name&quot;: &quot;FORM.d_dw_job_price_hdr&quot;,  // string — &quot;ELEMENT.datawindow&quot;
+          &quot;Type&quot;: &quot;Form&quot;,               // string — &quot;Form&quot; or &quot;List&quot;
+          &quot;Keys&quot;: [&quot;item_id&quot;],          // ARRAY of strings — even for ONE key
+          &quot;Rows&quot;: [                     // ARRAY of Row objects — even for ONE row
+            {
+              &quot;Edits&quot;: [                // ARRAY of Edit objects
+                { &quot;Name&quot;: &quot;item_id&quot;, &quot;Value&quot;: &quot;WIDGET-001&quot; }   // Value: STRING
+              ],
+              &quot;RelativeDateEdits&quot;: []   // array (may be empty)
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+</code></pre></div>
+
+<h3 id="common-mistakes-and-their-symptoms">Common mistakes and their symptoms</h3>
+<table>
+<thead>
+<tr>
+<th>Mistake</th>
+<th>Wrong</th>
+<th>Right</th>
+<th>Symptom</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Keys</code> as a string</td>
+<td><code>"Keys": "item_id"</code></td>
+<td><code>"Keys": ["item_id"]</code></td>
+<td>Deserialization/validation error, or keys ignored</td>
+</tr>
+<tr>
+<td><code>IgnoreDisabled</code> inside a Transaction</td>
+<td><code>Transactions[0].IgnoreDisabled</code></td>
+<td>Top level, beside <code>Name</code></td>
+<td><strong>Silently ignored</strong> — <code>Column is disabled: ...</code> persists (<a href="#ignoredisabled">details</a>)</td>
+</tr>
+<tr>
+<td>Boolean in quotes</td>
+<td><code>"UseCodeValues": "false"</code></td>
+<td><code>"UseCodeValues": false</code></td>
+<td>The string <code>"false"</code> is truthy-ish to some binders — behavior undefined</td>
+</tr>
+<tr>
+<td><code>Rows</code>/<code>Edits</code> as an object</td>
+<td><code>"Rows": { "Edits": ... }</code></td>
+<td><code>"Rows": [ { "Edits": [...] } ]</code></td>
+<td>Deserialization error or empty save</td>
+</tr>
+<tr>
+<td><code>Value</code> as a number</td>
+<td><code>"Value": 36.58</code></td>
+<td><code>"Value": "36.58"</code></td>
+<td>Every verified example sends <strong>strings</strong>; other types are untested territory</td>
+</tr>
+<tr>
+<td><code>Status: "Existing"</code></td>
+<td>—</td>
+<td><code>"Status": "New"</code></td>
+<td>HTTP 500 <code>NullReferenceException</code> — <a href="#updating-an-existing-contract">use "New" for updates too</a></td>
+</tr>
+<tr>
+<td>Report payload to <code>/transaction</code></td>
+<td>—</td>
+<td><code>POST /api/v2/process/pdfreport</code></td>
+<td>Returns <code>Succeeded</code>, emits <strong>nothing</strong> (<a href="#pdf-report-generation">details</a>)</td>
+</tr>
+<tr>
+<td>Wrong property case</td>
+<td><code>"transactions": [...]</code></td>
+<td><code>"Transactions": [...]</code></td>
+<td>Property silently unbound — behaves like it was never sent</td>
+</tr>
+<tr>
+<td>Fields in UI-cascade-breaking order</td>
+<td><code>price</code> before <code>pricing_method</code></td>
+<td>Match the UI order</td>
+<td>Value silently cleared while reporting Succeeded (<a href="#field-order-matters">details</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>Two tools take the guesswork out:</p>
+<ul>
+<li><strong>Start from the service's <code>Template</code></strong> — <code>GET /api/v2/definition/{Service}</code> (or the committed <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/{Service}.json</code></a>) contains a <code>Template.TransactionSet</code> skeleton with every element and field already correctly shaped. Copy it, fill the <code>Edits</code> you need, delete the rest.</li>
+<li><strong>Validate before you POST</strong> — <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/validate_payload.py"><code>scripts/validate_payload.py</code></a> checks a payload file (JSON <strong>or</strong> XML) offline against these rules and the <code>definitions/</code> schema, with exact paths to each problem:</li>
+</ul>
+<p><code>bash
+  python scripts/validate_payload.py my_payload.json
+  python scripts/validate_payload.py my_payload.xml</code></p>
+<hr />
+<h2 id="xml-payloads-content-negotiation">XML Payloads (Content Negotiation)</h2>
+<p>The Transaction API endpoints speak <strong>XML as well as JSON</strong>, in both directions, negotiated per-request with standard headers (verified live on 25.2, July 2026):</p>
+<table>
+<thead>
+<tr>
+<th>You want</th>
+<th>Headers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JSON in, JSON out</td>
+<td><code>Content-Type: application/json</code>, <code>Accept: application/json</code></td>
+</tr>
+<tr>
+<td>XML in, XML out</td>
+<td><code>Content-Type: application/xml</code>, <code>Accept: application/xml</code></td>
+</tr>
+<tr>
+<td>XML in, JSON out</td>
+<td><code>Content-Type: application/xml</code>, <code>Accept: application/json</code></td>
+</tr>
+<tr>
+<td>JSON in, XML out</td>
+<td><code>Content-Type: application/json</code>, <code>Accept: application/xml</code></td>
+</tr>
+</tbody>
+</table>
+<p>All four combinations are verified working on <code>GET /definition</code>, <code>GET /services</code>, <code>POST /transaction</code>, and <code>POST /transaction/get</code>. Error responses follow the Accept header too (RFC-7807 <code>application/problem+xml</code> / <code>+json</code>).</p>
+<h3 id="the-xml-request-shape-datacontract">The XML request shape (DataContract)</h3>
+<p>The same TransactionSet as above, as a working XML body:</p>
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</span>
+<span class="nt">&lt;TransactionSet</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">&quot;http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;IgnoreDisabled&gt;</span>false<span class="nt">&lt;/IgnoreDisabled&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Name&gt;</span>JobContractPricing<span class="nt">&lt;/Name&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Transactions&gt;</span>
+<span class="w">    </span><span class="nt">&lt;Transaction&gt;</span>
+<span class="w">      </span><span class="nt">&lt;DataElements&gt;</span>
+<span class="w">        </span><span class="nt">&lt;DataElement&gt;</span>
+<span class="w">          </span><span class="nt">&lt;Keys</span><span class="w"> </span><span class="na">xmlns:a=</span><span class="s">&quot;http://schemas.microsoft.com/2003/10/Serialization/Arrays&quot;</span><span class="nt">&gt;</span>
+<span class="w">            </span><span class="nt">&lt;a:string&gt;</span>item_id<span class="nt">&lt;/a:string&gt;</span>
+<span class="w">          </span><span class="nt">&lt;/Keys&gt;</span>
+<span class="w">          </span><span class="nt">&lt;Name&gt;</span>JOBPRICELINE.jobpriceline<span class="nt">&lt;/Name&gt;</span>
+<span class="w">          </span><span class="nt">&lt;Rows&gt;</span>
+<span class="w">            </span><span class="nt">&lt;Row&gt;</span>
+<span class="w">              </span><span class="nt">&lt;Edits&gt;</span>
+<span class="w">                </span><span class="nt">&lt;Edit&gt;&lt;Name&gt;</span>item_id<span class="nt">&lt;/Name&gt;&lt;Value&gt;</span>WIDGET-001<span class="nt">&lt;/Value&gt;&lt;/Edit&gt;</span>
+<span class="w">                </span><span class="nt">&lt;Edit&gt;&lt;Name&gt;</span>pricing_method<span class="nt">&lt;/Name&gt;&lt;Value&gt;</span>Price<span class="nt">&lt;/Value&gt;&lt;/Edit&gt;</span>
+<span class="w">                </span><span class="nt">&lt;Edit&gt;&lt;Name&gt;</span>price<span class="nt">&lt;/Name&gt;&lt;Value&gt;</span>36.58<span class="nt">&lt;/Value&gt;&lt;/Edit&gt;</span>
+<span class="w">              </span><span class="nt">&lt;/Edits&gt;</span>
+<span class="w">              </span><span class="nt">&lt;RelativeDateEdits</span><span class="w"> </span><span class="nt">/&gt;</span>
+<span class="w">            </span><span class="nt">&lt;/Row&gt;</span>
+<span class="w">          </span><span class="nt">&lt;/Rows&gt;</span>
+<span class="w">          </span><span class="nt">&lt;Type&gt;</span>List<span class="nt">&lt;/Type&gt;</span>
+<span class="w">        </span><span class="nt">&lt;/DataElement&gt;</span>
+<span class="w">      </span><span class="nt">&lt;/DataElements&gt;</span>
+<span class="w">      </span><span class="nt">&lt;Status&gt;</span>New<span class="nt">&lt;/Status&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/Transaction&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/Transactions&gt;</span>
+<span class="w">  </span><span class="nt">&lt;UseCodeValues&gt;</span>false<span class="nt">&lt;/UseCodeValues&gt;</span>
+<span class="nt">&lt;/TransactionSet&gt;</span>
+</code></pre></div>
+
+<p>Three rules make or break XML bodies — all verified live:</p>
+<ol>
+<li><strong>The root namespace is mandatory.</strong> Without <code>xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2"</code> the body deserializes to null and the server returns 400 <em>"The content field is required."</em></li>
+<li><strong>Element order is ALPHABETICAL within each parent</strong> (WCF DataContract ordering) — note <code>&lt;Name&gt;</code> before <code>&lt;Transactions&gt;</code> before <code>&lt;UseCodeValues&gt;</code>, <code>&lt;Keys&gt;</code> before <code>&lt;Name&gt;</code> inside a DataElement, <code>&lt;Name&gt;</code> before <code>&lt;Value&gt;</code> inside an Edit. Violations are <strong>not</strong> politely rejected: a misordered top-level element returns HTTP 500, and a misordered element deeper down is <strong>silently dropped</strong> — the transaction then fails with <em>"Object reference not set to an instance of an object."</em></li>
+<li><strong><code>Keys</code> items use the arrays namespace</strong>: <code>&lt;a:string&gt;</code> with <code>xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays"</code>.</li>
+</ol>
+<p><strong>Don't hand-build the shape — ask the server for it.</strong> <code>GET /api/v2/definition/{Service}</code> with <code>Accept: application/xml</code> returns the service's <code>Template</code> as XML <em>in exactly the required element order</em>. Fill in the <code>&lt;Value&gt;</code>s and post it back.</p>
+<p>Other verified XML specifics:</p>
+<ul>
+<li><code>POST /api/v2/transaction/get</code> XML bodies use the root <code>&lt;TransactionStateRequest&gt;</code> (same namespace).</li>
+<li>Response roots: <code>&lt;TransactionSetResult&gt;</code> from <code>/transaction</code>, <code>&lt;ServiceDefinition&gt;</code> from <code>/definition</code>, <code>&lt;ArrayOfServiceInfo&gt;</code> from <code>/services</code>.</li>
+<li><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/validate_payload.py"><code>scripts/validate_payload.py</code></a> checks XML payloads offline — namespace, element order, <code>Keys</code> item namespace, and all the JSON-level semantic rules.</li>
+</ul>
 <hr />
 <h2 id="common-services">Common Services</h2>
 <table>

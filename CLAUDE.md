@@ -76,6 +76,7 @@ p21-api-documentation/
     ├── entity/                  # Entity API examples (Python)
     ├── production/              # Production & Labor examples (Python)
     ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
+    ├── validate_payload.py      # Offline payload validator (JSON/XML shape + schema checks)
     └── generate_html.py         # MD to HTML converter (supports tabbed code blocks)
 ```
 
