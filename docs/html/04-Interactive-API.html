@@ -464,6 +464,8 @@
 <li><a href="#known-issues-and-workarounds">Known Issues and Workarounds</a><ul>
 <li><a href="#row-selection-synchronization-bug-list-detail">Row Selection Synchronization Bug (List → Detail)</a></li>
 <li><a href="#row-0-auto-selection-quirk">Row 0 Auto-Selection Quirk</a></li>
+<li><a href="#key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</a></li>
+<li><a href="#numeric-values-send-integer-strings-for-whole-numbers">Numeric Values: Send Integer Strings for Whole Numbers</a></li>
 </ul>
 </li>
 <li><a href="#v1-vs-v2-api-differences">v1 vs v2 API Differences</a><ul>
@@ -2952,6 +2954,17 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </div>
 </div>
 <p><strong>Important:</strong> This is different from the <a href="#row-selection-synchronization-bug-list--detail">row selection synchronization bug</a> documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.</p>
+<h3 id="key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</h3>
+<p>Sending a grid row's <strong>key field</strong> in a <code>change</code> request commits the row cursor — any field in the same <code>List</code> (or a later call) that follows the key field is <strong>silently ignored</strong> (the call still returns Status 0/Success). Example: on the JobContractPricing BINS grid, <code>contract_bin_id</code> is the key; if it appears before the quantity fields, the quantities never land.</p>
+<p><strong>Guidance:</strong></p>
+<ul>
+<li>When only <em>changing</em> values on an already-selected row, <strong>don't send the key field at all</strong> — select the row, then change the non-key fields.</li>
+<li>When the key field must be sent (identifying a row by value), send it <strong>last</strong>.</li>
+<li>After the save, read the values back — a silently-dropped edit is indistinguishable from success by status code alone (see <a href="#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a>).</li>
+</ul>
+<p><em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>)</em></p>
+<h3 id="numeric-values-send-integer-strings-for-whole-numbers">Numeric Values: Send Integer Strings for Whole Numbers</h3>
+<p>When setting numeric fields, send whole numbers as integer strings (<code>"30"</code>), not float-formatted strings (<code>"30.0"</code>) — some windows reject or mishandle the float form. Format values the way a user would type them.</p>
 <hr />
 <h2 id="v1-vs-v2-api-differences">v1 vs v2 API Differences</h2>
 <blockquote>
@@ -3093,6 +3106,16 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </ol>
 <blockquote>
 <p><strong>Important:</strong> P21 rejects setting <code>customer_id</code> or <code>ship_to_id</code> on the FORM header directly. You must create the combination on <code>CUSTOMER_SHIP_TO</code> first. Error: <em>"Before selecting a Customer ID or Ship To ID, make sure that the combination exists in the Customer/Ship To tab."</em></p>
+</blockquote>
+<p><strong>Example: JobContractPricing — EXISTING contract (BINS editing).</strong> The sequence above is the <em>creation</em> flow. For an existing contract, the combination already exists and the recipe differs (verified; credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>):</p>
+<ol>
+<li>Load the contract by setting <code>job_no</code>, <code>customer_id</code>, and <code>ship_to_id</code> on <code>FORM/d_dw_job_price_hdr</code> (three separate change calls). <strong>Load by <code>job_no</code>, not <code>contract_no</code></strong> — renewals can leave the same <code>contract_no</code> on two header rows, while <code>job_no</code> is unique.</li>
+<li>Change to the <code>CUSTOMER_SHIP_TO</code> tab and <strong>select the ship-to's grid row</strong> — the BINS tab only unlocks after the ship-to row is selected. Skipping this (or loading by <code>contract_no</code> alone) leaves it disabled with <em>"Tab page is disabled and cannot be selected."</em></li>
+<li>Per line: <code>JOBPRICELINE</code> tab → select the line's row → <code>BINS</code> tab → the grid is <strong>filtered to the selected ship-to</strong>, so it has exactly one row per line — <code>select_row("bins", 1)</code> always targets the right bin. Edit the quantity fields.</li>
+<li>One <code>save()</code> at the end persists every edit in the session (save per ship-to on large runs so a mid-run failure doesn't lose everything).</li>
+</ol>
+<blockquote>
+<p>For bulk bin-quantity changes, the Transaction API with <code>IgnoreDisabled: true</code> is faster — see <a href="03-Transaction-API.html#editing-bin-quantities-on-an-existing-contract">Editing Bin Quantities</a>. Use this interactive recipe when a Transaction-API edge case appears or the contract is expired-adjacent work that needs window logic.</p>
 </blockquote>
 <p><strong>Detecting tab unlock events:</strong></p>
 <div class="code-tabs">
@@ -3311,8 +3334,15 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <td><strong>Form + button dialog</strong></td>
 <td><code>w_inventory_scan_lookup</code></td>
 <td><code>cb_ok</code>, <code>cb_cancel</code></td>
-<td>Fields visible but <strong>not writable</strong> via API</td>
+<td>See editability note below</td>
 <td><code>POST /tools</code> with button name</td>
+</tr>
+<tr>
+<td><strong>Editable form dialog</strong></td>
+<td><code>w_notepad_response_lite</code></td>
+<td><code>cb_select_all</code>, <code>cb_ok</code></td>
+<td><strong>Editable with <code>TabName: null</code></strong></td>
+<td>Fill fields, then <code>POST /tools</code></td>
 </tr>
 <tr>
 <td><strong>Message box</strong></td>
@@ -3323,7 +3353,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </tr>
 </tbody>
 </table>
-<p><strong>Key limitation (verified April 2026):</strong> Form-type response windows can only be <strong>dismissed</strong> (button click), not <strong>interacted with</strong> (field changes). <code>GET /data</code> returns 400 and <code>PUT /change</code> returns 500 with <em>"Tab with name FORM does not exist"</em>. Workflows that depend on filling response window fields cannot be fully automated.</p>
+<p><strong>Editability (reconciled July 2026):</strong> earlier testing (April 2026) concluded form-type response windows could only be dismissed — <code>GET /data</code> returned 400 and <code>PUT /change</code> returned 500 with <em>"Tab with name FORM does not exist"</em>. Those change attempts addressed the popup's fields with <code>TabName: "FORM"</code>. Later work showed form-style response windows <strong>are editable</strong> when the change request uses <strong><code>TabName: null</code></strong> with the popup's window ID — verified end-to-end on <code>w_notepad_response_lite</code> (see <a href="#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes</a>). If a popup's fields reject edits, retry with <code>TabName: null</code> before concluding the window is dismiss-only. <code>w_message</code> boxes remain uneditable and are auto-answered.</p>
 <p><strong>Inspecting and dismissing response windows:</strong></p>
 <div class="code-tabs">
   <div class="tab-buttons">
