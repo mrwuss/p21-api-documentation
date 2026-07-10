@@ -435,6 +435,7 @@
 <li><a href="#service-reference">Service Reference</a><ul>
 <li><a href="#jobcontractpricing-service">JobContractPricing Service</a></li>
 <li><a href="#assembly-service">Assembly Service</a></li>
+<li><a href="#item-service-nested-location-edits">Item Service -- Nested Location Edits</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>
@@ -2502,6 +2503,53 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 </div>
 </div>
+<h3 id="item-service-nested-location-edits">Item Service -- Nested Location Edits</h3>
+<p>The <code>Item</code> service (Item Maintenance window) supports <strong>nested DataElement navigation</strong> that mirrors the UI: select the item, select a location row, then edit that location's detail. This is the Transaction-API equivalent of "select parent row → edit child detail," and it works because the Item window's tabs aren't gated behind row selection. It's a good template for any nested edit.</p>
+<h4 id="set-an-items-primary-bin-at-a-location-form-list-form">Set an item's primary bin at a location (Form → List → Form)</h4>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Item&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+<span class="w">              </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_17.invloclist&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">],</span>
+<span class="w">              </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_18.inv_loc_detail&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">],</span>
+<span class="w">              </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                  </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">                  </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bin&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A01-02&quot;</span><span class="p">}</span>
+<span class="w">              </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>Status: "New"</code> with populated <code>Keys</code> updates the existing keyed record (it does not create a new item).</p>
+<h4 id="set-an-items-primary-supplier-at-a-location-form-list-list">Set an item's primary supplier at a location (Form → List → List)</h4>
+<p>Same window, one level different — the third element is the supplier list:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SUPPLIER_X_LOCATION.supplier_x_location&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;supplier_id&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;20000&quot;</span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;primary_supplier&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<p>What this writes, and the cascade (verified on a 68-item production run):</p>
+<ul>
+<li><code>primary_supplier</code> maps to <code>inventory_supplier_x_loc.primary_supplier</code> (a Y/N flag) — <strong>not</strong> <code>inv_loc.primary_supplier_id</code>.</li>
+<li>Setting it <code>ON</code> makes P21 auto-unset the previous primary at that location <strong>and</strong> update <code>inv_loc.primary_supplier_id</code> to the new supplier. So the flag is the field to <strong>write</strong>; <code>inv_loc.primary_supplier_id</code> is the field to <strong>read</strong> when verifying.</li>
+</ul>
+<h4 id="item-service-gotchas">Item Service Gotchas</h4>
+<ul>
+<li><strong>Silent no-op — the big one.</strong> The target supplier must already have a <em>location-level</em> row (<code>inventory_supplier_x_loc</code>) at that location. If it doesn't, the transaction still returns <code>Succeeded = 1</code> but <strong>nothing flips</strong> — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) <strong>Always verify <code>inv_loc.primary_supplier_id</code> after writing</strong> — do not trust <code>Succeeded</code>. Fix: add the location supplier row first, then set the flag.</li>
+<li><strong>"Item Issues Detected" popup.</strong> Items with data problems return an <code>Unexpected response window: Item Issues Detected</code> (<code>w_rule_callback_response</code>) in the response <code>Messages</code>. The Transaction API cannot get past this popup — it effectively answers "No" and discards the change. Use the Interactive API for those items and answer the popup with <code>cb_1</code> ("Yes, Proceed Anyway") — see <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Item window popups</a>. Which items trip the rule differs per environment (it fires on each item's data state) — run transaction-first, verify, and fall back to the Interactive API for whatever didn't stick.</li>
+<li><code>SUPPLIER_X_LOCATION</code> is keyed by <code>supplier_id</code> scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent <em>interactive</em> flow must match rows on both <code>location_id</code> and <code>supplier_id</code> — the grid holds every location's rows.)</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — patterns and gotchas verified in production (July 2026).</p>
+</blockquote>
 <hr />
 <h2 id="pdf-report-generation">PDF Report Generation</h2>
 <p>The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.</p>

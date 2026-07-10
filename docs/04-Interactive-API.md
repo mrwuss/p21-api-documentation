@@ -626,6 +626,20 @@ Use `GET /api/ui/interactive/v2/tools?windowId={responseWindowId}` to discover w
 
 *Credit: Jon Christie*
 
+### Worked Example: "Item Issues Detected" (rule callback)
+
+A concrete `w_rule_callback_response` case from the Item window. Items with data problems pop an **"Item Issues Detected"** dialog; the Transaction API cannot get past it (the change is discarded — see [Item Service gotchas](03-Transaction-API.md#item-service-gotchas)). Interactively, it's answerable:
+
+1. Start the session with `ResponseWindowHandlingEnabled: true`.
+2. Open the `Item` window and set `item_id` on `TABPAGE_1.tp_1_dw_1`. **Some items pop the dialog at retrieve time** — the moment `item_id` is set — which blocks the location list from loading. Check the result for a `windowopened` event and answer the popup immediately, not just at save.
+3. Navigate and make your edits (e.g. select the location row on `TABPAGE_17.invloclist`, edit `TABPAGE_18.inv_loc_detail`).
+4. `save()` — if the dialog opens, the result is Status 3 (Blocked) with a `windowopened` event carrying the popup's window ID.
+5. Discover the buttons with `GET /v2/tools?windowId={popupId}`: `cb_1` = **"Yes, Proceed Anyway"**, `cb_2` = "No, Cancel". Run `cb_1` via `POST /v2/tools` with the popup's window ID; the save then commits.
+
+Which items trip the rule depends on each item's data state and differs between environments — don't hard-code a fallback list; run the Transaction API first, verify what stuck, and drive the exceptions interactively.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier).
+
 ---
 
 ## Changing Tabs
@@ -1846,6 +1860,8 @@ await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/data",
 - Likely other windows with list/detail patterns
 
 **Note:** This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.
+
+**Related trap — never `select_row` on the detail form itself.** A single-row detail form (e.g. `inv_loc_detail`) is *bound* to the currently-selected parent list row. Sending `PUT /v2/row` against the **detail** datawindow does not select within the detail — it re-selects the *parent* list (row N on the detail = row N on `invloclist`) and **silently flips which record the detail is bound to**, typically to the list's first row. The edit then lands on the wrong location while every call reports success. Select only the parent list row, edit the detail directly, and assert the detail shows exactly the intended record before and after the change (abort without saving on mismatch). The Transaction API's nested pattern keys by `location_id` and has no such trap. *(Credit: [Alex Westemeier](https://github.com/AWestemeier))*
 
 ### Row 0 Auto-Selection Quirk
 

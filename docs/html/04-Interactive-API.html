@@ -416,6 +416,7 @@
 </li>
 <li><a href="#response-windows">Response Windows</a><ul>
 <li><a href="#response-window-handling-tabless-windows">Response Window Handling (Tabless Windows)</a></li>
+<li><a href="#worked-example-item-issues-detected-rule-callback">Worked Example: "Item Issues Detected" (rule callback)</a></li>
 </ul>
 </li>
 <li><a href="#changing-tabs">Changing Tabs</a></li>
@@ -1310,6 +1311,19 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <p><strong>Common response window buttons:</strong> <code>cb_ok</code>, <code>cb_cancel</code>, <code>cb_finish</code>, <code>cb_yes</code>, <code>cb_no</code></p>
 <p>Use <code>GET /api/ui/interactive/v2/tools?windowId={responseWindowId}</code> to discover which buttons are available, then <code>POST /api/ui/interactive/v2/tools</code> to click them. See the <a href="#response-window-types">Response Window Types</a> section below for dismissal patterns.</p>
 <p><em>Credit: Jon Christie</em></p>
+<h3 id="worked-example-item-issues-detected-rule-callback">Worked Example: "Item Issues Detected" (rule callback)</h3>
+<p>A concrete <code>w_rule_callback_response</code> case from the Item window. Items with data problems pop an <strong>"Item Issues Detected"</strong> dialog; the Transaction API cannot get past it (the change is discarded — see <a href="03-Transaction-API.html#item-service-gotchas">Item Service gotchas</a>). Interactively, it's answerable:</p>
+<ol>
+<li>Start the session with <code>ResponseWindowHandlingEnabled: true</code>.</li>
+<li>Open the <code>Item</code> window and set <code>item_id</code> on <code>TABPAGE_1.tp_1_dw_1</code>. <strong>Some items pop the dialog at retrieve time</strong> — the moment <code>item_id</code> is set — which blocks the location list from loading. Check the result for a <code>windowopened</code> event and answer the popup immediately, not just at save.</li>
+<li>Navigate and make your edits (e.g. select the location row on <code>TABPAGE_17.invloclist</code>, edit <code>TABPAGE_18.inv_loc_detail</code>).</li>
+<li><code>save()</code> — if the dialog opens, the result is Status 3 (Blocked) with a <code>windowopened</code> event carrying the popup's window ID.</li>
+<li>Discover the buttons with <code>GET /v2/tools?windowId={popupId}</code>: <code>cb_1</code> = <strong>"Yes, Proceed Anyway"</strong>, <code>cb_2</code> = "No, Cancel". Run <code>cb_1</code> via <code>POST /v2/tools</code> with the popup's window ID; the save then commits.</li>
+</ol>
+<p>Which items trip the rule depends on each item's data state and differs between environments — don't hard-code a fallback list; run the Transaction API first, verify what stuck, and drive the exceptions interactively.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
+</blockquote>
 <hr />
 <h2 id="changing-tabs">Changing Tabs</h2>
 <p>Before changing fields on a different tab, select the tab first:</p>
@@ -2899,6 +2913,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 - Item Maintenance (<code>Item</code> service) - Location Detail tab
 - Likely other windows with list/detail patterns</p>
 <p><strong>Note:</strong> This issue may be specific to certain P21 versions or configurations. Test thoroughly with your environment.</p>
+<p><strong>Related trap — never <code>select_row</code> on the detail form itself.</strong> A single-row detail form (e.g. <code>inv_loc_detail</code>) is <em>bound</em> to the currently-selected parent list row. Sending <code>PUT /v2/row</code> against the <strong>detail</strong> datawindow does not select within the detail — it re-selects the <em>parent</em> list (row N on the detail = row N on <code>invloclist</code>) and <strong>silently flips which record the detail is bound to</strong>, typically to the list's first row. The edit then lands on the wrong location while every call reports success. Select only the parent list row, edit the detail directly, and assert the detail shows exactly the intended record before and after the change (abort without saving on mismatch). The Transaction API's nested pattern keys by <code>location_id</code> and has no such trap. <em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>)</em></p>
 <h3 id="row-0-auto-selection-quirk">Row 0 Auto-Selection Quirk</h3>
 <p>After switching to a tab that contains a list or grid datawindow, row 0 is <strong>automatically selected</strong> by the API. Explicitly calling <code>change_row(0)</code> after switching tabs returns HTTP 422 because the row is already selected.</p>
 <p><strong>Symptom:</strong> <code>PUT /api/ui/interactive/v2/row</code> with <code>Row: 0</code> returns 422 error.</p>
