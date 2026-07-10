@@ -1460,6 +1460,60 @@ if ((int)result["Summary"]!["Failed"]! > 0)
 ```
 <!-- /tabs -->
 
+### Item Service -- Nested Location Edits
+
+The `Item` service (Item Maintenance window) supports **nested DataElement navigation** that mirrors the UI: select the item, select a location row, then edit that location's detail. This is the Transaction-API equivalent of "select parent row → edit child detail," and it works because the Item window's tabs aren't gated behind row selection. It's a good template for any nested edit.
+
+#### Set an item's primary bin at a location (Form → List → Form)
+
+```json
+{
+    "Name": "Item",
+    "UseCodeValues": false,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["item_id"],
+              "Rows": [{ "Edits": [ {"Name": "item_id", "Value": "WIDGET-001"} ] }] },
+            { "Name": "TABPAGE_17.invloclist", "Type": "List", "Keys": ["location_id"],
+              "Rows": [{ "Edits": [ {"Name": "location_id", "Value": "10"} ] }] },
+            { "Name": "TABPAGE_18.inv_loc_detail", "Type": "Form", "Keys": ["location_id"],
+              "Rows": [{ "Edits": [
+                  {"Name": "location_id", "Value": "10"},
+                  {"Name": "bin", "Value": "A01-02"}
+              ] }] }
+        ]
+    }]
+}
+```
+
+`Status: "New"` with populated `Keys` updates the existing keyed record (it does not create a new item).
+
+#### Set an item's primary supplier at a location (Form → List → List)
+
+Same window, one level different — the third element is the supplier list:
+
+```json
+{ "Name": "SUPPLIER_X_LOCATION.supplier_x_location", "Type": "List", "Keys": ["supplier_id"],
+  "Rows": [{ "Edits": [
+      {"Name": "supplier_id", "Value": "20000"},
+      {"Name": "primary_supplier", "Value": "ON"}
+  ] }] }
+```
+
+What this writes, and the cascade (verified on a 68-item production run):
+
+- `primary_supplier` maps to `inventory_supplier_x_loc.primary_supplier` (a Y/N flag) — **not** `inv_loc.primary_supplier_id`.
+- Setting it `ON` makes P21 auto-unset the previous primary at that location **and** update `inv_loc.primary_supplier_id` to the new supplier. So the flag is the field to **write**; `inv_loc.primary_supplier_id` is the field to **read** when verifying.
+
+#### Item Service Gotchas
+
+- **Silent no-op — the big one.** The target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the transaction still returns `Succeeded = 1` but **nothing flips** — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) **Always verify `inv_loc.primary_supplier_id` after writing** — do not trust `Succeeded`. Fix: add the location supplier row first, then set the flag.
+- **"Item Issues Detected" popup.** Items with data problems return an `Unexpected response window: Item Issues Detected` (`w_rule_callback_response`) in the response `Messages`. The Transaction API cannot get past this popup — it effectively answers "No" and discards the change. Use the Interactive API for those items and answer the popup with `cb_1` ("Yes, Proceed Anyway") — see [Item window popups](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback). Which items trip the rule differs per environment (it fires on each item's data state) — run transaction-first, verify, and fall back to the Interactive API for whatever didn't stick.
+- `SUPPLIER_X_LOCATION` is keyed by `supplier_id` scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent *interactive* flow must match rows on both `location_id` and `supplier_id` — the grid holds every location's rows.)
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July 2026).
+
 ---
 
 ## PDF Report Generation
