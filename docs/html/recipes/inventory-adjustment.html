@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adjust On-Hand Quantity (Write-Off) - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="../00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="../01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="../02-OData-API.html">OData API</a></li>
+        <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="../05-Entity-API.html">Entity API</a></li>
+        <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="../07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="../08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="../10-Changelog.html">Changelog</a></li>
+        <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="../12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="../13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="../INDEX.html">Task Index — Find the Right Section Fast</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+        <li><a href="../recipes/README.html">Recipes Overview</a></li>
+        <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+        <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+        <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+        <li class="active"><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+        <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+        <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+        <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+        <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#payload">Payload</a></li>
+<li><a href="#complete-example">Complete example</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="adjust-on-hand-quantity-write-off">Adjust On-Hand Quantity (Write-Off)</h1>
+<p>Post an inventory adjustment — a signed on-hand quantity change with no invoice — via the <code>InventoryAdjustment</code> service.</p>
+<p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>InventoryAdjustment</code> · <strong>Deep dive:</strong> <a href="../12-Production-Labor-API.html#inventory-adjustment-write-offs">Inventory Adjustment (Write-Offs)</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/InventoryAdjustment.json">definitions/InventoryAdjustment.json</a></p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>The item (here <code>WIDGET-001</code>) is set up at the location (here <code>10</code>).</li>
+<li>An adjustment <strong>reason</strong> exists in P21 (here the display text <code>ADJUST</code>) — you pass its display text, not its code.</li>
+<li>Run against a test/play environment first: the save <strong>posts the adjustment</strong> immediately.</li>
+</ul>
+<h2 id="payload">Payload</h2>
+<p><code>POST {ui_server}/api/v2/transaction</code>, <code>Status: "New"</code>, <code>UseCodeValues: false</code>. Two DataElements:</p>
+<p><strong>Header — <code>TABPAGE_1.tp_1_dw_1</code> (Form, business object <code>inv_adj_hdr</code>, key <code>adjustment_number</code>)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>adjustment_number</code></td>
+<td>Decimal</td>
+<td>Key</td>
+<td>Server-generated — leave unset on a new adjustment</td>
+</tr>
+<tr>
+<td><code>company_id</code></td>
+<td>Char</td>
+<td>Yes</td>
+<td>Company ID</td>
+</tr>
+<tr>
+<td><code>location_id</code></td>
+<td>Decimal</td>
+<td>Yes</td>
+<td>Location being adjusted</td>
+</tr>
+<tr>
+<td><code>reason_id</code></td>
+<td>Char</td>
+<td>Yes</td>
+<td>The reason's <strong>display text</strong> (with <code>UseCodeValues: false</code>), not its code</td>
+</tr>
+<tr>
+<td><code>period</code> / <code>year_for_period</code></td>
+<td>Decimal</td>
+<td>Yes (per definition)</td>
+<td>Accounting period / year for the adjustment</td>
+</tr>
+<tr>
+<td><code>inv_adj_description</code></td>
+<td>Char</td>
+<td>No</td>
+<td>Free-text description</td>
+</tr>
+<tr>
+<td><code>approved</code></td>
+<td>Char</td>
+<td>No</td>
+<td><code>ON</code> / <code>OFF</code></td>
+</tr>
+</tbody>
+</table>
+<p>The verified minimal header from the manual is <code>location_id</code> + <code>reason_id</code>; the definition additionally marks <code>company_id</code>, <code>period</code>, and <code>year_for_period</code> as <code>Required</code>.</p>
+<p><strong>Lines — <code>TABPAGE_17.tp_17_dw_17</code> (List, business object <code>inv_adj_line</code>)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>item_id</code></td>
+<td>Char</td>
+<td>Yes</td>
+<td>Item to adjust</td>
+</tr>
+<tr>
+<td><code>unit_quantity</code></td>
+<td>Decimal</td>
+<td>Yes</td>
+<td><strong>The signed delta</strong> (label "Adjustment Amount") — e.g. <code>-5</code> writes off 5 units; negative on-hand zeroes it out</td>
+</tr>
+<tr>
+<td><code>unit_of_measure</code></td>
+<td>Char</td>
+<td>No</td>
+<td></td>
+</tr>
+<tr>
+<td><code>unit_size</code></td>
+<td>Decimal</td>
+<td>Yes (per definition)</td>
+<td>From <code>item_uom.unit_size</code></td>
+</tr>
+<tr>
+<td><code>new_qoh</code></td>
+<td>Decimal</td>
+<td>No</td>
+<td>Resulting quantity on hand (display)</td>
+</tr>
+</tbody>
+</table>
+<p>The verified minimal line from the manual is <code>item_id</code> + <code>unit_quantity</code>.</p>
+<h2 id="complete-example">Complete example</h2>
+<p>Writes off 5 units of <code>WIDGET-001</code> at location <code>10</code>, then reads the adjustment back by its server-generated <code>adjustment_number</code>. Auth comes from the <a href="README.html#shared-conventions-recipes-dont-repeat-these">shared helper</a>.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">token</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="n">p21_auth</span><span class="p">(</span><span class="n">BASE_URL</span><span class="p">,</span> <span class="s2">&quot;api_user&quot;</span><span class="p">,</span> <span class="s2">&quot;api_pass&quot;</span><span class="p">)</span>
+
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;InventoryAdjustment&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># reason_id is the display text, not the code</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;location_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;reason_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ADJUST&quot;</span><span class="p">},</span>  <span class="c1"># display text</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;inv_adj_description&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;Cycle count write-off&quot;</span><span class="p">},</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">}],</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_17.tp_17_dw_17&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;-5&quot;</span><span class="p">},</span>  <span class="c1"># signed delta, NOT new on-hand</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">}],</span>
+            <span class="p">},</span>
+        <span class="p">],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+
+<span class="n">resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span>
+                  <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>  <span class="c1"># HTTP 200 even on failure -- check the Summary</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Succeeded: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;Succeeded&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Failed: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;Failed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Failed&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;Adjustment failed&quot;</span><span class="p">)</span>
+
+<span class="c1"># Pull the server-generated adjustment_number out of the echoed DataElements</span>
+<span class="n">adjustment_number</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">for</span> <span class="n">txn</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Results&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Transactions&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+    <span class="k">for</span> <span class="n">de</span> <span class="ow">in</span> <span class="n">txn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DataElements&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">if</span> <span class="n">de</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">de</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Rows&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">for</span> <span class="n">edit</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Edits&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                    <span class="k">if</span> <span class="n">edit</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;adjustment_number&quot;</span> <span class="ow">and</span> <span class="n">edit</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">):</span>
+                        <span class="n">adjustment_number</span> <span class="o">=</span> <span class="n">edit</span><span class="p">[</span><span class="s2">&quot;Value&quot;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adjustment number: </span><span class="si">{</span><span class="n">adjustment_number</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># --- Read the adjustment back ---</span>
+<span class="n">get_payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;InventoryAdjustment&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TransactionStates&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;DataElementName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;adjustment_number&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">adjustment_number</span><span class="p">}],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction/get&quot;</span><span class="p">,</span>
+                  <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">get_payload</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">txn</span> <span class="ow">in</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Transactions&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+    <span class="k">for</span> <span class="n">de</span> <span class="ow">in</span> <span class="n">txn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DataElements&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">de</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Rows&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">for</span> <span class="n">edit</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Edits&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">if</span> <span class="n">edit</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;adjustment_number&quot;</span><span class="p">,</span> <span class="s2">&quot;location_id&quot;</span><span class="p">,</span> <span class="s2">&quot;reason_id&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span> <span class="s2">&quot;new_qoh&quot;</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">edit</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">edit</span><span class="p">[</span><span class="s1">&#39;Value&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">P21Session</span><span class="p">.</span><span class="n">CreateAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;InventoryAdjustment&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;UseCodeValues&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span><span class="w">  </span><span class="c1">// reason_id is the display text, not the code</span>
+<span class="w">    </span><span class="na">[&quot;Transactions&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;Status&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DataElements&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;reason_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ADJUST&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="c1">// display text</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;inv_adj_description&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Cycle count write-off&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="na">[&quot;RelativeDateEdits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">()</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_17.tp_17_dw_17&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="c1">// signed delta, NOT new on-hand</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;-5&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="na">[&quot;RelativeDateEdits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">()</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{session.UiServer}/api/v2/transaction&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span><span class="w">  </span><span class="c1">// HTTP 200 even on failure -- check the Summary</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">summary</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Summary&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">;</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Succeeded: {summary[&quot;</span><span class="n">Succeeded</span><span class="s">&quot;]}, Failed: {summary[&quot;</span><span class="n">Failed</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">summary</span><span class="p">[</span><span class="s">&quot;Failed&quot;</span><span class="p">]</span><span class="o">!</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Messages&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  {msg}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">Exception</span><span class="p">(</span><span class="s">&quot;Adjustment failed&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Pull the server-generated adjustment_number out of the echoed DataElements</span>
+<span class="kt">string?</span><span class="w"> </span><span class="n">adjustmentNumber</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">txn</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Results&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Transactions&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">de</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">txn</span><span class="p">[</span><span class="s">&quot;DataElements&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">de</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">de</span><span class="p">[</span><span class="s">&quot;Rows&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">edit</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">row</span><span class="p">[</span><span class="s">&quot;Edits&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">edit</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;adjustment_number&quot;</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">            </span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">edit</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()))</span>
+<span class="w">            </span><span class="n">adjustmentNumber</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edit</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="p">}</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Adjustment number: {adjustmentNumber}&quot;</span><span class="p">);</span>
+
+<span class="c1">// --- Read the adjustment back ---</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">getPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;ServiceName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;InventoryAdjustment&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;TransactionStates&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;DataElementName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;adjustment_number&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adjustmentNumber</span><span class="w"> </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">getResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{session.UiServer}/api/v2/transaction/get&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">getPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">getResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">getResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">getResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">wanted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;adjustment_number&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;reason_id&quot;</span><span class="p">,</span>
+<span class="w">                     </span><span class="s">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;new_qoh&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">txn</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">getResult</span><span class="p">[</span><span class="s">&quot;Transactions&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">de</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">txn</span><span class="p">[</span><span class="s">&quot;DataElements&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">de</span><span class="p">[</span><span class="s">&quot;Rows&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">edit</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">row</span><span class="p">[</span><span class="s">&quot;Edits&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wanted</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">edit</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()))</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  {edit[&quot;</span><span class="n">Name</span><span class="s">&quot;]}: {edit[&quot;</span><span class="n">Value</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>, dry-run by default): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/recipes/inventory_adjustment.py"><code>scripts/recipes/inventory_adjustment.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/InventoryAdjustment.cs"><code>examples/csharp/Recipes/InventoryAdjustment.cs</code></a>. The snippet above is self-contained; the files use the repo's shared <code>common</code> / <code>P21Examples.Common</code> helpers like every other example.</p>
+</blockquote>
+<h2 id="gotchas">Gotchas</h2>
+<ul>
+<li><strong><code>reason_id</code> takes the display text</strong> of the reason — not its code — with <code>UseCodeValues: false</code>.</li>
+<li><strong><code>unit_quantity</code> is the signed delta</strong>, not the new on-hand. <code>-5</code> removes 5 units; the resulting quantity shows in <code>new_qoh</code>. To zero an item out, post the negative of its current on-hand.</li>
+<li><strong>The save posts the adjustment</strong> — there is no draft state in this flow, and no invoice is involved.</li>
+<li><strong>Definition-required header fields:</strong> besides <code>location_id</code> and <code>reason_id</code> (the manual's verified pair), the <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/InventoryAdjustment.json">definition</a> marks <code>company_id</code>, <code>period</code>, and <code>year_for_period</code> as <code>Required</code> on <code>tp_1_dw_1</code>.</li>
+<li><strong>HTTP 200 is not success</strong> — check <code>Summary.Succeeded</code> / <code>Summary.Failed</code> and print <code>Messages</code>.</li>
+</ul>
+<h2 id="verify">Verify</h2>
+<p>Read the adjustment back by its key (second half of the example): <code>POST /api/v2/transaction/get</code> on <code>InventoryAdjustment</code>, element <code>TABPAGE_1.tp_1_dw_1</code>, keyed by the server-generated <code>adjustment_number</code> — confirm the header (<code>location_id</code>, <code>reason_id</code>) and the line's <code>item_id</code> / <code>unit_quantity</code> landed, and check <code>new_qoh</code> for the resulting on-hand.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a></p>
+</blockquote>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

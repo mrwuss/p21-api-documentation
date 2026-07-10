@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create a Sales Order - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="../00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="../01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="../02-OData-API.html">OData API</a></li>
+        <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="../05-Entity-API.html">Entity API</a></li>
+        <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="../07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="../08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="../10-Changelog.html">Changelog</a></li>
+        <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="../12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="../13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="../INDEX.html">Task Index — Find the Right Section Fast</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+        <li><a href="../recipes/README.html">Recipes Overview</a></li>
+        <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li class="active"><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+        <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+        <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+        <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+        <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+        <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+        <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+        <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#payload">Payload</a></li>
+<li><a href="#complete-example">Complete example</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="create-a-sales-order">Create a Sales Order</h1>
+<p>Create a sales order — header plus line items — in one stateless Transaction API call.</p>
+<p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>Order</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#create-order">Create Order</a> · <a href="../03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/Order.json">Order.json</a></p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>Token + UI server URL (shared auth helper — see the <a href="README.html">recipes README</a>).</li>
+<li>The customer, ship-to, contact, and items already exist; the items are stocked at the source location.</li>
+<li><strong>No assembly lines.</strong> If a line should explode into components or spawn a production order, the Transaction API auto-answers the <em>"add as assembly?"</em> prompt <strong>No</strong> and kills the explode — use the <a href="order-with-assembly.html">order-with-assembly</a> recipe for those.</li>
+</ul>
+<h2 id="payload">Payload</h2>
+<p>Two DataElements: the header form and the items list. Names come from the <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/Order.json">service definition</a> — <code>TABPAGE_1.order</code> (Form, datawindow <code>d_oe_header</code>, key <code>order_no</code>) and <code>TP_ITEMS.items</code> (List, datawindow <code>d_dw_oe_line_dataentry</code>, key <code>oe_order_item_id</code>).</p>
+<p>The minimal example in the manual sends only <code>customer_id</code> + one item, but a <strong>realistic header sets all of the fields below</strong> — in particular <code>source_loc_id</code>, without which the save fails with a <em>"Jurisdiction ID for Order Header Tax"</em> error (see Gotchas).</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="p">{</span><span class="err">ui_server</span><span class="p">}</span><span class="err">/api/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">transa</span><span class="err">c</span><span class="kc">t</span><span class="err">io</span><span class="kc">n</span>
+
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">                    </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sales_loc_id&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;source_loc_id&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;order_date&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2030-01-05&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;requested_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2030-01-06&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;po_no&quot;</span><span class="p">,</span><span class="w">          </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO-TEST-001&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;taker&quot;</span><span class="p">,</span><span class="w">          </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JSMITH&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;contact_id&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;300&quot;</span><span class="p">}</span>
+<span class="w">                    </span><span class="p">],</span>
+<span class="w">                    </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                </span><span class="p">}]</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5&quot;</span><span class="p">}</span>
+<span class="w">                        </span><span class="p">],</span>
+<span class="w">                        </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-002&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2&quot;</span><span class="p">}</span>
+<span class="w">                        </span><span class="p">],</span>
+<span class="w">                        </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Do <strong>not</strong> send <code>company_id</code> — it is a disabled column on the Order window. For every other field the service accepts, load <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/Order.json"><code>definitions/Order.json</code></a>.</p>
+<h2 id="complete-example">Complete example</h2>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+
+<span class="n">token</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="n">p21_auth</span><span class="p">(</span><span class="n">BASE_URL</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">)</span>
+
+<span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;Order&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;customer_id&quot;</span><span class="p">,</span>    <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;100198&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;sales_loc_id&quot;</span><span class="p">,</span>   <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;source_loc_id&quot;</span><span class="p">,</span>  <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>   <span class="c1"># required in practice</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;order_date&quot;</span><span class="p">,</span>     <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2030-01-05&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;requested_date&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2030-01-06&quot;</span><span class="p">},</span>  <span class="c1"># must be AFTER order_date</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;po_no&quot;</span><span class="p">,</span>          <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;PO-TEST-001&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;taker&quot;</span><span class="p">,</span>          <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;JSMITH&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span>     <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;200&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;contact_id&quot;</span><span class="p">,</span>     <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span><span class="p">},</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">}],</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="p">{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span>    <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;5&quot;</span><span class="p">},</span>
+                    <span class="p">],</span> <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+                    <span class="p">{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-002&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span>    <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">},</span>
+                    <span class="p">],</span> <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+                <span class="p">],</span>
+            <span class="p">},</span>
+        <span class="p">],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="c1"># HTTP 200 even on failure -- check the Summary, never the status code</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Succeeded: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;Succeeded&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Failed: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;Failed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Failed&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Succeeded&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;Order create failed&quot;</span><span class="p">)</span>
+
+<span class="c1"># The generated order_no comes back in the result rows of TABPAGE_1.order</span>
+<span class="n">order_no</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">for</span> <span class="n">txn</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Results&quot;</span><span class="p">][</span><span class="s2">&quot;Transactions&quot;</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">txn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;Passed&quot;</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">txn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DataElements&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">if</span> <span class="n">element</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">element</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Rows&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">for</span> <span class="n">edit</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Edits&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">if</span> <span class="n">edit</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;order_no&quot;</span><span class="p">:</span>
+                    <span class="n">order_no</span> <span class="o">=</span> <span class="n">edit</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created order_no: </span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">P21Session</span><span class="p">.</span><span class="n">CreateAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">);</span>
+
+<span class="n">JObject</span><span class="w"> </span><span class="nf">Row</span><span class="p">(</span><span class="k">params</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Value</span><span class="p">)[]</span><span class="w"> </span><span class="n">edits</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(</span><span class="n">edits</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">e</span><span class="p">.</span><span class="n">Value</span><span class="w"> </span><span class="p">})),</span>
+<span class="w">    </span><span class="na">[&quot;RelativeDateEdits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Order&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;UseCodeValues&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;Transactions&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;Status&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DataElements&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">Row</span><span class="p">((</span><span class="s">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;sales_loc_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;source_loc_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">),</span><span class="w">          </span><span class="c1">// required in practice</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;order_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2030-01-05&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;requested_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2030-01-06&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">// must be AFTER order_date</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;PO-TEST-001&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;taker&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;JSMITH&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;200&quot;</span><span class="p">),</span>
+<span class="w">                            </span><span class="p">(</span><span class="s">&quot;contact_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;300&quot;</span><span class="p">)),</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="n">Row</span><span class="p">((</span><span class="s">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;5&quot;</span><span class="p">)),</span>
+<span class="w">                        </span><span class="n">Row</span><span class="p">((</span><span class="s">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;WIDGET-002&quot;</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2&quot;</span><span class="p">)),</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{session.UiServer}/api/v2/transaction&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="c1">// HTTP 200 even on failure -- check the Summary, never the status code</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">succeeded</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Summary&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;Succeeded&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">failed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Summary&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;Failed&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">;</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Succeeded: {succeeded}, Failed: {failed}&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">failed</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">succeeded</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Messages&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">&quot;Order create failed&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// The generated order_no comes back in the result rows of TABPAGE_1.order</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">orderNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">SelectTokens</span><span class="p">(</span>
+<span class="w">        </span><span class="s">&quot;$.Results.Transactions[?(@.Status == &#39;Passed&#39;)].DataElements[?(@.Name == &#39;TABPAGE_1.order&#39;)].Rows[*].Edits[?(@.Name == &#39;order_no&#39;)].Value&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="n">FirstOrDefault</span><span class="p">()</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Created order_no: {orderNo}&quot;</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>, dry-run by default): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/recipes/create_sales_order.py"><code>scripts/recipes/create_sales_order.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/CreateSalesOrder.cs"><code>examples/csharp/Recipes/CreateSalesOrder.cs</code></a>. The snippet above is self-contained; the files use the repo's shared <code>common</code> / <code>P21Examples.Common</code> helpers like every other example.</p>
+</blockquote>
+<h2 id="gotchas">Gotchas</h2>
+<p>All verified live — details in <a href="../03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a>:</p>
+<ul>
+<li><strong><code>source_loc_id</code> is effectively required.</strong> Omitting it fails with a <em>"Jurisdiction ID for Order Header Tax"</em> error — the tax jurisdiction does not auto-populate through the API the way it does in the UI.</li>
+<li><strong><code>requested_date</code> must be after <code>order_date</code>.</strong> The same date trips a date-cascade prompt, which the stateless API can't answer.</li>
+<li><strong><code>company_id</code> is a disabled column</strong> on the Order window — don't send it.</li>
+<li><strong>DynaChange prompts are auto-answered with the default</strong> (usually "No"), which silently discards the affected line — e.g. <em>"order line does not have a PO Cost… proceed? [No]"</em>. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see <a href="../03-Transaction-API.html#dynachange-and-popup-handling">DynaChange and Popup Handling</a>.</li>
+<li><strong>Assembly items cannot be entered via the Transaction API</strong> when they should explode or spawn a production order — the <em>"add as assembly?"</em> prompt is auto-answered <strong>No</strong>, killing the explode. Use the <a href="order-with-assembly.html">order-with-assembly</a> recipe (Interactive API) for those lines.</li>
+<li><strong>HTTP 200 ≠ success.</strong> The created <code>order_no</code> comes back in the result rows; check <code>Summary.Succeeded</code> and <code>Results.Transactions[].Status == "Passed"</code>, never the HTTP status. Transactions in one POST pass/fail independently.</li>
+</ul>
+<h2 id="verify">Verify</h2>
+<p>Read the order back — a <code>Succeeded</code> response is not proof every value landed:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base_url}/odataservice/odata/table/oe_hdr?$filter=order_no eq &#39;1013938&#39;</span>
+<span class="err">GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq &#39;1013938&#39;</span>
+</code></pre></div>
+
+<p>Confirm the header fields you sent (<code>taker</code>, <code>po_no</code>, dates, ship-to) and that <strong>every</strong> line row exists — a DynaChange auto-answer can drop a line while the transaction still reports <code>Succeeded</code> (see Gotchas).</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a></p>
+</blockquote>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -25,11 +25,17 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_DIR = SCRIPT_DIR.parent
 DOCS_DIR = PROJECT_DIR / "docs"
+RECIPES_DIR = DOCS_DIR / "recipes"
 HTML_DIR = DOCS_DIR / "html"
+
+# Repo links: markdown links that escape docs/ (definitions/, scripts/,
+# examples/) can't be served by the static site -- rewrite them to GitHub.
+GITHUB_BLOB_BASE = "https://github.com/mrwuss/p21-api-documentation/blob/master/"
 
 # Page index: (filename_stem, display_title)
 # Generated dynamically from markdown files
 PAGE_INDEX: list[tuple[str, str]] = []
+RECIPE_INDEX: list[tuple[str, str]] = []
 
 # ---------------------------------------------------------------------------
 # Tab infrastructure for multi-language code blocks
@@ -211,24 +217,62 @@ def build_page_index() -> list[tuple[str, str]]:
     return pages
 
 
-def build_sidebar_html(current_stem: str, toc_html: str) -> str:
-    """Build the sidebar HTML with page index and on-page ToC."""
+def build_recipe_index() -> list[tuple[str, str]]:
+    """Build sorted list of (stem, title) for recipe pages (README first)."""
+    if not RECIPES_DIR.is_dir():
+        return []
+    pages = []
+    for md_file in sorted(RECIPES_DIR.glob("*.md")):
+        title = extract_title(md_file)
+        if md_file.stem == "README":
+            pages.insert(0, (md_file.stem, "Recipes Overview"))
+        else:
+            pages.append((md_file.stem, title))
+    return pages
+
+
+def build_sidebar_html(current_stem: str, toc_html: str, prefix: str = "") -> str:
+    """Build the sidebar HTML with page index and on-page ToC.
+
+    Args:
+        current_stem: Stem of the page being rendered ("recipes/<stem>" for
+            recipe pages) -- used to mark the active nav item.
+        toc_html: On-page table of contents HTML.
+        prefix: Relative prefix back to the html root ("" for root pages,
+            "../" for pages in html/recipes/).
+    """
     nav_items = []
     for stem, title in PAGE_INDEX:
         active = ' class="active"' if stem == current_stem else ""
-        nav_items.append(f'        <li{active}><a href="{stem}.html">{title}</a></li>')
+        nav_items.append(f'        <li{active}><a href="{prefix}{stem}.html">{title}</a></li>')
     nav_list = "\n".join(nav_items)
+
+    recipe_items = []
+    for stem, title in RECIPE_INDEX:
+        active = ' class="active"' if f"recipes/{stem}" == current_stem else ""
+        recipe_items.append(
+            f'        <li{active}><a href="{prefix}recipes/{stem}.html">{title}</a></li>')
+    recipe_section = ""
+    if recipe_items:
+        recipe_list = "\n".join(recipe_items)
+        recipe_section = f"""
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+{recipe_list}
+            </ul>
+        </div>"""
 
     return f"""    <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+            <a href="{prefix}index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
         </div>
         <div class="sidebar-section">
             <div class="sidebar-section-title">Pages</div>
             <ul class="nav-pages">
 {nav_list}
             </ul>
-        </div>
+        </div>{recipe_section}
         <div class="sidebar-section page-toc-section">
             <div class="sidebar-section-title">On This Page</div>
             <div class="page-toc" id="page-toc">
@@ -690,19 +734,57 @@ def get_html_template(title: str, sidebar_html: str, content: str) -> str:
 </html>"""
 
 
+def rewrite_links(md_content: str, md_dir: Path) -> str:
+    """Rewrite relative markdown links for the static site.
+
+    Two rules, applied per link:
+    - A relative link that resolves to somewhere INSIDE docs/ has any ``.md``
+      target swapped to ``.html`` (path and anchor preserved).
+    - A relative link that escapes docs/ (``../definitions/...``,
+      ``../../scripts/...`` etc.) can't be served by the site -- it is
+      rewritten to the file on GitHub.
+
+    Args:
+        md_content: Raw markdown text.
+        md_dir: Directory of the source markdown file (for resolution).
+    """
+    link_re = re.compile(r"\]\((?!https?://|mailto:|#)([^)#\s]+)(#[^)]*)?\)")
+
+    def repl(match: re.Match) -> str:
+        target, anchor = match.group(1), match.group(2) or ""
+        resolved = (md_dir / target).resolve()
+        try:
+            inside_docs = resolved.is_relative_to(DOCS_DIR.resolve())
+        except ValueError:  # different drive
+            inside_docs = False
+        if inside_docs:
+            if target.endswith(".md"):
+                target = target[:-3] + ".html"
+            return f"]({target}{anchor})"
+        # Escapes docs/ -- point at the file on GitHub instead.
+        try:
+            repo_rel = resolved.relative_to(PROJECT_DIR.resolve()).as_posix()
+        except ValueError:
+            return match.group(0)  # outside the repo entirely; leave as-is
+        return f"]({GITHUB_BLOB_BASE}{repo_rel}{anchor})"
+
+    return link_re.sub(repl, md_content)
+
+
 def convert_md_to_html(md_file: Path) -> Path:
-    """Convert a markdown file to HTML with sidebar navigation."""
-    print(f"Converting: {md_file.name}")
+    """Convert a markdown file to HTML with sidebar navigation.
+
+    Files in docs/ render to docs/html/; files in docs/recipes/ render to
+    docs/html/recipes/ with sidebar links prefixed back to the html root.
+    """
+    is_recipe = md_file.parent == RECIPES_DIR
+    print(f"Converting: {'recipes/' if is_recipe else ''}{md_file.name}")
 
     # Read markdown content
     md_content = md_file.read_text(encoding="utf-8")
 
-    # Convert internal .md links to .html links (handles #anchors)
-    md_content = re.sub(
-        r"\]\((\d{2}-[^)#]+)\.md(#[^)]+)?\)",
-        r"](\1.html\2)",
-        md_content,
-    )
+    # Convert internal .md links to .html links; repo-escaping links to GitHub
+    md_content = rewrite_links(md_content, md_file.parent)
 
     # Replace tab markers with sentinels (before markdown conversion)
     md_content = preprocess_tabs(md_content)
@@ -741,15 +823,19 @@ def convert_md_to_html(md_file: Path) -> Path:
         flags=re.DOTALL,
     )
 
-    # Build sidebar
-    sidebar_html = build_sidebar_html(md_file.stem, toc_html)
+    # Build sidebar (recipe pages sit one level down from the html root)
+    if is_recipe:
+        sidebar_html = build_sidebar_html(f"recipes/{md_file.stem}", toc_html, prefix="../")
+    else:
+        sidebar_html = build_sidebar_html(md_file.stem, toc_html)
 
     # Wrap in template
     full_html = get_html_template(title, sidebar_html, html_content)
 
     # Write output
-    HTML_DIR.mkdir(exist_ok=True)
-    html_file = HTML_DIR / f"{md_file.stem}.html"
+    out_dir = HTML_DIR / "recipes" if is_recipe else HTML_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    html_file = out_dir / f"{md_file.stem}.html"
     html_file.write_text(full_html, encoding="utf-8")
 
     return html_file
@@ -759,6 +845,7 @@ def generate_index_page():
     """Generate index.html using the same sidebar template as other pages."""
     # Page descriptions for the landing page content
     page_info = {
+        "INDEX": ("Task Index", "\"I want to...\" routing map — jump straight to the exact section for your task instead of reading whole guides."),
         "00-Authentication": ("Authentication", "Token generation, credentials vs consumer keys, V1 and V2 endpoints, and token refresh patterns."),
         "01-API-Selection-Guide": ("API Selection Guide", "Decision tree and comparison table to help you choose the right API for your use case."),
         "02-OData-API": ("OData API", "Query any P21 table using standard OData v3 protocol. Filtering, pagination, and complex queries.", "READ"),
@@ -771,11 +858,13 @@ def generate_index_page():
         "09-Batch-Processing-Patterns": ("Batch Processing Patterns", "Production patterns for bulk operations: session batching, error recovery, and async client."),
         "10-Changelog": ("Changelog", "Complete history of changes, additions, and contributors to this documentation project."),
         "11-Inventory-REST-API": ("Inventory REST API", "Inventory item CRUD and multi-company workflows. Read inv_loc data, append locations and suppliers.", "CRUD"),
+        "12-Production-Labor-API": ("Production & Labor API", "Production orders, labor hours, time entry, and the end-to-end production lifecycle.", "READ/WRITE"),
+        "13-UDT-Service-API": ("UDT Service API", "Insert, update, and delete rows in user-defined tables via /udtservice/api/udtdata/.", "CRUD"),
     }
 
     # Build sections
-    getting_started = ["00-Authentication", "01-API-Selection-Guide"]
-    api_reference = ["02-OData-API", "03-Transaction-API", "04-Interactive-API", "05-Entity-API", "11-Inventory-REST-API"]
+    getting_started = ["INDEX", "00-Authentication", "01-API-Selection-Guide"]
+    api_reference = ["02-OData-API", "03-Transaction-API", "04-Interactive-API", "05-Entity-API", "11-Inventory-REST-API", "12-Production-Labor-API", "13-UDT-Service-API"]
     troubleshooting = ["06-Error-Handling", "07-Session-Pool-Troubleshooting", "08-SalesPricePage-Codes", "09-Batch-Processing-Patterns", "10-Changelog"]
 
     def make_card(stem):
@@ -796,6 +885,19 @@ def generate_index_page():
     cards_api = "\n".join(make_card(s) for s in api_reference)
     cards_troubleshooting = "\n".join(make_card(s) for s in troubleshooting)
 
+    # Recipes section: overview card + one card per recipe page
+    recipe_cards = []
+    for stem, title in RECIPE_INDEX:
+        if stem == "README":
+            desc = "How the cookbook works: conventions, shared auth helper, dry-run and verify rules."
+        else:
+            desc = "Complete payload, runnable Python & C#, verified gotchas."
+        recipe_cards.append(f"""<a href="recipes/{stem}.html" class="index-card">
+            <h3>{title}</h3>
+            <p>{desc}</p>
+        </a>""")
+    cards_recipes = "\n".join(recipe_cards)
+
     content = f"""
 <h1 id="p21-api-documentation">P21 API Documentation</h1>
 <p class="index-subtitle">Comprehensive guides and examples for Epicor Prophet 21 APIs</p>
@@ -813,6 +915,12 @@ All trademarks are property of their respective owners. Use at your own risk.
 <h2 id="api-reference">API Reference</h2>
 <div class="index-grid">
 {cards_api}
+</div>
+
+<h2 id="recipes">Recipes — Copy-and-Run Tasks</h2>
+<p>Self-contained task pages: one task, one page — the complete payload, a full runnable example in Python and C#, and every verified gotcha.</p>
+<div class="index-grid">
+{cards_recipes}
 </div>
 
 <h2 id="troubleshooting-reference">Troubleshooting &amp; Reference</h2>
@@ -885,6 +993,7 @@ All trademarks are property of their respective owners. Use at your own risk.
     toc_html = """<ul>
 <li><a href="#getting-started">Getting Started</a></li>
 <li><a href="#api-reference">API Reference</a></li>
+<li><a href="#recipes">Recipes</a></li>
 <li><a href="#troubleshooting-reference">Troubleshooting &amp; Reference</a></li>
 </ul>"""
 
@@ -897,9 +1006,9 @@ All trademarks are property of their respective owners. Use at your own risk.
 
 
 def convert_all_docs():
-    """Convert all markdown files in docs/ to HTML."""
-    global PAGE_INDEX
-    md_files = list(DOCS_DIR.glob("*.md"))
+    """Convert all markdown files in docs/ and docs/recipes/ to HTML."""
+    global PAGE_INDEX, RECIPE_INDEX
+    md_files = list(DOCS_DIR.glob("*.md")) + sorted(RECIPES_DIR.glob("*.md"))
 
     if not md_files:
         print("No markdown files found in docs/")
@@ -907,12 +1016,13 @@ def convert_all_docs():
 
     print(f"Found {len(md_files)} markdown files\n")
 
-    # Build page index first (needed by all pages)
+    # Build page indexes first (needed by all pages)
     PAGE_INDEX = build_page_index()
+    RECIPE_INDEX = build_recipe_index()
 
     for md_file in sorted(md_files):
         html_file = convert_md_to_html(md_file)
-        print(f"  -> {html_file.name}")
+        print(f"  -> {html_file.relative_to(HTML_DIR)}")
 
     # Generate index page
     index_file = generate_index_page()
@@ -932,9 +1042,12 @@ if __name__ == "__main__":
         if not md_file.exists():
             md_file = DOCS_DIR / sys.argv[1]
         if not md_file.exists():
+            md_file = RECIPES_DIR / sys.argv[1]
+        if not md_file.exists():
             print(f"File not found: {sys.argv[1]}")
             sys.exit(1)
         PAGE_INDEX = build_page_index()
+        RECIPE_INDEX = build_recipe_index()
         html_file = convert_md_to_html(md_file)
         print(f"\nGenerated: {html_file}")
         print(f"Open in browser: file:///{html_file.as_posix()}")
