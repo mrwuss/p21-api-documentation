@@ -474,9 +474,14 @@
 <td>Stateless, domain objects</td>
 </tr>
 <tr>
-<td>Update existing records</td>
+<td>Update existing records (keyed fields)</td>
+<td><strong>Transaction API</strong></td>
+<td><code>Status: "New"</code> + keyed rows updates and upserts (verified)</td>
+</tr>
+<tr>
+<td>Update records behind dialogs/prompts</td>
 <td><strong>Interactive API</strong></td>
-<td>Reliable field-level updates</td>
+<td>Only API that can answer response windows</td>
 </tr>
 <tr>
 <td>Handle response dialogs</td>
@@ -530,7 +535,7 @@
 <tr>
 <td><strong>Update Data</strong></td>
 <td>No</td>
-<td>Limited*</td>
+<td>Good*</td>
 <td>Excellent</td>
 <td>Good (4 entities)</td>
 </tr>
@@ -578,7 +583,7 @@
 </tr>
 </tbody>
 </table>
-<p>*Transaction API updates have known issues - see <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></p>
+<p><em>Transaction API updates use <code>Status: "New"</code> with keyed rows (there is no working "Existing" status — it returns HTTP 500). Keyed rows behave as an </em><em>upsert</em>*: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See <a href="03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>. Flows that pop validation dialogs still need the Interactive API.</p>
 <hr />
 <h2 id="odata-api">OData API</h2>
 <h3 id="best-for">Best For</h3>
@@ -632,25 +637,27 @@
 <li><strong>Bulk operations</strong> - multiple records per request</li>
 <li><strong>Metadata-driven</strong> - follows P21 window schemas</li>
 <li><strong>Fast</strong> - 50-100x faster than Interactive API for creates</li>
-<li><strong>Limited updates</strong> - update operations have known issues</li>
+<li><strong>Updates via <code>Status: "New"</code> + keys</strong> - keyed rows upsert (update if the key matches, insert if not); the <code>"Existing"</code> status is broken (HTTP 500)</li>
 </ul>
 <h3 id="use-when_1">Use When</h3>
 <ul>
 <li>Creating many records at once</li>
+<li>Updating or inserting keyed fields/rows on existing records</li>
 <li>Building integrations from external systems</li>
-<li>Performance is critical for creation</li>
+<li>Performance is critical</li>
 <li>You don't need complex validation feedback</li>
 </ul>
 <h3 id="dont-use-when_1">Don't Use When</h3>
 <ul>
-<li>Updating existing records (use Interactive API)</li>
-<li>You need to handle response dialogs</li>
+<li>The operation pops validation dialogs / response windows (use Interactive API)</li>
+<li>A sub-tab stays disabled until a parent row is selected and <code>IgnoreDisabled</code> doesn't unlock it (use Interactive API)</li>
 <li>You need field-by-field validation feedback</li>
 </ul>
 <h3 id="known-issues">Known Issues</h3>
 <ul>
 <li><strong>Session Pool Contamination</strong> - intermittent failures with some windows</li>
-<li><strong>Update operations</strong> - may fail with NullReferenceException</li>
+<li><strong><code>Status: "Existing"</code> is broken</strong> - returns HTTP 500 NullReferenceException platform-wide; use <code>Status: "New"</code> for updates (see <a href="03-Transaction-API.html#updating-an-existing-contract">Transaction API</a>)</li>
+<li><strong>Prompts are auto-answered with the default</strong> - a DynaChange or validation prompt kills the affected line/record silently</li>
 <li>See <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></li>
 </ul>
 <h3 id="example-use-cases_1">Example Use Cases</h3>
@@ -681,9 +688,9 @@
 </ul>
 <h3 id="use-when_2">Use When</h3>
 <ul>
-<li>Updating existing records</li>
+<li>Operations may trigger dialogs (email, confirmations) that must be answered</li>
+<li>Updating records where the Transaction API path hits disabled tabs or prompts</li>
 <li>You need full P21 business validation</li>
-<li>Operations may trigger dialogs (email, confirmations)</li>
 <li>Complex multi-step workflows</li>
 <li>You need to mimic user interaction</li>
 </ul>
@@ -694,7 +701,7 @@
 <li>You don't need business logic</li>
 </ul>
 <h3 id="performance-note">Performance Note</h3>
-<p>The Interactive API is slower than Transaction API for creates (~5s vs 0.05s per record) but more reliable for updates.</p>
+<p>The Interactive API is slower than the Transaction API (~5s vs 0.05s per created record; a windowed edit typically takes ~5 round-trips). Prefer the Transaction API when a keyed update works, and fall back to the Interactive API when the flow needs real window logic or dialog answers.</p>
 <h3 id="version-note">Version Note</h3>
 <p>Some P21 servers only support v2 Interactive API endpoints. If you receive 404 errors on <code>/api/ui/interactive/v1/*</code> endpoints, use <code>/api/ui/interactive/v2/*</code> instead. The v2 endpoints have different payload formats - see <a href="04-Interactive-API.html#v1-vs-v2-api-differences">Interactive API v1 vs v2</a>.</p>
 <h3 id="example-use-cases_2">Example Use Cases</h3>
@@ -755,7 +762,9 @@
   │
   ├─ Need to UPDATE records?
   │   │
-  │   └─ Yes → Use Interactive API
+  │   ├─ Keyed fields/rows, no dialogs → Use Transaction API (Status &quot;New&quot;)
+  │   │
+  │   └─ Dialogs, disabled tabs, complex flows → Use Interactive API
   │
   ├─ Need response dialog handling?
   │   │
@@ -773,8 +782,8 @@
 <h3 id="read-with-odata-write-with-transactioninteractive">Read with OData, Write with Transaction/Interactive</h3>
 <p>The most common pattern:
 1. Use <strong>OData</strong> for all reads (fast, simple)
-2. Use <strong>Transaction API</strong> for bulk creates (fast)
-3. Use <strong>Interactive API</strong> for updates (reliable)</p>
+2. Use <strong>Transaction API</strong> for creates and keyed updates (fast)
+3. Use <strong>Interactive API</strong> for flows that need window logic or dialog answers</p>
 <h3 id="example-price-page-management">Example: Price Page Management</h3>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -847,12 +856,12 @@
 <tr>
 <td>Update 1 record</td>
 <td>N/A</td>
-<td>Unreliable*</td>
+<td>~0.8s*</td>
 <td>2.0s</td>
 </tr>
 </tbody>
 </table>
-<p>*Transaction API updates may fail - see known issues</p>
+<p>*Transaction API keyed update via <code>Status: "New"</code> (verified on JobContractPricing; per-line latency ~0.8s). Flows that trip prompts or disabled tabs still need the Interactive API.</p>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

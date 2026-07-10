@@ -110,7 +110,7 @@ The main request body for create/update operations:
 | `Name` | Yes | Service name (e.g., "Order", "SalesPricePage") |
 | `UseCodeValues` | No | If `true`, use code values; if `false` (default), use display values |
 | `Transactions` | Yes | Array of Transaction objects to process |
-| `IgnoreDisabled` | No | If `true`, skip disabled fields instead of erroring |
+| `IgnoreDisabled` | No | If `true`, allow the transaction to proceed past disabled fields (see [IgnoreDisabled](#ignoredisabled) below) |
 | `Query` | No | Optional query filter for the service |
 | `FieldMap` | No | Optional field name mappings |
 | `TransactionSplitMethod` | No | `"Standard"` (default) or `"NoSplit"` |
@@ -240,11 +240,13 @@ See [Production & Labor API](12-Production-Labor-API.md) for detailed field defi
 }
 ```
 
+> **Transactions pass/fail independently.** In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and `Summary` tallies the outcomes (`Succeeded`/`Failed`/`Other`). Check `Results.Transactions[].Status` (`"Passed"`/`"Failed"`) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see [Upsert Semantics](#upsert-semantics----keyed-rows-insert-when-absent).)
+
 ---
 
 ## Field Order Matters
 
-For some services, the order of fields in the request is significant. The API processes fields sequentially, and some fields trigger validation or auto-population of other fields.
+For some services, the order of fields in the request is significant. The API processes fields sequentially and mirrors the window's UI cascades — some fields trigger validation, auto-population, or **clearing** of other fields, exactly as they would when typed into the window in that order.
 
 ### Example: SalesPricePage
 
@@ -254,6 +256,41 @@ Fields must be set in this order:
 3. `product_group_id` or `discount_group_id`
 4. `supplier_id`
 5. Other fields...
+
+### Example: JobContractPricing — `pricing_method` before `price`
+
+Changing `pricing_method` **clears the typed price**, just like in the UI. If a line row's Edits send `price` before `pricing_method`, the line is created/updated with **price = $0** — and the transaction still reports `Succeeded`. Order the Edits `item_id`, `pricing_method`, `price`. Verified live: reversing the order silently zeroes the price.
+
+> **Rule of thumb:** when a write "succeeds" but a value doesn't stick, suspect a field-order cascade. Order Edits the way a user would fill in the window, and verify written values with OData or `POST /api/v2/transaction/get` after the first run.
+>
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) for the JobContractPricing ordering discovery.
+
+---
+
+## IgnoreDisabled
+
+`IgnoreDisabled: true` does more than suppress errors — it is the documented unlock for writing through **system-disabled columns** and **disabled sub-tabs** that the Transaction API otherwise cannot touch:
+
+- Forms whose defaults carry read-only/system columns (e.g. bin maintenance flags) fail with `General Exception: Column is disabled: <column>` unless the flag is set.
+- Some grids that live on a disabled sub-tab (e.g. job contract **BINS** quantities) accept keyed edits once the flag is set — see [Editing Bin Quantities](#editing-bin-quantities-on-an-existing-contract).
+
+Two placement rules:
+
+1. **`IgnoreDisabled` goes at the payload top level** — alongside `Name` and `Transactions`. Placed inside a Transaction object it is **silently ignored**, and every transaction fails with `Column is disabled: <column>`.
+2. It applies to the whole TransactionSet — there is no per-transaction form.
+
+```json
+{
+    "Name": "JobContractPricing",
+    "UseCodeValues": false,
+    "IgnoreDisabled": true,
+    "Transactions": [ ... ]
+}
+```
+
+> **Caution:** the flag lets edits through columns P21 normally protects. Only send fields you intend to change, and verify results after the first run.
+>
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) for mapping the placement failure mode and the disabled-tab unlock behavior.
 
 ---
 
@@ -657,7 +694,28 @@ DataElements:
 
 #### Commission Costs
 
-The `JOBPRICECOST` DataElement includes `commission_cost_value` and related commission fields, but these are **disabled** -- the API returns "Column is disabled: commission_cost_value". Commission costs must be set via the Interactive API (JobContractPricing window) after contract creation.
+The `JOBPRICECOST` DataElement includes `commission_cost_value` and related commission fields. These columns are **disabled by default** -- without special handling the API returns "Column is disabled: commission_cost_value".
+
+**They are writable with `IgnoreDisabled: true`** at the payload top level (see [IgnoreDisabled](#ignoredisabled)). Key the element by `item_id` and set the cost type before the value -- verified live, including in the same transaction as a line insert:
+
+```json
+{
+    "Name": "JOBPRICECOST.jobpricecost",
+    "Type": "Form",
+    "Keys": ["item_id"],
+    "Rows": [{
+        "Edits": [
+            {"Name": "item_id", "Value": "WIDGET-001"},
+            {"Name": "commission_cost_type_cd", "Value": "Value"},
+            {"Name": "commission_cost_value", "Value": "17.19"}
+        ]
+    }]
+}
+```
+
+`commission_cost_type_cd` accepts the display labels `Order`, `Source`, `Value`, `None` (with `UseCodeValues: false`). Setting only the commission cost leaves `other_cost` untouched.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) verified the `IgnoreDisabled` commission-cost write path. The Interactive API (JobContractPricing window) remains an alternative.
 
 #### Updating an Existing Contract
 
@@ -727,10 +785,81 @@ payload = {
   }
   ```
 - **Per-line latency** observed at ~0.8s. For bulk updates, single-line calls are easier to retry on failure than batches.
+- **`end_date` must be >= today.** The header is validated on every save; a past date is rejected with *"end date must be equal to or greater than today"*. This means you cannot edit lines on an **expired** contract without also moving its `end_date` forward (a real side effect) -- for expired contracts, use the Interactive API instead.
+- **Identify renewals by `job_no`.** Contract renewals can leave the same `contract_no` on two header rows; `job_no` is unique. Include it in the FORM Edits whenever it's known.
+
+#### Upsert Semantics -- Keyed Rows Insert When Absent
+
+`Status: "New"` with a keyed List row is an **upsert**: if the key matches an existing row it updates that row, and if it doesn't match, P21 **inserts a new row**. This means the Transaction API can add brand-new lines to an existing contract -- no Interactive API needed. Verified live: 81 new lines added to an existing contract in one run (price, pricing_method, and commission cost all confirmed in the database with unique `line_no` values).
+
+The payload is identical to the update example above -- the only difference is whether `item_id` already exists on the contract.
+
+**Concurrency gotcha -- one transaction per POST when inserting lines.** Every transaction re-saves the shared FORM header. If you batch several line-insert transactions into one POST:
+
+- all but one fail with an optimistic-concurrency error (*"Your changes could not be saved because changes to this information have been made outside of..."*), and
+- the transactions that do land can get **duplicate `line_no`** values, because `line_no` is not incremented across transactions within a single POST.
+
+Submit each insert as its own POST -- each one then sees the current max `line_no` and increments it correctly. (This applies to **inserts that re-save the same header**; editing existing keyed rows -- prices, bin quantities -- batches fine in one POST.)
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) verified the upsert behavior and the header-collision failure mode.
+
+#### Editing Bin Quantities on an Existing Contract
+
+Contract bin quantities (`BINS.bins` -- `min_qty`, `max_qty`, `reorder_qty`, `capacity`) live on a sub-tab that is normally disabled until a parent row is selected, which the stateless Transaction API cannot do. **`IgnoreDisabled: true` unlocks it** (see [IgnoreDisabled](#ignoredisabled)). One POST, batchable across many bins:
+
+```json
+{
+    "Name": "JobContractPricing",
+    "UseCodeValues": false,
+    "IgnoreDisabled": true,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {
+                "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
+                "Rows": [{"Edits": [
+                    {"Name": "job_no", "Value": "31"},
+                    {"Name": "customer_id", "Value": "100198"},
+                    {"Name": "ship_to_id", "Value": "200"}
+                ]}]
+            },
+            {
+                "Name": "JOBPRICELINE.jobpriceline", "Type": "List", "Keys": ["item_id"],
+                "Rows": [{"Edits": [
+                    {"Name": "item_id", "Value": "WIDGET-001"}
+                ]}]
+            },
+            {
+                "Name": "BINS.bins", "Type": "List",
+                "Keys": ["contract_bin_id", "customer_id", "ship_to_id"],
+                "Rows": [{"Edits": [
+                    {"Name": "contract_bin_id", "Value": "A01-02"},
+                    {"Name": "customer_id", "Value": "100198"},
+                    {"Name": "ship_to_id", "Value": "200"},
+                    {"Name": "min_qty", "Value": "30"},
+                    {"Name": "max_qty", "Value": "100"},
+                    {"Name": "reorder_qty", "Value": "40"},
+                    {"Name": "capacity", "Value": "100"}
+                ]}]
+            }
+        ]
+    }]
+}
+```
+
+Gotchas (all verified live):
+
+- **`IgnoreDisabled: true` is mandatory** -- without it the defaults template trips *"Column is disabled: ..."* and the BINS tab stays locked.
+- **Select the line by `item_id`** (the JOBPRICELINE key). Selecting by `line_no` alone fails with *"Sequence contains no matching element."* If the same item appears on multiple lines, add `line_no` as a second key.
+- **Batching is fine here**: repeat the `JOBPRICELINE` + `BINS.bins` pair per bin inside the same Transaction. Unlike line inserts, bin edits don't collide on the header.
+- **No `end_date` required** on this path -- it works on expired contracts too, unlike line-field updates.
+- HTTP 200 can still carry `Summary.Failed > 0` -- check `Summary` and `Messages`.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) discovered and verified the `IgnoreDisabled` bins path (single and multi-bin batches, database-confirmed). The Interactive API (select ship-to row, then line, then BINS tab) also works as a slower fallback.
 
 #### Known Limitations
 
-- **Commission fields disabled:** Cannot set commission costs via Transaction API (see above).
+- **Commission fields disabled by default:** require `IgnoreDisabled: true` (see [Commission Costs](#commission-costs) above).
 - **`corp_address_id` read-only after save:** Must be set during initial creation.
 - **Status `"Existing"` is not a valid Transaction status:** Setting `Transactions[0].Status = "Existing"` (or `"Update"`, `"Change"`) returns HTTP 500 (`NullReferenceException` at `ToInternalBeSpecification`). Use `"New"` for both create and update -- see [Updating an Existing Contract](#updating-an-existing-contract).
 

@@ -187,6 +187,8 @@ window.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
 
 **Updates**: `Status: "Existing"` is *unused*, not a write ban. For JobContractPricing the verified update path is `Status: "New"` with FORM key fields (`company_id`, `contract_no`, `job_no`, `end_date`) in `Edits` and List `Keys` identifying the row by `item_id` — see [JobContractPricing > Updating an Existing Contract](docs/03-Transaction-API.md#updating-an-existing-contract) (Fixes #44, May 2026). Other services (Assembly, SalesPricePage, TimeEntry) are untested but likely follow the same pattern; the Interactive API remains a fallback.
 
+**Upserts (July 2026)**: keyed `Status: "New"` List rows are an upsert — update when the key matches, **insert a new row when it doesn't** (verified: 81 new JobContractPricing lines in one run, DB-confirmed; credit Alex Westemeier). Gotchas: order `pricing_method` before `price` in Edits (cascade silently zeroes the price); one transaction per POST when inserts re-save a shared FORM header (optimistic-concurrency collisions + duplicate `line_no`); header saves validate `end_date` ≥ today. `IgnoreDisabled: true` (payload top level ONLY — silently ignored inside a Transaction object) unlocks disabled columns and tabs, e.g. contract BINS quantities and JOBPRICECOST commission fields.
+
 ---
 
 *Last updated: 2026-07-06*
