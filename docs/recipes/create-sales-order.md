@@ -239,6 +239,8 @@ Console.WriteLine($"Created order_no: {orderNo}");
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/create_sales_order.py`](../../scripts/recipes/create_sales_order.py) · [`examples/csharp/Recipes/CreateSalesOrder.cs`](../../examples/csharp/Recipes/CreateSalesOrder.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+
 ## Gotchas
 
 All verified live — details in [Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas):

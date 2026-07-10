@@ -293,6 +293,8 @@ foreach (var l in lines)
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/update_contract_lines.py`](../../scripts/recipes/update_contract_lines.py) · [`examples/csharp/Recipes/UpdateContractLines.cs`](../../examples/csharp/Recipes/UpdateContractLines.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+
 ## Gotchas
 
 - **`pricing_method` must precede `price` in the Edits.** Changing `pricing_method` clears the typed price, exactly as in the UI — reversed order writes the line with **price = $0** and the transaction still reports `Succeeded`. Verified live. Order the Edits `item_id`, `pricing_method`, `price`.
