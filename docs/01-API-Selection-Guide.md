@@ -16,7 +16,8 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 | Bulk create records | **Transaction API** | Stateless, supports batching |
 | Complex business workflows | **Interactive API** | Full business logic, validation |
 | Simple CRUD (customers, vendors, contacts, addresses) | **Entity API** | Stateless, domain objects |
-| Update existing records | **Interactive API** | Reliable field-level updates |
+| Update existing records (keyed fields) | **Transaction API** | `Status: "New"` + keyed rows updates and upserts (verified) |
+| Update records behind dialogs/prompts | **Interactive API** | Only API that can answer response windows |
 | Handle response dialogs | **Interactive API** | Only API with dialog handling |
 | Record labor hours to production orders | **Transaction API** | TimeEntry service, stateless |
 | Bulk create production orders | **Transaction API** | Stateless, high-volume creation |
@@ -30,7 +31,7 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 |---------|-------|-------------|-------------|--------|
 | **Read Data** | Excellent | Limited | Good | Good (4 entities) |
 | **Create Data** | No | Excellent | Good | Good (4 entities) |
-| **Update Data** | No | Limited* | Excellent | Good (4 entities) |
+| **Update Data** | No | Good* | Excellent | Good (4 entities) |
 | **Delete Data** | No | No | Via UI | Via flag |
 | **Bulk Operations** | Yes (read) | Yes | No | No |
 | **Business Logic** | No | Partial | Full | No |
@@ -38,7 +39,7 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 | **Stateful** | No | No | Yes | No |
 | **Response Dialogs** | N/A | N/A | Yes | N/A |
 
-*Transaction API updates have known issues - see [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
+*Transaction API updates use `Status: "New"` with keyed rows (there is no working "Existing" status — it returns HTTP 500). Keyed rows behave as an **upsert**: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See [Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract). Flows that pop validation dialogs still need the Interactive API.
 
 ---
 
@@ -90,22 +91,24 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 - **Bulk operations** - multiple records per request
 - **Metadata-driven** - follows P21 window schemas
 - **Fast** - 50-100x faster than Interactive API for creates
-- **Limited updates** - update operations have known issues
+- **Updates via `Status: "New"` + keys** - keyed rows upsert (update if the key matches, insert if not); the `"Existing"` status is broken (HTTP 500)
 
 ### Use When
 - Creating many records at once
+- Updating or inserting keyed fields/rows on existing records
 - Building integrations from external systems
-- Performance is critical for creation
+- Performance is critical
 - You don't need complex validation feedback
 
 ### Don't Use When
-- Updating existing records (use Interactive API)
-- You need to handle response dialogs
+- The operation pops validation dialogs / response windows (use Interactive API)
+- A sub-tab stays disabled until a parent row is selected and `IgnoreDisabled` doesn't unlock it (use Interactive API)
 - You need field-by-field validation feedback
 
 ### Known Issues
 - **Session Pool Contamination** - intermittent failures with some windows
-- **Update operations** - may fail with NullReferenceException
+- **`Status: "Existing"` is broken** - returns HTTP 500 NullReferenceException platform-wide; use `Status: "New"` for updates (see [Transaction API](03-Transaction-API.md#updating-an-existing-contract))
+- **Prompts are auto-answered with the default** - a DynaChange or validation prompt kills the affected line/record silently
 - See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
 
 ### Example Use Cases
@@ -134,9 +137,9 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 - **Reliable updates** - field-level control
 
 ### Use When
-- Updating existing records
+- Operations may trigger dialogs (email, confirmations) that must be answered
+- Updating records where the Transaction API path hits disabled tabs or prompts
 - You need full P21 business validation
-- Operations may trigger dialogs (email, confirmations)
 - Complex multi-step workflows
 - You need to mimic user interaction
 
@@ -146,7 +149,7 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 - You don't need business logic
 
 ### Performance Note
-The Interactive API is slower than Transaction API for creates (~5s vs 0.05s per record) but more reliable for updates.
+The Interactive API is slower than the Transaction API (~5s vs 0.05s per created record; a windowed edit typically takes ~5 round-trips). Prefer the Transaction API when a keyed update works, and fall back to the Interactive API when the flow needs real window logic or dialog answers.
 
 ### Version Note
 Some P21 servers only support v2 Interactive API endpoints. If you receive 404 errors on `/api/ui/interactive/v1/*` endpoints, use `/api/ui/interactive/v2/*` instead. The v2 endpoints have different payload formats - see [Interactive API v1 vs v2](04-Interactive-API.md#v1-vs-v2-api-differences).
@@ -208,7 +211,9 @@ Start
   │
   ├─ Need to UPDATE records?
   │   │
-  │   └─ Yes → Use Interactive API
+  │   ├─ Keyed fields/rows, no dialogs → Use Transaction API (Status "New")
+  │   │
+  │   └─ Dialogs, disabled tabs, complex flows → Use Interactive API
   │
   ├─ Need response dialog handling?
   │   │
@@ -229,8 +234,8 @@ Start
 
 The most common pattern:
 1. Use **OData** for all reads (fast, simple)
-2. Use **Transaction API** for bulk creates (fast)
-3. Use **Interactive API** for updates (reliable)
+2. Use **Transaction API** for creates and keyed updates (fast)
+3. Use **Interactive API** for flows that need window logic or dialog answers
 
 ### Example: Price Page Management
 
@@ -278,9 +283,9 @@ Measured against production P21 instance:
 | Read 160 records | 0.12s | N/A | ~2s |
 | Create 1 record | N/A | 0.05s | 2.5s |
 | Create 25 records | N/A | 1.4s | 62s |
-| Update 1 record | N/A | Unreliable* | 2.0s |
+| Update 1 record | N/A | ~0.8s* | 2.0s |
 
-*Transaction API updates may fail - see known issues
+*Transaction API keyed update via `Status: "New"` (verified on JobContractPricing; per-line latency ~0.8s). Flows that trip prompts or disabled tabs still need the Interactive API.
 
 ---
 

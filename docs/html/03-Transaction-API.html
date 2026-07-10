@@ -408,8 +408,10 @@
 </li>
 <li><a href="#field-order-matters">Field Order Matters</a><ul>
 <li><a href="#example-salespricepage">Example: SalesPricePage</a></li>
+<li><a href="#example-jobcontractpricing-pricing_method-before-price">Example: JobContractPricing — pricing_method before price</a></li>
 </ul>
 </li>
+<li><a href="#ignoredisabled">IgnoreDisabled</a></li>
 <li><a href="#usecodevalues">UseCodeValues</a></li>
 <li><a href="#async-operations">Async Operations</a><ul>
 <li><a href="#submit-async-request">Submit Async Request</a></li>
@@ -636,7 +638,7 @@
 <tr>
 <td><code>IgnoreDisabled</code></td>
 <td>No</td>
-<td>If <code>true</code>, skip disabled fields instead of erroring</td>
+<td>If <code>true</code>, allow the transaction to proceed past disabled fields (see <a href="#ignoredisabled">IgnoreDisabled</a> below)</td>
 </tr>
 <tr>
 <td><code>Query</code></td>
@@ -949,9 +951,12 @@
 <span class="p">}</span>
 </code></pre></div>
 
+<blockquote>
+<p><strong>Transactions pass/fail independently.</strong> In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and <code>Summary</code> tallies the outcomes (<code>Succeeded</code>/<code>Failed</code>/<code>Other</code>). Check <code>Results.Transactions[].Status</code> (<code>"Passed"</code>/<code>"Failed"</code>) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see <a href="#upsert-semantics----keyed-rows-insert-when-absent">Upsert Semantics</a>.)</p>
+</blockquote>
 <hr />
 <h2 id="field-order-matters">Field Order Matters</h2>
-<p>For some services, the order of fields in the request is significant. The API processes fields sequentially, and some fields trigger validation or auto-population of other fields.</p>
+<p>For some services, the order of fields in the request is significant. The API processes fields sequentially and mirrors the window's UI cascades — some fields trigger validation, auto-population, or <strong>clearing</strong> of other fields, exactly as they would when typed into the window in that order.</p>
 <h3 id="example-salespricepage">Example: SalesPricePage</h3>
 <p>Fields must be set in this order:
 1. <code>price_page_type_cd</code> - Triggers type-specific validation
@@ -959,6 +964,36 @@
 3. <code>product_group_id</code> or <code>discount_group_id</code>
 4. <code>supplier_id</code>
 5. Other fields...</p>
+<h3 id="example-jobcontractpricing-pricing_method-before-price">Example: JobContractPricing — <code>pricing_method</code> before <code>price</code></h3>
+<p>Changing <code>pricing_method</code> <strong>clears the typed price</strong>, just like in the UI. If a line row's Edits send <code>price</code> before <code>pricing_method</code>, the line is created/updated with <strong>price = $0</strong> — and the transaction still reports <code>Succeeded</code>. Order the Edits <code>item_id</code>, <code>pricing_method</code>, <code>price</code>. Verified live: reversing the order silently zeroes the price.</p>
+<blockquote>
+<p><strong>Rule of thumb:</strong> when a write "succeeds" but a value doesn't stick, suspect a field-order cascade. Order Edits the way a user would fill in the window, and verify written values with OData or <code>POST /api/v2/transaction/get</code> after the first run.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> for the JobContractPricing ordering discovery.</p>
+</blockquote>
+<hr />
+<h2 id="ignoredisabled">IgnoreDisabled</h2>
+<p><code>IgnoreDisabled: true</code> does more than suppress errors — it is the documented unlock for writing through <strong>system-disabled columns</strong> and <strong>disabled sub-tabs</strong> that the Transaction API otherwise cannot touch:</p>
+<ul>
+<li>Forms whose defaults carry read-only/system columns (e.g. bin maintenance flags) fail with <code>General Exception: Column is disabled: &lt;column&gt;</code> unless the flag is set.</li>
+<li>Some grids that live on a disabled sub-tab (e.g. job contract <strong>BINS</strong> quantities) accept keyed edits once the flag is set — see <a href="#editing-bin-quantities-on-an-existing-contract">Editing Bin Quantities</a>.</li>
+</ul>
+<p>Two placement rules:</p>
+<ol>
+<li><strong><code>IgnoreDisabled</code> goes at the payload top level</strong> — alongside <code>Name</code> and <code>Transactions</code>. Placed inside a Transaction object it is <strong>silently ignored</strong>, and every transaction fails with <code>Column is disabled: &lt;column&gt;</code>.</li>
+<li>It applies to the whole TransactionSet — there is no per-transaction form.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JobContractPricing&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;IgnoreDisabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Caution:</strong> the flag lets edits through columns P21 normally protects. Only send fields you intend to change, and verify results after the first run.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> for mapping the placement failure mode and the disabled-tab unlock behavior.</p>
+</blockquote>
 <hr />
 <h2 id="usecodevalues">UseCodeValues</h2>
 <p>This setting controls how dropdown/checkbox values are interpreted:</p>
@@ -1605,7 +1640,26 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 
 <h4 id="commission-costs">Commission Costs</h4>
-<p>The <code>JOBPRICECOST</code> DataElement includes <code>commission_cost_value</code> and related commission fields, but these are <strong>disabled</strong> -- the API returns "Column is disabled: commission_cost_value". Commission costs must be set via the Interactive API (JobContractPricing window) after contract creation.</p>
+<p>The <code>JOBPRICECOST</code> DataElement includes <code>commission_cost_value</code> and related commission fields. These columns are <strong>disabled by default</strong> -- without special handling the API returns "Column is disabled: commission_cost_value".</p>
+<p><strong>They are writable with <code>IgnoreDisabled: true</code></strong> at the payload top level (see <a href="#ignoredisabled">IgnoreDisabled</a>). Key the element by <code>item_id</code> and set the cost type before the value -- verified live, including in the same transaction as a line insert:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JOBPRICECOST.jobpricecost&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commission_cost_type_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Value&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commission_cost_value&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;17.19&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>commission_cost_type_cd</code> accepts the display labels <code>Order</code>, <code>Source</code>, <code>Value</code>, <code>None</code> (with <code>UseCodeValues: false</code>). Setting only the commission cost leaves <code>other_cost</code> untouched.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> verified the <code>IgnoreDisabled</code> commission-cost write path. The Interactive API (JobContractPricing window) remains an alternative.</p>
+</blockquote>
 <h4 id="updating-an-existing-contract">Updating an Existing Contract</h4>
 <p>Use <code>Status = "New"</code> to update existing contracts -- there is no separate "Update" or "Existing" status. The Transaction API distinguishes create from update by whether the FORM key fields land on an existing record:</p>
 <ul>
@@ -1670,10 +1724,76 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
       "Keys": [{"Name": "contract_no", "Value": "A120-12"}]
     }]
   }</code>
-- <strong>Per-line latency</strong> observed at ~0.8s. For bulk updates, single-line calls are easier to retry on failure than batches.</p>
+- <strong>Per-line latency</strong> observed at ~0.8s. For bulk updates, single-line calls are easier to retry on failure than batches.
+- <strong><code>end_date</code> must be &gt;= today.</strong> The header is validated on every save; a past date is rejected with <em>"end date must be equal to or greater than today"</em>. This means you cannot edit lines on an <strong>expired</strong> contract without also moving its <code>end_date</code> forward (a real side effect) -- for expired contracts, use the Interactive API instead.
+- <strong>Identify renewals by <code>job_no</code>.</strong> Contract renewals can leave the same <code>contract_no</code> on two header rows; <code>job_no</code> is unique. Include it in the FORM Edits whenever it's known.</p>
+<h4 id="upsert-semantics-keyed-rows-insert-when-absent">Upsert Semantics -- Keyed Rows Insert When Absent</h4>
+<p><code>Status: "New"</code> with a keyed List row is an <strong>upsert</strong>: if the key matches an existing row it updates that row, and if it doesn't match, P21 <strong>inserts a new row</strong>. This means the Transaction API can add brand-new lines to an existing contract -- no Interactive API needed. Verified live: 81 new lines added to an existing contract in one run (price, pricing_method, and commission cost all confirmed in the database with unique <code>line_no</code> values).</p>
+<p>The payload is identical to the update example above -- the only difference is whether <code>item_id</code> already exists on the contract.</p>
+<p><strong>Concurrency gotcha -- one transaction per POST when inserting lines.</strong> Every transaction re-saves the shared FORM header. If you batch several line-insert transactions into one POST:</p>
+<ul>
+<li>all but one fail with an optimistic-concurrency error (<em>"Your changes could not be saved because changes to this information have been made outside of..."</em>), and</li>
+<li>the transactions that do land can get <strong>duplicate <code>line_no</code></strong> values, because <code>line_no</code> is not incremented across transactions within a single POST.</li>
+</ul>
+<p>Submit each insert as its own POST -- each one then sees the current max <code>line_no</code> and increments it correctly. (This applies to <strong>inserts that re-save the same header</strong>; editing existing keyed rows -- prices, bin quantities -- batches fine in one POST.)</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> verified the upsert behavior and the header-collision failure mode.</p>
+</blockquote>
+<h4 id="editing-bin-quantities-on-an-existing-contract">Editing Bin Quantities on an Existing Contract</h4>
+<p>Contract bin quantities (<code>BINS.bins</code> -- <code>min_qty</code>, <code>max_qty</code>, <code>reorder_qty</code>, <code>capacity</code>) live on a sub-tab that is normally disabled until a parent row is selected, which the stateless Transaction API cannot do. <strong><code>IgnoreDisabled: true</code> unlocks it</strong> (see <a href="#ignoredisabled">IgnoreDisabled</a>). One POST, batchable across many bins:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JobContractPricing&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;IgnoreDisabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.d_dw_job_price_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;job_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;31&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">}</span>
+<span class="w">                </span><span class="p">]}]</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JOBPRICELINE.jobpriceline&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">}</span>
+<span class="w">                </span><span class="p">]}]</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BINS.bins&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;contract_bin_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;contract_bin_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A01-02&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;min_qty&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;30&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;max_qty&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reorder_qty&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;40&quot;</span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;capacity&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="p">}</span>
+<span class="w">                </span><span class="p">]}]</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Gotchas (all verified live):</p>
+<ul>
+<li><strong><code>IgnoreDisabled: true</code> is mandatory</strong> -- without it the defaults template trips <em>"Column is disabled: ..."</em> and the BINS tab stays locked.</li>
+<li><strong>Select the line by <code>item_id</code></strong> (the JOBPRICELINE key). Selecting by <code>line_no</code> alone fails with <em>"Sequence contains no matching element."</em> If the same item appears on multiple lines, add <code>line_no</code> as a second key.</li>
+<li><strong>Batching is fine here</strong>: repeat the <code>JOBPRICELINE</code> + <code>BINS.bins</code> pair per bin inside the same Transaction. Unlike line inserts, bin edits don't collide on the header.</li>
+<li><strong>No <code>end_date</code> required</strong> on this path -- it works on expired contracts too, unlike line-field updates.</li>
+<li>HTTP 200 can still carry <code>Summary.Failed &gt; 0</code> -- check <code>Summary</code> and <code>Messages</code>.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> discovered and verified the <code>IgnoreDisabled</code> bins path (single and multi-bin batches, database-confirmed). The Interactive API (select ship-to row, then line, then BINS tab) also works as a slower fallback.</p>
+</blockquote>
 <h4 id="known-limitations">Known Limitations</h4>
 <ul>
-<li><strong>Commission fields disabled:</strong> Cannot set commission costs via Transaction API (see above).</li>
+<li><strong>Commission fields disabled by default:</strong> require <code>IgnoreDisabled: true</code> (see <a href="#commission-costs">Commission Costs</a> above).</li>
 <li><strong><code>corp_address_id</code> read-only after save:</strong> Must be set during initial creation.</li>
 <li><strong>Status <code>"Existing"</code> is not a valid Transaction status:</strong> Setting <code>Transactions[0].Status = "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) returns HTTP 500 (<code>NullReferenceException</code> at <code>ToInternalBeSpecification</code>). Use <code>"New"</code> for both create and update -- see <a href="#updating-an-existing-contract">Updating an Existing Contract</a>.</li>
 </ul>
