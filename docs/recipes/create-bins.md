@@ -221,6 +221,8 @@ foreach (var batch in toCreate.Chunk(BatchSize))
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/create_bins.py`](../../scripts/recipes/create_bins.py) · [`examples/csharp/Recipes/CreateBins.cs`](../../examples/csharp/Recipes/CreateBins.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+
 ## Gotchas
 
 - **`IgnoreDisabled: true` is mandatory — and it must be at the payload top level**, alongside `Name` and `Transactions`. `frozen_flag` and other system columns are disabled on the bin form; without the flag every transaction fails with `General Exception: Column is disabled: frozen_flag`. Placed inside a Transaction object instead of the top level, the flag is **silently ignored** and you get the same failure. See [IgnoreDisabled](../03-Transaction-API.md#ignoredisabled).

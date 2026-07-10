@@ -265,6 +265,8 @@ foreach (var row in de["Rows"] as JArray ?? new JArray())
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/production_order_runbook.py`](../../scripts/recipes/production_order_runbook.py) · [`examples/csharp/Recipes/ProductionOrderRunbook.cs`](../../examples/csharp/Recipes/ProductionOrderRunbook.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+
 ## Gotchas
 
 - **Shell confirm (the big one).** Confirming a pick with a bare Transaction API POST flips the status to `1962` and stamps `qty_confirmed`, but leaves **`qty_applied = 0` and moves no stock** — confirm through the Interactive API `ProductionOrderPicking` window (Stage 4).

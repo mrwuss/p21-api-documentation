@@ -363,6 +363,8 @@ finally
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/order_with_assembly.py`](../../scripts/recipes/order_with_assembly.py) · [`examples/csharp/Recipes/OrderWithAssembly.cs`](../../examples/csharp/Recipes/OrderWithAssembly.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+
 ## Gotchas
 
 All verified end-to-end — details in [Sales Order Entry with Assembly Lines](../04-Interactive-API.md#sales-order-entry-with-assembly-lines) and [Response Windows](../04-Interactive-API.md#response-windows):
