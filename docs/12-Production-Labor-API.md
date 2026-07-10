@@ -438,6 +438,103 @@ Assembly definitions (BOM/bill of materials) are a prerequisite for production o
 2. Create the assembly/BOM definition via Transaction API (`Assembly` service)
 3. Create production orders via Transaction API (`ProductionOrder` service) referencing the assembled item
 
+### Assembly Behavior Flags
+
+Three ON/OFF flags on the assembly header (`assembly_hdr`, header datawindow `assemblyhdr`, key `inv_mast_item_id`) control how the item behaves at order entry and in production:
+
+| Flag | `Y` | `N` |
+|------|-----|-----|
+| `production_order_processing` | Production-order assembly (a sales order line spawns/links a production order) | Kit — explodes to components on the order, no production order |
+| `auto_create_prod_order` | Auto-create and link the production order when the sales order saves | Create and link the production order manually |
+| `assembly_for_stock` | Build-to-stock item (units dwell in inventory) | Make-to-order |
+
+On a saved sales order, `oe_line.assembly` reflects the outcome: `B` = kit parent, `N` = kit component, `P` = production-order line, `S` = build-to-stock line allocated from on-hand.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — flag semantics verified end-to-end.
+
+---
+
+## Production Order Lifecycle (End-to-End)
+
+Everything in this section was verified live against a P21 test environment (credit: [Alex Westemeier](https://github.com/AWestemeier), June–July 2026). It covers the behavior the schema tables above don't: how orders spawn, why pick tickets go missing, why a "confirmed" pick can move no stock, and how costs flow to the invoice.
+
+### How Production Orders Get Created
+
+**Path A — Sales order auto-create (make-to-order).** A sales order line for a `production_order_processing = Y` assembly gets `oe_line.assembly = 'P'`. With `auto_create_prod_order = Y`, P21 **nets against available stock**:
+
+- Stock on hand → the line **allocates it and no production order spawns** (`qty_allocated > 0`, no link).
+- Short → a production order spawns **for the shortfall**, linked via `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`).
+
+Neither min/max settings nor `make = 'Y'` is required for this path. Gotchas: the customer's **salesrep must be valid at the sales location** (a DynaChange rule blocks the order otherwise), and the **order date must differ from the required date**. Enter the order via the Interactive API when the line must explode — see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
+
+**Path B — Direct build-to-stock.** Drive the `ProductionOrder` window: set the header `source_loc_id` (the make location — where components are stocked *and* the finished item exists) plus any required user-defined fields, then on `TABPAGE_17.tp_17_dw_17` set `assembly_item_id` and `qty_to_make` (add a row and select it for each additional line). No sales order involved. If the finished item isn't set up at the source location, the save fails with *"item ID does not exist at your source location."*
+
+Location notes: the production order's make location comes from `prod_order_hdr.source_location_id`. Physical components source from the stocking location; **intangible components** (labor, burden, charge items) can source from a paired non-stock location if the environment is configured that way — which is why a production order commonly has **two pick tickets** (parts + labor/intangibles). Dates stay synced between a linked sales order and its production order; quantities are copied once at entry and then move independently.
+
+### Printing the Pick Ticket and Form
+
+Print via a `ProductionOrder` transaction with `print_pick_ticket = ON` and `print_form = ON` on `TABPAGE_1.tp_1_dw_1`. This creates the pick ticket, sets `prod_order_hdr.printed = 'Y'`, and returns the PDFs in the response — see [PDFs from the /transaction endpoint](03-Transaction-API.md#pdfs-from-the-transaction-endpoint-print-flags).
+
+- **`print_pick_ticket` emits only at the MAKE location.** If the components stock at a different location, you get the form but no usable pick ticket. Generate the ticket at the stock location with the `m_picktickets` report instead — see [the worked example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets).
+- A **parts** pick ticket generates only if the components have **stock at the source location** — `assembly_for_stock` is not required.
+- Documents only return on a **savable** order; a bare reprint with nothing new to pick errors *"Save is not enabled."*
+
+### Labor Timing — Log Labor BEFORE Printing
+
+Labor posted through Time Entry becomes a labor charge component on the production order, and that component **must land on a pick ticket to be consumed at completion**:
+
+- **Log labor → then print** (the ticket picks up the labor), **or reprint after adding labor** — the reprint generates a separate **labor/intangibles pick ticket** for allocated-but-unticketed labor.
+- If you print first and add labor after (without reprinting), the labor is allocated but on no ticket (`qty_on_pick_tickets = 0`) → completion fails with *"components have a quantity used of 0."* Fix: reprint, confirm the new ticket.
+
+### Confirming the Pick — Use the Interactive API
+
+Confirm with the `ProductionOrderPicking` window: header `tp_prodpickticketconf` (key `prod_pick_ticket_number`), set the Confirm Pick field `row_status_flag` to `"Confirm"`, and save. Confirm **every** ticket (parts and labor/intangibles).
+
+> ⚠️ **Shell-confirm warning — do NOT confirm with a bare Transaction API POST.** Posting `row_status_flag = 'Confirm'` through `/api/v2/transaction` flips the ticket status (1962) and stamps `qty_confirmed`, but leaves **`qty_applied = 0` and moves no stock** — a shell confirm. The per-bin posted quantities live in a disabled `TP_BIN` grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves the picked components to the make location's WIP bin (`inv_loc.primary_bin` at `prod_order_hdr.source_location_id`; bin `0` when no primary is set).
+
+Pick ticket status codes (`prod_pick_ticket_hdr.row_status_flag`): `702` = Open, `1962` = Confirmed, `1268` = Completed. Detail rows: `704` = normal, `1268` at completion.
+
+### Completing the Production Order (Production Receipt)
+
+Complete with the `ProductionOrderProcessing` window:
+
+1. Select the line on `TABPAGE_17.tp_17_dw_17` and set **`qty_to_complete`** (partial completion is supported). `qty_completed` is a read-only rollup.
+2. Set the receiving bin on `TABPAGE_ASSEMBLY_BIN.tabpage_assembly_bin`: **`bin_cd`** (the finished item's `inv_loc.primary_bin`, often `0`) and **`unit_quantity`** (= the completion quantity) — **as two separate change calls.** Combining them in one call drops the quantity, and a subsequent completion errors *"sum of bin quantity ... does not equal quantity made."*
+3. Save → the assembly is received into inventory (`inv_tran` type `PROP`) and the ticketed components are consumed.
+
+**Per-component cost override at completion:** once `qty_to_complete` is set, the component grid (`TABPAGE_18.tp_18_dw_18`) exposes an editable **`new_cost`** per component (the read-only `inventory_cost` beside it is the current moving average). A `new_cost` override flows: `new_cost` → `PROP` receipt cost → the finished item's moving average → invoice COGS. Use it to book an agreed cost (e.g. a rebated component cost) instead of the moving average.
+
+### Time Entry Against a Production Order (Quick Time Entry)
+
+Complementing the [TimeEntry service reference](#recording-labor-hours-timeentry-service) above, the production-order labor grid path has strict mechanics:
+
+- Header `TP_TECHNICIAN.tp_technician`: `company_id`, `technician_id` — **a contact ID**, not a user ID — and `entry_date`.
+- Labor grid `prod_order_line_comp_labor`: enter fields **in this order** — `prod_order_number` → `item_id` (the assembly line's item) → `component_labor_id` (the labor component) → `start_time` → `end_time`. Out of order, the downstream fields stay disabled.
+- Time is stored per line in hours/minutes at minute granularity and **accumulates** across entries; cost = minutes × the labor code's rate.
+- ⚠️ **The accounting period for `entry_date` must be open**, or the save fails.
+
+### Shipping and Invoicing the Linked Sales Order
+
+1. Print the sales order pick ticket: `Order` service transaction with `print_tix = ON` on `TP_FRONTCOUNTER.tp_frontcounter` (creates `oe_pick_ticket`).
+2. Ship + invoice: the `Shipping` service, header `tp_1_dw_1` keyed by `pick_ticket_no` — retrieve and **save**. `create_invoice` defaults ON, so the save ships the order **and** creates the invoice in one step. Partial shipments are supported. The item needs a **packaging code** or the save fails.
+
+Contract pricing note: leave `unit_price` unset on the sales order line and P21 auto-fills the job-contract price, binding `oe_line.job_price_hdr_uid` — the contract must cover that **specific ship-to**. Works for production-order assemblies, not just kits.
+
+### Inventory Adjustment (Write-Offs)
+
+The `InventoryAdjustment` service posts on-hand adjustments with no invoice: header `tp_1_dw_1` takes `location_id` and `reason_id` (pass the reason's **display text**, not its code, with `UseCodeValues: false`); line `tp_17_dw_17` takes `item_id` and `unit_quantity` = the signed delta (e.g. negative on-hand to zero it out). Save posts the adjustment.
+
+### Cost Model — Know This Before Trusting COGS
+
+- **Assembly receipt cost** (`inv_tran` `PROP` `unit_cost_amt`) = component costs **+ labor posted before completion**. Labor logged after completion misses the receipt.
+- **Shipment COGS** (`invoice_line.cogs_amount`, `inv_tran` `WO`) = the item's **moving-average cost at ship time**, NOT that order's specific receipt.
+- **Moving-average pooling:** while two or more units of the same item sit in stock, a cost added to one (e.g. a labor overrun) smears across all of them — an unrelated unit ships at a blended cost. Make-to-order (one in, one out) is largely immune; **build-to-stock is exposed by design**. True per-job cost is the `PROP` receipt, not the invoice COGS.
+- **Labor posted after invoicing** generates a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched.
+
+### Key Tables
+
+`assembly_hdr` / `assembly_line` (BOM + behavior flags) · `oe_hdr` / `oe_line` (`assembly` B/N/P/S) · `prod_order_line_link` · `prod_order_hdr` / `prod_order_line` / `prod_order_line_component` · `prod_pick_ticket_hdr` / `prod_pick_ticket_detail` · `oe_pick_ticket` · `prod_order_line_comp_labor` · `invoice_hdr` / `invoice_line` · `inv_loc` (min/max, moving average, primary bin) · `inv_tran` (`PROP` receipt / `WO` ship).
+
 ---
 
 ## Labor Service -- Labor Code Maintenance
