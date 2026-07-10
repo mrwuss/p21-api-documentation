@@ -75,9 +75,9 @@ Then use the returned URL as base:
 > |----------|:-:|:-:|
 > | GET/DELETE `/v2/window` | **Yes** | No (422) |
 > | GET/DELETE `/v2/data` | **Yes** | No (400/422) |
-> | GET `/v2/tools` | No (500) | **Yes** |
+> | GET `/v2/tools` | No (400) | **Yes** |
 >
-> Using the wrong parameter returns an error — there is no fallback.
+> Using the wrong parameter returns an error — there is no fallback. `GET /v2/tools?id=` fails with HTTP 400 and a validation body (`"The windowId field is required."`).
 
 ### Data Operations (v1 - Legacy)
 

@@ -514,7 +514,7 @@
 <tr>
 <td><code>/api/v2/services</code></td>
 <td>GET</td>
-<td>List available services (optional <code>?type=</code> filter)</td>
+<td>List available services (transaction business objects only — report services are not listed; see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
 </tr>
 <tr>
 <td><code>/api/v2/definition/{name}</code></td>
@@ -2394,7 +2394,13 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </tbody>
 </table>
 <blockquote>
-<p><strong>Discovery:</strong> Use <code>GET /api/v2/services?type=report</code> to list available report services. Use <code>GET /api/v2/definition/{service_name}</code> to inspect the DataElement structure and field names for each report.</p>
+<p><strong>Discovery:</strong> The <code>m_*</code> report services are <strong>hidden from <code>GET /api/v2/services</code></strong> — that endpoint lists only the transaction business objects (299 on a 25.2 test system), and <code>?type=report</code> returns an empty list (verified live; <code>?type=window</code> returns the same transaction list, other <code>?type=</code> values return HTTP 400 <code>"Service Type is invalid."</code>). The report services are still fully callable: <code>GET /api/v2/definition/{service_name}</code> and <code>GET /api/v2/defaults/{service_name}</code> both work for them. To discover callable report names, probe the definition endpoint directly, or pull candidate names from the <code>window_x_menu</code> table — the callable service name is the last <code>/</code>-segment of <code>menu_name</code>:</p>
+<p><code>sql
+SELECT DISTINCT RIGHT(menu_name, CHARINDEX('/', REVERSE(menu_name) + '/') - 1) AS callable_name
+FROM window_x_menu
+WHERE menu_name LIKE 'm[_]%';</code></p>
+<p>Probe each candidate with <code>GET /api/v2/definition/{name}</code> — the ones that return 200 are callable. On a 25.2 test system this yields ~157 callable report services, including <code>m_picktickets</code>, <code>m_reprintpicktickets</code>, <code>m_productionorders</code>, <code>m_orderacknowledgements</code>, <code>m_invoices</code>, <code>m_packinglists</code>, and <code>m_customerstatements</code>.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> identified that report services are hidden from the services list and worked out the <code>window_x_menu</code> discovery path.</p>
 </blockquote>
 <h3 id="request-structure_1">Request Structure</h3>
 <p>The payload follows the standard TransactionSet format. Report-specific criteria go in the DataElement's <code>Edits</code> array:</p>

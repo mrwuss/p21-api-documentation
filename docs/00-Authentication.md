@@ -764,6 +764,8 @@ Accept: application/json
 }
 ```
 
+> **307 redirect gotcha:** On some installations, `GET /api/ui/router/v1?urlType=external` (no trailing slash after `v1`) responds with a **307 redirect** to the trailing-slash form. HTTP clients that do not follow redirects by default — including `httpx` — receive the 307 and an HTML body instead of the JSON response. Either request `/api/ui/router/v1/?urlType=external` (trailing slash) directly, or enable redirect following (`httpx.get(..., follow_redirects=True)`). C# `HttpClient` follows GET redirects by default and is unaffected. Verified live on a 25.2 system (July 2026).
+
 <!-- tabs -->
 
 **Python:**
@@ -772,8 +774,9 @@ Accept: application/json
 def get_ui_server_url(base_url: str, token: str) -> str:
     """Get UI server URL for Interactive/Transaction APIs."""
     response = httpx.get(
-        f"{base_url}/api/ui/router/v1?urlType=external",
-        headers=get_auth_headers(token)
+        f"{base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers=get_auth_headers(token),
+        follow_redirects=True,
     )
     response.raise_for_status()
     return response.json()["Url"].rstrip("/")

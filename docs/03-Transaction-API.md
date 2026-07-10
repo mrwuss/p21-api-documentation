@@ -37,7 +37,7 @@ Then use the returned URL as base:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v2/services` | GET | List available services (optional `?type=` filter) |
+| `/api/v2/services` | GET | List available services (transaction business objects only — report services are not listed; see [PDF Report Generation](#pdf-report-generation)) |
 | `/api/v2/definition/{name}` | GET | Get service schema and template |
 | `/api/v2/defaults/{name}` | GET | Get default values for a service |
 | `/api/v2/transaction/get` | POST | Retrieve existing records |
@@ -1335,7 +1335,17 @@ The Transaction API includes a dedicated endpoint for generating PDF documents -
 | `m_reprintpurchaseorders` | Purchase Order reprints |
 | `m_reprintpicktickets` | Pick Ticket reprints |
 
-> **Discovery:** Use `GET /api/v2/services?type=report` to list available report services. Use `GET /api/v2/definition/{service_name}` to inspect the DataElement structure and field names for each report.
+> **Discovery:** The `m_*` report services are **hidden from `GET /api/v2/services`** — that endpoint lists only the transaction business objects (299 on a 25.2 test system), and `?type=report` returns an empty list (verified live; `?type=window` returns the same transaction list, other `?type=` values return HTTP 400 `"Service Type is invalid."`). The report services are still fully callable: `GET /api/v2/definition/{service_name}` and `GET /api/v2/defaults/{service_name}` both work for them. To discover callable report names, probe the definition endpoint directly, or pull candidate names from the `window_x_menu` table — the callable service name is the last `/`-segment of `menu_name`:
+>
+> ```sql
+> SELECT DISTINCT RIGHT(menu_name, CHARINDEX('/', REVERSE(menu_name) + '/') - 1) AS callable_name
+> FROM window_x_menu
+> WHERE menu_name LIKE 'm[_]%';
+> ```
+>
+> Probe each candidate with `GET /api/v2/definition/{name}` — the ones that return 200 are callable. On a 25.2 test system this yields ~157 callable report services, including `m_picktickets`, `m_reprintpicktickets`, `m_productionorders`, `m_orderacknowledgements`, `m_invoices`, `m_packinglists`, and `m_customerstatements`.
+>
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) identified that report services are hidden from the services list and worked out the `window_x_menu` discovery path.
 
 ### Request Structure
 
