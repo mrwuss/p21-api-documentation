@@ -377,12 +377,29 @@
         <li><a href="INDEX.html">Task Index — Find the Right Section Fast</a></li>
             </ul>
         </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+        <li><a href="recipes/README.html">Recipes Overview</a></li>
+        <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+        <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+        <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+        <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+        <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+        <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+        <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+        <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            </ul>
+        </div>
         <div class="sidebar-section page-toc-section">
             <div class="sidebar-section-title">On This Page</div>
             <div class="page-toc" id="page-toc">
                 <ul>
 <li><a href="#getting-started">Getting Started</a></li>
 <li><a href="#api-reference">API Reference</a></li>
+<li><a href="#recipes">Recipes</a></li>
 <li><a href="#troubleshooting-reference">Troubleshooting &amp; Reference</a></li>
 </ul>
             </div>
@@ -402,6 +419,10 @@ All trademarks are property of their respective owners. Use at your own risk.
 
 <h2 id="getting-started">Getting Started</h2>
 <div class="index-grid">
+<a href="INDEX.html" class="index-card">
+            <h3>Task Index</h3>
+            <p>"I want to..." routing map — jump straight to the exact section for your task instead of reading whole guides.</p>
+        </a>
 <a href="00-Authentication.html" class="index-card">
             <h3>Authentication</h3>
             <p>Token generation, credentials vs consumer keys, V1 and V2 endpoints, and token refresh patterns.</p>
@@ -433,6 +454,63 @@ All trademarks are property of their respective owners. Use at your own risk.
 <a href="11-Inventory-REST-API.html" class="index-card">
             <h3>Inventory REST API <span class="badge badge-both">CRUD</span></h3>
             <p>Inventory item CRUD and multi-company workflows. Read inv_loc data, append locations and suppliers.</p>
+        </a>
+<a href="12-Production-Labor-API.html" class="index-card">
+            <h3>Production & Labor API <span class="badge badge-both">READ/WRITE</span></h3>
+            <p>Production orders, labor hours, time entry, and the end-to-end production lifecycle.</p>
+        </a>
+<a href="13-UDT-Service-API.html" class="index-card">
+            <h3>UDT Service API <span class="badge badge-both">CRUD</span></h3>
+            <p>Insert, update, and delete rows in user-defined tables via /udtservice/api/udtdata/.</p>
+        </a>
+</div>
+
+<h2 id="recipes">Recipes — Copy-and-Run Tasks</h2>
+<p>Self-contained task pages: one task, one page — the complete payload, a full runnable example in Python and C#, and every verified gotcha.</p>
+<div class="index-grid">
+<a href="recipes/README.html" class="index-card">
+            <h3>Recipes Overview</h3>
+            <p>How the cookbook works: conventions, shared auth helper, dry-run and verify rules.</p>
+        </a>
+<a href="recipes/create-bins.html" class="index-card">
+            <h3>Create Bins (Bulk)</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/create-sales-order.html" class="index-card">
+            <h3>Create a Sales Order</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/edit-contract-bins.html" class="index-card">
+            <h3>Edit Contract Bin Quantities</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/generate-pick-ticket-pdf.html" class="index-card">
+            <h3>Generate Pick Ticket and PO PDFs</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/inventory-adjustment.html" class="index-card">
+            <h3>Adjust On-Hand Quantity (Write-Off)</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/order-with-assembly.html" class="index-card">
+            <h3>Order with an Assembly Line</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/production-order-runbook.html" class="index-card">
+            <h3>Production Order Runbook — Create to Invoice</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/record-labor-time.html" class="index-card">
+            <h3>Record Labor Time on a Production Order</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/set-primary-bin-supplier.html" class="index-card">
+            <h3>Set an Item's Primary Bin or Primary Supplier at a Location</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
+        </a>
+<a href="recipes/update-contract-lines.html" class="index-card">
+            <h3>Update Contract Lines</h3>
+            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
         </a>
 </div>
 

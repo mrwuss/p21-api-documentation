@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order with an Assembly Line - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="../00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="../01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="../02-OData-API.html">OData API</a></li>
+        <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="../05-Entity-API.html">Entity API</a></li>
+        <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="../07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="../08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="../10-Changelog.html">Changelog</a></li>
+        <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="../12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="../13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="../INDEX.html">Task Index — Find the Right Section Fast</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+        <li><a href="../recipes/README.html">Recipes Overview</a></li>
+        <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+        <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+        <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+        <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+        <li class="active"><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+        <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+        <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+        <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#flow">Flow</a></li>
+<li><a href="#complete-example">Complete example</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="order-with-an-assembly-line">Order with an Assembly Line</h1>
+<p>Enter a sales order interactively when a line is an assembly that must explode into components and/or spawn a production order.</p>
+<p><strong>API:</strong> Interactive · <strong>Service:</strong> <code>Order</code> (window) · <strong>Deep dive:</strong> <a href="../04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a> · <a href="../04-Interactive-API.html#response-windows">Response Windows</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/Order.json">Order.json</a></p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>Token + UI server URL (shared auth helper — see the <a href="README.html">recipes README</a>).</li>
+<li>The item is configured as an assembly (<code>assembly_hdr</code>): <code>production_order_processing</code> <code>Y</code> = production-order assembly / <code>N</code> = kit; <code>auto_create_prod_order</code> <code>Y</code> = auto-create and link the production order at save.</li>
+<li><strong>Why not the Transaction API?</strong> Entering an assembly item there fires an <em>"add as assembly?"</em> prompt which the stateless API auto-answers <strong>No</strong>, killing the explode (<a href="../03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a>). The Interactive API lets you answer it. For plain (non-assembly) orders, use the simpler <a href="create-sales-order.html">create-sales-order</a> recipe instead.</li>
+<li>The session must be started with <strong><code>ResponseWindowHandlingEnabled: true</code></strong> so you can inspect and answer the prompts yourself.</li>
+</ul>
+<h2 id="flow">Flow</h2>
+<ol>
+<li><strong>Start a session</strong> with response-window handling enabled:</li>
+</ol>
+<p><code>json
+   POST /api/ui/interactive/sessions
+   { "ResponseWindowHandlingEnabled": true }</code></p>
+<ol>
+<li><strong>Open the Order window</strong>:</li>
+</ol>
+<p><code>json
+   POST /api/ui/interactive/v2/window
+   { "ServiceName": "Order" }</code></p>
+<ol>
+<li><strong>Set header fields</strong> on <code>TabName: "TABPAGE_1"</code>, <code>DatawindowName: "order"</code> — <code>quote</code> (<code>OFF</code> = real order, <code>ON</code> = quote), <code>sales_loc_id</code>, <code>source_loc_id</code>, <code>customer_id</code>, <code>ship_to_id</code>, <code>contact_id</code>, <code>order_date</code>, <code>requested_date</code>, <code>po_no</code>, <code>taker</code>:</li>
+</ol>
+<p><code>json
+   PUT /api/ui/interactive/v2/change
+   {
+       "WindowId": "{windowId}",
+       "List": [{
+           "TabName": "TABPAGE_1",
+           "DatawindowName": "order",
+           "FieldName": "customer_id",
+           "Value": "100198"
+       }]
+   }</code></p>
+<p><strong>Setting the dates fires a date-cascade prompt</strong> (<code>w_response_common</code>, buttons <code>cb_ok</code>/<code>cb_cancel</code>) <em>even on a brand-new order</em>: the change result comes back <code>Status: 3</code> (Blocked) with a <code>windowopened</code> event carrying the popup's window ID. Answer <strong><code>cb_ok</code></strong> against the <strong>popup's</strong> window ID:</p>
+<p><code>json
+   POST /api/ui/interactive/v2/tools
+   { "WindowId": "{popupWindowId}", "ToolName": "cb_ok" }</code></p>
+<ol>
+<li><strong>Switch to the lines tab</strong>:</li>
+</ol>
+<p><code>json
+   PUT /api/ui/interactive/v2/tab
+   { "WindowId": "{windowId}", "PageName": "TP_ITEMS" }</code></p>
+<ol>
+<li>
+<p><strong>Set <code>oe_order_item_id</code> on the <em>existing</em> <code>items</code> row</strong> (<code>TabName: "TP_ITEMS"</code>, <code>DatawindowName: "items"</code> — do <strong>not</strong> add a row for the first line). On an assembly item this fires the <strong>assembly prompt</strong> (buttons <code>cb_1</code> = Yes / <code>cb_2</code> = No / <code>cb_3</code> = Cancel) — answer <strong><code>cb_1</code></strong> to explode the assembly / link a production order.</p>
+</li>
+<li>
+<p><strong>Set <code>unit_quantity</code></strong> on the same row.</p>
+</li>
+<li>
+<p><strong>Save</strong> — in v2 the body is the bare window-ID string, <em>not</em> an object:</p>
+</li>
+</ol>
+<p><code>json
+   PUT /api/ui/interactive/v2/data
+   "{windowId}"</code></p>
+<p>Answer any follow-on prompts with their proceed button.</p>
+<ol>
+<li>
+<p><strong>Read the generated <code>order_no</code></strong> from the window data: <code>GET /api/ui/interactive/v2/data?id={windowId}</code> (returns the datawindows on the active surface — switch back to <code>TABPAGE_1</code> first so the <code>order</code> datawindow is active).</p>
+</li>
+<li>
+<p><strong>Clean up</strong>: <code>DELETE /api/ui/interactive/v2/window?id={windowId}</code>, then <code>DELETE /api/ui/interactive/sessions</code>.</p>
+</li>
+</ol>
+<h2 id="complete-example">Complete example</h2>
+<p>Includes an <code>answer_response_windows</code> helper grounded in the <a href="../04-Interactive-API.html#response-windows">Response Windows</a> pattern: loop over <code>windowopened</code> events, discover the popup's buttons with <code>GET /v2/tools?windowId={popupId}</code>, click one with <code>POST /v2/tools</code>.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+
+<span class="n">token</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="n">p21_auth</span><span class="p">(</span><span class="n">BASE_URL</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">)</span>
+<span class="n">iapi</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/ui/interactive&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">is_blocked</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="c1"># Status is an integer (ResultStatus enum: 0 None, 1 Success, 2 Failure,</span>
+    <span class="c1"># 3 Blocked) but may appear as a string in some contexts -- handle both.</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;Blocked&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">popup_ids</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Window IDs of popups opened by the last action.</span>
+
+<span class="sd">    Events[].Data is a key-value list: [{&quot;Key&quot;: &quot;windowid&quot;, &quot;Value&quot;: &quot;...&quot;}].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Events&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;windowopened&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">kv</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">if</span> <span class="n">kv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Key&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;windowid&quot;</span><span class="p">:</span>
+                    <span class="n">ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="s2">&quot;Value&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">ids</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">answer_response_windows</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">button</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Answer every popup the last action opened, then return the last result.</span>
+
+<span class="sd">    Discovers buttons via GET /v2/tools?windowId= (the tools endpoint takes</span>
+<span class="sd">    ?windowId=, NOT ?id=), then clicks via POST /v2/tools with the POPUP&#39;s</span>
+<span class="sd">    window ID. If `button` is None, picks the first proceed-style button.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">popup_id</span> <span class="ow">in</span> <span class="n">popup_ids</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+        <span class="n">tools</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/tools&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;windowId&quot;</span><span class="p">:</span> <span class="n">popup_id</span><span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">tools</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">available</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ToolName&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tools</span><span class="o">.</span><span class="n">json</span><span class="p">()]</span>
+        <span class="n">pick</span> <span class="o">=</span> <span class="n">button</span>
+        <span class="k">if</span> <span class="n">pick</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># prefer common proceed buttons</span>
+            <span class="n">pick</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;cb_ok&quot;</span><span class="p">,</span> <span class="s2">&quot;cb_1&quot;</span><span class="p">,</span> <span class="s2">&quot;cb_yes&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">available</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pick</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">pick</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Popup </span><span class="si">{</span><span class="n">popup_id</span><span class="si">}</span><span class="s2">: buttons </span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">, wanted </span><span class="si">{</span><span class="n">button</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">click</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/tools&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">popup_id</span><span class="p">,</span> <span class="s2">&quot;ToolName&quot;</span><span class="p">:</span> <span class="n">pick</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">click</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">click</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">tab</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dw</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+           <span class="n">answer</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Change one field; answer the popup it triggers (if any) with `answer`.&quot;&quot;&quot;</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/change&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="n">tab</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">dw</span><span class="p">,</span>  <span class="c1"># DatawindowName required on 25.2+</span>
+            <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="n">field</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+        <span class="p">}]},</span>
+    <span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Failure&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_blocked</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">answer_response_windows</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">answer</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="c1"># 1. Session with response-window handling ON</span>
+<span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/sessions&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+<span class="p">)</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+<span class="c1"># 2. Open the Order window</span>
+<span class="n">win</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/window&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;Order&quot;</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">win</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">window_id</span> <span class="o">=</span> <span class="n">win</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;WindowId&quot;</span><span class="p">]</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># 3. Header -- TABPAGE_1 / datawindow &quot;order&quot;. quote OFF = real order.</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;quote&quot;</span><span class="p">,</span> <span class="s2">&quot;OFF&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;sales_loc_id&quot;</span><span class="p">,</span> <span class="s2">&quot;10&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;source_loc_id&quot;</span><span class="p">,</span> <span class="s2">&quot;10&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;customer_id&quot;</span><span class="p">,</span> <span class="s2">&quot;100198&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span> <span class="s2">&quot;200&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;contact_id&quot;</span><span class="p">,</span> <span class="s2">&quot;300&quot;</span><span class="p">)</span>
+    <span class="c1"># Dates fire the w_response_common date-cascade prompt even on a NEW order</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;order_date&quot;</span><span class="p">,</span> <span class="s2">&quot;2030-01-05&quot;</span><span class="p">,</span> <span class="n">answer</span><span class="o">=</span><span class="s2">&quot;cb_ok&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;requested_date&quot;</span><span class="p">,</span> <span class="s2">&quot;2030-01-06&quot;</span><span class="p">,</span> <span class="n">answer</span><span class="o">=</span><span class="s2">&quot;cb_ok&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;po_no&quot;</span><span class="p">,</span> <span class="s2">&quot;PO-TEST-001&quot;</span><span class="p">)</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;taker&quot;</span><span class="p">,</span> <span class="s2">&quot;JSMITH&quot;</span><span class="p">)</span>  <span class="c1"># else = API user</span>
+
+    <span class="c1"># 4. Lines tab</span>
+    <span class="n">httpx</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/tab&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;PageName&quot;</span><span class="p">:</span> <span class="s2">&quot;TP_ITEMS&quot;</span><span class="p">},</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+    <span class="c1"># 5. Item on the EXISTING items row (no /v2/row add for the first line).</span>
+    <span class="c1">#    Assembly prompt: cb_1 = Yes (explode / link prod order).</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TP_ITEMS&quot;</span><span class="p">,</span> <span class="s2">&quot;items&quot;</span><span class="p">,</span> <span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span> <span class="n">answer</span><span class="o">=</span><span class="s2">&quot;cb_1&quot;</span><span class="p">)</span>
+    <span class="c1"># 6. Quantity</span>
+    <span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TP_ITEMS&quot;</span><span class="p">,</span> <span class="s2">&quot;items&quot;</span><span class="p">,</span> <span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span> <span class="s2">&quot;5&quot;</span><span class="p">)</span>
+
+    <span class="c1"># 7. Save -- v2 body is the bare window-ID string (an object =&gt; 422)</span>
+    <span class="n">save</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/data&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">window_id</span><span class="p">)</span>
+    <span class="n">save</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">save</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">while</span> <span class="n">is_blocked</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>  <span class="c1"># follow-on prompts: answer with proceed button</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">answer_response_windows</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Status&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;Failure&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Save failed: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># 8. Read order_no back. GET /v2/data returns the ACTIVE surface --</span>
+    <span class="c1">#    switch back to the header tab first.</span>
+    <span class="n">httpx</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/tab&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;PageName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">},</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/data&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">dw</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">json</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">dw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;order&quot;</span><span class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">dw</span><span class="p">[</span><span class="s2">&quot;Data&quot;</span><span class="p">][</span><span class="n">dw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ActiveRow&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span>
+            <span class="n">order_no</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">dw</span><span class="p">[</span><span class="s2">&quot;Columns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;order_no&quot;</span><span class="p">)]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created order_no: </span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="c1"># 9. Clean up (window uses ?id=; sessions endpoint takes no parameter)</span>
+    <span class="n">httpx</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/v2/window&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">},</span>
+                 <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">httpx</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">iapi</span><span class="si">}</span><span class="s2">/sessions&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">P21Session</span><span class="p">.</span><span class="n">CreateAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">http</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">Http</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">iapi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{session.UiServer}/api/ui/interactive&quot;</span><span class="p">;</span>
+
+<span class="kt">bool</span><span class="w"> </span><span class="nf">IsBlocked</span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="n">r</span><span class="p">[</span><span class="s">&quot;Status&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="s">&quot;3&quot;</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="s">&quot;Blocked&quot;</span><span class="p">;</span><span class="w">  </span><span class="c1">// int or string form</span>
+
+<span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">PopupIds</span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s">&quot;Events&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="n">Where</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">e</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;windowopened&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">SelectMany</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">e</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="n">Where</span><span class="p">(</span><span class="n">kv</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">kv</span><span class="p">[</span><span class="s">&quot;Key&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;windowid&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">kv</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">kv</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="n">ToList</span><span class="p">();</span>
+
+<span class="c1">// Answer every popup the last action opened; button null =&gt; first proceed button.</span>
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">AnswerResponseWindowsAsync</span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">button</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">popupId</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">PopupIds</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Tools endpoint takes ?windowId=, NOT ?id=</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">toolsResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/tools?windowId={popupId}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">toolsResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">available</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JArray</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">toolsResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">())</span>
+<span class="w">            </span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">t</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="n">t</span><span class="p">[</span><span class="s">&quot;ToolName&quot;</span><span class="p">])</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">pick</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">button</span>
+<span class="w">            </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;cb_ok&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_yes&quot;</span><span class="w"> </span><span class="p">}.</span><span class="n">FirstOrDefault</span><span class="p">(</span><span class="n">available</span><span class="p">.</span><span class="n">Contains</span><span class="p">)</span>
+<span class="w">            </span><span class="o">??</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">InvalidOperationException</span><span class="p">(</span>
+<span class="w">                </span><span class="s">$&quot;Popup {popupId}: buttons [{string.Join(&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;, available)}]&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">clickBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">popupId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ToolName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pick</span><span class="w"> </span><span class="p">};</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">clickResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/tools&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">clickBody</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="n">clickResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">clickResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ChangeAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">tab</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">dw</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">,</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">answer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tab</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dw</span><span class="p">,</span><span class="w">   </span><span class="c1">// required on 25.2+</span>
+<span class="w">            </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">field</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span><span class="p">,</span>
+<span class="w">        </span><span class="p">}},</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/change&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">body</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Status&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="s">&quot;2&quot;</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="s">&quot;Failure&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;{field}: {result[&quot;</span><span class="n">Messages</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">IsBlocked</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">AnswerResponseWindowsAsync</span><span class="p">(</span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="n">answer</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 1. Session with response-window handling ON</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">sessBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">};</span>
+<span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/sessions&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">sessBody</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">)))</span>
+<span class="w">    </span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="c1">// 2. Open the Order window</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">winBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ServiceName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Order&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">winResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/window&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">winBody</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">winResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">winResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">())[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+
+<span class="k">try</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// 3. Header -- TABPAGE_1 / datawindow &quot;order&quot;. quote OFF = real order.</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;quote&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;OFF&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;sales_loc_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;source_loc_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;200&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;contact_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;300&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// Dates fire the w_response_common date-cascade prompt even on a NEW order</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2030-01-05&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_ok&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;requested_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2030-01-06&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_ok&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;PO-TEST-001&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;taker&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;JSMITH&quot;</span><span class="p">);</span><span class="w"> </span><span class="c1">// else = API user</span>
+
+<span class="w">    </span><span class="c1">// 4. Lines tab</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">tabBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TP_ITEMS&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="w">    </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/tab&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">tabBody</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">)))</span>
+<span class="w">        </span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// 5. Item on the EXISTING items row; assembly prompt: cb_1 = Yes (explode)</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TP_ITEMS&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;items&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_1&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// 6. Quantity</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TP_ITEMS&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;items&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;5&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// 7. Save -- v2 body is the bare window-ID JSON string (an object =&gt; 422)</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">saveResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/data&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonConvert</span><span class="p">.</span><span class="n">SerializeObject</span><span class="p">(</span><span class="n">windowId</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">saveResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">saveResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">IsBlocked</span><span class="p">(</span><span class="n">result</span><span class="p">))</span><span class="w">  </span><span class="c1">// follow-on prompts: answer with proceed button</span>
+<span class="w">        </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">AnswerResponseWindowsAsync</span><span class="p">(</span><span class="n">result</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Status&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="s">&quot;2&quot;</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="s">&quot;Failure&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Save failed: {result[&quot;</span><span class="n">Messages</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// 8. Read order_no back -- /v2/data returns the ACTIVE surface, so</span>
+<span class="w">    </span><span class="c1">//    switch back to the header tab first.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">backBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="w">    </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/tab&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">backBody</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">)))</span>
+<span class="w">        </span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">dataResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/data?id={windowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">dataResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">dw</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">JArray</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">dataResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">dw</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">dw</span><span class="p">[</span><span class="s">&quot;Columns&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">)</span><span class="o">!</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">c</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">ToString</span><span class="p">()).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">dw</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">)</span><span class="o">!</span><span class="p">[(</span><span class="kt">int?</span><span class="p">)</span><span class="n">dw</span><span class="p">[</span><span class="s">&quot;ActiveRow&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="mi">0</span><span class="p">];</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Created order_no: {row[columns.IndexOf(&quot;</span><span class="n">order_no</span><span class="s">&quot;)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+<span class="k">finally</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// 9. Clean up (window uses ?id=; sessions endpoint takes no parameter)</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/v2/window?id={windowId}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{iapi}/sessions&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>, dry-run by default): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/recipes/order_with_assembly.py"><code>scripts/recipes/order_with_assembly.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/OrderWithAssembly.cs"><code>examples/csharp/Recipes/OrderWithAssembly.cs</code></a>. The snippet above is self-contained; the files use the repo's shared <code>common</code> / <code>P21Examples.Common</code> helpers like every other example.</p>
+</blockquote>
+<h2 id="gotchas">Gotchas</h2>
+<p>All verified end-to-end — details in <a href="../04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a> and <a href="../04-Interactive-API.html#response-windows">Response Windows</a>:</p>
+<ul>
+<li><strong>Do NOT use the quickmode datawindow</strong> (<code>d_dw_quickmode_*</code>) to enter lines — it <strong>bypasses the assembly prompt entirely</strong>, and the line lands without the explode.</li>
+<li><strong><code>taker</code> defaults to the API user</strong> — override it with the real salesperson or the order is attributed to the service account.</li>
+<li><strong>The date-cascade prompt fires even on a brand-new order</strong> (<code>w_response_common</code>, <code>cb_ok</code>/<code>cb_cancel</code>). Answer <code>cb_ok</code> via the <strong>popup's</strong> window ID, not the Order window's.</li>
+<li><strong>Set the first line on the existing <code>items</code> row</strong> — do not <code>POST /v2/row</code> a new row for it.</li>
+<li><strong>Assembly prompt buttons are <code>cb_1</code> = Yes / <code>cb_2</code> = No / <code>cb_3</code> = Cancel</strong> — <code>cb_1</code> explodes the assembly / links the production order. This is exactly the prompt the Transaction API auto-answers No, which is why that API can't do this job.</li>
+<li><strong>Save body shape</strong>: <code>PUT /v2/data</code> takes the bare window-ID string as the JSON body — wrapping it in an object is a common source of 422 errors.</li>
+<li><strong><code>?id=</code> vs <code>?windowId=</code></strong>: <code>/v2/window</code> and <code>/v2/data</code> take <code>?id=</code>, but <code>/v2/tools</code> takes <code>?windowId=</code> — the wrong one errors, there is no fallback.</li>
+<li><strong>Status may be an integer or a string</strong> (<code>3</code> or <code>"Blocked"</code>, from the <code>ResultStatus</code> enum <code>None=0, Success=1, Failure=2, Blocked=3</code>) — handle both.</li>
+<li><strong><code>DatawindowName</code> is required in v2 change requests on P21 25.2+</strong> — the 3-parameter form (TabName + FieldName + Value) no longer works.</li>
+</ul>
+<h2 id="verify">Verify</h2>
+<p>On the saved order, <code>oe_line.assembly</code> codes: <code>B</code> = kit parent, <code>N</code> = component, <code>P</code> = production-order line, <code>S</code> = build-to-stock allocation. The production-order link is <code>prod_order_line_link</code> (<code>transaction_uid = oe_line.oe_line_uid</code>, <code>trans_type = 'O'</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq &#39;1013938&#39;</span>
+<span class="err">GET {base_url}/odataservice/odata/table/prod_order_line_link?$filter=trans_type eq &#39;O&#39;</span>
+</code></pre></div>
+
+<p>Confirm the assembly line shows the expected <code>assembly</code> code (e.g. <code>P</code>) and — for <code>auto_create_prod_order = 'Y'</code> items — that a <code>prod_order_line_link</code> row points at the line's <code>oe_line_uid</code>. See the <a href="../12-Production-Labor-API.html">Production &amp; Labor API guide</a> for the full production lifecycle.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a></p>
+</blockquote>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

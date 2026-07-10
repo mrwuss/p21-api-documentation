@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Order Runbook — Create to Invoice - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="../00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="../01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="../02-OData-API.html">OData API</a></li>
+        <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="../05-Entity-API.html">Entity API</a></li>
+        <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="../07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="../08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="../10-Changelog.html">Changelog</a></li>
+        <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="../12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="../13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="../INDEX.html">Task Index — Find the Right Section Fast</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+        <li><a href="../recipes/README.html">Recipes Overview</a></li>
+        <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+        <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+        <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+        <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+        <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+        <li class="active"><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+        <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+        <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#runbook">Runbook</a><ul>
+<li><a href="#stage-1-create-the-production-order">Stage 1 — Create the production order</a></li>
+<li><a href="#stage-2-log-labor-before-printing">Stage 2 — Log labor BEFORE printing</a></li>
+<li><a href="#stage-3-print-the-pick-ticket-and-form">Stage 3 — Print the pick ticket and form</a></li>
+<li><a href="#stage-4-confirm-the-pick-interactive-api-only">Stage 4 — Confirm the pick (Interactive API ONLY)</a></li>
+<li><a href="#stage-5-complete-the-order-production-receipt">Stage 5 — Complete the order (production receipt)</a></li>
+<li><a href="#stage-6-ship-and-invoice-the-linked-sales-order">Stage 6 — Ship and invoice the linked sales order</a></li>
+<li><a href="#stage-7-fix-quantity-fallout-write-offs">Stage 7 — Fix quantity fallout (write-offs)</a></li>
+</ul>
+</li>
+<li><a href="#complete-example-print-the-pick-ticket-and-read-back-its-status">Complete example — print the pick ticket and read back its status</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="production-order-runbook-create-to-invoice">Production Order Runbook — Create to Invoice</h1>
+<p>Run a production order end-to-end: create it, log labor, print the pick ticket(s), confirm the pick, complete (receive) the order, and ship + invoice the linked sales order.</p>
+<p><strong>API:</strong> Transaction + Interactive · <strong>Service:</strong> <code>ProductionOrder</code>, <code>m_picktickets</code>, <code>TimeEntry</code>, <code>ProductionOrderPicking</code>, <code>ProductionOrderProcessing</code>, <code>Order</code>, <code>Shipping</code> · <strong>Deep dive:</strong> <a href="../12-Production-Labor-API.html#production-order-lifecycle-end-to-end">Production Order Lifecycle (End-to-End)</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ProductionOrder.json">ProductionOrder</a>, <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ProductionOrderPicking.json">ProductionOrderPicking</a>, <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ProductionOrderProcessing.json">ProductionOrderProcessing</a>, <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/m_picktickets.json">m_picktickets</a></p>
+<p>This page is a <strong>checklist</strong>, not a script. Each stage says what to call, the fields that matter, and the trap that costs an afternoon — with a link to the deep section. The one complete example below covers the stage most people automate first: generating the pick ticket and reading back its status. For runnable code on the other stages, see <a href="record-labor-time.html">record-labor-time</a>, <a href="inventory-adjustment.html">inventory-adjustment</a>, <a href="order-with-assembly.html">order-with-assembly</a>, <a href="create-sales-order.html">create-sales-order</a>, and <a href="generate-pick-ticket-pdf.html">generate-pick-ticket-pdf</a>.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li><strong>An assembly (BOM) definition exists</strong> for the item — you cannot create a production order for an item without one. Create it with the Transaction API <code>Assembly</code> service (<a href="../12-Production-Labor-API.html#assembly-service-cross-reference">manual</a>).</li>
+<li><strong>The finished item is set up at the source location</strong>, or the save fails with <em>"item ID does not exist at your source location."</em></li>
+<li><strong>Know your assembly behavior flags</strong> (<a href="../12-Production-Labor-API.html#assembly-behavior-flags">manual</a>) — three ON/OFF flags on <code>assembly_hdr</code> decide how the item behaves:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th><code>Y</code></th>
+<th><code>N</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>production_order_processing</code></td>
+<td>Production-order assembly (sales order line spawns/links a production order)</td>
+<td>Kit — explodes to components, no production order</td>
+</tr>
+<tr>
+<td><code>auto_create_prod_order</code></td>
+<td>Auto-create + link the production order when the sales order saves</td>
+<td>Create and link manually</td>
+</tr>
+<tr>
+<td><code>assembly_for_stock</code></td>
+<td>Build-to-stock (units dwell in inventory)</td>
+<td>Make-to-order</td>
+</tr>
+</tbody>
+</table>
+<p>On a saved sales order, <code>oe_line.assembly</code> shows the outcome: <code>B</code> kit parent, <code>N</code> kit component, <code>P</code> production-order line, <code>S</code> build-to-stock line allocated from on-hand.</p>
+<h2 id="runbook">Runbook</h2>
+<h3 id="stage-1-create-the-production-order">Stage 1 — Create the production order</h3>
+<p>Two paths (<a href="../12-Production-Labor-API.html#how-production-orders-get-created">deep dive</a>):</p>
+<ul>
+<li><strong>Path A — sales order auto-create (make-to-order).</strong> Enter a sales order line for a <code>production_order_processing = Y</code> assembly (via the Interactive API when the line must explode — <a href="order-with-assembly.html">order-with-assembly recipe</a>). With <code>auto_create_prod_order = Y</code>, P21 <strong>nets against available stock</strong>: stock on hand → the line allocates it and <strong>no production order spawns</strong>; short → an order spawns for the shortfall, linked via <code>prod_order_line_link</code>.</li>
+<li><strong>Path B — direct build-to-stock.</strong> Drive the <code>ProductionOrder</code> window: header <code>source_loc_id</code> (the make location) plus any required user-defined fields, then on <code>TABPAGE_17.tp_17_dw_17</code> set <code>assembly_item_id</code> and <code>qty_to_make</code> (add + select a row per extra line). No sales order involved.</li>
+</ul>
+<p><strong>The traps:</strong> on Path A, the customer's <strong>salesrep must be valid at the sales location</strong> (a DynaChange rule blocks the order otherwise) and the <strong>order date must differ from the required date</strong>. A production order commonly gets <strong>two pick tickets</strong> — parts, plus labor/intangibles when intangible components source from a paired non-stock location.</p>
+<h3 id="stage-2-log-labor-before-printing">Stage 2 — Log labor BEFORE printing</h3>
+<p>Post labor via the <code>TimeEntry</code> service — <a href="record-labor-time.html">record-labor-time recipe</a>, <a href="../12-Production-Labor-API.html#labor-timing--log-labor-before-printing">deep dive</a>. Labor becomes a charge component that <strong>must land on a pick ticket to be consumed at completion</strong>.</p>
+<p><strong>The trap:</strong> print first, add labor after (no reprint) → the labor is allocated but on no ticket (<code>qty_on_pick_tickets = 0</code>) and completion fails with <em>"components have a quantity used of 0."</em> Fix: reprint (generates a separate labor/intangibles ticket), then confirm the new ticket.</p>
+<h3 id="stage-3-print-the-pick-ticket-and-form">Stage 3 — Print the pick ticket and form</h3>
+<p>Two ways (<a href="../12-Production-Labor-API.html#printing-the-pick-ticket-and-form">deep dive</a>):</p>
+<ul>
+<li><strong><code>ProductionOrder</code> transaction</strong> with <code>print_pick_ticket = ON</code> and <code>print_form = ON</code> on <code>TABPAGE_1.tp_1_dw_1</code> — creates the ticket, sets <code>prod_order_hdr.printed = 'Y'</code>, returns the PDFs in the response (<a href="../03-Transaction-API.html#pdfs-from-the-transaction-endpoint-print-flags">manual</a>).</li>
+<li><strong><code>m_picktickets</code> report</strong> at <code>POST /api/v2/process/pdfreport</code> — creates the ticket at whatever <code>location_id</code> you specify and returns the PDF (<a href="../03-Transaction-API.html#example-generate-a-production-order-pick-ticket-m_picktickets">worked example</a>, and the complete example below).</li>
+</ul>
+<p><strong>The traps:</strong> <code>print_pick_ticket</code> emits <strong>only at the make location</strong> — components stocked elsewhere means the form comes back but no usable ticket; use <code>m_picktickets</code> at the stock location instead. A parts ticket only generates if the components have <strong>stock at the source location</strong>. Documents only return on a <strong>savable</strong> order — a bare reprint with nothing new errors <em>"Save is not enabled."</em> And never post an <code>m_*</code> report to <code>/api/v2/transaction</code> — it returns <code>Succeeded</code> and <strong>emits nothing</strong>.</p>
+<h3 id="stage-4-confirm-the-pick-interactive-api-only">Stage 4 — Confirm the pick (Interactive API ONLY)</h3>
+<p>Open the <code>ProductionOrderPicking</code> window, load the ticket on header <code>TP_PRODPICKTICKETCONF.tp_prodpickticketconf</code> (key <code>prod_pick_ticket_number</code>), set the Confirm Pick field <code>row_status_flag</code> to <code>"Confirm"</code>, save. Confirm <strong>every</strong> ticket — parts <em>and</em> labor/intangibles. <a href="../12-Production-Labor-API.html#confirming-the-pick--use-the-interactive-api">Deep dive</a>.</p>
+<p><strong>The trap (the star of this page):</strong> posting <code>row_status_flag = 'Confirm'</code> through a bare <code>POST /api/v2/transaction</code> produces a <strong>shell confirm</strong> — the ticket status flips to <code>1962</code> and <code>qty_confirmed</code> gets stamped, but <strong><code>qty_applied</code> stays 0 and no stock moves</strong>. The per-bin posted quantities live in a disabled <code>TP_BIN</code> grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves components to the make location's WIP bin (<code>inv_loc.primary_bin</code> at <code>prod_order_hdr.source_location_id</code>; bin <code>0</code> when no primary is set).</p>
+<p>Ticket status codes (<code>prod_pick_ticket_hdr.row_status_flag</code>): <code>702</code> Open · <code>1962</code> Confirmed · <code>1268</code> Completed. Detail rows: <code>704</code> normal, <code>1268</code> at completion.</p>
+<h3 id="stage-5-complete-the-order-production-receipt">Stage 5 — Complete the order (production receipt)</h3>
+<p>Drive the <code>ProductionOrderProcessing</code> window (<a href="../12-Production-Labor-API.html#completing-the-production-order-production-receipt">deep dive</a>):</p>
+<ol>
+<li>Select the line on <code>TABPAGE_17.tp_17_dw_17</code>, set <strong><code>qty_to_complete</code></strong> (partial completion is supported; <code>qty_completed</code> is a read-only rollup).</li>
+<li>On <code>TABPAGE_ASSEMBLY_BIN.tabpage_assembly_bin</code> set <strong><code>bin_cd</code></strong> (the finished item's <code>inv_loc.primary_bin</code>, often <code>0</code>) and <strong><code>unit_quantity</code></strong> (= the completion quantity) — <strong>as two separate change calls</strong>.</li>
+<li>Optional per-component cost override: once <code>qty_to_complete</code> is set, <code>TABPAGE_18.tp_18_dw_18</code> exposes an editable <strong><code>new_cost</code></strong> per component; it flows <code>new_cost</code> → <code>PROP</code> receipt cost → moving average → invoice COGS.</li>
+<li>Save → the assembly is received into inventory (<code>inv_tran</code> type <code>PROP</code>) and the ticketed components are consumed.</li>
+</ol>
+<p><strong>The trap:</strong> combining <code>bin_cd</code> and <code>unit_quantity</code> in one change call <strong>drops the quantity</strong>, and a later completion errors <em>"sum of bin quantity ... does not equal quantity made."</em></p>
+<h3 id="stage-6-ship-and-invoice-the-linked-sales-order">Stage 6 — Ship and invoice the linked sales order</h3>
+<p><a href="../12-Production-Labor-API.html#shipping-and-invoicing-the-linked-sales-order">Deep dive</a>:</p>
+<ol>
+<li>Print the <strong>sales order</strong> pick ticket: <code>Order</code> service transaction with <code>print_tix = ON</code> on <code>TP_FRONTCOUNTER.tp_frontcounter</code> (creates <code>oe_pick_ticket</code>).</li>
+<li>Ship + invoice: the <code>Shipping</code> service, header <code>tp_1_dw_1</code> keyed by <code>pick_ticket_no</code> — retrieve and <strong>save</strong>. <code>create_invoice</code> defaults ON, so the save ships <strong>and</strong> invoices in one step. Partial shipments are supported.</li>
+</ol>
+<p><strong>The traps:</strong> the item needs a <strong>packaging code</strong> or the save fails. For contract pricing, leave <code>unit_price</code> unset and P21 auto-fills the job-contract price (binding <code>oe_line.job_price_hdr_uid</code>) — the contract must cover that <strong>specific ship-to</strong>.</p>
+<h3 id="stage-7-fix-quantity-fallout-write-offs">Stage 7 — Fix quantity fallout (write-offs)</h3>
+<p>If on-hand ends up wrong, post an <code>InventoryAdjustment</code> — <a href="inventory-adjustment.html">inventory-adjustment recipe</a>, <a href="../12-Production-Labor-API.html#inventory-adjustment-write-offs">deep dive</a>.</p>
+<blockquote>
+<p><strong>Cost model — before trusting COGS</strong> (<a href="../12-Production-Labor-API.html#cost-model--know-this-before-trusting-cogs">deep dive</a>): the <code>PROP</code> receipt cost = components + labor posted <strong>before</strong> completion. Shipment COGS is the <strong>moving average at ship time</strong>, not that order's receipt — while 2+ units sit in stock, a cost added to one smears across all (build-to-stock is exposed by design; make-to-order is largely immune). Labor posted after invoicing spawns a separate <em>"Post Freight/Labor Prod. Order: NNNN"</em> invoice ($0 price, ± COGS); the original invoice is untouched.</p>
+</blockquote>
+<h2 id="complete-example-print-the-pick-ticket-and-read-back-its-status">Complete example — print the pick ticket and read back its status</h2>
+<p>Generates the production pick ticket at the <strong>stock</strong> location with <code>m_picktickets</code> (creates the ticket record <em>and</em> returns the PDF), then reads the new ticket back with <code>POST /api/v2/transaction/get</code> to check its status. Prerequisite: the order's form must already be printed (<code>prod_order_hdr.printed = 'Y'</code>) — run a <code>ProductionOrder</code> transaction with <code>print_form = ON</code> first. Auth comes from the <a href="README.html#shared-conventions-recipes-dont-repeat-these">shared helper</a>.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">token</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span> <span class="o">=</span> <span class="n">p21_auth</span><span class="p">(</span><span class="n">BASE_URL</span><span class="p">,</span> <span class="s2">&quot;api_user&quot;</span><span class="p">,</span> <span class="s2">&quot;api_pass&quot;</span><span class="p">)</span>
+
+<span class="n">PROD_ORDER</span> <span class="o">=</span> <span class="s2">&quot;1000123&quot;</span>   <span class="c1"># production order number</span>
+<span class="n">STOCK_LOCATION</span> <span class="o">=</span> <span class="s2">&quot;10&quot;</span>    <span class="c1"># where the components stock (NOT necessarily the make location)</span>
+
+<span class="c1"># --- 1. Generate the pick ticket (creates the record + returns the PDF) ---</span>
+<span class="n">report</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;m_picktickets&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># m_picktickets REQUIRES code values; False returns HTTP 500</span>
+    <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>        <span class="c1"># reports use numeric 0, not &quot;New&quot;</span>
+        <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;create_pick_ticket_type&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;P&quot;</span><span class="p">},</span>  <span class="c1"># code &quot;P&quot; = Production Order</span>
+                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;beg_prod_order&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">PROD_ORDER</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;end_prod_order&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">PROD_ORDER</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;location_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">STOCK_LOCATION</span><span class="p">},</span>
+            <span class="p">]}],</span>
+        <span class="p">}],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+
+<span class="n">resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/process/pdfreport&quot;</span><span class="p">,</span>  <span class="c1"># NOT /api/v2/transaction (silent no-op there)</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">report</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>  <span class="c1"># errors come back as an envelope, not an array</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Report failed: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ErrorMessage&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">doc</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="k">if</span> <span class="n">doc</span><span class="p">[</span><span class="s2">&quot;ResponseStatus&quot;</span><span class="p">][</span><span class="s2">&quot;StatusCode&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Success&quot;</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Report failed: </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;ResponseStatus&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Message&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">file_name</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s2">&quot;FileName&quot;</span><span class="p">]</span>  <span class="c1"># e.g. &quot;PPT123456 PRODUCTION_PICK_TICKET.pdf&quot;</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;DocumentData&quot;</span><span class="p">]))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># --- 2. Read the new ticket back (ticket number comes from the FileName) ---</span>
+<span class="n">ticket_no</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;PPT(\d+)&quot;</span><span class="p">,</span> <span class="n">file_name</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">get_payload</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;ProductionOrderPicking&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TransactionStates&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;DataElementName&quot;</span><span class="p">:</span> <span class="s2">&quot;TP_PRODPICKTICKETCONF.tp_prodpickticketconf&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;prod_pick_ticket_number&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">ticket_no</span><span class="p">}],</span>
+    <span class="p">}],</span>
+<span class="p">}</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction/get&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">get_payload</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">txn</span> <span class="ow">in</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Transactions&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+    <span class="k">for</span> <span class="n">de</span> <span class="ow">in</span> <span class="n">txn</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DataElements&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">de</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Rows&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="n">e</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]:</span> <span class="n">e</span><span class="p">[</span><span class="s2">&quot;Value&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Edits&quot;</span><span class="p">,</span> <span class="p">[])}</span>
+            <span class="k">if</span> <span class="s2">&quot;row_status_flag&quot;</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+                <span class="c1"># 702 = Open, 1962 = Confirmed, 1268 = Completed</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ticket </span><span class="si">{</span><span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;prod_pick_ticket_number&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+                      <span class="sa">f</span><span class="s2">&quot;for prod order </span><span class="si">{</span><span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;prod_order_number&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">: &quot;</span>
+                      <span class="sa">f</span><span class="s2">&quot;status </span><span class="si">{</span><span class="n">fields</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;row_status_flag&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Text.RegularExpressions</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">P21Session</span><span class="p">.</span><span class="n">CreateAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">);</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">prodOrder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1000123&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// production order number</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">stockLocation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">;</span><span class="w">    </span><span class="c1">// where the components stock</span>
+
+<span class="c1">// --- 1. Generate the pick ticket (creates the record + returns the PDF) ---</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">report</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;m_picktickets&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;UseCodeValues&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">,</span><span class="w">  </span><span class="c1">// m_picktickets REQUIRES code values; false returns HTTP 500</span>
+<span class="w">    </span><span class="na">[&quot;Transactions&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;Status&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">    </span><span class="c1">// reports use numeric 0, not &quot;New&quot;</span>
+<span class="w">            </span><span class="na">[&quot;DataElements&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">(),</span>
+<span class="w">                    </span><span class="na">[&quot;Type&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Name&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="na">[&quot;Rows&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;create_pick_ticket_type&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;P&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;beg_prod_order&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prodOrder</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;end_prod_order&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">prodOrder</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stockLocation</span><span class="w"> </span><span class="p">}</span>
+<span class="w">                            </span><span class="p">}</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="c1">// NOT /api/v2/transaction (silent no-op there)</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">reportResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{session.UiServer}/api/v2/process/pdfreport&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">report</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">reportResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">reportBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JToken</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">reportResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reportBody</span><span class="p">.</span><span class="n">Type</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">JTokenType</span><span class="p">.</span><span class="n">Array</span><span class="p">)</span><span class="w">  </span><span class="c1">// errors come back as an envelope, not an array</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">Exception</span><span class="p">(</span><span class="s">$&quot;Report failed: {reportBody[&quot;</span><span class="n">ErrorMessage</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">JObject</span><span class="p">)((</span><span class="n">JArray</span><span class="p">)</span><span class="n">reportBody</span><span class="p">)[</span><span class="mi">0</span><span class="p">];</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s">&quot;ResponseStatus&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;StatusCode&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;Success&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">Exception</span><span class="p">(</span><span class="s">$&quot;Report failed: {doc[&quot;</span><span class="n">ResponseStatus</span><span class="s">&quot;]?[&quot;</span><span class="n">Message</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">fileName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">doc</span><span class="p">[</span><span class="s">&quot;FileName&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span><span class="w"> </span><span class="c1">// e.g. &quot;PPT123456 PRODUCTION_PICK_TICKET.pdf&quot;</span>
+<span class="k">await</span><span class="w"> </span><span class="n">File</span><span class="p">.</span><span class="n">WriteAllBytesAsync</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span><span class="w"> </span><span class="n">Convert</span><span class="p">.</span><span class="n">FromBase64String</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s">&quot;DocumentData&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">()));</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Saved {fileName}&quot;</span><span class="p">);</span>
+
+<span class="c1">// --- 2. Read the new ticket back (ticket number comes from the FileName) ---</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">ticketNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span><span class="w"> </span><span class="s">@&quot;PPT(\d+)&quot;</span><span class="p">).</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">getPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;ServiceName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ProductionOrderPicking&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;TransactionStates&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;DataElementName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TP_PRODPICKTICKETCONF.tp_prodpickticketconf&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Keys&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;prod_pick_ticket_number&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ticketNo</span><span class="w"> </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">getResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">Http</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{session.UiServer}/api/v2/transaction/get&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">getPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">getResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">getResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">getResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">txn</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">getResult</span><span class="p">[</span><span class="s">&quot;Transactions&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">de</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">txn</span><span class="p">[</span><span class="s">&quot;DataElements&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">de</span><span class="p">[</span><span class="s">&quot;Rows&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">edit</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">row</span><span class="p">[</span><span class="s">&quot;Edits&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">())</span>
+<span class="w">        </span><span class="n">fields</span><span class="p">[</span><span class="n">edit</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">()]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edit</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">fields</span><span class="p">.</span><span class="n">ContainsKey</span><span class="p">(</span><span class="s">&quot;row_status_flag&quot;</span><span class="p">))</span>
+<span class="w">        </span><span class="c1">// 702 = Open, 1962 = Confirmed, 1268 = Completed</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Ticket {fields.GetValueOrDefault(&quot;</span><span class="n">prod_pick_ticket_number</span><span class="s">&quot;)} &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                          </span><span class="s">$&quot;for prod order {fields.GetValueOrDefault(&quot;</span><span class="n">prod_order_number</span><span class="s">&quot;)}: &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                          </span><span class="s">$&quot;status {fields.GetValueOrDefault(&quot;</span><span class="n">row_status_flag</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>, dry-run by default): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/recipes/production_order_runbook.py"><code>scripts/recipes/production_order_runbook.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/ProductionOrderRunbook.cs"><code>examples/csharp/Recipes/ProductionOrderRunbook.cs</code></a>. The snippet above is self-contained; the files use the repo's shared <code>common</code> / <code>P21Examples.Common</code> helpers like every other example.</p>
+</blockquote>
+<h2 id="gotchas">Gotchas</h2>
+<ul>
+<li><strong>Shell confirm (the big one).</strong> Confirming a pick with a bare Transaction API POST flips the status to <code>1962</code> and stamps <code>qty_confirmed</code>, but leaves <strong><code>qty_applied = 0</code> and moves no stock</strong> — confirm through the Interactive API <code>ProductionOrderPicking</code> window (Stage 4).</li>
+<li><strong>Labor must be on a pick ticket before completion.</strong> Labor added after printing, without a reprint, sits at <code>qty_on_pick_tickets = 0</code> and completion fails with <em>"components have a quantity used of 0"</em> (Stage 2).</li>
+<li><strong><code>bin_cd</code> and <code>unit_quantity</code> are two separate change calls</strong> at completion — one combined call drops the quantity → <em>"sum of bin quantity ... does not equal quantity made"</em> (Stage 5).</li>
+<li><strong><code>print_pick_ticket</code> emits only at the make location</strong> — components stocked elsewhere need <code>m_picktickets</code> at the stock <code>location_id</code> (Stage 3).</li>
+<li><strong><code>m_picktickets</code> needs <code>UseCodeValues: true</code></strong> and the code <code>"P"</code>; the display label is rejected, <code>UseCodeValues: false</code> returns HTTP 500. <code>Status</code>/<code>Type</code> numeric <code>0</code>, <code>Keys: []</code>.</li>
+<li><strong>Reports go to <code>/api/v2/process/pdfreport</code>.</strong> <code>/api/v2/transaction</code> accepts the payload, returns <code>Succeeded</code>, and emits nothing.</li>
+<li><strong>Status codes:</strong> <code>702</code> Open, <code>1962</code> Confirmed, <code>1268</code> Completed — a <code>1962</code> alone does not prove stock moved (see shell confirm).</li>
+<li><strong>Auto-create nets against stock</strong> — stock on hand means no production order spawns; salesrep must be valid at the sales location; order date must differ from required date (Stage 1).</li>
+<li><strong>Confirm every ticket</strong> — parts <em>and</em> the labor/intangibles ticket.</li>
+</ul>
+<h2 id="verify">Verify</h2>
+<p>After each stage, read back — don't trust the HTTP status:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Print</td>
+<td>Pick ticket exists and is <code>702</code> Open (example above); <code>prod_order_hdr.printed = 'Y'</code></td>
+</tr>
+<tr>
+<td>Confirm</td>
+<td>Ticket <code>row_status_flag = 1962</code> <strong>and</strong> quantities applied (<code>qty_applied &gt; 0</code>) — a <code>1962</code> with <code>qty_applied = 0</code> is a shell confirm</td>
+</tr>
+<tr>
+<td>Complete</td>
+<td>Ticket/detail rows at <code>1268</code>; assembly receipt posted as <code>inv_tran</code> type <code>PROP</code></td>
+</tr>
+<tr>
+<td>Ship + invoice</td>
+<td>Invoice created by the <code>Shipping</code> save; shipment posts <code>inv_tran</code> type <code>WO</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a></p>
+</blockquote>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
