@@ -1,0 +1,422 @@
+{
+ "Name": "m_reprintpicktickets",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "m_reprintpicktickets",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_1.tp_1_dw_1",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_pick_ticket_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_pick_ticket_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_prod_pick_ticket_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_prod_pick_ticket_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_dea_pick_tickets",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pick_ticket_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "detail_or_summary",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_date2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_date2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_order_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_order_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_beg_account",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_end_account",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "route_or_zip",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "process_doclinks",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "include_associated_prod_orders",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_dc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_dc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_dlm",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_dlm",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_beg_lmb",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_end_lmb",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_reprint_pick_ticket_criteria",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Pick Ticket Number",
+      "Name": "beg_pick_ticket_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_pick_ticket_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Production Pick Ticket Number",
+      "Name": "beg_prod_pick_ticket_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_prod_pick_ticket_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Reprint DEA Pick Tickets",
+      "Name": "print_dea_pick_tickets",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Pick Ticket Type",
+      "Name": "pick_ticket_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Sorting By",
+      "Name": "detail_or_summary",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "",
+      "Label": "Print Quantity",
+      "Name": "print_qty",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Sales Order Required Date",
+      "Name": "dt_beg_date2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_date2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Order Date",
+      "Name": "beg_order_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_order_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Shipping Routes",
+      "Name": "str_beg_account",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "str_end_account",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Ticket Sort Sequence",
+      "Name": "route_or_zip",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Transmit Document Links",
+      "Name": "process_doclinks",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Include Subassembly Production Orders",
+      "Name": "include_associated_prod_orders",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_1.tp_1_dw_1",
+    "ParentText": "Criteria",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_master_report_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "dt_beg_dc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_dc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "dt_beg_dlm",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_dlm",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "str_beg_lmb",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "str_end_lmb",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp",
+    "ParentText": "Timestamp Criteria",
+    "Type": "Form"
+   }
+  ],
+  "KeyDefinitions": []
+ }
+}

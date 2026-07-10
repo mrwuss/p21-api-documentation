@@ -34,7 +34,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Task | Where |
 |------|-------|
 | Payload anatomy (TransactionSet / DataElements / Edits) | [03 § Request Structure](03-Transaction-API.md#request-structure) |
-| Get a service's schema, template, defaults | [03 § Endpoints](03-Transaction-API.md#endpoints) |
+| Get a service's schema, template, defaults | [03 § Endpoints](03-Transaction-API.md#endpoints) · committed full-field JSON in [`definitions/`](../definitions/README.md) |
 | **Update an existing record** (Status `"New"` + keys; `"Existing"` is broken) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) |
 | **Insert new keyed rows (upsert)** + one-tx-per-POST rule | [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) |
 | Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) |
@@ -137,3 +137,4 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | [11-Inventory-REST-API](11-Inventory-REST-API.md) | `/api/inventory/parts` read/append/update | large |
 | [12-Production-Labor-API](12-Production-Labor-API.md) | Production services + end-to-end lifecycle | large |
 | [13-UDT-Service-API](13-UDT-Service-API.md) | User-defined table CRUD | large |
+| [`definitions/`](../definitions/README.md) | Full-field service definition JSONs (every DataElement, field, key, label + payload template) | load one file per service |

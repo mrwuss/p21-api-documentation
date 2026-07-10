@@ -1,0 +1,28 @@
+{
+ "fetched_date": "2026-07-10",
+ "ok": [
+  "Assembly",
+  "BinLocation",
+  "Customer",
+  "InventoryAdjustment",
+  "Item",
+  "JobContractPricing",
+  "Labor",
+  "LaborProcess",
+  "Order",
+  "ProductionOrder",
+  "ProductionOrderPicking",
+  "ProductionOrderProcessing",
+  "PurchaseOrder",
+  "SalesPricePage",
+  "Shipping",
+  "Supplier",
+  "TimeEntry",
+  "m_picktickets",
+  "m_reprintpicktickets",
+  "m_reprintpurchaseorders",
+  "m_storedprocedureexecutor"
+ ],
+ "sanitized": true,
+ "skipped": {}
+}

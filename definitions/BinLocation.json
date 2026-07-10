@@ -1,0 +1,845 @@
+{
+ "Name": "BinLocation",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "BinLocation",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "company_id",
+        "location_id",
+        "bin_id"
+       ],
+       "Name": "FORM.form",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pick_locked_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "put_locked_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "full_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "max_weight",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "putaway_zone_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "putaway_zone_sequence",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pick_zone_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pick_zone_sequence",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warehouse_sequence",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_length",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_height",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_width",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "consolidation_bin_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "max_unique_items",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "stage_bin_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "door_bin_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "stage_bin_x_door_bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "current_volume",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "frozen_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_counted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "current_weight",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_newrow",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_max_volume",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "bin_id",
+        "company_id",
+        "location_id"
+       ],
+       "Name": "BIN_REPLENISHMENT.bin_bin_replenishment",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pick_zone_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "putaway_zone_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "BIN_REPLENISHMENT.bin_replenishment",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_of_measure",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "package_type_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pkg_unit_qty_per",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rep_source_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rep_method_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_zone_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "min_unit_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "max_unit_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rep_unit_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "bin",
+    "DatawindowName": "d_dw_bin_form",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.bin_id",
+      "Label": "Bin ID",
+      "Name": "bin_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin_type.bin_type",
+      "Label": "Bin Type",
+      "Name": "bin_type",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.pick_locked_flag",
+      "Label": "Pick Locked",
+      "Name": "pick_locked_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.put_locked_flag",
+      "Label": "Put Locked",
+      "Name": "put_locked_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.full_flag",
+      "Label": "Full",
+      "Name": "full_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.max_weight",
+      "Label": "Max. Weight",
+      "Name": "max_weight",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "putaway_zone.bin_zone_id",
+      "Label": "Putaway Zone",
+      "Name": "putaway_zone_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "bin.putaway_zone_sequence",
+      "Label": "Putaway Zone Sequence",
+      "Name": "putaway_zone_sequence",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "pick_zone.bin_zone_id",
+      "Label": "Pick Zone",
+      "Name": "pick_zone_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "bin.pick_zone_sequence",
+      "Label": "Pick Zone Sequence",
+      "Name": "pick_zone_sequence",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "bin.warehouse_sequence",
+      "Label": "Warehouse Sequence",
+      "Name": "warehouse_sequence",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.bin_length",
+      "Label": "Length",
+      "Name": "bin_length",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.bin_height",
+      "Label": "Height",
+      "Name": "bin_height",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.bin_width",
+      "Label": "Width",
+      "Name": "bin_width",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.consolidation_bin_flag",
+      "Label": "Consolidation Bin",
+      "Name": "consolidation_bin_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "bin.max_unique_items",
+      "Label": "Max Unique Items Allowed",
+      "Name": "max_unique_items",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.stage_bin_flag",
+      "Label": "Staging Bin",
+      "Name": "stage_bin_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.door_bin_flag",
+      "Label": "Door Bin",
+      "Name": "door_bin_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "stage_bin_x_door_bin_id",
+      "Label": "Staging Bin's Related Door Bin",
+      "Name": "stage_bin_x_door_bin_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.current_volume",
+      "Label": "Current Volume",
+      "Name": "current_volume",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.frozen_flag",
+      "Label": "Frozen for Counting",
+      "Name": "frozen_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "bin.date_last_counted",
+      "Label": "Date Last Counted",
+      "Name": "date_last_counted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.current_weight",
+      "Label": "Current Weight",
+      "Name": "current_weight",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "c_newrow",
+      "Label": "New Bin",
+      "Name": "c_newrow",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_max_volume",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "company_id",
+     "location_id",
+     "bin_id"
+    ],
+    "Name": "FORM.form",
+    "ParentText": "Bin Form View",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "bin",
+    "DatawindowName": "d_dw_bin_bin_replenishment",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.bin_id",
+      "Label": "Bin ID",
+      "Name": "bin_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin_type.bin_type",
+      "Label": "Bin Type",
+      "Name": "bin_type",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "bin.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "pick_zone.bin_zone_id",
+      "Label": "Pick Zone",
+      "Name": "pick_zone_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "putaway_zone.bin_zone_id",
+      "Label": "Putaway Zone",
+      "Name": "putaway_zone_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "bin_id",
+     "company_id",
+     "location_id"
+    ],
+    "Name": "BIN_REPLENISHMENT.bin_bin_replenishment",
+    "ParentText": "Replenishment Form View",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "bin_replenishment",
+    "DatawindowName": "d_dw_bin_replenishment",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_uom.unit_of_measure",
+      "Label": "Unit of Measure",
+      "Name": "unit_of_measure",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "package_type.package_type_id",
+      "Label": "Package Type",
+      "Name": "package_type_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "pkg_unit_qty_per",
+      "Label": "Qty Per",
+      "Name": "pkg_unit_qty_per",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "bin_replenishment.rep_source_cd",
+      "Label": "Replenishment Source",
+      "Name": "rep_source_cd",
+      "Required": false,
+      "ValidValues": [
+       "Inventory Operations",
+       "Production Order",
+       "Purchase Order",
+       "Secondary Processing",
+       "Transfer",
+       "Wireless Workbench"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "bin_replenishment.rep_method_cd",
+      "Label": "Replenishment Method",
+      "Name": "rep_method_cd",
+      "Required": false,
+      "ValidValues": [
+       "Min",
+       "Replenish Qty",
+       "Up To Max"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin_zone.bin_zone_id",
+      "Label": "Replenished From Zone",
+      "Name": "bin_zone_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "min_unit_qty",
+      "Label": "Minimum Qty",
+      "Name": "min_unit_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "max_unit_qty",
+      "Label": "Maximum Qty",
+      "Name": "max_unit_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "rep_unit_qty",
+      "Label": "Replenishment Qty",
+      "Name": "rep_unit_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "bin_replenishment.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "BIN_REPLENISHMENT.bin_replenishment",
+    "ParentText": "Replenishment Form View",
+    "Type": "Form"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "form",
+    "Name": "company_id"
+   },
+   {
+    "Location": "form",
+    "Name": "location_id"
+   },
+   {
+    "Location": "form",
+    "Name": "bin_id"
+   }
+  ]
+ }
+}

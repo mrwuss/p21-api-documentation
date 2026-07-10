@@ -1,0 +1,3022 @@
+{
+ "Name": "InventoryAdjustment",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "InventoryAdjustment",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "adjustment_number"
+       ],
+       "Name": "TABPAGE_1.tp_1_dw_1",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "adjustment_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "reason_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "period",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "year_for_period",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "inv_adj_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "approved",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_itempackage_labels",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "override_dec_prec_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "document_link_uid"
+       ],
+       "Name": "DOCUMENT_LINK.document_link",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_path",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mandatory_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "outside_use_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "document_link_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_area_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_keylist",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "display_area",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_firstind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowno",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp_dw_audittrail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "column_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "old_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_display_key",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_sub_line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_line_no_visible",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_item_id_visible",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_17.tp_17_dw_17",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "trans_revision_level",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_quantity",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_qoh",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_of_measure",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "add_to_cycle_count",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_mac",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_size",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "moving_average_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "units_on_hand",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "units_allocated",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "serial_number",
+        "item_id"
+       ],
+       "Name": "TABPAGE_SERIAL.serial",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "serial_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "action_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dimension_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "usable_area",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "slab_bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowcount",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_1",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "lot_cd",
+        "item_id"
+       ],
+       "Name": "TABPAGE_LOT.lot",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "trans_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_quantity",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_of_measure",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "transfer_whole_belt_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_qty_allocated",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "expiration_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dimension_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "split_belt_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "commingling_lot_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_user_defined_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_applied",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_orig_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "posted_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_qty_posted1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_required",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delta_unit_quantity",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_BIN.bin",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "trans_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_quantity",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_of_measure",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_user_defined_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_orig_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "posted_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_qty_posted1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_required",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delta_unit_quantity",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "lot_cd",
+        "item_id"
+       ],
+       "Name": "TABPAGE_LOT_BIN_XREF.lot/bin",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "trans_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_quantity",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_of_measure",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "expiration_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_qty_allocated",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "commingling_lot_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_user_defined_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "posted_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "receive_qty_left",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_applied",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_orig_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_qty_posted1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "note_id"
+       ],
+       "Name": "TABPAGE_ITEM_NOTES.itemnotes",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "topic",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "notepad_class_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "document_link_uid"
+       ],
+       "Name": "DOCUMENT_LINK_DETAIL.document_link_detail_detail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_path",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mandatory_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "outside_use_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "document_link_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_area_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_keylist",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "display_area",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_firstind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowno",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_TAGS.tp_tags_tdl_header",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "total_sku_qty_to_post",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_TAGS.tp_tags_dlt",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_move_tag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tdl_tag_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_shipping_action",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tdl_serial_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_tdl_unit_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tdl_pkg_uom",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tdl_lot_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tdl_bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tdl_pkg_type_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_tdl_unit_qty_per_pkg",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_spacer",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_unit_qty_available",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_unit_qty_allocated",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_unit_qty_available_tag_level",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_tag_avail_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_binlot_avail_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_abs_total_sku_qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_non_abs_total_sku_qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_total_sku_qty_posted",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_total_sku_qty_posted_adjustments",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMPDETAIL.timestampdetail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMPDETAIL.timestampdetail_dw_audittrail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "column_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "old_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_display_key",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_sub_line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_line_no_visible",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_item_id_visible",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "inv_adj_hdr",
+    "DatawindowName": "d_inv_adj_hdr",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_adj_hdr.adjustment_number",
+      "Label": "Adjustment Number",
+      "Name": "adjustment_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_adj_hdr.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_adj_hdr.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_adj_hdr.reason_id",
+      "Label": "Reason",
+      "Name": "reason_id",
+      "Required": true,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_adj_hdr.period",
+      "Label": "Period",
+      "Name": "period",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_adj_hdr.year_for_period",
+      "Label": "Year",
+      "Name": "year_for_period",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_adj_hdr.inv_adj_description",
+      "Label": "Description",
+      "Name": "inv_adj_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_adj_hdr.delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_adj_hdr.approved",
+      "Label": "Approved",
+      "Name": "approved",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "print_itempackage_labels",
+      "Label": "Print Labels",
+      "Name": "print_itempackage_labels",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_adj_hdr.override_dec_prec_flag",
+      "Label": "Show all decimal places for quantity",
+      "Name": "override_dec_prec_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": true,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "adjustment_number"
+    ],
+    "Name": "TABPAGE_1.tp_1_dw_1",
+    "ParentText": "Adjustments",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "document_link",
+    "DatawindowName": "d_dw_document_link_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_name",
+      "Label": "Link Name",
+      "Name": "link_name",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_path",
+      "Label": "Link Path",
+      "Name": "link_path",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Delete",
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.mandatory_flag",
+      "Label": "Mandatory",
+      "Name": "mandatory_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_print_flag",
+      "Label": "Print",
+      "Name": "user_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_fax_flag",
+      "Label": "Fax",
+      "Name": "user_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_email_flag",
+      "Label": "E-mail",
+      "Name": "user_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.outside_use_flag",
+      "Label": "Outside Use",
+      "Name": "outside_use_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_print_flag",
+      "Label": "OU-Print",
+      "Name": "send_outside_use_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.document_link_uid",
+      "Label": null,
+      "Name": "document_link_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_email_flag",
+      "Label": "OU-Email",
+      "Name": "send_outside_use_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_fax_flag",
+      "Label": "OU-Fax",
+      "Name": "send_outside_use_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.source_area_cd",
+      "Label": "Source Area",
+      "Name": "source_area_cd",
+      "Required": true,
+      "ValidValues": [
+       "AP Credit/Debit Memo",
+       "AR Credit/Debit Memo",
+       "Cash Collections",
+       "Cash Receipts",
+       "Contact Maintenance",
+       "Container Receipts Entry",
+       "Convert IR to Voucher",
+       "Convert PO to Voucher",
+       "Customer Maintenance",
+       "Customer Part Number Maintenance",
+       "Direct Ship Confirmation",
+       "Inventory Adjustments",
+       "Inventory Return Shipping",
+       "Inventory Returns",
+       "Invoice Entry",
+       "Item Maintenance",
+       "Job Control Maintenance",
+       "Job Pricing Maintenance",
+       "Journal Entries",
+       "Loan Maintenance",
+       "Lot",
+       "Opportunity Maintenance",
+       "Order Entry/RMA",
+       "Physical Count",
+       "PO Requirements/Generation",
+       "Process Transactions",
+       "Production Order Entry/Processing",
+       "Purchase Order Receipts",
+       "Purchase Orders",
+       "Service Item Maintenance",
+       "Service Order Entry",
+       "Ship To Maintenance",
+       "Supplier Maintenance",
+       "Task Maintenance",
+       "Transfers",
+       "Vendor Maintenance",
+       "Vessel Receipts Entry",
+       "Voucher Entry"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_keylist",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "display_area",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_firstind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowno",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "document_link_uid"
+    ],
+    "Name": "DOCUMENT_LINK.document_link",
+    "ParentText": "Document Links",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_external_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp",
+    "ParentText": "Timestamp",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "p21_view_audit_trail",
+    "DatawindowName": "d_dw_audit_trail_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "line_no",
+      "Label": "Line No",
+      "Name": "line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "column_description",
+      "Label": "Column Changed",
+      "Name": "column_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "old_value",
+      "Label": "Old Value",
+      "Name": "old_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "new_value",
+      "Label": "New Value",
+      "Name": "new_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "created_by",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_display_key",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_sub_line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_line_no_visible",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_item_id_visible",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp_dw_audittrail",
+    "ParentText": "Timestamp",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "inv_adj_line",
+    "DatawindowName": "d_inv_adj_line",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_revision.revision_level",
+      "Label": "Rev",
+      "Name": "trans_revision_level",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_adj_line.unit_quantity",
+      "Label": "Adjustment Amount",
+      "Name": "unit_quantity",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "new_qoh",
+      "Label": "New Qty on Hand",
+      "Name": "new_qoh",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_adj_line.unit_of_measure",
+      "Label": "Unit of Measure",
+      "Name": "unit_of_measure",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "compute_0027",
+      "Label": "Unit Cost",
+      "Name": "cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "add_to_cycle_count",
+      "Label": "Add to Cycle Count",
+      "Name": "add_to_cycle_count",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_mast_x_company.moving_average_cost",
+      "Label": "Moving Avg Cost",
+      "Name": "company_mac",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_desc",
+      "Label": "Item Description",
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "item_uom.unit_size",
+      "Label": "Unit Size",
+      "Name": "unit_size",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_loc.moving_average_cost",
+      "Label": "Moving Avg Cost",
+      "Name": "moving_average_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "units_on_hand",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "units_allocated",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_17.tp_17_dw_17",
+    "ParentText": "Items",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "document_line_serial",
+    "DatawindowName": "d_dw_document_line_serial",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_serial.serial_number",
+      "Label": "Serial Number",
+      "Name": "serial_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "action_number",
+      "Label": "Action",
+      "Name": "action_number",
+      "Required": false,
+      "ValidValues": [
+       "None",
+       "Adjust"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "dimensions.dimension_id",
+      "Label": "Dimension ID",
+      "Name": "dimension_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "lot_cd",
+      "Label": "Lot",
+      "Name": "lot_cd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "usable_area",
+      "Label": "Usable Area",
+      "Name": "usable_area",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "slab_bin_id",
+      "Label": "Slab Bin ID",
+      "Name": "slab_bin_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_line_serial.row_status",
+      "Label": "Status",
+      "Name": "row_status",
+      "Required": false,
+      "ValidValues": [
+       "Deleted",
+       "Shipped",
+       "Allocated",
+       "Reserved",
+       "Picked",
+       "Received",
+       "In Transfer",
+       "Entered",
+       "Adjusted",
+       "Assembled",
+       "To Stock",
+       "To Supplier"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_desc",
+      "Label": null,
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowcount",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "compute_1",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "serial_number",
+     "item_id"
+    ],
+    "Name": "TABPAGE_SERIAL.serial",
+    "ParentText": "Serial",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "document_line_lot",
+    "DatawindowName": "d_dw_document_line_lot",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "trans_type",
+      "Label": "Transaction",
+      "Name": "trans_type",
+      "Required": false,
+      "ValidValues": [
+       "Adjustment"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_lot.lot_cd",
+      "Label": "Lot",
+      "Name": "lot_cd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "document_line_lot.unit_quantity",
+      "Label": "Unit Quantity",
+      "Name": "unit_quantity",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_lot.unit_of_measure",
+      "Label": "UOM",
+      "Name": "unit_of_measure",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "transfer_whole_belt_flag",
+      "Label": "Transfer Whole Belt",
+      "Name": "transfer_whole_belt_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "unit_qty_allocated",
+      "Label": null,
+      "Name": "unit_qty_allocated",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "expiration_date",
+      "Label": "Expiration Date",
+      "Name": "expiration_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "dimension_id",
+      "Label": "Dimension ID",
+      "Name": "dimension_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_desc",
+      "Label": null,
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "split_belt_flag",
+      "Label": "Split Belt",
+      "Name": "split_belt_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "commingling_lot_no",
+      "Label": "Comingling Lot No.",
+      "Name": "commingling_lot_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "compute_user_defined_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "unit_applied",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "unit_orig_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "posted_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_qty_posted1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "qty_required",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "delta_unit_quantity",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "lot_cd",
+     "item_id"
+    ],
+    "Name": "TABPAGE_LOT.lot",
+    "ParentText": "Lot",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "document_line_bin",
+    "DatawindowName": "d_dw_document_line_bin",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "trans_type",
+      "Label": "Transaction",
+      "Name": "trans_type",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_bin.bin_cd",
+      "Label": "Bin",
+      "Name": "bin_cd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "document_line_bin.unit_quantity",
+      "Label": "Unit Quantity",
+      "Name": "unit_quantity",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_bin.unit_of_measure",
+      "Label": "UOM",
+      "Name": "unit_of_measure",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_desc",
+      "Label": null,
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "compute_user_defined_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "unit_orig_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "posted_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_qty_posted1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "qty_required",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "delta_unit_quantity",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_BIN.bin",
+    "ParentText": "Bin",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "document_line_lot_bin_xref",
+    "DatawindowName": "d_dw_document_line_lot_bin_xref",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "trans_type",
+      "Label": "Transaction",
+      "Name": "trans_type",
+      "Required": false,
+      "ValidValues": [
+       "Adjustment"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_lot_bin_xref.lot_cd",
+      "Label": "Lot",
+      "Name": "lot_cd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_lot_bin_xref.bin_cd",
+      "Label": "Bin",
+      "Name": "bin_cd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "document_line_lot_bin_xref.unit_quantity",
+      "Label": "Unit Quantity",
+      "Name": "unit_quantity",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_line_lot_bin_xref.unit_of_measure",
+      "Label": "UOM",
+      "Name": "unit_of_measure",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "expiration_date",
+      "Label": "Expiration Date",
+      "Name": "expiration_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "unit_qty_allocated",
+      "Label": null,
+      "Name": "unit_qty_allocated",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "commingling_lot_no",
+      "Label": "Comingling Lot No.",
+      "Name": "commingling_lot_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_desc",
+      "Label": null,
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "compute_user_defined_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "posted_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "receive_qty_left",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "unit_applied",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "unit_orig_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_qty_posted1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "total_qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "lot_cd",
+     "item_id"
+    ],
+    "Name": "TABPAGE_LOT_BIN_XREF.lot/bin",
+    "ParentText": "Lot/Bin",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "note_area",
+    "DatawindowName": "d_display_item_notes",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "note.note",
+      "Label": "Note",
+      "Name": "note",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "note.note_uid",
+      "Label": "Note ID",
+      "Name": "note_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "note.topic",
+      "Label": "Topic",
+      "Name": "topic",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "notepad_class.notepad_class_desc",
+      "Label": "Class",
+      "Name": "notepad_class_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "note_id"
+    ],
+    "Name": "TABPAGE_ITEM_NOTES.itemnotes",
+    "ParentText": "Item Notes",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "document_link",
+    "DatawindowName": "d_dw_document_link_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_name",
+      "Label": "Link Name",
+      "Name": "link_name",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_path",
+      "Label": "Link Path",
+      "Name": "link_path",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Delete",
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.mandatory_flag",
+      "Label": "Mandatory",
+      "Name": "mandatory_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_print_flag",
+      "Label": "Print",
+      "Name": "user_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_fax_flag",
+      "Label": "Fax",
+      "Name": "user_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_email_flag",
+      "Label": "E-mail",
+      "Name": "user_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.outside_use_flag",
+      "Label": "Outside Use",
+      "Name": "outside_use_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_print_flag",
+      "Label": "OU-Print",
+      "Name": "send_outside_use_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.document_link_uid",
+      "Label": null,
+      "Name": "document_link_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_email_flag",
+      "Label": "OU-Email",
+      "Name": "send_outside_use_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_fax_flag",
+      "Label": "OU-Fax",
+      "Name": "send_outside_use_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.source_area_cd",
+      "Label": "Source Area",
+      "Name": "source_area_cd",
+      "Required": true,
+      "ValidValues": [
+       "AP Credit/Debit Memo",
+       "AR Credit/Debit Memo",
+       "Cash Collections",
+       "Cash Receipts",
+       "Contact Maintenance",
+       "Container Receipts Entry",
+       "Convert IR to Voucher",
+       "Convert PO to Voucher",
+       "Customer Maintenance",
+       "Customer Part Number Maintenance",
+       "Direct Ship Confirmation",
+       "Inventory Adjustments",
+       "Inventory Return Shipping",
+       "Inventory Returns",
+       "Invoice Entry",
+       "Item Maintenance",
+       "Job Control Maintenance",
+       "Job Pricing Maintenance",
+       "Journal Entries",
+       "Loan Maintenance",
+       "Lot",
+       "Opportunity Maintenance",
+       "Order Entry/RMA",
+       "Physical Count",
+       "PO Requirements/Generation",
+       "Process Transactions",
+       "Production Order Entry/Processing",
+       "Purchase Order Receipts",
+       "Purchase Orders",
+       "Service Item Maintenance",
+       "Service Order Entry",
+       "Ship To Maintenance",
+       "Supplier Maintenance",
+       "Task Maintenance",
+       "Transfers",
+       "Vendor Maintenance",
+       "Vessel Receipts Entry",
+       "Voucher Entry"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_keylist",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "display_area",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_firstind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowno",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "document_link_uid"
+    ],
+    "Name": "DOCUMENT_LINK_DETAIL.document_link_detail_detail",
+    "ParentText": "Document Links",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_document_line_header",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "",
+      "Label": "Total SKU Quantity To Post",
+      "Name": "total_sku_qty_to_post",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_TAGS.tp_tags_tdl_header",
+    "ParentText": "Tags",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "tag_document_line",
+    "DatawindowName": "d_dw_tag_document_line",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "c_move_tag",
+      "Label": "Move",
+      "Name": "c_move_tag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tag_document_line.tdl_tag_no",
+      "Label": "Tag No",
+      "Name": "tdl_tag_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "c_shipping_action",
+      "Label": "Action",
+      "Name": "c_shipping_action",
+      "Required": false,
+      "ValidValues": [
+       "Ship",
+       "Adjust"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tag_document_line.tdl_serial_no",
+      "Label": "Serial",
+      "Name": "tdl_serial_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "c_tdl_unit_qty",
+      "Label": "Unit Quantity",
+      "Name": "c_tdl_unit_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tag_document_line.tdl_pkg_uom",
+      "Label": "UOM",
+      "Name": "tdl_pkg_uom",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tag_document_line.tdl_lot_cd",
+      "Label": "Lot",
+      "Name": "tdl_lot_cd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tag_document_line.tdl_bin_id",
+      "Label": "Bin",
+      "Name": "tdl_bin_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tag_document_line.tdl_pkg_type_id",
+      "Label": "Package Type",
+      "Name": "tdl_pkg_type_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "c_tdl_unit_qty_per_pkg",
+      "Label": "Qty Per Pack",
+      "Name": "c_tdl_unit_qty_per_pkg",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_spacer",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_unit_qty_available",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_unit_qty_allocated",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_unit_qty_available_tag_level",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_tag_avail_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_binlot_avail_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_abs_total_sku_qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_non_abs_total_sku_qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_total_sku_qty_posted",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_total_sku_qty_posted_adjustments",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_TAGS.tp_tags_dlt",
+    "ParentText": "Tags",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_external_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMPDETAIL.timestampdetail",
+    "ParentText": "Timestamp",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "p21_view_audit_trail",
+    "DatawindowName": "d_dw_audit_trail_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "line_no",
+      "Label": "Line No",
+      "Name": "line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "column_description",
+      "Label": "Column Changed",
+      "Name": "column_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "old_value",
+      "Label": "Old Value",
+      "Name": "old_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "new_value",
+      "Label": "New Value",
+      "Name": "new_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "created_by",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_display_key",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_sub_line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_line_no_visible",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_item_id_visible",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMPDETAIL.timestampdetail_dw_audittrail",
+    "ParentText": "Timestamp",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "tp_1_dw_1",
+    "Name": "adjustment_number"
+   }
+  ]
+ }
+}

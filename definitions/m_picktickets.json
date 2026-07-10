@@ -1,0 +1,951 @@
+{
+ "Name": "m_picktickets",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "m_picktickets",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_1.tp_1_dw_1",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "customer_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "customer_id2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ship_to_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ship_to_id2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "order_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "order_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_prod_order",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_prod_order",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_beg_account",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_end_account",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bucket_1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bucket_2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "carrier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_pick_and_hold",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_date2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_date2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "include_scheduled_releases",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_required_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_required_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_order_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_order_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_routed_eta_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_routed_eta_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_pick_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_pick_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_po_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_po_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_carrier_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_carrier_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_dea_pick_tickets",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "create_pick_ticket_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "include_service_orders",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "detail_or_summary",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "route_or_zip",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "will_call",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "non_interrupted_mode",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "period_m",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "period_s",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pull_to_pick_list",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "create_group_pick_ticket",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "no_license_mode_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "printer_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "include_roadnet_routed_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "process_doclinks",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_TAG_AND_HOLD.tp_tag_and_hold",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "include_tag_and_hold_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "suppress_tag_and_hold_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "release_partial_tag_and_hold_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_tag_hold_class",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_tag_hold_class",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "blank_tag_hold_class_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_dc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_dc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_dlm",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_dlm",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_beg_lmb",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_end_lmb",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_pick_ticket_sheetreport",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Customer ID",
+      "Name": "customer_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "customer_id2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Ship To ID",
+      "Name": "ship_to_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "ship_to_id2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Order Numbers",
+      "Name": "order_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "order_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Production Order Number",
+      "Name": "beg_prod_order",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_prod_order",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Current Location ID",
+      "Name": "location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Shipping Routes",
+      "Name": "str_beg_account",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "str_end_account",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Zip Code",
+      "Name": "bucket_1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "bucket_2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "",
+      "Label": "Carrier ID",
+      "Name": "carrier_id",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Print Pick and Hold",
+      "Name": "print_pick_and_hold",
+      "Required": false,
+      "ValidValues": [
+       "Yes",
+       "No"
+      ]
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Sales Order Required Date",
+      "Name": "dt_beg_date2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_date2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Include Scheduled Releases",
+      "Name": "include_scheduled_releases",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Production Order Required Date",
+      "Name": "beg_required_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_required_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Order Date",
+      "Name": "beg_order_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_order_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Routed ETA Date",
+      "Name": "beg_routed_eta_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_routed_eta_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Pick Date",
+      "Name": "beg_pick_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_pick_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Customer PO Number",
+      "Name": "beg_po_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_po_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Carrier",
+      "Name": "beg_carrier_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_carrier_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Print DEA Pick Tickets",
+      "Name": "print_dea_pick_tickets",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Pick Ticket Type",
+      "Name": "create_pick_ticket_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Include Service Orders",
+      "Name": "include_service_orders",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Line Sort Sequence",
+      "Name": "detail_or_summary",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Ticket Sort Sequence",
+      "Name": "route_or_zip",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Release Partials",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Include Will Calls",
+      "Name": "will_call",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Non-Interrupted Mode",
+      "Name": "non_interrupted_mode",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Period",
+      "Name": "period_m",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "min.",
+      "Name": "period_s",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Pull to Pick List",
+      "Name": "pull_to_pick_list",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Create Group PT",
+      "Name": "create_group_pick_ticket",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Non-Interrupted No License Mode",
+      "Name": "no_license_mode_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "",
+      "Label": "Print Quantity",
+      "Name": "print_qty",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Printer",
+      "Name": "printer_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Include UPS Roadnet Routed Shipments",
+      "Name": "include_roadnet_routed_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Transmit Document Links",
+      "Name": "process_doclinks",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_1.tp_1_dw_1",
+    "ParentText": "Criteria",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_tag_and_hold",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Include Tag and Hold",
+      "Name": "include_tag_and_hold_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Suppress Tag and Hold Printing",
+      "Name": "suppress_tag_and_hold_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Release Partial Tag and Holds",
+      "Name": "release_partial_tag_and_hold_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Tag Hold Class ID",
+      "Name": "beg_tag_hold_class",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_tag_hold_class",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Allow Blank Tag and Hold Class",
+      "Name": "blank_tag_hold_class_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_TAG_AND_HOLD.tp_tag_and_hold",
+    "ParentText": "Tag and Hold Options",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_master_report_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "dt_beg_dc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_dc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "dt_beg_dlm",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_dlm",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "str_beg_lmb",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "str_end_lmb",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp",
+    "ParentText": "Timestamp Criteria",
+    "Type": "Form"
+   }
+  ],
+  "KeyDefinitions": []
+ }
+}

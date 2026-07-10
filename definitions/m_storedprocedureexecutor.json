@@ -1,0 +1,278 @@
+{
+ "Name": "m_storedprocedureexecutor",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "m_storedprocedureexecutor",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "stored_procedure_def_uid"
+       ],
+       "Name": "DEFINITION.stored_procedure_def",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "stored_procedure_def_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "stored_procedure_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "stored_procedure_default_timeout",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "stored_procedure",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "DEFINITION.procedure_list",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "routine_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "spe_procedure_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "spe_procedure_example",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "DEFINITION.argument_list",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "parametervalue",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "spe_parameter_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "parametername",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "spe_parameter_example",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_parametertype",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "stored_procedure_def",
+    "DatawindowName": "d_dw_stored_procedure_def",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "stored_procedure_def.stored_procedure_def_uid",
+      "Label": "Executor Definition ID",
+      "Name": "stored_procedure_def_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "stored_procedure_def.stored_procedure_description",
+      "Label": "Description",
+      "Name": "stored_procedure_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "stored_procedure_def.stored_procedure_default_timeout",
+      "Label": "Timeout (min.)",
+      "Name": "stored_procedure_default_timeout",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "stored_procedure_def.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Active",
+       "Delete"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "stored_procedure_def.stored_procedure",
+      "Label": "",
+      "Name": "stored_procedure",
+      "Required": true,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "stored_procedure_def_uid"
+    ],
+    "Name": "DEFINITION.stored_procedure_def",
+    "ParentText": "Stored Procedure Definition",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "spe_procedure_info",
+    "DatawindowName": "d_dw_stored_procedure",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "routine_name",
+      "Label": "Stored Procedure",
+      "Name": "routine_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "spe_procedure_info.spe_procedure_description",
+      "Label": "Description",
+      "Name": "spe_procedure_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "spe_procedure_info.spe_procedure_example",
+      "Label": "Example",
+      "Name": "spe_procedure_example",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "DEFINITION.procedure_list",
+    "ParentText": "Stored Procedure Definition",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "spe_parameter_info",
+    "DatawindowName": "d_dw_stored_procedure_arg",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "parametervalue",
+      "Label": "Value",
+      "Name": "parametervalue",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "spe_parameter_info.spe_parameter_description",
+      "Label": "Description",
+      "Name": "spe_parameter_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "parameters.ParameterName",
+      "Label": "Argument",
+      "Name": "parametername",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "spe_parameter_info.spe_parameter_example",
+      "Label": "Example",
+      "Name": "spe_parameter_example",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "c_parametertype",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "DEFINITION.argument_list",
+    "ParentText": "Stored Procedure Definition",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "stored_procedure_def",
+    "Name": "stored_procedure_def_uid"
+   }
+  ]
+ }
+}

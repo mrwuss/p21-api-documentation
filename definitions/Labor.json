@@ -1,0 +1,1128 @@
+{
+ "Name": "Labor",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "Labor",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "service_labor_id"
+       ],
+       "Name": "FORM.labor",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_labor_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_labor_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_labor_ext_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "estimate_rate_level",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "skill_level",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "estimated_hours",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "min_hours_charged",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "labor_type_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_RATES.base_rate",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rate_sequence",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rate_amount",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_RATES.hourly_rate",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rate_amount",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_RATES.ot_rate",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rate_amount",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_RATES.prem_rate",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rate_amount",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_CLASSES.tp_classes",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_commission_class_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id3",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id4",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id5",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_class",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "note_uid"
+       ],
+       "Name": "TP_LABORNOTES.tp_labornotes",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "note_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "topic",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "notepad_class_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "COSTS.costs",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "estimated_labor_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "hourly_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "overtime_hourly_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "premium_hourly_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "burdened_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "burdened_cost_type_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "commission_cost",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "location_id"
+       ],
+       "Name": "COSTS.costs_by_location",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "estimated_labor_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "hourly_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "overtime_hourly_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "premium_hourly_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "burdened_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "burdened_cost_type_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "commission_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rowind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMPSERVICE_LABOR.timestampservice_labor",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMPSERVICE_LABOR.audit_trail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "column_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "old_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_display_key",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_sub_line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_line_no_visible",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_item_id_visible",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "service_labor",
+    "DatawindowName": "d_dw_service_labor_form",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.service_labor_id",
+      "Label": "Labor ID",
+      "Name": "service_labor_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.service_labor_desc",
+      "Label": "",
+      "Name": "service_labor_desc",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.service_labor_ext_desc",
+      "Label": "Extended Desc",
+      "Name": "service_labor_ext_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor.estimate_rate_level",
+      "Label": "Estimate Rate Level",
+      "Name": "estimate_rate_level",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor.skill_level",
+      "Label": "Skill Level",
+      "Name": "skill_level",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.estimated_hours",
+      "Label": "Estimated Hours",
+      "Name": "estimated_hours",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.min_hours_charged",
+      "Label": "Minimum Hours Charged",
+      "Name": "min_hours_charged",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor.labor_type_cd",
+      "Label": "Labor Expense Category",
+      "Name": "labor_type_cd",
+      "Required": false,
+      "ValidValues": [
+       "Direct",
+       "Indirect"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "service_labor_id"
+    ],
+    "Name": "FORM.labor",
+    "ParentText": "Labor",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "service_labor_rate",
+    "DatawindowName": "d_dw_service_labor_base_rate",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor_rate.rate_sequence",
+      "Label": "Rate No",
+      "Name": "rate_sequence",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_rate.rate_amount",
+      "Label": "Base Rate Amount",
+      "Name": "rate_amount",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_RATES.base_rate",
+    "ParentText": "Rates",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "service_labor_rate",
+    "DatawindowName": "d_dw_service_labor_hourly_rate",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_rate.rate_amount",
+      "Label": "Hourly Rate Amount",
+      "Name": "rate_amount",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_RATES.hourly_rate",
+    "ParentText": "Rates",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "service_labor_rate",
+    "DatawindowName": "d_dw_service_labor_ot_rate",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_rate.rate_amount",
+      "Label": "Overtime Rate Amount",
+      "Name": "rate_amount",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_RATES.ot_rate",
+    "ParentText": "Rates",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "service_labor_rate",
+    "DatawindowName": "d_dw_service_labor_prem_rate",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_rate.rate_amount",
+      "Label": "Premium Rate Amount",
+      "Name": "rate_amount",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_RATES.prem_rate",
+    "ParentText": "Rates",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "service_labor",
+    "DatawindowName": "d_dw_service_labor_classes",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.service_commission_class_id",
+      "Label": "Service Commission Class",
+      "Name": "service_commission_class_id",
+      "Required": false,
+      "ValidValues": [
+       " "
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.class_id1",
+      "Label": "Class 1",
+      "Name": "class_id1",
+      "Required": false,
+      "ValidValues": [
+       " "
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.class_id2",
+      "Label": "Class 2",
+      "Name": "class_id2",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.class_id3",
+      "Label": "Class 3",
+      "Name": "class_id3",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.class_id4",
+      "Label": "Class 4",
+      "Name": "class_id4",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.class_id5",
+      "Label": "Class 5",
+      "Name": "class_id5",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.tax_class",
+      "Label": "Tax Class",
+      "Name": "tax_class",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_CLASSES.tp_classes",
+    "ParentText": "Classes",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "note",
+    "DatawindowName": "d_dw_note_entry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "note.note",
+      "Label": "Note",
+      "Name": "note",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "note.note_uid",
+      "Label": "Note ID",
+      "Name": "note_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "note.topic",
+      "Label": "Topic",
+      "Name": "topic",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "notepad_class.notepad_class_desc",
+      "Label": "Class",
+      "Name": "notepad_class_desc",
+      "Required": true,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "note_uid"
+    ],
+    "Name": "TP_LABORNOTES.tp_labornotes",
+    "ParentText": "Labor Notes",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "service_labor",
+    "DatawindowName": "d_dw_service_labor_costs",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.estimated_labor_cost",
+      "Label": "Estimated Labor Cost",
+      "Name": "estimated_labor_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.hourly_cost",
+      "Label": "Hourly Cost",
+      "Name": "hourly_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.overtime_hourly_cost",
+      "Label": "OT Cost",
+      "Name": "overtime_hourly_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.premium_hourly_cost",
+      "Label": "Premium Cost",
+      "Name": "premium_hourly_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.burdened_cost",
+      "Label": "Burdened Cost",
+      "Name": "burdened_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor.burdened_cost_type_id",
+      "Label": "",
+      "Name": "burdened_cost_type_id",
+      "Required": false,
+      "ValidValues": [
+       "Amount",
+       "Percentage"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor.commission_cost",
+      "Label": "Commission Cost",
+      "Name": "commission_cost",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "COSTS.costs",
+    "ParentText": "Costs",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "service_labor_location",
+    "DatawindowName": "d_dw_service_labor_location_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_location.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_location.estimated_labor_cost",
+      "Label": "Estimated Labor Cost",
+      "Name": "estimated_labor_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_location.hourly_cost",
+      "Label": "Hourly Cost",
+      "Name": "hourly_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_location.overtime_hourly_cost",
+      "Label": "OT Cost",
+      "Name": "overtime_hourly_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_location.premium_hourly_cost",
+      "Label": "Premium Cost",
+      "Name": "premium_hourly_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_location.burdened_cost",
+      "Label": "Burdened Cost",
+      "Name": "burdened_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor_location.burdened_cost_type_id",
+      "Label": "Burdened Cost Type",
+      "Name": "burdened_cost_type_id",
+      "Required": false,
+      "ValidValues": [
+       "Amount",
+       "Percentage"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_location.commission_cost",
+      "Label": "Commission Cost",
+      "Name": "commission_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor_location.row_status_flag",
+      "Label": "Row Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Active",
+       "Delete"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "Location Name",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "rowind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "location_id"
+    ],
+    "Name": "COSTS.costs_by_location",
+    "ParentText": "Costs",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_external_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMPSERVICE_LABOR.timestampservice_labor",
+    "ParentText": "Audit Trail",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "p21_view_audit_trail_service_labor_rate_1763",
+    "DatawindowName": "d_dw_audit_trail_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "column_description",
+      "Label": "Column Changed",
+      "Name": "column_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "old_value",
+      "Label": "Old Value",
+      "Name": "old_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "new_value",
+      "Label": "New Value",
+      "Name": "new_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "created_by",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_display_key",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_sub_line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_line_no_visible",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_item_id_visible",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMPSERVICE_LABOR.audit_trail",
+    "ParentText": "Audit Trail",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "labor",
+    "Name": "service_labor_id"
+   }
+  ]
+ }
+}
