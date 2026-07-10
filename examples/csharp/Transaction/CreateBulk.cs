@@ -1,7 +1,7 @@
 // Transaction API - Bulk Create Records
 //
 // Demonstrates creating multiple records in a single request.
-// Mirrors: scripts/transaction/04_create_bulk.py
+// Mirrors: examples/python/transaction/04_create_bulk.py
 //
 // The Transaction API can process multiple transactions at once, which is
 // more efficient than making individual requests. All transactions in a

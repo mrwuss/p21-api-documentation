@@ -1,7 +1,7 @@
 // Entity API - Create Entity
 //
 // Demonstrates creating a new entity record.
-// Mirrors: scripts/entity/03_create_entity.py
+// Mirrors: examples/python/entity/03_create_entity.py
 //
 // This example shows both approaches:
 //   1. Raw HttpClient - full control, educational

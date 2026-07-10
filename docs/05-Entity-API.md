@@ -1220,4 +1220,4 @@ Writes and the approve action are **untested** — treat this family as read-ver
 - [Transaction API](03-Transaction-API.md) - For bulk data operations
 - [Interactive API](04-Interactive-API.md) - For stateful CRUD with business logic
 - [Inventory REST API](11-Inventory-REST-API.md) - Inventory CRUD at `/api/inventory/parts`
-- [scripts/entity/](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/entity/) - Test scripts
+- [examples/python/entity/](https://github.com/mrwuss/p21-api-documentation/tree/master/examples/python/entity/) - Test scripts

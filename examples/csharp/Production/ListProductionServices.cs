@@ -2,7 +2,7 @@
 //
 // Discovers production and labor-related services available through the
 // Transaction API. Filters the full service list for relevant keywords.
-// Mirrors: scripts/transaction/01_list_services.py (filtered for production)
+// Mirrors: examples/python/transaction/01_list_services.py (filtered for production)
 //
 // The Transaction API uses a UI Server URL (different from the base URL).
 // Services are discovered via GET /api/v2/services.

@@ -19,7 +19,7 @@ namespace P21Examples.Interactive;
 /// - Tab switching
 /// - Saving with validation checking
 ///
-/// Mirrors: scripts/interactive/06_complex_workflow.py
+/// Mirrors: examples/python/interactive/06_complex_workflow.py
 /// </summary>
 public static class ComplexWorkflow
 {

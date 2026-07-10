@@ -1,7 +1,7 @@
 // Transaction API - Update Existing Records
 //
 // Demonstrates updating existing records using the Transaction API.
-// Mirrors: scripts/transaction/05_update_existing.py
+// Mirrors: examples/python/transaction/05_update_existing.py
 //
 // To update a record:
 //   1. Fetch it via POST /api/v2/transaction/get (with key fields)

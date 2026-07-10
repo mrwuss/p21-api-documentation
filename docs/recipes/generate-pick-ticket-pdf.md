@@ -199,7 +199,7 @@ foreach (var doc in documents.OfType<JObject>())
 ```
 <!-- /tabs -->
 
-> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/generate_pick_ticket_pdf.py`](../../scripts/recipes/generate_pick_ticket_pdf.py) · [`examples/csharp/Recipes/GeneratePickTicketPdf.cs`](../../examples/csharp/Recipes/GeneratePickTicketPdf.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/generate_pick_ticket_pdf.py`](../../examples/python/recipes/generate_pick_ticket_pdf.py) · [`examples/csharp/Recipes/GeneratePickTicketPdf.cs`](../../examples/csharp/Recipes/GeneratePickTicketPdf.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 
 ## Gotchas
 

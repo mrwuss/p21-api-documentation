@@ -60,21 +60,19 @@ p21-api-documentation/
 ├── definitions/                 # Sanitized full-field service definition JSONs (schema library)
 │
 ├── examples/
-│   └── csharp/                  # C# console app examples
-│       ├── Common/              # Shared library (auth, config, client)
-│       ├── OData/               # OData API examples
-│       ├── Transaction/         # Transaction API examples
-│       ├── Interactive/         # Interactive API examples
-│       ├── Entity/              # Entity API examples
-│       └── Production/          # Production & Labor examples
+│   ├── python/                  # Python examples
+│   │   ├── common/              # Shared auth/config (used by every script)
+│   │   ├── odata/ transaction/ interactive/ entity/ production/
+│   │   └── recipes/             # End-to-end recipe scripts (dry-run by default)
+│   ├── csharp/                  # C# console app examples (P21Examples.sln)
+│   │   ├── Common/              # Shared library (auth, config, client)
+│   │   ├── OData/ Transaction/ Interactive/ Entity/ Production/
+│   │   └── Recipes/             # End-to-end recipe classes (EXECUTE-gated)
+│   └── payloads/                # Standalone request payloads, validator-verified
+│       ├── json/                # One .json per documented task
+│       └── xml/                 # DataContract-correct XML counterparts
 │
-└── scripts/
-    ├── common/                  # Shared auth/config (Python)
-    ├── odata/                   # OData examples (Python)
-    ├── transaction/             # Transaction API examples (Python)
-    ├── interactive/             # Interactive API examples (Python)
-    ├── entity/                  # Entity API examples (Python)
-    ├── production/              # Production & Labor examples (Python)
+└── scripts/                     # Repo tooling (NOT API examples)
     ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
     ├── validate_payload.py      # Offline payload validator (JSON/XML shape + schema checks)
     └── generate_html.py         # MD to HTML converter (supports tabbed code blocks)
@@ -93,7 +91,7 @@ cp .env.example .env
 pip install -r requirements.txt
 
 # Run any example
-python scripts/odata/01_basic_query.py
+python examples/python/odata/01_basic_query.py
 ```
 
 ---

@@ -1,7 +1,7 @@
 // Entity API - Update Entity
 //
 // Demonstrates updating an existing entity record.
-// Mirrors: scripts/entity/04_update_entity.py
+// Mirrors: examples/python/entity/04_update_entity.py
 //
 // This example shows both approaches:
 //   1. Raw HttpClient - full control, educational

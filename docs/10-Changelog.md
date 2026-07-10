@@ -36,7 +36,7 @@ First tagged release. This wave cross-checked the docs against a community proce
 - **feat:** Task Index routing layer — `docs/INDEX.md` maps ~80 tasks to exact section anchors so readers (and AI agents) load only what a task needs; navigation convention documented — Fixes #72 — *@mrwuss*
 - **feat:** Service-definition schema library — `definitions/` holds sanitized full-field definition JSON (every DataElement, field, key, type, label + payload template) for all 21 documented services; `scripts/fetch_definitions.py` refreshes and **sanitizes** (drops environment-specific `ufc_*` fields, redacts lookup-backed `ValidValues` that carry live instance data, scrub-term gate) — Fixes #74 — *@mrwuss*
 - **feat:** Recipes cookbook — `docs/recipes/` with 10 self-contained task pages (complete payload, full runnable Python + C# example, verified gotchas, verify read-back) plus a conventions README; INDEX routes tasks to recipes first — Fixes #76 — *@mrwuss*
-- **feat:** End-to-end example files — `scripts/recipes/` (dry-run by default, `--execute` gates writes) and the `examples/csharp/Recipes/` solution project (menu runner, `EXECUTE`-gated writes); every recipe page links its files — Fixes #79 — *@mrwuss*
+- **feat:** End-to-end example files — `examples/python/recipes/` (dry-run by default, `--execute` gates writes) and the `examples/csharp/Recipes/` solution project (menu runner, `EXECUTE`-gated writes); every recipe page links its files — Fixes #79 — *@mrwuss*
 - **feat(site):** Recipes published on the HTML site — subfolder conversion with depth-aware sidebars, a Recipes nav section and landing-page grid, and repo-file links (`definitions/`, example files) rewritten to GitHub; landing page gains the Task Index card and the previously missing Production & Labor and UDT cards — Fixes #77 — *@mrwuss*
 - **feat:** Offline payload validator — `scripts/validate_payload.py` checks JSON **and** XML payload files against the shape rules and `definitions/` schemas (exact paths to each problem, did-you-mean suggestions, XML namespace + element-order enforcement, verified field-order rules); `--self-test` included — Fixes #82 — *@mrwuss*
 
@@ -84,7 +84,7 @@ First tagged release. This wave cross-checked the docs against a community proce
 ## 2026-03-06
 
 - **feat:** Add Production & Labor API documentation — TimeEntry service for recording labor hours against production orders, ProductionOrder service with full field definitions (54 header fields, assembly lines, components, labor entries, completions, routing), Labor/LaborProcess services for labor code maintenance, 24 production-related Transaction API services discovered, 13 Interactive API windows verified working — *@mrwuss*
-- **feat:** Add Python example scripts for production/labor — service discovery, TimeEntry definition, labor hour recording, ProductionOrder definition (`scripts/production/`)
+- **feat:** Add Python example scripts for production/labor — service discovery, TimeEntry definition, labor hour recording, ProductionOrder definition (`examples/python/production/`)
 - **feat:** Add C# example code for production/labor — mirrors Python examples (`examples/csharp/Production/`)
 - **docs:** Update API Selection Guide with production/labor use cases and decision table entries
 - **docs:** Update Transaction API with production & labor services table
@@ -120,7 +120,7 @@ First tagged release. This wave cross-checked the docs against a community proce
 
 ## 2026-02-12
 
-- **feat:** Add reusable P21 API client (`scripts/common/client.py`) with sync/async support, namespace helpers for all 4 APIs, and auto token refresh — *Claude Jones ([@RadAJones](https://github.com/RadAJones))* via [PR #16](https://github.com/mrwuss/p21-api-documentation/pull/16)
+- **feat:** Add reusable P21 API client (`examples/python/common/client.py`) with sync/async support, namespace helpers for all 4 APIs, and auto token refresh — *Claude Jones ([@RadAJones](https://github.com/RadAJones))* via [PR #16](https://github.com/mrwuss/p21-api-documentation/pull/16)
 - **fix:** Address CodeRabbit + live API testing feedback on client — duplicate parser removal, query param fixes (`?id=` vs `?windowId=`), entity address guards, response window forwarding — *@mrwuss*
 - **docs:** Add XML token responses section, query parameter testing results, and cross-reference updates across Auth, Interactive, Entity, and Error Handling docs — *@mrwuss*
 - **docs:** Fix Entity API address limitations, add SOAP/mobile endpoints and error codes — *@mrwuss*

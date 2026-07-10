@@ -3,7 +3,7 @@
 // Run with: dotnet run --project OData
 //
 // Presents a menu to select which example to run.
-// Each example mirrors its Python counterpart in scripts/odata/.
+// Each example mirrors its Python counterpart in examples/python/odata/.
 
 namespace P21Examples.OData;
 

@@ -4,7 +4,7 @@ namespace P21Examples.Common
 {
     /// <summary>
     /// P21 API configuration loaded from environment variables.
-    /// Mirrors Python scripts/common/config.py.
+    /// Mirrors Python examples/python/common/config.py.
     /// </summary>
     public class P21Config
     {

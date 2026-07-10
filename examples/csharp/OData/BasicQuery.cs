@@ -1,7 +1,7 @@
 // OData API - Basic Query Example
 //
 // Demonstrates simple table queries with field selection.
-// Mirrors: scripts/odata/01_basic_query.py
+// Mirrors: examples/python/odata/01_basic_query.py
 //
 // This example shows both approaches:
 //   1. Raw HttpClient — full control, educational

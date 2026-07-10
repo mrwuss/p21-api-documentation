@@ -37,7 +37,7 @@ cp .env.example .env
 # Edit .env with your P21 credentials
 
 # Run an example
-python scripts/odata/01_basic_query.py
+python examples/python/odata/01_basic_query.py
 ```
 
 ## Documentation
@@ -69,30 +69,30 @@ python scripts/odata/01_basic_query.py
 ## Example Scripts
 
 ### OData
-- `scripts/odata/01_basic_query.py` - Simple table query
-- `scripts/odata/02_filtering.py` - Filter expressions
-- `scripts/odata/03_pagination.py` - Skip, top, count
-- `scripts/odata/04_complex_queries.py` - Advanced queries
+- `examples/python/odata/01_basic_query.py` - Simple table query
+- `examples/python/odata/02_filtering.py` - Filter expressions
+- `examples/python/odata/03_pagination.py` - Skip, top, count
+- `examples/python/odata/04_complex_queries.py` - Advanced queries
 
 ### Transaction API
-- `scripts/transaction/01_list_services.py` - Discover services
-- `scripts/transaction/02_get_definition.py` - Get service schema
-- `scripts/transaction/03_create_single.py` - Create one record
-- `scripts/transaction/04_create_bulk.py` - Batch operations
-- `scripts/transaction/test_session_pool.py` - Diagnose pool issues
+- `examples/python/transaction/01_list_services.py` - Discover services
+- `examples/python/transaction/02_get_definition.py` - Get service schema
+- `examples/python/transaction/03_create_single.py` - Create one record
+- `examples/python/transaction/04_create_bulk.py` - Batch operations
+- `examples/python/transaction/test_session_pool.py` - Diagnose pool issues
 
 ### Interactive API
-- `scripts/interactive/01_open_session.py` - Session lifecycle
-- `scripts/interactive/02_open_window.py` - Window operations
-- `scripts/interactive/03_change_data.py` - Field manipulation
-- `scripts/interactive/04_save_and_close.py` - Save workflow
-- `scripts/interactive/05_response_windows.py` - Dialog handling and response windows
-- `scripts/interactive/06_complex_workflow.py` - Multi-step workflows
+- `examples/python/interactive/01_open_session.py` - Session lifecycle
+- `examples/python/interactive/02_open_window.py` - Window operations
+- `examples/python/interactive/03_change_data.py` - Field manipulation
+- `examples/python/interactive/04_save_and_close.py` - Save workflow
+- `examples/python/interactive/05_response_windows.py` - Dialog handling and response windows
+- `examples/python/interactive/06_complex_workflow.py` - Multi-step workflows
 
 ### Entity API
-- `scripts/entity/01_list_entities.py` - Discover entities
-- `scripts/entity/02_query_entity.py` - Query records
-- `scripts/entity/03_create_entity.py` - Create record
+- `examples/python/entity/01_list_entities.py` - Discover entities
+- `examples/python/entity/02_query_entity.py` - Query records
+- `examples/python/entity/03_create_entity.py` - Create record
 
 ## C# Examples
 

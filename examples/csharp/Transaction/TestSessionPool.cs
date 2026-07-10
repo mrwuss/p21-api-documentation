@@ -1,7 +1,7 @@
 // Transaction API - Session Pool Behavior Test
 //
 // Tests for session pool contamination issues.
-// Mirrors: scripts/transaction/test_session_pool.py
+// Mirrors: examples/python/transaction/test_session_pool.py
 //
 // This script runs multiple test patterns to diagnose intermittent failures
 // caused by dirty session pools:

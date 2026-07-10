@@ -1,7 +1,7 @@
 // Transaction API - List Available Services
 //
 // Discovers all services available through the Transaction API.
-// Mirrors: scripts/transaction/01_list_services.py
+// Mirrors: examples/python/transaction/01_list_services.py
 //
 // The Transaction API uses a UI Server URL (different from the base URL).
 // Services are discovered via GET /api/v2/services.

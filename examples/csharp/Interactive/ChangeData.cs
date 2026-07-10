@@ -22,7 +22,7 @@ namespace P21Examples.Interactive;
 /// IMPORTANT: As of P21 25.2, DatawindowName is REQUIRED in change requests.
 /// The 3-parameter form (TabName + FieldName + Value) no longer works.
 ///
-/// Mirrors: scripts/interactive/03_change_data.py
+/// Mirrors: examples/python/interactive/03_change_data.py
 /// </summary>
 public static class ChangeData
 {

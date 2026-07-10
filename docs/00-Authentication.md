@@ -930,5 +930,5 @@ public static JObject ParseTokenResponse(HttpResponseMessage response)
 
 - [API Selection Guide](01-API-Selection-Guide.md)
 - [Error Handling](06-Error-Handling.md)
-- [scripts/common/auth.py](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/common/auth.py) - Authentication module
-- [scripts/common/client.py](https://github.com/mrwuss/p21-api-documentation/tree/master/scripts/common/client.py) - Reusable P21 API client with auto token refresh
+- [examples/python/common/auth.py](https://github.com/mrwuss/p21-api-documentation/tree/master/examples/python/common/auth.py) - Authentication module
+- [examples/python/common/client.py](https://github.com/mrwuss/p21-api-documentation/tree/master/examples/python/common/client.py) - Reusable P21 API client with auto token refresh

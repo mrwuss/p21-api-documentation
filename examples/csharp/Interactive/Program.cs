@@ -6,7 +6,7 @@ namespace P21Examples.Interactive;
 /// Provides a menu to select which Interactive API example to run.
 ///
 /// Each example mirrors its corresponding Python script in
-/// scripts/interactive/ and demonstrates both the high-level
+/// examples/python/interactive/ and demonstrates both the high-level
 /// P21Client/InteractiveSession helpers and raw HTTP calls.
 ///
 /// Prerequisites:

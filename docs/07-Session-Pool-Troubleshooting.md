@@ -342,7 +342,7 @@ A Python script has been created to diagnose session pool issues:
 **Running the Test:**
 
 ```bash
-python scripts/transaction/test_session_pool.py
+python examples/python/transaction/test_session_pool.py
 ```
 
 **Sample Output:**

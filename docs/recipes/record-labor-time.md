@@ -242,7 +242,7 @@ foreach (var row in de["Rows"] as JArray ?? new JArray())
 ```
 <!-- /tabs -->
 
-> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`scripts/recipes/record_labor_time.py`](../../scripts/recipes/record_labor_time.py) · [`examples/csharp/Recipes/RecordLaborTime.cs`](../../examples/csharp/Recipes/RecordLaborTime.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/record_labor_time.py`](../../examples/python/recipes/record_labor_time.py) · [`examples/csharp/Recipes/RecordLaborTime.cs`](../../examples/csharp/Recipes/RecordLaborTime.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 
 ## Gotchas
 

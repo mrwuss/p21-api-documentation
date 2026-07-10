@@ -2,7 +2,7 @@
 //
 // Retrieves the schema/template for the TimeEntry service to understand
 // required fields for recording labor hours.
-// Mirrors: scripts/transaction/02_get_definition.py (for TimeEntry)
+// Mirrors: examples/python/transaction/02_get_definition.py (for TimeEntry)
 //
 // Endpoints:
 //   GET /api/v2/definition/TimeEntry  - Field definitions and template
