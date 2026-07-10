@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Index — Find the Right Section Fast - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="02-OData-API.html">OData API</a></li>
+        <li><a href="03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="05-Entity-API.html">Entity API</a></li>
+        <li><a href="06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="10-Changelog.html">Changelog</a></li>
+        <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li class="active"><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+        <li><a href="recipes/README.html">Recipes Overview</a></li>
+        <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+        <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+        <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+        <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+        <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+        <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+        <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+        <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#first-call-of-any-session">First call of any session</a></li>
+<li><a href="#read-data-odata">Read data (OData)</a></li>
+<li><a href="#create-update-records-transaction-api">Create / update records (Transaction API)</a><ul>
+<li><a href="#by-record-type">By record type</a></li>
+</ul>
+</li>
+<li><a href="#drive-a-window-interactive-api">Drive a window (Interactive API)</a></li>
+<li><a href="#production-manufacturing">Production &amp; manufacturing</a></li>
+<li><a href="#documents-reports-pdf">Documents &amp; reports (PDF)</a></li>
+<li><a href="#when-something-breaks">When something breaks</a></li>
+<li><a href="#doc-inventory-what-each-file-is">Doc inventory (what each file is)</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="task-index-find-the-right-section-fast">Task Index — Find the Right Section Fast</h1>
+<blockquote>
+<p><strong>How to use this repo without drowning in it:</strong> the numbered docs are the deep <em>manual</em> — most are over 1,000 lines. Don't read a whole doc for one task. Find your task below and open <strong>only the linked section</strong>. If you're an AI assistant: read <code>CLAUDE.md</code>, then this index, then just the sections your task needs.</p>
+</blockquote>
+<p>Every task assumes you already have a token and (for Transaction/Interactive) the UI server URL — see <a href="#first-call-of-any-session">Getting a token</a> below.</p>
+<p><strong>Doing, not studying?</strong> The <a href="recipes/README.html">recipes cookbook</a> has self-contained copy-and-run pages (complete payload + full script + gotchas) for the most common tasks — start there and fall back to the manual sections for depth.</p>
+<hr />
+<h2 id="first-call-of-any-session">First call of any session</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Get a bearer token (v2, credentials in body)</td>
+<td><a href="00-Authentication.html#method-1-user-credentials">00 § Method 1: User Credentials</a></td>
+</tr>
+<tr>
+<td>Authenticate with a consumer key</td>
+<td><a href="00-Authentication.html#method-2-consumer-key">00 § Method 2: Consumer Key</a></td>
+</tr>
+<tr>
+<td>Get the UI server URL (Transaction/Interactive base) — 307 redirect gotcha</td>
+<td><a href="00-Authentication.html#ui-server-url">00 § UI Server URL</a></td>
+</tr>
+<tr>
+<td>Token TTL / reuse across APIs</td>
+<td><a href="00-Authentication.html#token-lifetime-and-reuse">00 § Token Lifetime and Reuse</a></td>
+</tr>
+<tr>
+<td>Fix "not authorized" (P21 user permissions)</td>
+<td><a href="00-Authentication.html#p21-permissions-user-credential-auth">00 § P21 Permissions</a></td>
+</tr>
+<tr>
+<td>Pick which API to use for a task</td>
+<td><a href="01-API-Selection-Guide.html">01 API Selection Guide</a> (short — read whole)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="read-data-odata">Read data (OData)</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Query a table or view</td>
+<td><a href="02-OData-API.html#query-parameters">02 § Query Parameters</a></td>
+</tr>
+<tr>
+<td>Filter syntax, operators, string functions</td>
+<td><a href="02-OData-API.html#filter-expressions">02 § Filter Expressions</a></td>
+</tr>
+<tr>
+<td>Only active rows (<code>row_status_flag eq 704</code>)</td>
+<td><a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a></td>
+</tr>
+<tr>
+<td>Traverse relationships (no joins — chain by <code>_uid</code>)</td>
+<td><a href="02-OData-API.html#no-joins--chain-queries-by-uid">02 § No Joins</a></td>
+</tr>
+<tr>
+<td>Page through large result sets (no nextLink)</td>
+<td><a href="02-OData-API.html#pagination-helper">02 § Pagination Helper</a> · <a href="02-OData-API.html#page-size-guidance">02 § Page Size Guidance</a></td>
+</tr>
+<tr>
+<td>Date filters (<code>now()</code> is unsupported)</td>
+<td><a href="02-OData-API.html#now-function-not-supported">02 § now() Not Supported</a></td>
+</tr>
+<tr>
+<td>New table/column missing from OData</td>
+<td><a href="02-OData-API.html#odata-schema-refresh">02 § OData Schema Refresh</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="create-update-records-transaction-api">Create / update records (Transaction API)</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Payload anatomy (TransactionSet / DataElements / Edits)</td>
+<td><a href="03-Transaction-API.html#request-structure">03 § Request Structure</a></td>
+</tr>
+<tr>
+<td>Payload rejected / values not landing (shape &amp; type mistakes)</td>
+<td><a href="03-Transaction-API.html#payload-anatomy----types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
+</tr>
+<tr>
+<td>Validate a payload offline before posting (JSON or XML)</td>
+<td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/validate_payload.py"><code>scripts/validate_payload.py</code></a> · <a href="03-Transaction-API.html#payload-anatomy----types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
+</tr>
+<tr>
+<td>Send/receive <strong>XML</strong> instead of JSON</td>
+<td><a href="03-Transaction-API.html#xml-payloads-content-negotiation">03 § XML Payloads</a></td>
+</tr>
+<tr>
+<td>Get a service's schema, template, defaults</td>
+<td><a href="03-Transaction-API.html#endpoints">03 § Endpoints</a> · committed full-field JSON in <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/</code></a></td>
+</tr>
+<tr>
+<td><strong>Update an existing record</strong> (Status <code>"New"</code> + keys; <code>"Existing"</code> is broken)</td>
+<td><a href="03-Transaction-API.html#updating-an-existing-contract">03 § Updating an Existing Contract</a></td>
+</tr>
+<tr>
+<td><strong>Insert new keyed rows (upsert)</strong> + one-tx-per-POST rule</td>
+<td><a href="03-Transaction-API.html#upsert-semantics----keyed-rows-insert-when-absent">03 § Upsert Semantics</a></td>
+</tr>
+<tr>
+<td>Write through disabled columns/tabs (<code>IgnoreDisabled</code>)</td>
+<td><a href="03-Transaction-API.html#ignoredisabled">03 § IgnoreDisabled</a></td>
+</tr>
+<tr>
+<td>Field order silently changing values</td>
+<td><a href="03-Transaction-API.html#field-order-matters">03 § Field Order Matters</a></td>
+</tr>
+<tr>
+<td>Labels vs code_no (<code>UseCodeValues</code>, <code>code_p21</code>)</td>
+<td><a href="03-Transaction-API.html#usecodevalues">03 § UseCodeValues</a></td>
+</tr>
+<tr>
+<td>Check success properly (HTTP 200 lies; per-tx pass/fail)</td>
+<td><a href="03-Transaction-API.html#response-format">03 § Response Format</a> · <a href="06-Error-Handling.html#transaction-api-errors">06 § Transaction API Errors</a></td>
+</tr>
+<tr>
+<td>Read a record back / verify a write</td>
+<td><a href="03-Transaction-API.html#endpoints">03 § Endpoints — <code>/transaction/get</code></a></td>
+</tr>
+<tr>
+<td>Long-running / async transactions</td>
+<td><a href="03-Transaction-API.html#async-operations">03 § Async Operations</a></td>
+</tr>
+<tr>
+<td>DynaChange rules &amp; popup suppression for the API user</td>
+<td><a href="03-Transaction-API.html#dynachange-and-popup-handling">03 § DynaChange and Popup Handling</a></td>
+</tr>
+<tr>
+<td>Run a stored procedure via API</td>
+<td><a href="03-Transaction-API.html#stored-procedure-executor">03 § Stored Procedure Executor</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="by-record-type">By record type</h3>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Recipe</th>
+<th>Manual</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create a <strong>sales order</strong> + gotchas (source_loc_id, dates, DynaChange)</td>
+<td><a href="recipes/create-sales-order.html">create-sales-order</a></td>
+<td><a href="03-Transaction-API.html#create-order">03 § Create Order</a> · <a href="03-Transaction-API.html#order-service-gotchas">03 § Order Service Gotchas</a></td>
+</tr>
+<tr>
+<td>Order with an <strong>assembly line</strong> (explode / spawn prod order)</td>
+<td><a href="recipes/order-with-assembly.html">order-with-assembly</a></td>
+<td><a href="04-Interactive-API.html#sales-order-entry-with-assembly-lines">04 § Sales Order Entry with Assembly Lines</a></td>
+</tr>
+<tr>
+<td><strong>Job contract</strong>: create, lines, breaks</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#jobcontractpricing-service">03 § JobContractPricing Service</a></td>
+</tr>
+<tr>
+<td>Job contract: update / add lines / commission costs</td>
+<td><a href="recipes/update-contract-lines.html">update-contract-lines</a></td>
+<td><a href="03-Transaction-API.html#updating-an-existing-contract">03 § Updating an Existing Contract</a> · <a href="03-Transaction-API.html#upsert-semantics----keyed-rows-insert-when-absent">03 § Upsert Semantics</a> · <a href="03-Transaction-API.html#commission-costs">03 § Commission Costs</a></td>
+</tr>
+<tr>
+<td>Job contract: <strong>bin quantities</strong></td>
+<td><a href="recipes/edit-contract-bins.html">edit-contract-bins</a></td>
+<td><a href="03-Transaction-API.html#editing-bin-quantities-on-an-existing-contract">03 § Editing Bin Quantities</a> (Interactive fallback: <a href="04-Interactive-API.html#tab-unlock-sequences">04 § Tab Unlock Sequences</a>)</td>
+</tr>
+<tr>
+<td><strong>Assembly / BOM</strong> definition</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#assembly-service">03 § Assembly Service</a></td>
+</tr>
+<tr>
+<td>Item: <strong>primary bin / primary supplier</strong> at a location</td>
+<td><a href="recipes/set-primary-bin-supplier.html">set-primary-bin-supplier</a></td>
+<td><a href="03-Transaction-API.html#item-service----nested-location-edits">03 § Item Service</a></td>
+</tr>
+<tr>
+<td><strong>Create warehouse bins</strong></td>
+<td><a href="recipes/create-bins.html">create-bins</a></td>
+<td><a href="03-Transaction-API.html#binlocation-service----creating-bins">03 § BinLocation Service</a></td>
+</tr>
+<tr>
+<td><strong>Sales price pages</strong> (codes, breaks, field order)</td>
+<td><a href="08-SalesPricePage-Codes.html">08 SalesPricePage Codes</a></td>
+<td></td>
+</tr>
+<tr>
+<td>Customers / vendors / contacts / addresses (simple CRUD)</td>
+<td><a href="05-Entity-API.html#crud-operations">05 § CRUD Operations</a></td>
+<td></td>
+</tr>
+<tr>
+<td>Inventory items: read / create / update locations</td>
+<td><a href="11-Inventory-REST-API.html#reading-items">11 § Reading Items</a> · <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a> · <a href="11-Inventory-REST-API.html#updating-existing-location-fields">11 § Updating Existing Location Fields</a></td>
+<td></td>
+</tr>
+<tr>
+<td>User-defined tables (UDT) rows</td>
+<td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="drive-a-window-interactive-api">Drive a window (Interactive API)</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Session → window → change → save lifecycle</td>
+<td><a href="04-Interactive-API.html#session-lifecycle">04 § Session Lifecycle</a></td>
+</tr>
+<tr>
+<td>v2 payload shapes (save body is the bare GUID, etc.)</td>
+<td><a href="04-Interactive-API.html#v1-vs-v2-api-differences">04 § v1 vs v2 API Differences</a></td>
+</tr>
+<tr>
+<td>Find field / tab / datawindow names</td>
+<td><a href="04-Interactive-API.html#finding-field-names">04 § Finding Field Names</a> · <a href="04-Interactive-API.html#window-discovery-techniques">04 § Window Discovery</a></td>
+</tr>
+<tr>
+<td><strong>Handle popups / response windows</strong> (Status 3, windowopened)</td>
+<td><a href="04-Interactive-API.html#response-windows">04 § Response Windows</a> · <a href="04-Interactive-API.html#response-window-types">04 § Response Window Types</a></td>
+</tr>
+<tr>
+<td>Answer a rule-callback dialog ("Item Issues Detected")</td>
+<td><a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">04 § Worked Example</a></td>
+</tr>
+<tr>
+<td>Fill fields in a popup (<code>TabName: null</code>)</td>
+<td><a href="04-Interactive-API.html#response-window-handling-tabless-windows">04 § Response Window Handling (Tabless)</a></td>
+</tr>
+<tr>
+<td>Buttons / tools (<code>?windowId=</code>, not <code>?id=</code>)</td>
+<td><a href="04-Interactive-API.html#running-tools-buttons">04 § Running Tools</a></td>
+</tr>
+<tr>
+<td>Unlock a disabled tab</td>
+<td><a href="04-Interactive-API.html#tab-unlock-sequences">04 § Tab Unlock Sequences</a></td>
+</tr>
+<tr>
+<td>Row selection traps (sync bug, detail-form rebind, row 0)</td>
+<td><a href="04-Interactive-API.html#known-issues-and-workarounds">04 § Known Issues and Workarounds</a></td>
+</tr>
+<tr>
+<td>Key field silently swallowing later edits</td>
+<td><a href="04-Interactive-API.html#key-fields-commit-the-cursor-later-fields-silently-ignored">04 § Key Fields Commit the Cursor</a></td>
+</tr>
+<tr>
+<td>Verify a save actually persisted</td>
+<td><a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">04 § Verifying Writes</a></td>
+</tr>
+<tr>
+<td>PO notepad notes (header vs line)</td>
+<td><a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a></td>
+</tr>
+<tr>
+<td>Bulk/batch interactive work (session reuse, error recovery)</td>
+<td><a href="09-Batch-Processing-Patterns.html">09 Batch Processing Patterns</a></td>
+</tr>
+<tr>
+<td>Intermittent "Unexpected Response Window" in production</td>
+<td><a href="07-Session-Pool-Troubleshooting.html">07 Session Pool Troubleshooting</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="production-manufacturing">Production &amp; manufacturing</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Service catalog &amp; schemas (ProductionOrder, TimeEntry, …)</td>
+<td><a href="12-Production-Labor-API.html#available-services">12 § Available Services</a></td>
+</tr>
+<tr>
+<td>Assembly behavior flags (prod-order vs kit vs build-to-stock)</td>
+<td><a href="12-Production-Labor-API.html#assembly-behavior-flags">12 § Assembly Behavior Flags</a></td>
+</tr>
+<tr>
+<td><strong>Full runbook: create → print → confirm → complete → ship</strong></td>
+<td><a href="recipes/production-order-runbook.html">recipe: production-order-runbook</a> · <a href="12-Production-Labor-API.html#production-order-lifecycle-end-to-end">12 § Production Order Lifecycle</a></td>
+</tr>
+<tr>
+<td>Pick ticket won't generate (make loc vs stock loc)</td>
+<td><a href="12-Production-Labor-API.html#printing-the-pick-ticket-and-form">12 § Printing the Pick Ticket</a> · <a href="03-Transaction-API.html#example-generate-a-production-order-pick-ticket-m_picktickets">03 § m_picktickets example</a></td>
+</tr>
+<tr>
+<td>Confirm a pick (shell-confirm trap — use Interactive)</td>
+<td><a href="12-Production-Labor-API.html#confirming-the-pick--use-the-interactive-api">12 § Confirming the Pick</a></td>
+</tr>
+<tr>
+<td>Complete / production receipt (+ per-component cost override)</td>
+<td><a href="12-Production-Labor-API.html#completing-the-production-order-production-receipt">12 § Completing the Production Order</a></td>
+</tr>
+<tr>
+<td>Record labor hours</td>
+<td><a href="recipes/record-labor-time.html">recipe: record-labor-time</a> · <a href="12-Production-Labor-API.html#recording-labor-hours-timeentry-service">12 § Recording Labor Hours</a> · <a href="12-Production-Labor-API.html#time-entry-against-a-production-order-quick-time-entry">12 § Time Entry Against a Production Order</a></td>
+</tr>
+<tr>
+<td>Ship + invoice</td>
+<td><a href="12-Production-Labor-API.html#shipping-and-invoicing-the-linked-sales-order">12 § Shipping and Invoicing</a></td>
+</tr>
+<tr>
+<td>Inventory write-off / adjustment</td>
+<td><a href="recipes/inventory-adjustment.html">recipe: inventory-adjustment</a> · <a href="12-Production-Labor-API.html#inventory-adjustment-write-offs">12 § Inventory Adjustment</a></td>
+</tr>
+<tr>
+<td>Why COGS doesn't match the receipt</td>
+<td><a href="12-Production-Labor-API.html#cost-model--know-this-before-trusting-cogs">12 § Cost Model</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="documents-reports-pdf">Documents &amp; reports (PDF)</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Generate any <code>m_*</code> report as PDF</td>
+<td><a href="recipes/generate-pick-ticket-pdf.html">recipe: generate-pick-ticket-pdf</a> · <a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a></td>
+</tr>
+<tr>
+<td>Discover callable report names (hidden from /services)</td>
+<td><a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a> (Discovery note)</td>
+</tr>
+<tr>
+<td>Production pick ticket at a specific location</td>
+<td><a href="03-Transaction-API.html#example-generate-a-production-order-pick-ticket-m_picktickets">03 § m_picktickets example</a></td>
+</tr>
+<tr>
+<td>PDFs from print flags on a normal transaction</td>
+<td><a href="03-Transaction-API.html#pdfs-from-the-transaction-endpoint-print-flags">03 § PDFs from the /transaction endpoint</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="when-something-breaks">When something breaks</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Error catalog by API</td>
+<td><a href="06-Error-Handling.html">06 Error Handling</a> (per-API sections)</td>
+</tr>
+<tr>
+<td>Quick symptom → cause table</td>
+<td><a href="06-Error-Handling.html#common-issues-quick-reference">06 § Common Issues Quick Reference</a></td>
+</tr>
+<tr>
+<td>Auth failures</td>
+<td><a href="06-Error-Handling.html#authentication-errors">06 § Authentication Errors</a></td>
+</tr>
+<tr>
+<td>Intermittent interactive failures under load</td>
+<td><a href="07-Session-Pool-Troubleshooting.html">07 Session Pool Troubleshooting</a></td>
+</tr>
+<tr>
+<td>What changed in these docs recently</td>
+<td><a href="10-Changelog.html">10 Changelog</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="doc-inventory-what-each-file-is">Doc inventory (what each file is)</h2>
+<table>
+<thead>
+<tr>
+<th>Doc</th>
+<th>Scope</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="00-Authentication.html">00-Authentication</a></td>
+<td>Tokens (v2/consumer key), permissions, UI server URL</td>
+<td>large</td>
+</tr>
+<tr>
+<td><a href="01-API-Selection-Guide.html">01-API-Selection-Guide</a></td>
+<td>Which API for which job</td>
+<td>small — read whole</td>
+</tr>
+<tr>
+<td><a href="02-OData-API.html">02-OData-API</a></td>
+<td>Read-only queries</td>
+<td>large</td>
+</tr>
+<tr>
+<td><a href="03-Transaction-API.html">03-Transaction-API</a></td>
+<td>Stateless create/update + service reference + PDF reports</td>
+<td>very large — use anchors</td>
+</tr>
+<tr>
+<td><a href="04-Interactive-API.html">04-Interactive-API</a></td>
+<td>Stateful window driving, popups, traps</td>
+<td>very large — use anchors</td>
+</tr>
+<tr>
+<td><a href="05-Entity-API.html">05-Entity-API</a></td>
+<td>REST CRUD on 4 entities</td>
+<td>medium</td>
+</tr>
+<tr>
+<td><a href="06-Error-Handling.html">06-Error-Handling</a></td>
+<td>Errors across all APIs</td>
+<td>large</td>
+</tr>
+<tr>
+<td><a href="07-Session-Pool-Troubleshooting.html">07-Session-Pool-Troubleshooting</a></td>
+<td>One deep-dive: session pool contamination</td>
+<td>medium — single topic</td>
+</tr>
+<tr>
+<td><a href="08-SalesPricePage-Codes.html">08-SalesPricePage-Codes</a></td>
+<td>SalesPricePage field codes/order</td>
+<td>medium — single service</td>
+</tr>
+<tr>
+<td><a href="09-Batch-Processing-Patterns.html">09-Batch-Processing-Patterns</a></td>
+<td>Interactive bulk patterns + async client</td>
+<td>very large</td>
+</tr>
+<tr>
+<td><a href="10-Changelog.html">10-Changelog</a></td>
+<td>Doc change history</td>
+<td>small</td>
+</tr>
+<tr>
+<td><a href="11-Inventory-REST-API.html">11-Inventory-REST-API</a></td>
+<td><code>/api/inventory/parts</code> read/append/update</td>
+<td>large</td>
+</tr>
+<tr>
+<td><a href="12-Production-Labor-API.html">12-Production-Labor-API</a></td>
+<td>Production services + end-to-end lifecycle</td>
+<td>large</td>
+</tr>
+<tr>
+<td><a href="13-UDT-Service-API.html">13-UDT-Service-API</a></td>
+<td>User-defined table CRUD</td>
+<td>large</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/</code></a></td>
+<td>Full-field service definition JSONs (every DataElement, field, key, label + payload template)</td>
+<td>load one file per service</td>
+</tr>
+</tbody>
+</table>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
