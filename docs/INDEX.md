@@ -4,6 +4,8 @@
 
 Every task assumes you already have a token and (for Transaction/Interactive) the UI server URL — see [Getting a token](#first-call-of-any-session) below.
 
+**Doing, not studying?** The [recipes cookbook](recipes/README.md) has self-contained copy-and-run pages (complete payload + full script + gotchas) for the most common tasks — start there and fall back to the manual sections for depth.
+
 ---
 
 ## First call of any session
@@ -48,17 +50,16 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 
 ### By record type
 
-| Task | Where |
-|------|-------|
-| Create a **sales order** + gotchas (source_loc_id, dates, DynaChange) | [03 § Create Order](03-Transaction-API.md#create-order) · [03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas) |
-| Order with an **assembly line** (explode / spawn prod order) | [04 § Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines) |
-| **Job contract**: create, lines, breaks | [03 § JobContractPricing Service](03-Transaction-API.md#jobcontractpricing-service) |
-| Job contract: update / add lines | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) · [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) |
-| Job contract: **bin quantities** | [03 § Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract) (Interactive fallback: [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences)) |
-| Job contract: commission costs | [03 § Commission Costs](03-Transaction-API.md#commission-costs) |
-| **Assembly / BOM** definition | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
-| Item: **primary bin / primary supplier** at a location | [03 § Item Service](03-Transaction-API.md#item-service----nested-location-edits) |
-| **Create warehouse bins** | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service----creating-bins) |
+| Task | Recipe | Manual |
+|------|--------|--------|
+| Create a **sales order** + gotchas (source_loc_id, dates, DynaChange) | [create-sales-order](recipes/create-sales-order.md) | [03 § Create Order](03-Transaction-API.md#create-order) · [03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas) |
+| Order with an **assembly line** (explode / spawn prod order) | [order-with-assembly](recipes/order-with-assembly.md) | [04 § Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines) |
+| **Job contract**: create, lines, breaks | — | [03 § JobContractPricing Service](03-Transaction-API.md#jobcontractpricing-service) |
+| Job contract: update / add lines / commission costs | [update-contract-lines](recipes/update-contract-lines.md) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) · [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) · [03 § Commission Costs](03-Transaction-API.md#commission-costs) |
+| Job contract: **bin quantities** | [edit-contract-bins](recipes/edit-contract-bins.md) | [03 § Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract) (Interactive fallback: [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences)) |
+| **Assembly / BOM** definition | — | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
+| Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service----nested-location-edits) |
+| **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service----creating-bins) |
 | **Sales price pages** (codes, breaks, field order) | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) |
 | Customers / vendors / contacts / addresses (simple CRUD) | [05 § CRUD Operations](05-Entity-API.md#crud-operations) |
 | Inventory items: read / create / update locations | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
@@ -89,20 +90,20 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 |------|-------|
 | Service catalog & schemas (ProductionOrder, TimeEntry, …) | [12 § Available Services](12-Production-Labor-API.md#available-services) |
 | Assembly behavior flags (prod-order vs kit vs build-to-stock) | [12 § Assembly Behavior Flags](12-Production-Labor-API.md#assembly-behavior-flags) |
-| **Full runbook: create → print → confirm → complete → ship** | [12 § Production Order Lifecycle](12-Production-Labor-API.md#production-order-lifecycle-end-to-end) |
+| **Full runbook: create → print → confirm → complete → ship** | [recipe: production-order-runbook](recipes/production-order-runbook.md) · [12 § Production Order Lifecycle](12-Production-Labor-API.md#production-order-lifecycle-end-to-end) |
 | Pick ticket won't generate (make loc vs stock loc) | [12 § Printing the Pick Ticket](12-Production-Labor-API.md#printing-the-pick-ticket-and-form) · [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
 | Confirm a pick (shell-confirm trap — use Interactive) | [12 § Confirming the Pick](12-Production-Labor-API.md#confirming-the-pick--use-the-interactive-api) |
 | Complete / production receipt (+ per-component cost override) | [12 § Completing the Production Order](12-Production-Labor-API.md#completing-the-production-order-production-receipt) |
-| Record labor hours | [12 § Recording Labor Hours](12-Production-Labor-API.md#recording-labor-hours-timeentry-service) · [12 § Time Entry Against a Production Order](12-Production-Labor-API.md#time-entry-against-a-production-order-quick-time-entry) |
+| Record labor hours | [recipe: record-labor-time](recipes/record-labor-time.md) · [12 § Recording Labor Hours](12-Production-Labor-API.md#recording-labor-hours-timeentry-service) · [12 § Time Entry Against a Production Order](12-Production-Labor-API.md#time-entry-against-a-production-order-quick-time-entry) |
 | Ship + invoice | [12 § Shipping and Invoicing](12-Production-Labor-API.md#shipping-and-invoicing-the-linked-sales-order) |
-| Inventory write-off / adjustment | [12 § Inventory Adjustment](12-Production-Labor-API.md#inventory-adjustment-write-offs) |
+| Inventory write-off / adjustment | [recipe: inventory-adjustment](recipes/inventory-adjustment.md) · [12 § Inventory Adjustment](12-Production-Labor-API.md#inventory-adjustment-write-offs) |
 | Why COGS doesn't match the receipt | [12 § Cost Model](12-Production-Labor-API.md#cost-model--know-this-before-trusting-cogs) |
 
 ## Documents & reports (PDF)
 
 | Task | Where |
 |------|-------|
-| Generate any `m_*` report as PDF | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) |
+| Generate any `m_*` report as PDF | [recipe: generate-pick-ticket-pdf](recipes/generate-pick-ticket-pdf.md) · [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) |
 | Discover callable report names (hidden from /services) | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) (Discovery note) |
 | Production pick ticket at a specific location | [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
 | PDFs from print flags on a normal transaction | [03 § PDFs from the /transaction endpoint](03-Transaction-API.md#pdfs-from-the-transaction-endpoint-print-flags) |
