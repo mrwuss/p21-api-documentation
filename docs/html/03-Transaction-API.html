@@ -442,6 +442,8 @@
 <li><a href="#request-structure_1">Request Structure</a></li>
 <li><a href="#response">Response</a></li>
 <li><a href="#example-generate-and-save-a-po-reprint">Example: Generate and Save a PO Reprint</a></li>
+<li><a href="#example-generate-a-production-order-pick-ticket-m_picktickets">Example: Generate a Production-Order Pick Ticket (m_picktickets)</a></li>
+<li><a href="#pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint (print flags)</a></li>
 </ul>
 </li>
 <li><a href="#stored-procedure-executor">Stored Procedure Executor</a><ul>
@@ -2494,6 +2496,9 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <h2 id="pdf-report-generation">PDF Report Generation</h2>
 <p>The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.</p>
 <p><strong>Endpoint:</strong> <code>POST {ui_server}/api/v2/process/pdfreport</code></p>
+<blockquote>
+<p><strong>Wrong-endpoint trap:</strong> <code>POST /api/v2/transaction</code> <em>accepts</em> an <code>m_*</code> report payload and returns <code>Succeeded</code> — but <strong>emits nothing</strong>. A report is a process, not a record edit; it must go to <code>POST /api/v2/process/pdfreport</code>. (Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a> — "this was the single biggest gotcha.")</p>
+</blockquote>
 <h3 id="verified-report-services">Verified Report Services</h3>
 <table>
 <thead>
@@ -2510,6 +2515,10 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <tr>
 <td><code>m_reprintpicktickets</code></td>
 <td>Pick Ticket reprints</td>
+</tr>
+<tr>
+<td><code>m_picktickets</code></td>
+<td>Pick ticket generation — <strong>creates</strong> the pick ticket record and returns its PDF (see <a href="#example-generate-a-production-order-pick-ticket-m_picktickets">worked example below</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -2546,6 +2555,10 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="p">}</span>
 </code></pre></div>
 
+<p>Constants that apply to every report payload: <code>Status</code> and <code>Type</code> are <strong>numeric <code>0</code></strong> (not the <code>"New"</code> record-edit shape) and the DataElement carries <code>Keys: []</code>. Get the criteria field names from <code>GET /api/v2/definition/{service_name}</code> and default values from <code>GET /api/v2/defaults/{service_name}</code>.</p>
+<blockquote>
+<p><strong><code>UseCodeValues</code> requirements vary per report service.</strong> <code>m_reprintpurchaseorders</code> works with <code>UseCodeValues: false</code> (as above), but <code>m_picktickets</code> <strong>requires <code>UseCodeValues: true</code> with code values</strong> — e.g. <code>create_pick_ticket_type</code> must be the code <code>"P"</code>; the display label <code>"Production Order"</code> is rejected, and <code>UseCodeValues: false</code> returns HTTP 500. When a report errors on seemingly-correct criteria, retry with <code>UseCodeValues: true</code> and the code values from the service's definition (<code>ValidValues</code>).</p>
+</blockquote>
 <h3 id="response">Response</h3>
 <p>The response is a <strong>JSON array</strong> (even for a single document). Each element contains document metadata and the base64-encoded PDF content. Decode the <code>DocumentData</code> field and write the bytes to a <code>.pdf</code> file.</p>
 <p><strong>Verified success response</strong> (generalized from live PO reprint):</p>
@@ -2777,6 +2790,57 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </div>
 <blockquote>
 <p><strong>Credit:</strong> Jeff Poss discovered the <code>/api/v2/process/pdfreport</code> endpoint and payload structure.</p>
+</blockquote>
+<h3 id="example-generate-a-production-order-pick-ticket-m_picktickets">Example: Generate a Production-Order Pick Ticket (m_picktickets)</h3>
+<p>Running <code>m_picktickets</code> <strong>creates the pick-ticket record</strong> at the given <code>location_id</code> <strong>and</strong> returns the PDF in a single call. This matters for production orders that are built at one location while their components stock at another — the <code>ProductionOrder</code> transaction print flag only emits at the <em>make</em> location (see <a href="#pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint</a> below), but this report generates the ticket at whatever location you specify.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/v</span><span class="mi">2</span><span class="err">/process/pd</span><span class="kc">fre</span><span class="err">por</span><span class="kc">t</span>
+
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_picktickets&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">          </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;create_pick_ticket_type&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;beg_prod_order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1000123&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;end_prod_order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1000123&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">          </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Every one of these is required to make it fire:</p>
+<ul>
+<li>Endpoint <strong><code>/api/v2/process/pdfreport</code></strong> (not <code>/api/v2/transaction</code> — see the wrong-endpoint trap above).</li>
+<li><code>Status</code> and <code>Type</code> numeric <strong><code>0</code></strong>, <code>Keys: []</code>.</li>
+<li><code>create_pick_ticket_type</code> = the <strong>code</strong> <code>"P"</code> (Production Order) with <strong><code>UseCodeValues: true</code></strong> — the label is rejected, and <code>UseCodeValues: false</code> returns HTTP 500.</li>
+<li><code>location_id</code> = the location whose inventory the components pick from. No date range needed.</li>
+<li><strong>Prerequisite:</strong> the production order's form must already be printed (<code>prod_order_hdr.printed = 'Y'</code>) — run a <code>ProductionOrder</code> transaction with <code>print_form = ON</code> first.</li>
+</ul>
+<p>The response is the standard document array; the PDF is base64 at <code>[0].DocumentData</code> (<code>FileName</code> like <code>"PPT&lt;nnn&gt; PRODUCTION_PICK_TICKET.pdf"</code>). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.</p>
+<p>For any <em>other</em> report, swap <code>Name</code> and the criteria <code>Edits</code> (field names from <code>GET /api/v2/definition/{name}</code>); the endpoint, <code>Status</code>/<code>Type: 0</code>, <code>Keys: []</code>, and the <code>DocumentData</code> extraction stay the same.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified end-to-end (report run → pick ticket row created → PDF returned → ticket confirmed and completed).</p>
+</blockquote>
+<h3 id="pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint (print flags)</h3>
+<p>The regular <code>POST /api/v2/transaction</code> endpoint can also return generated PDFs: when a service exposes print flags (e.g. <code>ProductionOrder</code> with <code>print_pick_ticket = ON</code> and <code>print_form = ON</code> on <code>TABPAGE_1.tp_1_dw_1</code>), the successful transaction response carries the rendered documents at <code>Results.Transactions[].Documents[].DocumentData</code> (base64, one entry per document).</p>
+<p>Caveats (verified on <code>ProductionOrder</code>):</p>
+<ul>
+<li>Documents are only returned on a <strong>savable</strong> transaction — a bare reprint with nothing new to save errors with <em>"Save is not enabled"</em>.</li>
+<li><code>print_pick_ticket</code> emits only at the order's <strong>make location</strong>. If components stock elsewhere, the pick ticket comes back empty or missing — generate it with <code>m_picktickets</code> at the stock <code>location_id</code> instead (previous section).</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
 </blockquote>
 <hr />
 <h2 id="stored-procedure-executor">Stored Procedure Executor</h2>

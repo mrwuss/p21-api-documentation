@@ -1457,12 +1457,15 @@ The Transaction API includes a dedicated endpoint for generating PDF documents -
 
 **Endpoint:** `POST {ui_server}/api/v2/process/pdfreport`
 
+> **Wrong-endpoint trap:** `POST /api/v2/transaction` *accepts* an `m_*` report payload and returns `Succeeded` — but **emits nothing**. A report is a process, not a record edit; it must go to `POST /api/v2/process/pdfreport`. (Credit: [Alex Westemeier](https://github.com/AWestemeier) — "this was the single biggest gotcha.")
+
 ### Verified Report Services
 
 | Service Name | Report Type |
 |-------------|-------------|
 | `m_reprintpurchaseorders` | Purchase Order reprints |
 | `m_reprintpicktickets` | Pick Ticket reprints |
+| `m_picktickets` | Pick ticket generation — **creates** the pick ticket record and returns its PDF (see [worked example below](#example-generate-a-production-order-pick-ticket-m_picktickets)) |
 
 > **Discovery:** The `m_*` report services are **hidden from `GET /api/v2/services`** — that endpoint lists only the transaction business objects (299 on a 25.2 test system), and `?type=report` returns an empty list (verified live; `?type=window` returns the same transaction list, other `?type=` values return HTTP 400 `"Service Type is invalid."`). The report services are still fully callable: `GET /api/v2/definition/{service_name}` and `GET /api/v2/defaults/{service_name}` both work for them. To discover callable report names, probe the definition endpoint directly, or pull candidate names from the `window_x_menu` table — the callable service name is the last `/`-segment of `menu_name`:
 >
@@ -1502,6 +1505,10 @@ The payload follows the standard TransactionSet format. Report-specific criteria
     "UseCodeValues": false
 }
 ```
+
+Constants that apply to every report payload: `Status` and `Type` are **numeric `0`** (not the `"New"` record-edit shape) and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
+
+> **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
 ### Response
 
@@ -1735,6 +1742,62 @@ else
 <!-- /tabs -->
 
 > **Credit:** Jeff Poss discovered the `/api/v2/process/pdfreport` endpoint and payload structure.
+
+### Example: Generate a Production-Order Pick Ticket (m_picktickets)
+
+Running `m_picktickets` **creates the pick-ticket record** at the given `location_id` **and** returns the PDF in a single call. This matters for production orders that are built at one location while their components stock at another — the `ProductionOrder` transaction print flag only emits at the *make* location (see [PDFs from the /transaction endpoint](#pdfs-from-the-transaction-endpoint-print-flags) below), but this report generates the ticket at whatever location you specify.
+
+```json
+POST /api/v2/process/pdfreport
+
+{
+  "Name": "m_picktickets",
+  "UseCodeValues": true,
+  "Transactions": [
+    {
+      "Status": 0,
+      "DataElements": [
+        {
+          "Keys": [],
+          "Type": 0,
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Rows": [{ "Edits": [
+            { "Name": "create_pick_ticket_type", "Value": "P" },
+            { "Name": "beg_prod_order", "Value": "1000123" },
+            { "Name": "end_prod_order", "Value": "1000123" },
+            { "Name": "location_id",    "Value": "10" }
+          ] }]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Every one of these is required to make it fire:
+
+- Endpoint **`/api/v2/process/pdfreport`** (not `/api/v2/transaction` — see the wrong-endpoint trap above).
+- `Status` and `Type` numeric **`0`**, `Keys: []`.
+- `create_pick_ticket_type` = the **code** `"P"` (Production Order) with **`UseCodeValues: true`** — the label is rejected, and `UseCodeValues: false` returns HTTP 500.
+- `location_id` = the location whose inventory the components pick from. No date range needed.
+- **Prerequisite:** the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
+
+The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
+
+For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified end-to-end (report run → pick ticket row created → PDF returned → ticket confirmed and completed).
+
+### PDFs from the /transaction endpoint (print flags)
+
+The regular `POST /api/v2/transaction` endpoint can also return generated PDFs: when a service exposes print flags (e.g. `ProductionOrder` with `print_pick_ticket = ON` and `print_form = ON` on `TABPAGE_1.tp_1_dw_1`), the successful transaction response carries the rendered documents at `Results.Transactions[].Documents[].DocumentData` (base64, one entry per document).
+
+Caveats (verified on `ProductionOrder`):
+
+- Documents are only returned on a **savable** transaction — a bare reprint with nothing new to save errors with *"Save is not enabled"*.
+- `print_pick_ticket` emits only at the order's **make location**. If components stock elsewhere, the pick ticket comes back empty or missing — generate it with `m_picktickets` at the stock `location_id` instead (previous section).
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier).
 
 ---
 
