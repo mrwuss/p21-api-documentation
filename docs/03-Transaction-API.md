@@ -50,6 +50,8 @@ Then use the returned URL as base:
 
 > **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
+> **Definition endpoint 500s for unavailable windows:** `GET /api/v2/definition/{name}` can return HTTP 500 with *"Window &lt;&lt;X&gt;&gt; is not available or user does not have permission to open it"* for a service that `/api/v2/services` lists. Despite the wording, this is usually **not a grantable permission problem** — the same window fails for fully-privileged users in the Service Explorer. It means the window isn't available in that environment (unlicensed or undeployed module), and which services fail differs per environment. On one 25.2 test system, 238 of the 299 listed services had fetchable definitions. *(Credit: [Alex Westemeier](https://github.com/AWestemeier))*
+
 > **Read-after-write verification:** `POST /api/v2/transaction/get` is also the recommended way to verify that an Interactive API write actually persisted — a save can report success without persisting a sub-record, and the read-back is the only way to recover a server-generated key. See [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) in the Interactive API guide.
 
 ---
@@ -303,7 +305,27 @@ This setting controls how dropdown/checkbox values are interpreted:
 | `false` (default) | Display value | `"Cancelled": "ON"` |
 | `true` | Code value | `"Cancelled": "Y"` |
 
-**Recommendation**: Use `false` (display values) for better readability.
+**Recommendation**: Use `false` (display values) for better readability. (Exception: some report services require code values — see [PDF Report Generation](#pdf-report-generation).)
+
+### Labels vs What the Database Stores (code_p21)
+
+For enum-style columns, the API's display labels come from the **`code_p21`** table (`language_id = 9`), but the database stores the integer **`code_no`** — which is what OData reads return. When you verify a write via OData, map the numbers back to labels with:
+
+```sql
+SELECT code_no, code_description
+FROM code_p21
+WHERE language_id = '9';
+```
+
+Verified examples (JobContractPricing cost/pricing enums):
+
+| Enum | Label → code_no |
+|------|-----------------|
+| Cost type (`*_cost_type_cd`) | `Order`=222, `Source`=220, `Value`=227, `None`=300 |
+| Pricing method (`job_price_line.pricing_method`) | `Price`=221, `Source`=220, `Pricing Libraries`=234, `None`=300 |
+| Calc method (`*_calc_method_cd`) | `Multiplier`=211, `Percentage`=230, `Difference`=228, `Mark up`=229 |
+
+*(Credit: [Alex Westemeier](https://github.com/AWestemeier) — maps verified against `code_p21`.)*
 
 ---
 
