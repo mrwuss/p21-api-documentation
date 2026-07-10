@@ -40,6 +40,7 @@ When editing docs, keep INDEX.md's anchors in sync (renaming a heading breaks it
 p21-api-documentation/
 ├── docs/
 │   ├── INDEX.md                 # Task → section routing map (start here)
+│   ├── recipes/                 # Self-contained copy-and-run task pages (one task = one page)
 │   ├── 00-Authentication.md
 │   ├── 01-API-Selection-Guide.md
 │   ├── 02-OData-API.md
