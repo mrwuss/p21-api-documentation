@@ -1,0 +1,367 @@
+{
+ "Name": "m_reprintpurchaseorders",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "m_reprintpurchaseorders",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_1.poreportcriteriadw",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_po_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_po_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_vendor_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_supplier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_supplier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "reprint_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_qty",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_order_or_rfq",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_rfq_control_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_rfq_control_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "process_doclinks",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_dc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_dc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_beg_dlm",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dt_end_dlm",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_beg_lmb",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "str_end_lmb",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_reprint_po_criteria",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Purchase Order",
+      "Name": "beg_po_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_po_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Vendor ID",
+      "Name": "vendor_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_vendor_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Supplier ID",
+      "Name": "beg_supplier_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_supplier_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "Location ID",
+      "Name": "beg_location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Reprint",
+      "Name": "reprint_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "",
+      "Label": "Print Quantity",
+      "Name": "print_qty",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Type",
+      "Name": "purchase_order_or_rfq",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "RFQ Control Number",
+      "Name": "beg_rfq_control_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Number",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "end_rfq_control_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Transmit Document Links",
+      "Name": "process_doclinks",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_1.poreportcriteriadw",
+    "ParentText": "Criteria",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_master_report_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "dt_beg_dc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_dc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "dt_beg_dlm",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "dt_end_dlm",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "str_beg_lmb",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To",
+      "Name": "str_end_lmb",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp",
+    "ParentText": "Timestamp Criteria",
+    "Type": "Form"
+   }
+  ],
+  "KeyDefinitions": []
+ }
+}

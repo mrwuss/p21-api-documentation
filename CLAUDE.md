@@ -39,6 +39,7 @@ When editing docs, keep INDEX.md's anchors in sync (renaming a heading breaks it
 ```
 p21-api-documentation/
 ├── docs/
+│   ├── INDEX.md                 # Task → section routing map (start here)
 │   ├── 00-Authentication.md
 │   ├── 01-API-Selection-Guide.md
 │   ├── 02-OData-API.md
@@ -54,6 +55,8 @@ p21-api-documentation/
 │   ├── 12-Production-Labor-API.md
 │   ├── 13-UDT-Service-API.md
 │   └── html/                    # Generated HTML versions
+│
+├── definitions/                 # Sanitized full-field service definition JSONs (schema library)
 │
 ├── examples/
 │   └── csharp/                  # C# console app examples
@@ -71,6 +74,7 @@ p21-api-documentation/
     ├── interactive/             # Interactive API examples (Python)
     ├── entity/                  # Entity API examples (Python)
     ├── production/              # Production & Labor examples (Python)
+    ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
     └── generate_html.py         # MD to HTML converter (supports tabbed code blocks)
 ```
 

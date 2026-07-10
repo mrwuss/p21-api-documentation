@@ -1,0 +1,248 @@
+{
+ "Name": "LaborProcess",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "LaborProcess",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "service_labor_process_id"
+       ],
+       "Name": "FORM.form",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_labor_process_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_labor_process_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "labor_operation_sequence_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "LABOR PROCESS LIST.labor process list",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_labor_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "estimated_hours",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "previous_operation",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "operation_sequence",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "next_operation",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_labor_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_1",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "service_labor_process_hdr",
+    "DatawindowName": "d_dw_service_labor_process_hdr_form",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor_process_hdr.service_labor_process_id",
+      "Label": "Labor Process ID",
+      "Name": "service_labor_process_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor_process_hdr.service_labor_process_desc",
+      "Label": "Labor Process Description",
+      "Name": "service_labor_process_desc",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor_process_hdr.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor_process_hdr.labor_operation_sequence_flag",
+      "Label": "Labor Operation Sequence for Production Scheduling",
+      "Name": "labor_operation_sequence_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [
+     "service_labor_process_id"
+    ],
+    "Name": "FORM.form",
+    "ParentText": "Form View",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "service_labor_process_dtl",
+    "DatawindowName": "d_dw_service_labor_process_dtl_list",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.service_labor_id",
+      "Label": "Labor ID",
+      "Name": "service_labor_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "service_labor_process_dtl.estimated_hours",
+      "Label": "Estimated Hours",
+      "Name": "estimated_hours",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor_process_dtl.previous_operation",
+      "Label": "Previous Operation",
+      "Name": "previous_operation",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "service_labor_process_dtl.operation_sequence",
+      "Label": "Operation Sequence",
+      "Name": "operation_sequence",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor_process_dtl.next_operation",
+      "Label": "Next Operation",
+      "Name": "next_operation",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "row_status",
+      "Label": "Status",
+      "Name": "row_status",
+      "Required": false,
+      "ValidValues": [
+       "Delete",
+       "Active"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_labor.service_labor_desc",
+      "Label": "Labor Description",
+      "Name": "service_labor_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "compute_1",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "LABOR PROCESS LIST.labor process list",
+    "ParentText": "Labor Process List",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "form",
+    "Name": "service_labor_process_id"
+   }
+  ]
+ }
+}
