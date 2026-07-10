@@ -1514,6 +1514,56 @@ What this writes, and the cascade (verified on a 68-item production run):
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July 2026).
 
+### BinLocation Service -- Creating Bins
+
+The `BinLocation` service *is* the **Bin Location Maintenance** window: its form element `FORM.form` is business object `bin` (datawindow `d_dw_bin_form`), and every field in the payload is a real field on that screen. Bulk bin creation is a clean Transaction API use case — verified in production at hundreds of bins per run.
+
+```json
+{
+  "Name": "BinLocation",
+  "UseCodeValues": false,
+  "IgnoreDisabled": true,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        { "Name": "FORM.form", "Type": "Form",
+          "Keys": ["company_id", "location_id", "bin_id"],
+          "Rows": [ { "Edits": [
+            {"Name": "company_id",      "Value": "ACME"},
+            {"Name": "location_id",     "Value": "10"},
+            {"Name": "bin_id",          "Value": "A01-02-03"},
+            {"Name": "bin_type",        "Value": "SHELF"},
+            {"Name": "putaway_zone_id", "Value": "ZONE-A"},
+            {"Name": "pick_zone_id",    "Value": "ZONE-A"},
+            {"Name": "bin_length", "Value": "10"}, {"Name": "bin_width", "Value": "10"}, {"Name": "bin_height", "Value": "11"},
+            {"Name": "warehouse_sequence", "Value": "1"}, {"Name": "putaway_zone_sequence", "Value": "1"}, {"Name": "pick_zone_sequence", "Value": "1"},
+            {"Name": "max_unique_items", "Value": "0"},
+            {"Name": "pick_locked_flag", "Value": "OFF"}, {"Name": "put_locked_flag", "Value": "OFF"},
+            {"Name": "full_flag", "Value": "OFF"}, {"Name": "frozen_flag", "Value": "OFF"},
+            {"Name": "consolidation_bin_flag", "Value": "OFF"}, {"Name": "stage_bin_flag", "Value": "OFF"}, {"Name": "door_bin_flag", "Value": "OFF"}
+          ] } ] }
+      ]
+    }
+  ]
+}
+```
+
+`Status: "New"` with the three-field key makes this a create when the `(company_id, location_id, bin_id)` combination doesn't exist yet.
+
+#### BinLocation Gotchas
+
+- **`IgnoreDisabled: true` is mandatory — and it must be at the payload top level.** `frozen_flag` and other system columns are disabled on the bin form; without the flag every transaction fails with `General Exception: Column is disabled: frozen_flag`. Placed inside a Transaction object instead of the top level, the flag is silently ignored and you get the same failure (see [IgnoreDisabled](#ignoredisabled)).
+- **Pass codes, not uids.** `bin_type` and the zone fields take the **code** (`SHELF`, `ZONE-A`), not the internal uid. The zone code is the same across stocking locations; only the internal uid differs, and P21 resolves it from code + location.
+- **Flags are `ON`/`OFF` on the form but stored `Y`/`N` in `dbo.bin`.** When cloning field values from an existing bin, convert (`Y`→`ON`, `N`→`OFF`).
+- **Don't send `master_bin_flag`** — P21 auto-sets it.
+- **Clone the constants from a "twin," don't invent them.** Query an existing bin of the same `bin_type` and copy the type, both zone codes, dimensions, sequences, `max_unique_items`, and flags — that guarantees new bins match what the warehouse already uses. Zone codes come from joining `bin.putaway_zone_uid` / `bin.pick_zone_uid` → `bin_zone.bin_zone_uid` → `bin_zone.bin_zone_id`.
+- **HTTP 200 ≠ success.** Check `Results.Transactions[].Status == "Passed"` (or `Summary`) — in a bulk POST each transaction passes/fails independently.
+- **Bulk is fine and fast** (tens of transactions per POST). Re-running is safe if you skip `(bin_id, location_id)` pairs that already exist.
+- **Read-back:** the raw `bin` table isn't always exposed via OData — verify through the `p21_view_bin` view instead, and compare field-for-field against the twin after the first run.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — pattern verified in production (July 2026), including the `IgnoreDisabled` placement failure mode.
+
 ---
 
 ## PDF Report Generation
