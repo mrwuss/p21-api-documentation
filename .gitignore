@@ -23,5 +23,8 @@ scripts/session_pool_results.json
 # Scraped data
 scraped/
 
+# Local reference clones (third-party repos, never commit)
+reference/
+
 # Misc local files
 *.png

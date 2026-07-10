@@ -668,12 +668,12 @@
 </tr>
 <tr>
 <td>GET <code>/v2/tools</code></td>
-<td style="text-align: center;">No (500)</td>
+<td style="text-align: center;">No (400)</td>
 <td style="text-align: center;"><strong>Yes</strong></td>
 </tr>
 </tbody>
 </table>
-<p>Using the wrong parameter returns an error — there is no fallback.</p>
+<p>Using the wrong parameter returns an error — there is no fallback. <code>GET /v2/tools?id=</code> fails with HTTP 400 and a validation body (<code>"The windowId field is required."</code>).</p>
 </blockquote>
 <h3 id="data-operations-v1-legacy">Data Operations (v1 - Legacy)</h3>
 <table>
