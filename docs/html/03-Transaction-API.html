@@ -1329,6 +1329,16 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 </div>
 </div>
+<h4 id="order-service-gotchas">Order Service Gotchas</h4>
+<p>All verified live (credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>):</p>
+<ul>
+<li><strong><code>source_loc_id</code> is effectively required.</strong> Omitting it fails with a <em>"Jurisdiction ID for Order Header Tax"</em> error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A realistic header sets <code>customer_id</code>, <code>sales_loc_id</code>, <code>source_loc_id</code>, <code>order_date</code>, <code>requested_date</code>, <code>po_no</code>, <code>taker</code>, <code>ship_to_id</code>, and <code>contact_id</code>.</li>
+<li><strong><code>requested_date</code> must be after <code>order_date</code>.</strong> The same date trips a date-cascade prompt, which the stateless API can't answer.</li>
+<li><strong><code>company_id</code> is a disabled column</strong> on the Order window — don't send it.</li>
+<li><strong>DynaChange prompts are auto-answered with the default</strong> (usually "No"), which silently discards the affected line — e.g. <em>"order line does not have a PO Cost… proceed? [No]"</em>. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see <a href="#dynachange-and-popup-handling">DynaChange and Popup Handling</a>.</li>
+<li><strong>Assembly items cannot be entered via the Transaction API</strong> when they should explode or spawn a production order — the <em>"add as assembly?"</em> prompt is auto-answered <strong>No</strong>, killing the explode. Use the Interactive API for those lines: see <a href="04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a>.</li>
+<li>The created <code>order_no</code> comes back in the result rows; check <code>Summary.Succeeded</code>, not the HTTP status.</li>
+</ul>
 <hr />
 <h2 id="service-reference">Service Reference</h2>
 <h3 id="jobcontractpricing-service">JobContractPricing Service</h3>

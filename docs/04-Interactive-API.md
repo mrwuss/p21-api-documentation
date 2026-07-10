@@ -1560,6 +1560,27 @@ Changes to the popup use the **popup's** window ID with `TabName: null` (it is t
 
 ---
 
+## Sales Order Entry with Assembly Lines
+
+Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. The Transaction API cannot do this: entering an assembly item fires an *"add as assembly?"* prompt, and the stateless API auto-answers **No**, killing the explode (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
+
+The flow (session started with `ResponseWindowHandlingEnabled: true`):
+
+1. **Header** on `TabName: "TABPAGE_1"`, `DatawindowName: "order"` — set `quote` (`OFF` = real order, `ON` = quote), `sales_loc_id`, `source_loc_id`, `customer_id`, `ship_to_id`, `contact_id`, `order_date`, `requested_date`, `po_no`, `taker`.
+   - **`taker` defaults to the API user** — override it with the real salesperson or the order is attributed to the service account.
+   - **Setting the dates fires a date-cascade prompt** (`w_response_common`, buttons `cb_ok`/`cb_cancel`) *even on a brand-new order*. Answer **`cb_ok`** via the popup's window ID (see [Response Windows](#response-windows)).
+2. **Lines**: `change_tab` to `TP_ITEMS`, then set fields on the **existing** `items` row (`DatawindowName: "items"` — do **not** add a row for the first line):
+   - Setting `oe_order_item_id` on an assembly item fires the **assembly prompt** (buttons `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel). Answer **`cb_1`** to explode the assembly / link a production order.
+   - Then set `unit_quantity`.
+   - **Do NOT use the quickmode datawindow** (`d_dw_quickmode_*`) to enter lines — it **bypasses the assembly prompt entirely**, and the line lands without the explode.
+3. **Save**, answering any follow-on prompts with their proceed button. Read the generated `order_no` from the window data (`GET /v2/data`).
+
+Assembly behavior is item-level (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save. On the saved order, `oe_line.assembly` codes: `B` = kit parent, `N` = component, `P` = production-order line, `S` = build-to-stock allocation. The production-order link is `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`). See the [Production & Labor API guide](12-Production-Labor-API.md) for the full production lifecycle.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — flow and gotchas verified end-to-end on a play environment (June 2026).
+
+---
+
 ## Data Structures Reference
 
 ### Result Object
