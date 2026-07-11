@@ -421,6 +421,10 @@ If you receive a `401` or `403` "not authorized" error with a valid token:
 
 ## Using the Token
 
+> **`Accept: application/json` is not optional on 2026.1.** Every example in this documentation sends it; on P21 **2026.1** the Interactive API returns an **empty HTTP 500** for requests without it (including the `Accept: */*` default of httpx and .NET HttpClient), and the failed session create leaves a ghost session behind. See [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+
+
+
 Include the token in the `Authorization` header for all API requests:
 
 ```http

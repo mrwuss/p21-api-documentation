@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home - P21 API Documentation</title>
+    <title>P21 Breaking Changes by Version - P21 API Documentation</title>
     <style>
         /* ===== Reset & Base ===== */
         * { box-sizing: border-box; }
@@ -374,7 +374,7 @@
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
         <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
-        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
+        <li class="active"><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
         <li><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
             </ul>
         </div>
@@ -397,212 +397,116 @@
         <div class="sidebar-section page-toc-section">
             <div class="sidebar-section-title">On This Page</div>
             <div class="page-toc" id="page-toc">
-                <ul>
-<li><a href="#getting-started">Getting Started</a></li>
-<li><a href="#api-reference">API Reference</a></li>
-<li><a href="#recipes">Recipes</a></li>
-<li><a href="#troubleshooting-reference">Troubleshooting &amp; Reference</a></li>
+                <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#p21-20261">P21 2026.1</a><ul>
+<li><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit Accept: application/json header</a></li>
+<li><a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</a></li>
+<li><a href="#3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: SessionId → Id</a></li>
+<li><a href="#4-put-v2tab-no-longer-accepts-tabname">4. PUT /v2/tab no longer accepts TabName</a></li>
+<li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
+<li><a href="#6-silent-false-success-multi-field-v2change-drops-fields-on-non-active-tabs-while-returning-status-1">6. Silent false success: multi-field /v2/change drops fields on non-active tabs while returning Status: 1</a></li>
 </ul>
+</li>
+<li><a href="#p21-252">P21 25.2</a><ul>
+<li><a href="#datawindowname-is-required-in-interactive-api-change-requests">DatawindowName is required in Interactive API change requests</a></li>
+</ul>
+</li>
+<li><a href="#reporting-new-breaking-changes">Reporting new breaking changes</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
+
             </div>
         </div>
     </nav>
 
     <main class="content">
         <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
-
-<h1 id="p21-api-documentation">P21 API Documentation</h1>
-<p class="index-subtitle">Comprehensive guides and examples for Epicor Prophet 21 APIs</p>
+<h1 id="p21-breaking-changes-by-version">P21 Breaking Changes by Version</h1>
 <blockquote>
-<strong>Disclaimer:</strong> This is unofficial, community-created documentation.
-It is not affiliated with, endorsed by, or supported by Epicor Software Corporation.
-All trademarks are property of their respective owners. Use at your own risk.
+<p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
 </blockquote>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>A version-indexed registry of P21 middleware changes that <strong>break or silently corrupt existing API integrations</strong>. Every entry here was found the hard way during a real upgrade validation and verified against live tenants — including confirming the behavior does <em>not</em> exist on the prior version. Check this page <strong>before</strong> any P21 upgrade, and re-test the listed surfaces on your own test tenant first.</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Entries</th>
+<th>Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#p21-20261">2026.1</a></td>
+<td>Empty 500 without <code>Accept</code> header · ghost sessions (500/409) · <code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>two silent-false-success hazards</strong></td>
+<td>High — one hard break, two data-integrity hazards</td>
+</tr>
+<tr>
+<td><a href="#p21-252">25.2</a></td>
+<td><code>DatawindowName</code> required in change requests</td>
+<td>High — hard break for 3-param change calls</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="p21-20261">P21 2026.1</h2>
+<p>All findings verified on <strong>2026.1.5873.1</strong> (self-hosted middleware, test tenant) during upgrade validation, June 2026. <strong>None reproduce on 2025.2.5855.0</strong> with identical requests. The empty-500 defect has been reported to Epicor; the contract changes are awaiting written confirmation of intent. Re-verify against your own 2026.1 tenant before relying on the details.</p>
+<h3 id="1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit <code>Accept: application/json</code> header</h3>
+<p><strong>Hard break — every interactive endpoint.</strong></p>
+<p>On 2026.1, any request to <code>/uiserver0/api/ui/interactive/...</code> that omits the <code>Accept</code> header — or sends <code>Accept: */*</code>, which is the <strong>default for most HTTP libraries, including Python <code>httpx</code> and .NET <code>HttpClient</code></strong> — fails with an <strong>empty-body HTTP 500</strong>. The identical request with <code>Accept: application/json</code> added succeeds. 2025.2 falls back to a default representation instead of failing.</p>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">{uiserver}/api/ui/interactive/sessions/</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer {token}</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json        &lt;-- REQUIRED on 2026.1; omit it and you get an empty 500</span>
 
-<h2 id="getting-started">Getting Started</h2>
-<div class="index-grid">
-<a href="task-index.html" class="index-card">
-            <h3>Task Index</h3>
-            <p>"I want to..." routing map — jump straight to the exact section for your task instead of reading whole guides.</p>
-        </a>
-<a href="00-Authentication.html" class="index-card">
-            <h3>Authentication</h3>
-            <p>Token generation, credentials vs consumer keys, V1 and V2 endpoints, and token refresh patterns.</p>
-        </a>
-<a href="01-API-Selection-Guide.html" class="index-card">
-            <h3>API Selection Guide</h3>
-            <p>Decision tree and comparison table to help you choose the right API for your use case.</p>
-        </a>
-</div>
+<span class="p">{</span><span class="nt">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}</span>
+</code></pre></div>
 
-<h2 id="api-reference">API Reference</h2>
-<div class="index-grid">
-<a href="02-OData-API.html" class="index-card">
-            <h3>OData API <span class="badge badge-read">READ</span></h3>
-            <p>Query any P21 table using standard OData v3 protocol. Filtering, pagination, and complex queries.</p>
-        </a>
-<a href="03-Transaction-API.html" class="index-card">
-            <h3>Transaction API <span class="badge badge-write">WRITE</span></h3>
-            <p>Stateless bulk operations for creating and updating records. Service discovery and async operations.</p>
-        </a>
-<a href="04-Interactive-API.html" class="index-card">
-            <h3>Interactive API <span class="badge badge-both">READ/WRITE</span></h3>
-            <p>Stateful window interactions with full business logic. Sessions, windows, and response handling.</p>
-        </a>
-<a href="05-Entity-API.html" class="index-card">
-            <h3>Entity API <span class="badge badge-both">CRUD</span></h3>
-            <p>Simple REST operations on customers, vendors, contacts, and addresses.</p>
-        </a>
-<a href="11-Inventory-REST-API.html" class="index-card">
-            <h3>Inventory REST API <span class="badge badge-both">CRUD</span></h3>
-            <p>Inventory item CRUD and multi-company workflows. Read inv_loc data, append locations and suppliers.</p>
-        </a>
-<a href="12-Production-Labor-API.html" class="index-card">
-            <h3>Production & Labor API <span class="badge badge-both">READ/WRITE</span></h3>
-            <p>Production orders, labor hours, time entry, and the end-to-end production lifecycle.</p>
-        </a>
-<a href="13-UDT-Service-API.html" class="index-card">
-            <h3>UDT Service API <span class="badge badge-both">CRUD</span></h3>
-            <p>Insert, update, and delete rows in user-defined tables via /udtservice/api/udtdata/.</p>
-        </a>
-</div>
+<p><strong>Mitigation:</strong> send <code>Accept: application/json</code> on <strong>every</strong> P21 request, ideally forced in one shared header builder rather than per call site. Every example in this repo already does this — the consequence of omitting it is what changed.</p>
+<h3 id="2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</h3>
+<p><strong>Diagnosis trap that amplifies #1.</strong></p>
+<p>When the session create fails with the empty 500 above, the session is still <strong>partially created server-side</strong> — it appears in UI Server Administration and blocks subsequent creates with <strong>409 "Session already exists"</strong> until <code>SessionCleanupExpiration</code> (~6 minutes) passes. A retrying integration therefore sees an <strong>alternating 500 / 409 pattern</strong> that looks like a session-pool or concurrency problem and is very hard to trace back to a missing header.</p>
+<p><strong>Mitigation:</strong> fix the <code>Accept</code> header (#1). If you see 500/409 alternation on 2026.1, check the headers before anything else; waiting out <code>SessionCleanupExpiration</code> clears the ghost.</p>
+<h3 id="3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: <code>SessionId</code> → <code>Id</code></h3>
+<p><code>POST /api/ui/interactive/sessions/</code> returns the session identifier under <strong><code>Id</code></strong> on 2026.1; 2025.2 returned <strong><code>SessionId</code></strong>.</p>
+<p><strong>Mitigation:</strong> read both (<code>data.get("Id") or data.get("SessionId")</code> / the C# equivalent) so one client works across versions.</p>
+<h3 id="4-put-v2tab-no-longer-accepts-tabname">4. <code>PUT /v2/tab</code> no longer accepts <code>TabName</code></h3>
+<p>2026.1 binds <strong><code>PageName</code></strong> (PagePath structure) only; 2025.2 also tolerated <code>TabName</code> in the body. Requests still sending <code>TabName</code> stop working.</p>
+<div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">ta</span><span class="err">b</span>
+<span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;PageName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TP_ITEMS&quot;</span><span class="p">}</span>
+</code></pre></div>
 
-<h2 id="recipes">Recipes — Copy-and-Run Tasks</h2>
-<p>Self-contained task pages: one task, one page — the complete payload, a full runnable example in Python and C#, and every verified gotcha.</p>
-<div class="index-grid">
-<a href="recipes/README.html" class="index-card">
-            <h3>Recipes Overview</h3>
-            <p>How the cookbook works: conventions, shared auth helper, dry-run and verify rules.</p>
-        </a>
-<a href="recipes/create-bins.html" class="index-card">
-            <h3>Create Bins (Bulk)</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/create-sales-order.html" class="index-card">
-            <h3>Create a Sales Order</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/edit-contract-bins.html" class="index-card">
-            <h3>Edit Contract Bin Quantities</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/generate-pick-ticket-pdf.html" class="index-card">
-            <h3>Generate Pick Ticket and PO PDFs</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/inventory-adjustment.html" class="index-card">
-            <h3>Adjust On-Hand Quantity (Write-Off)</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/order-with-assembly.html" class="index-card">
-            <h3>Order with an Assembly Line</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/production-order-runbook.html" class="index-card">
-            <h3>Production Order Runbook — Create to Invoice</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/record-labor-time.html" class="index-card">
-            <h3>Record Labor Time on a Production Order</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/set-primary-bin-supplier.html" class="index-card">
-            <h3>Set an Item's Primary Bin or Primary Supplier at a Location</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-<a href="recipes/update-contract-lines.html" class="index-card">
-            <h3>Update Contract Lines</h3>
-            <p>Complete payload, runnable Python & C#, verified gotchas.</p>
-        </a>
-</div>
+<p><strong>Mitigation:</strong> none needed if you follow the documented v2 shape — this repo has always documented <code>PageName</code> (<a href="04-Interactive-API.html#changing-tabs">Interactive API § Changing Tabs</a>). Audit any legacy client for <code>TabName</code> in tab-change bodies.</p>
+<h3 id="5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns <code>Status: 2</code> with an <strong>empty window</strong></h3>
+<p><strong>Data-integrity hazard.</strong></p>
+<p>On 2026.1, keying a window to a record that doesn't exist (e.g., setting <code>po_no</code> to a nonexistent PO) returns <strong><code>Status: 2</code></strong> and leaves the window <strong>empty</strong>. 2025.2 returned <code>Status: 0</code> for the same action. An integration that treats "not found" as <code>Status: 0</code> — or that doesn't gate on load status at all — will <strong>silently proceed to write against an empty window</strong>.</p>
+<p><strong>Mitigation (verified):</strong> do not infer existence from the load status at all. Gate with an <strong>existence pre-read</strong> (OData or <code>POST /api/v2/transaction/get</code>) <em>before</em> opening/keying the window, and abort on no-match. Treat any non-Success load status as fatal.</p>
+<h3 id="6-silent-false-success-multi-field-v2change-drops-fields-on-non-active-tabs-while-returning-status-1">6. Silent false success: multi-field <code>/v2/change</code> drops fields on non-active tabs while returning <code>Status: 1</code></h3>
+<p><strong>Data-integrity hazard.</strong></p>
+<p>A single <code>PUT /v2/change</code> carrying multiple fields where at least one field belongs to a <strong>tab that is not currently active</strong> returns <strong><code>Status: 1</code> (Success)</strong> while <strong>silently not applying</strong> that field. Observed live on 2026.1: a batched change partially applied, with one date field dropped, and nothing in the response indicated it.</p>
+<p><strong>Mitigation (verified):</strong> write <strong>one field per <code>/change</code> call</strong>, activating each tab (<code>PUT /v2/tab</code>) before changing its fields, and check the status of every call. Then prove the result with a <strong>read-back</strong> — see <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a>. A production run of 81 records using this pattern read back with zero silent drops.</p>
+<hr />
+<h2 id="p21-252">P21 25.2</h2>
+<h3 id="datawindowname-is-required-in-interactive-api-change-requests"><code>DatawindowName</code> is required in Interactive API change requests</h3>
+<p>25.2 changed window data structures so <code>DatawindowName</code> is <strong>required</strong> in v2 change payloads — the 3-parameter form (TabName + FieldName + Value) stops working. Confirmed through 25.2.5776.1 and acknowledged by Epicor as a development bug; affected windows include Item, PO Receiving Group, Delivery List, Group Pick Ticket, ConvertPOToVoucher, Order Entry, Clippership Auto Shipping, and Doc Links.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;field&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;value&quot;</span><span class="p">}</span>
+</code></pre></div>
 
-<h2 id="troubleshooting-reference">Troubleshooting &amp; Reference</h2>
-<div class="index-grid">
-<a href="14-Breaking-Changes.html" class="index-card">
-            <h3>P21 Breaking Changes</h3>
-            <p>Version-indexed registry of P21 upgrade changes that break or silently corrupt integrations. Check before upgrading.</p>
-        </a>
-<a href="06-Error-Handling.html" class="index-card">
-            <h3>Error Handling</h3>
-            <p>HTTP status codes, API-specific errors, Python error handling patterns, and debugging tips.</p>
-        </a>
-<a href="07-Session-Pool-Troubleshooting.html" class="index-card">
-            <h3>Session Pool Issues</h3>
-            <p>Diagnosing and fixing Transaction API session pool contamination and related problems.</p>
-        </a>
-<a href="08-SalesPricePage-Codes.html" class="index-card">
-            <h3>SalesPricePage Codes</h3>
-            <p>Dropdown code mappings for the Sales Price Page window in the Interactive API.</p>
-        </a>
-<a href="09-Batch-Processing-Patterns.html" class="index-card">
-            <h3>Batch Processing Patterns</h3>
-            <p>Production patterns for bulk operations: session batching, error recovery, and async client.</p>
-        </a>
-<a href="10-Changelog.html" class="index-card">
-            <h3>Changelog</h3>
-            <p>Complete history of changes, additions, and contributors to this documentation project.</p>
-        </a>
-</div>
-
-<hr>
-<p style="text-align: center; color: #666;">
-<a href="https://github.com/mrwuss/p21-api-documentation">View on GitHub</a>
-</p>
-
-<style>
-.index-subtitle {
-    font-size: 1.15em;
-    color: #555;
-    margin-top: -20px;
-    margin-bottom: 30px;
-}
-.index-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-    margin-bottom: 30px;
-}
-.index-card {
-    display: block;
-    background: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 20px;
-    text-decoration: none;
-    color: inherit;
-    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-}
-.index-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-color: #2874a6;
-}
-.index-card h3 {
-    color: #1a5276;
-    margin: 0 0 8px 0;
-    font-size: 1.1em;
-    border: none;
-    padding: 0;
-}
-.index-card p {
-    color: #666;
-    margin: 0;
-    font-size: 0.9em;
-    line-height: 1.5;
-}
-.badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 3px;
-    font-size: 0.7em;
-    font-weight: bold;
-    margin-left: 6px;
-    vertical-align: middle;
-}
-.badge-read { background: #3498db; color: white; }
-.badge-write { background: #e74c3c; color: white; }
-.badge-both { background: #9b59b6; color: white; }
-</style>
-
+<p>Full detail, affected-window credits, and C# SDK impact: <a href="04-Interactive-API.html#v1-vs-v2-api-differences">Interactive API § v1 vs v2 differences</a> and the <a href="04-Interactive-API.html#known-issues-and-workarounds">Known Issues</a> section.</p>
+<hr />
+<h2 id="reporting-new-breaking-changes">Reporting new breaking changes</h2>
+<p>Found a behavior change during an upgrade? <a href="https://github.com/mrwuss/p21-api-documentation/issues/new?template=bug-report.md">Open an issue</a> with the exact middleware versions (working and broken), a deterministic repro, and — for anything in the silent-false-success class — the read-back evidence. Entries are added here only after live verification on both sides of the version line.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="04-Interactive-API.html">Interactive API</a> — the surface most version changes hit</li>
+<li><a href="06-Error-Handling.html">Error Handling</a> — symptom → cause tables</li>
+<li><a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a> — the other source of "mystery" interactive failures</li>
+<li><a href="10-Changelog.html">Changelog</a> — documentation change history and standing alerts</li>
+</ul>
     </main>
 
     <script>

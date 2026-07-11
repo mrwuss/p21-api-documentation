@@ -374,6 +374,7 @@
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
         <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
         <li><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
             </ul>
         </div>
@@ -969,6 +970,9 @@
 </ol>
 <hr />
 <h2 id="using-the-token">Using the Token</h2>
+<blockquote>
+<p><strong><code>Accept: application/json</code> is not optional on 2026.1.</strong> Every example in this documentation sends it; on P21 <strong>2026.1</strong> the Interactive API returns an <strong>empty HTTP 500</strong> for requests without it (including the <code>Accept: */*</code> default of httpx and .NET HttpClient), and the failed session create leaves a ghost session behind. See <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
+</blockquote>
 <p>Include the token in the <code>Authorization</code> header for all API requests:</p>
 <div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/odataservice/odata/table/supplier</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
 <span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>

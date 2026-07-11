@@ -15,7 +15,7 @@ The repo is built for **progressive disclosure**: this README routes you, each a
 | Area | What's there | Start at |
 |------|--------------|----------|
 | [`docs/INDEX.md`](docs/INDEX.md) | "I want to…" → exact doc-section routing map | the index itself |
-| [`docs/`](docs/INDEX.md#doc-inventory-what-each-file-is) | The deep manual — 14 numbered guides (auth, each API, errors, patterns) | Task Index, not the raw files |
+| [`docs/`](docs/INDEX.md#doc-inventory-what-each-file-is) | The deep manual — 15 numbered guides (auth, each API, errors, patterns) | Task Index, not the raw files |
 | [`docs/recipes/`](docs/recipes/README.md) | Copy-and-run task pages: complete payload + runnable Python & C# + verified gotchas | [recipes README](docs/recipes/README.md) |
 | [`definitions/`](definitions/README.md) | Full-field service schemas (every DataElement, field, key, label + payload template), sanitized | [definitions README](definitions/README.md) |
 | [`examples/python/`](examples/python/README.md) | Runnable Python examples for every API + end-to-end recipe scripts (dry-run by default) | [python README](examples/python/README.md) |
@@ -60,7 +60,7 @@ For C#: `cd examples/csharp && dotnet build`, then `dotnet run --project <Projec
 
 - **Getting started:** [Authentication](docs/00-Authentication.md) · [API Selection Guide](docs/01-API-Selection-Guide.md)
 - **API reference:** [OData](docs/02-OData-API.md) · [Transaction](docs/03-Transaction-API.md) · [Interactive](docs/04-Interactive-API.md) · [Entity](docs/05-Entity-API.md) · [Inventory REST](docs/11-Inventory-REST-API.md) · [Production & Labor](docs/12-Production-Labor-API.md) · [UDT Service](docs/13-UDT-Service-API.md)
-- **Troubleshooting:** [Error Handling](docs/06-Error-Handling.md) · [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md)
+- **Troubleshooting:** [P21 Breaking Changes](docs/14-Breaking-Changes.md) · [Error Handling](docs/06-Error-Handling.md) · [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md)
 - **Reference:** [SalesPricePage Codes](docs/08-SalesPricePage-Codes.md) · [Batch Processing Patterns](docs/09-Batch-Processing-Patterns.md) · [Changelog](docs/10-Changelog.md)
 
 All documentation pages include tabbed Python/C# code blocks; the [online docs](https://mrwuss.github.io/p21-api-documentation/html/) sync language selection across every block on a page.
