@@ -229,6 +229,16 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 
 ## Interactive API Errors
 
+### Empty HTTP 500 on Every Interactive Call (2026.1)
+
+On P21 **2026.1**, any interactive request without an explicit `Accept: application/json` header — including the `Accept: */*` default of httpx and .NET HttpClient — returns an **empty-body HTTP 500**. The same request with the header succeeds; 2025.2 is unaffected.
+
+**Solution**: send `Accept: application/json` on every request. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+
+### Alternating 500 / 409 "Session already exists" (2026.1)
+
+The failed session create above still **half-creates the session** server-side, so retries hit 409 until `SessionCleanupExpiration` (~6 min). If you see this pattern on 2026.1, check the `Accept` header first — it is not a session-pool problem. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+
 ### Session Errors
 
 **Session Not Found**

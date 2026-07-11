@@ -1936,6 +1936,9 @@ When setting numeric fields, send whole numbers as integer strings (`"30"`), not
 
 ## v1 vs v2 API Differences
 
+> **Upgrading P21?** Version-specific middleware changes that break interactive integrations (25.2's required `DatawindowName`, 2026.1's Accept-header 500 / ghost sessions / `SessionId`→`Id` / silent-false-success hazards) are cataloged in [P21 Breaking Changes by Version](14-Breaking-Changes.md).
+
+
 > **Important:** Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.
 
 ### Summary Table

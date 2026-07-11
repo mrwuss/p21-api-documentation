@@ -875,12 +875,13 @@ def generate_index_page():
         "11-Inventory-REST-API": ("Inventory REST API", "Inventory item CRUD and multi-company workflows. Read inv_loc data, append locations and suppliers.", "CRUD"),
         "12-Production-Labor-API": ("Production & Labor API", "Production orders, labor hours, time entry, and the end-to-end production lifecycle.", "READ/WRITE"),
         "13-UDT-Service-API": ("UDT Service API", "Insert, update, and delete rows in user-defined tables via /udtservice/api/udtdata/.", "CRUD"),
+        "14-Breaking-Changes": ("P21 Breaking Changes", "Version-indexed registry of P21 upgrade changes that break or silently corrupt integrations. Check before upgrading."),
     }
 
     # Build sections
     getting_started = ["INDEX", "00-Authentication", "01-API-Selection-Guide"]
     api_reference = ["02-OData-API", "03-Transaction-API", "04-Interactive-API", "05-Entity-API", "11-Inventory-REST-API", "12-Production-Labor-API", "13-UDT-Service-API"]
-    troubleshooting = ["06-Error-Handling", "07-Session-Pool-Troubleshooting", "08-SalesPricePage-Codes", "09-Batch-Processing-Patterns", "10-Changelog"]
+    troubleshooting = ["14-Breaking-Changes", "06-Error-Handling", "07-Session-Pool-Troubleshooting", "08-SalesPricePage-Codes", "09-Batch-Processing-Patterns", "10-Changelog"]
 
     def make_card(stem):
         info = page_info.get(stem, (stem, ""))

@@ -374,6 +374,7 @@
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
         <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
         <li class="active"><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
             </ul>
         </div>
@@ -631,8 +632,8 @@
 </tr>
 <tr>
 <td>Customers / vendors / contacts / addresses (simple CRUD)</td>
+<td>—</td>
 <td><a href="05-Entity-API.html#crud-operations">05 § CRUD Operations</a></td>
-<td></td>
 </tr>
 <tr>
 <td>Read/create <strong>sales orders via REST</strong> (<code>/api/sales/orders</code>)</td>
@@ -641,8 +642,8 @@
 </tr>
 <tr>
 <td>Inventory items: read / create / update locations</td>
+<td>—</td>
 <td><a href="11-Inventory-REST-API.html#reading-items">11 § Reading Items</a> · <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a> · <a href="11-Inventory-REST-API.html#updating-existing-location-fields">11 § Updating Existing Location Fields</a></td>
-<td></td>
 </tr>
 <tr>
 <td>Customer-specific <strong>price + availability</strong> lookup</td>
@@ -651,8 +652,8 @@
 </tr>
 <tr>
 <td>User-defined tables (UDT) rows</td>
+<td>—</td>
 <td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a></td>
-<td></td>
 </tr>
 </tbody>
 </table>
@@ -811,6 +812,10 @@
 </thead>
 <tbody>
 <tr>
+<td><strong>Upgrading P21? What breaks between versions</strong></td>
+<td><a href="14-Breaking-Changes.html">14 Breaking Changes</a> — 2026.1 (Accept-header 500, ghost sessions, silent-false-success hazards) · 25.2 (DatawindowName)</td>
+</tr>
+<tr>
 <td>Error catalog by API</td>
 <td><a href="06-Error-Handling.html">06 Error Handling</a> (per-API sections)</td>
 </tr>
@@ -912,6 +917,11 @@
 <td><a href="13-UDT-Service-API.html">13-UDT-Service-API</a></td>
 <td>User-defined table CRUD</td>
 <td>large</td>
+</tr>
+<tr>
+<td><a href="14-Breaking-Changes.html">14-Breaking-Changes</a></td>
+<td>P21 version breaking-change registry (check before upgrading)</td>
+<td>small — read whole</td>
 </tr>
 <tr>
 <td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/</code></a></td>

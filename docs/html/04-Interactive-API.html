@@ -374,6 +374,7 @@
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
         <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
         <li><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
             </ul>
         </div>
@@ -2994,6 +2995,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <hr />
 <h2 id="v1-vs-v2-api-differences">v1 vs v2 API Differences</h2>
 <blockquote>
+<p><strong>Upgrading P21?</strong> Version-specific middleware changes that break interactive integrations (25.2's required <code>DatawindowName</code>, 2026.1's Accept-header 500 / ghost sessions / <code>SessionId</code>→<code>Id</code> / silent-false-success hazards) are cataloged in <a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a>.</p>
 <p><strong>Important:</strong> Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.</p>
 </blockquote>
 <h3 id="summary-table">Summary Table</h3>

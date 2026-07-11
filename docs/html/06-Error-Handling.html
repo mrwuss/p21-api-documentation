@@ -374,6 +374,7 @@
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
         <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
         <li><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
             </ul>
         </div>
@@ -423,6 +424,8 @@
 </ul>
 </li>
 <li><a href="#interactive-api-errors">Interactive API Errors</a><ul>
+<li><a href="#empty-http-500-on-every-interactive-call-20261">Empty HTTP 500 on Every Interactive Call (2026.1)</a></li>
+<li><a href="#alternating-500-409-session-already-exists-20261">Alternating 500 / 409 "Session already exists" (2026.1)</a></li>
 <li><a href="#session-errors">Session Errors</a></li>
 <li><a href="#window-errors">Window Errors</a></li>
 <li><a href="#422-400-wrong-query-parameter">422 / 400 - Wrong Query Parameter</a></li>
@@ -741,6 +744,11 @@
 <p>See <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a> for details.</p>
 <hr />
 <h2 id="interactive-api-errors">Interactive API Errors</h2>
+<h3 id="empty-http-500-on-every-interactive-call-20261">Empty HTTP 500 on Every Interactive Call (2026.1)</h3>
+<p>On P21 <strong>2026.1</strong>, any interactive request without an explicit <code>Accept: application/json</code> header — including the <code>Accept: */*</code> default of httpx and .NET HttpClient — returns an <strong>empty-body HTTP 500</strong>. The same request with the header succeeds; 2025.2 is unaffected.</p>
+<p><strong>Solution</strong>: send <code>Accept: application/json</code> on every request. Details: <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
+<h3 id="alternating-500-409-session-already-exists-20261">Alternating 500 / 409 "Session already exists" (2026.1)</h3>
+<p>The failed session create above still <strong>half-creates the session</strong> server-side, so retries hit 409 until <code>SessionCleanupExpiration</code> (~6 min). If you see this pattern on 2026.1, check the <code>Accept</code> header first — it is not a session-pool problem. Details: <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
 <h3 id="session-errors">Session Errors</h3>
 <p><strong>Session Not Found</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>

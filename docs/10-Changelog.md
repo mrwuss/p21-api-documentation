@@ -8,6 +8,19 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## ⚠ P21 Breaking-Change Alerts
+
+> Standing alerts for P21 **platform** version changes that break or silently corrupt API integrations — maintained in [**P21 Breaking Changes by Version**](14-Breaking-Changes.md). Check before any upgrade.
+>
+> - **2026.1** — Interactive endpoints return an **empty HTTP 500 without `Accept: application/json`** (httpx/.NET defaults break), and the failed session create leaves a **ghost session** (409 until cleanup); `SessionId` → `Id`; `TabName` no longer accepted on `/v2/tab`; **two silent-false-success hazards** (nonexistent record loads as `Status: 2` + empty window; multi-field changes drop non-active-tab fields while reporting Success). Verified 2026.1.5873.1 vs 2025.2.5855.0. → [details](14-Breaking-Changes.md#p21-20261)
+> - **25.2** — `DatawindowName` **required** in Interactive change requests (3-param form stops working). → [details](14-Breaking-Changes.md#p21-252)
+
+---
+
+## 2026-07-10 — v1.2.0
+
+- **feat:** New **[P21 Breaking Changes by Version](14-Breaking-Changes.md)** registry (doc 14) — a first-class page cataloging middleware changes that break or silently corrupt integrations, checked before upgrades. Launches with **2026.1** (verified 2026.1.5873.1 vs 2025.2.5855.0 during upgrade validation; reported to Epicor): Interactive endpoints return an **empty HTTP 500 without `Accept: application/json`** (httpx/.NET `Accept: */*` defaults fail) with a **ghost-session** side effect (409 "Session already exists" until cleanup → alternating 500/409); session-create response renamed `SessionId` → `Id`; `/v2/tab` binds `PageName` only; and two **silent-false-success hazards** — nonexistent record loads return `Status: 2` with an empty window (was `Status: 0`), and multi-field `/v2/change` silently drops non-active-tab fields while returning `Status: 1` — each with its verified mitigation (existence pre-read; one-field-per-change-per-active-tab + read-back). The 25.2 `DatawindowName` change is consolidated into the same registry. Standing **Breaking-Change Alerts** header added to the top of this changelog; cross-references added in 00/04/06/INDEX/CLAUDE.md — Fixes #96 — *@mrwuss*
+
 ## 2026-07-10 — v1.1.1
 
 End-to-end alignment audit: nine area agents checked **every tracked file** against the session's live-verified findings; ~118 findings triaged and fixed in one pass (PR #94). Highlights:

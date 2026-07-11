@@ -374,6 +374,7 @@
         <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
         <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
         <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
         <li><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
             </ul>
         </div>
@@ -398,6 +399,8 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-07-10-v120">2026-07-10 — v1.2.0</a></li>
 <li><a href="#2026-07-10-v111">2026-07-10 — v1.1.1</a></li>
 <li><a href="#2026-07-10-v110">2026-07-10 — v1.1.0</a></li>
 <li><a href="#2026-07-10-v100">2026-07-10 — v1.0.0</a></li>
@@ -439,6 +442,19 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</h2>
+<blockquote>
+<p>Standing alerts for P21 <strong>platform</strong> version changes that break or silently corrupt API integrations — maintained in <a href="14-Breaking-Changes.html"><strong>P21 Breaking Changes by Version</strong></a>. Check before any upgrade.</p>
+<ul>
+<li><strong>2026.1</strong> — Interactive endpoints return an <strong>empty HTTP 500 without <code>Accept: application/json</code></strong> (httpx/.NET defaults break), and the failed session create leaves a <strong>ghost session</strong> (409 until cleanup); <code>SessionId</code> → <code>Id</code>; <code>TabName</code> no longer accepted on <code>/v2/tab</code>; <strong>two silent-false-success hazards</strong> (nonexistent record loads as <code>Status: 2</code> + empty window; multi-field changes drop non-active-tab fields while reporting Success). Verified 2026.1.5873.1 vs 2025.2.5855.0. → <a href="14-Breaking-Changes.html#p21-20261">details</a></li>
+<li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="2026-07-10-v120">2026-07-10 — v1.2.0</h2>
+<ul>
+<li><strong>feat:</strong> New <strong><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></strong> registry (doc 14) — a first-class page cataloging middleware changes that break or silently corrupt integrations, checked before upgrades. Launches with <strong>2026.1</strong> (verified 2026.1.5873.1 vs 2025.2.5855.0 during upgrade validation; reported to Epicor): Interactive endpoints return an <strong>empty HTTP 500 without <code>Accept: application/json</code></strong> (httpx/.NET <code>Accept: */*</code> defaults fail) with a <strong>ghost-session</strong> side effect (409 "Session already exists" until cleanup → alternating 500/409); session-create response renamed <code>SessionId</code> → <code>Id</code>; <code>/v2/tab</code> binds <code>PageName</code> only; and two <strong>silent-false-success hazards</strong> — nonexistent record loads return <code>Status: 2</code> with an empty window (was <code>Status: 0</code>), and multi-field <code>/v2/change</code> silently drops non-active-tab fields while returning <code>Status: 1</code> — each with its verified mitigation (existence pre-read; one-field-per-change-per-active-tab + read-back). The 25.2 <code>DatawindowName</code> change is consolidated into the same registry. Standing <strong>Breaking-Change Alerts</strong> header added to the top of this changelog; cross-references added in 00/04/06/INDEX/CLAUDE.md — Fixes #96 — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-07-10-v111">2026-07-10 — v1.1.1</h2>
 <p>End-to-end alignment audit: nine area agents checked <strong>every tracked file</strong> against the session's live-verified findings; ~118 findings triaged and fixed in one pass (PR #94). Highlights:</p>
 <ul>
