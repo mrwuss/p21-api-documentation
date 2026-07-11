@@ -37,8 +37,13 @@ def matches_production(name: str) -> bool:
 
 def check_definition_available(
     ui_server_url: str, service_name: str, headers: dict, verify_ssl: bool
-) -> bool:
-    """Check if a service has a definition endpoint available."""
+) -> int:
+    """Check if a service definition is available.
+
+    Returns the HTTP status code (200 = available; 500 often means the
+    window is not available in this environment, NOT a permission you
+    can grant), or 0 on a transport error.
+    """
     try:
         response = httpx.get(
             f"{ui_server_url}/api/v2/definition/{service_name}",
@@ -47,9 +52,9 @@ def check_definition_available(
             follow_redirects=True,
             timeout=15.0,
         )
-        return response.status_code == 200
+        return response.status_code
     except (httpx.HTTPError, httpx.TimeoutException):
-        return False
+        return 0
 
 
 def main() -> None:
@@ -92,10 +97,14 @@ def main() -> None:
 
     # Step 3: Check which ones have definitions available
     for name in production_services:
-        has_def = check_definition_available(
+        code = check_definition_available(
             ui_server_url, name, headers, config.verify_ssl
         )
-        status = "[definition available]" if has_def else "[no definition]"
+        if code == 200:
+            status = "[definition available]"
+        else:
+            status = (f"[definition unavailable (HTTP {code}) - often "
+                      "environment availability, not permission]")
         print(f"  {name:40s} {status}")
 
     # Step 4: Also show a broader keyword scan to catch anything missed

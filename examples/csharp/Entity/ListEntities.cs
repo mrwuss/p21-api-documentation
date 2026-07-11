@@ -8,8 +8,10 @@
 //   1. Raw HttpClient - full control, educational
 //   2. P21Client.Entity wrapper - concise, recommended for production
 //
-// IMPORTANT: The Entity API base path is /api/entity/ (NOT /api/sales/).
-// Only 4 entities are available: customers, vendors, contacts, addresses.
+// IMPORTANT: /api/entity/ is the 4-entity surface (customers, vendors,
+// contacts, addresses). It is one part of Epicor's broader "Entity API"
+// umbrella — other REST surfaces exist too (e.g., /api/sales/orders exists
+// and works). See docs/05-Entity-API.md for the full taxonomy.
 
 using System.Net.Http;
 using Newtonsoft.Json;

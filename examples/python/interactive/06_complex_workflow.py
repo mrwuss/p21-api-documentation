@@ -10,8 +10,13 @@ This example shows:
 - Tab switching
 - Saving with validation checking
 
+By default the script drives the window read-only and SKIPS the save
+(field changes are discarded when the window closes). Pass --execute
+to actually save the record.
+
 Usage:
-    python examples/python/interactive/06_complex_workflow.py
+    python examples/python/interactive/06_complex_workflow.py            # no save
+    python examples/python/interactive/06_complex_workflow.py --execute  # saves
 """
 
 import sys
@@ -20,9 +25,9 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import argparse
 import httpx
 from datetime import datetime
-from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
 import warnings
@@ -176,15 +181,17 @@ class InteractiveClient:
         return response.json()
 
     def close_window(self, window_id: str):
+        # Note: /v2/window uses ?id= (only /v2/tools uses ?windowId=)
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
-            params={"windowId": window_id},
+            params={"id": window_id},
             headers=self._headers()
         )
 
 
 def create_price_page_workflow(client: InteractiveClient, description: str,
-                                supplier_id: int, product_group: str, multiplier: float):
+                                supplier_id: int, product_group: str, multiplier: float,
+                                execute: bool = False):
     """
     Complete workflow to create a price page.
 
@@ -194,7 +201,7 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
     3. Fill required fields
     4. Switch to VALUES tab
     5. Set calculation values
-    6. Save
+    6. Save (only when execute=True; otherwise skipped and discarded)
     7. Close window
     """
     print(f"\n  Creating: {description}")
@@ -248,27 +255,37 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
         # Step 5: Set calculation values
         print("    Setting calculation values...", end=" ")
         window.change_multiple([
-            {"TabName": "VALUES", "DatawindowName": "d_values",
+            {"TabName": "VALUES", "DatawindowName": "values",
              "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"TabName": "VALUES", "DatawindowName": "d_values",
+            {"TabName": "VALUES", "DatawindowName": "values",
              "FieldName": "calculation_value1", "Value": str(multiplier)},
         ])
         print("OK")
 
-        # Step 6: Save
-        print("    Saving...", end=" ")
-        result = window.save()
-        # Status 3 = Blocked (response window opened)
-        if result.get("Status") == 3:
-            raise RuntimeError("Save blocked by response window")
-        print("OK")
+        # Step 6: Save (gated - skipped on dry runs)
+        if not execute:
+            print("    DRY RUN: skipping save (changes discarded on close)")
+        else:
+            print("    Saving...", end=" ")
+            result = window.save()
+            # ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+            status = result.get("Status")
+            if status == 2:
+                messages = result.get("Messages") or []
+                print("SAVE FAILED (Status 2)")
+                for msg in messages:
+                    print(f"      - {msg}")
+                raise RuntimeError(f"Save failed: {messages or 'no messages returned'}")
+            if status == 3:
+                raise RuntimeError("Save blocked by response window")
+            print("OK")
 
         # Step 7: Close window
         print("    Closing window...", end=" ")
         window.close()
         print("OK")
 
-        return True
+        return execute
 
     except Exception as e:
         print(f"FAILED ({e})")
@@ -280,8 +297,15 @@ def create_price_page_workflow(client: InteractiveClient, description: str,
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Interactive API complex workflow")
+    parser.add_argument("--execute", action="store_true",
+                        help="Actually save the record (default: drive the window read-only, skip save)")
+    args = parser.parse_args()
+
     print("Interactive API - Complex Workflow (v2)")
     print("=" * 60)
+    if not args.execute:
+        print("DRY RUN: save will be skipped (pass --execute to save)")
 
     config = load_config()
 
@@ -304,15 +328,20 @@ def main():
             print("\n2. Creating single price page:")
             print("-" * 50)
 
-            create_price_page_workflow(
+            saved = create_price_page_workflow(
                 client,
                 description=f"WORKFLOW-{timestamp}-A",
                 supplier_id=10,
                 product_group="MISC",
-                multiplier=0.75
+                multiplier=0.75,
+                execute=args.execute
             )
 
-            print("\n  Price page created successfully!")
+            if saved:
+                print("\n  Price page created successfully!")
+            else:
+                print("\n  DRY RUN complete - window driven, nothing saved.")
+                print("  Re-run with --execute to save the record.")
 
             # Could create more records here...
 

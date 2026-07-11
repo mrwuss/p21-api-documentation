@@ -89,7 +89,7 @@ def main():
     response = httpx.get(
         f"{config.odata_url}/table/price_page",
         params={
-            "$filter": "contains(description,'IND_OEM') and row_status_flag eq 704",
+            "$filter": "contains(description,'ACME_BOOK_A') and row_status_flag eq 704",
             "$select": "price_page_uid,description,supplier_id",
             "$top": 5
         },
@@ -100,7 +100,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print("  Pages with 'IND_OEM' in description:")
+    print("  Pages with 'ACME_BOOK_A' in description:")
     for page in data["value"]:
         print(f"    {page['price_page_uid']}: {page.get('description', 'N/A')}")
 

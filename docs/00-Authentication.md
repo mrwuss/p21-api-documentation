@@ -21,7 +21,7 @@ POST https://{hostname}/api/security/token/v2
 
 The V2 endpoint accepts credentials in the request body.
 
-### V1 Endpoint (Deprecated — Security Risk)
+### V1 Endpoint (Deprecated-Security Risk)
 
 ```http
 POST https://{hostname}/api/security/token
@@ -64,7 +64,7 @@ Accept: application/json
 
 ### V1 Request (Legacy — Not Recommended)
 
-> **Credentials are in headers — see [security warning above](#v1-endpoint-deprecated-security-risk).**
+> **Do not use this pattern.** Credentials are in headers — see [security warning above](#v1-endpoint-deprecated-security-risk). The raw request below is shown for reference only (e.g., to recognize it in legacy code), deliberately without helper code. New integrations must use the V2 endpoint.
 
 **Request:**
 ```http
@@ -97,20 +97,8 @@ def get_token_v2(base_url: str, username: str, password: str) -> dict:
     response.raise_for_status()
     return response.json()
 
-def get_token_v1(base_url: str, username: str, password: str) -> dict:
-    """Get token using V1 endpoint (legacy)."""
-    response = httpx.post(
-        f"{base_url}/api/security/token",
-        headers={
-            "username": username,
-            "password": password,
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        },
-        content=""
-    )
-    response.raise_for_status()
-    return response.json()
+# No V1 helper is provided — the V1 endpoint puts credentials in
+# HTTP headers, which get logged by proxies and middleware.
 ```
 
 **C#:**
@@ -144,24 +132,8 @@ public static class P21Auth
         return JObject.Parse(json);
     }
 
-    /// <summary>Get token using V1 endpoint (legacy).</summary>
-    public static async Task<JObject> GetTokenV1Async(
-        string baseUrl, string username, string password)
-    {
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("username", username);
-        client.DefaultRequestHeaders.Add("password", password);
-        client.DefaultRequestHeaders.Add("Accept", "application/json");
-
-        var content = new StringContent(
-            "", Encoding.UTF8, "application/json");
-        var response = await client.PostAsync(
-            $"{baseUrl}/api/security/token", content);
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync();
-        return JObject.Parse(json);
-    }
+    // No V1 helper is provided — the V1 endpoint puts credentials in
+    // HTTP headers, which get logged by proxies and middleware.
 }
 ```
 
@@ -766,11 +738,15 @@ Accept: application/json
 
 > **307 redirect gotcha:** On some installations, `GET /api/ui/router/v1?urlType=external` (no trailing slash after `v1`) responds with a **307 redirect** to the trailing-slash form. HTTP clients that do not follow redirects by default — including `httpx` — receive the 307 and an HTML body instead of the JSON response. Either request `/api/ui/router/v1/?urlType=external` (trailing slash) directly, or enable redirect following (`httpx.get(..., follow_redirects=True)`). C# `HttpClient` follows GET redirects by default and is unaffected. Verified live on a 25.2 system (July 2026).
 
+> **XML responses:** As with the token endpoint, some middleware returns **XML** for the router response even with `Accept: application/json`. Parse JSON first and fall back to XML (see [XML Token Responses](#xml-token-responses)).
+
 <!-- tabs -->
 
 **Python:**
 
 ```python
+import re
+
 def get_ui_server_url(base_url: str, token: str) -> str:
     """Get UI server URL for Interactive/Transaction APIs."""
     response = httpx.get(
@@ -779,7 +755,15 @@ def get_ui_server_url(base_url: str, token: str) -> str:
         follow_redirects=True,
     )
     response.raise_for_status()
-    return response.json()["Url"].rstrip("/")
+    # Try JSON first; some middleware returns XML (like the token endpoint)
+    try:
+        return response.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", response.text)
+        if not match:
+            raise ValueError(
+                f"Could not parse router response: {response.text[:500]}")
+        return match.group(1).rstrip("/")
 ```
 
 **C#:**
@@ -793,6 +777,8 @@ public static async Task<string> GetUiServerUrlAsync(
         $"{baseUrl}/api/ui/router/v1?urlType=external");
     response.EnsureSuccessStatusCode();
 
+    // Some middleware returns XML here — if JObject.Parse fails, fall back
+    // to regex extraction of <Url> (same pattern as ParseTokenResponse below)
     var json = await response.Content.ReadAsStringAsync();
     var data = JObject.Parse(json);
     return data["Url"]!.ToString().TrimEnd('/');
@@ -907,7 +893,7 @@ public static JObject ParseTokenResponse(HttpResponseMessage response)
 | 401 | Expired token | Request new token |
 | 401 | Invalid consumer key | Verify key in SOA Admin |
 | 403 | Scope restriction | Check consumer key scope |
-| 404 | Wrong endpoint | Use `/api/security/token` or `/api/security/token/v2` |
+| 404 | Wrong endpoint | Use `/api/security/token/v2` |
 | 200 (XML body) | Middleware returning XML instead of JSON | Use dual-format parser (see [XML Token Responses](#xml-token-responses)) |
 
 ---

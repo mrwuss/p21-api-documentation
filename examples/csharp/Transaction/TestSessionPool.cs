@@ -314,7 +314,8 @@ public static class TestSessionPool
                                     {
                                         new JObject { ["Name"] = "price_page_type_cd", ["Value"] = "Supplier / Product Group" },
                                         new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                        new JObject { ["Name"] = "supplier_id", ["Value"] = 10.0 },
+                                        // Value is always a STRING in Transaction API payloads
+                                        new JObject { ["Name"] = "supplier_id", ["Value"] = "10" },
                                         new JObject { ["Name"] = "product_group_id", ["Value"] = "MISC" },
                                         new JObject { ["Name"] = "description", ["Value"] = $"SESSION-TEST-{timestamp}" },
                                         new JObject { ["Name"] = "pricing_method_cd", ["Value"] = "Source" },

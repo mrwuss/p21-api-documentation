@@ -71,7 +71,7 @@ This randomness initially suggested a configuration issue, but the inconsistency
           "Rows": [
             {
               "Edits": [
-                {"Name": "po_no", "Value": "982428"}
+                {"Name": "po_no", "Value": "500100"}
               ]
             }
           ]
@@ -331,7 +331,7 @@ This is arguably a **bug in P21's session pool management**. Sessions with open 
 
 A Python script has been created to diagnose session pool issues:
 
-**Location:** `scripts/test_session_pool.py`
+**Location:** `examples/python/transaction/test_session_pool.py`
 
 **What It Tests:**
 1. Rapid-fire requests (no delay)

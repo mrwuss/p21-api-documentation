@@ -29,6 +29,7 @@
 //     ]
 //   }
 
+using System.Globalization;
 using Newtonsoft.Json.Linq;
 using P21Examples.Common;
 
@@ -68,6 +69,12 @@ public static class CreateSingle
         Console.WriteLine($"    Transactions: {(payload["Transactions"] as JArray)?.Count}");
         Console.WriteLine($"    DataElements: {((payload["Transactions"] as JArray)?[0]?["DataElements"] as JArray)?.Count}");
 
+        // WRITE SAFETY gate — print the full payload and require EXECUTE.
+        Console.WriteLine("\n  Full payload:");
+        Console.WriteLine(payload.ToString());
+        if (!ConfirmExecute())
+            return;
+
         try
         {
             // P21Client.Transaction.CreateAsync handles the POST and parses the response
@@ -93,13 +100,14 @@ public static class CreateSingle
                 var results = result.Results as JObject;
                 var transactions = results?["Transactions"] as JArray;
 
+                string? uid = null;
                 if (transactions?.Count > 0)
                 {
                     var trans = transactions[0] as JObject;
                     Console.WriteLine($"\n    Transaction Status: {trans?["Status"]}");
 
                     // Walk the DataElements to find the generated UID
-                    var uid = ExtractFieldValue(trans, "price_page_uid");
+                    uid = ExtractFieldValue(trans, "price_page_uid");
                     if (uid != null)
                     {
                         Console.WriteLine($"    Created UID: {uid}");
@@ -107,6 +115,13 @@ public static class CreateSingle
                 }
 
                 Console.WriteLine("\n  SUCCESS: Price page created!");
+
+                // READ-BACK — the only proof of persistence is reading the
+                // record back (POST /api/v2/transaction/get keyed by UID).
+                if (uid != null)
+                {
+                    await VerifyCreatedAsync(client, uid, description);
+                }
             }
             else
             {
@@ -166,7 +181,8 @@ public static class CreateSingle
                                     {
                                         new JObject { ["Name"] = "price_page_type_cd", ["Value"] = "Supplier / Product Group" },
                                         new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                        new JObject { ["Name"] = "supplier_id", ["Value"] = (double)supplierId },
+                                        // Value is always a STRING in Transaction API payloads
+                                        new JObject { ["Name"] = "supplier_id", ["Value"] = supplierId.ToString(CultureInfo.InvariantCulture) },
                                         new JObject { ["Name"] = "product_group_id", ["Value"] = productGroup },
                                         new JObject { ["Name"] = "description", ["Value"] = description },
                                         new JObject { ["Name"] = "pricing_method_cd", ["Value"] = "Source" },
@@ -194,7 +210,7 @@ public static class CreateSingle
                                     ["Edits"] = new JArray
                                     {
                                         new JObject { ["Name"] = "calculation_method_cd", ["Value"] = "Multiplier" },
-                                        new JObject { ["Name"] = "calculation_value1", ["Value"] = multiplier.ToString() }
+                                        new JObject { ["Name"] = "calculation_value1", ["Value"] = multiplier.ToString(CultureInfo.InvariantCulture) }
                                     },
                                     ["RelativeDateEdits"] = new JArray()
                                 }
@@ -204,6 +220,69 @@ public static class CreateSingle
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// WRITE SAFETY gate (same pattern as Recipes/RecipeHelpers.ConfirmExecute).
+    /// Returns true only when the user types EXECUTE; anything else = dry run.
+    /// </summary>
+    internal static bool ConfirmExecute()
+    {
+        Console.WriteLine();
+        Console.Write("Type EXECUTE to post this write, anything else = dry run: ");
+        var answer = Console.ReadLine()?.Trim();
+        if (answer == "EXECUTE")
+            return true;
+
+        Console.WriteLine("Dry run - nothing was posted.");
+        return false;
+    }
+
+    /// <summary>
+    /// Read the created price page back via POST /api/v2/transaction/get
+    /// (keyed by price_page_uid — the service's KeyDefinition) and confirm
+    /// the description matches what was submitted.
+    /// </summary>
+    internal static async Task VerifyCreatedAsync(
+        P21Client client, string uid, string expectedDescription)
+    {
+        Console.WriteLine("\n  Read-back verification (POST /api/v2/transaction/get):");
+        try
+        {
+            var getPayload = new JObject
+            {
+                ["ServiceName"] = "SalesPricePage",
+                ["TransactionStates"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["DataElementName"] = "FORM.form",
+                        ["Keys"] = new JArray
+                        {
+                            new JObject { ["Name"] = "price_page_uid", ["Value"] = uid }
+                        }
+                    }
+                }
+            };
+
+            var readBack = await client.Transaction.GetRecordsAsync(getPayload);
+            var trans = (readBack["Transactions"] as JArray)?[0] as JObject;
+            var description = ExtractFieldValue(trans, "description");
+
+            if (description == expectedDescription)
+            {
+                Console.WriteLine($"    VERIFIED: UID {uid} persisted with description '{description}'");
+            }
+            else
+            {
+                Console.WriteLine($"    WARNING: read-back description '{description}' " +
+                                  $"does not match submitted '{expectedDescription}'");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"    Read-back failed: {ex.StatusCode} {ex.Message}");
+        }
     }
 
     /// <summary>

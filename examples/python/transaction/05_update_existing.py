@@ -30,10 +30,26 @@ def build_update_payload(price_page_uid: int, new_description: str = None,
     Build a Transaction API payload for updating a price page.
 
     For updates, you need to include:
-    - The key field(s) to identify the record
+    - The key field(s) that identify the record, inside Edits
     - Only the fields you want to change
+
+    Record identification follows the verified JobContractPricing update
+    pattern (docs/03-Transaction-API.md > "Updating an Existing Contract"):
+    Status stays "New", the FORM element keeps Keys [], and the key field(s)
+    go inside Edits so the transaction lands on the existing record. For
+    SalesPricePage the documented key is price_page_uid (the only entry in
+    the service definition's KeyDefinitions - see
+    definitions/SalesPricePage.json).
+
+    UNVERIFIED: this exact shape has been verified live for
+    JobContractPricing (173 successful updates), but NOT yet for
+    SalesPricePage. Verify against a test tenant (and read back the record)
+    before relying on it. The Interactive API is the fallback update path.
     """
-    edits = []
+    # Key field first: price_page_uid identifies the existing record.
+    edits = [
+        {"Name": "price_page_uid", "Value": str(price_page_uid)},
+    ]
 
     # Description update
     if new_description:
@@ -48,7 +64,7 @@ def build_update_payload(price_page_uid: int, new_description: str = None,
         {
             "Name": "FORM.form",
             "Type": "Form",
-            "Keys": [],
+            "Keys": [],  # empty - key value goes in Edits (JobContractPricing pattern)
             "Rows": [{
                 "Edits": edits,
                 "RelativeDateEdits": []
@@ -162,8 +178,10 @@ def main():
     # Example 2: Show update payload structure
     print("\n\n2. Update payload structure:")
     print("-" * 50)
-    print("  Updates require identifying the record via /get first,")
-    print("  then sending only the changed fields.")
+    print("  Fetch the record via /get first, then send the key field")
+    print("  (price_page_uid) in Edits plus only the changed fields.")
+    print("  NOTE: verified for JobContractPricing; UNVERIFIED for")
+    print("  SalesPricePage - test before relying on it.")
 
     payload = build_update_payload(
         price_page_uid=test_uid,
@@ -204,8 +222,13 @@ def main():
     print("Update examples complete!")
     print("\nImportant notes:")
     print("- Always fetch the record first with /transaction/get")
-    print("- Only include fields you want to change")
+    print("- Put the key field (price_page_uid) in Edits with Keys []")
+    print("- Only include fields you want to change beyond the key")
     print("- The 'Status' in the request is still 'New' for updates")
+    print("  ('Existing' returns HTTP 500 platform-wide)")
+    print("- This shape is verified for JobContractPricing (see")
+    print("  docs/03-Transaction-API.md > Updating an Existing Contract)")
+    print("  but UNVERIFIED for SalesPricePage - always read back after writing")
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ The repo is built for **progressive disclosure**: this README routes you, each a
 | [`examples/python/`](examples/python/README.md) | Runnable Python examples for every API + end-to-end recipe scripts (dry-run by default) | [python README](examples/python/README.md) |
 | [`examples/csharp/`](examples/csharp/README.md) | Equivalent C# console apps (`P21Examples.sln`) + shared client library | [csharp README](examples/csharp/README.md) |
 | [`examples/payloads/`](examples/payloads/README.md) | Standalone copy-ready request bodies — JSON and DataContract-correct XML, validator-verified | [payloads README](examples/payloads/README.md) |
+| [`postman/`](postman/README.md) | Postman collection covering all APIs (import-and-go) | [postman README](postman/README.md) |
 | [`scripts/`](scripts/README.md) | Repo tooling: payload validator, definition fetcher, HTML generator | [scripts README](scripts/README.md) |
 
 ## APIs Covered
@@ -73,6 +74,7 @@ All documentation pages include tabbed Python/C# code blocks; the [online docs](
 | `P21_PASSWORD` | Yes* | P21 API password |
 | `P21_CONSUMER_KEY` | No | Consumer key GUID (alternative to username/password) |
 | `P21_CONSUMER_USERNAME` | No | P21 username for consumer key auth (required for Interactive API) |
+| `P21_VERIFY_SSL` | No | Set `true` to verify TLS certificates; example ships `false` for test tenants |
 
 *Not required when using consumer key authentication. See [Authentication docs](docs/00-Authentication.md).
 

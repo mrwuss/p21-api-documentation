@@ -33,11 +33,13 @@ All Transaction API endpoints use the UI Server URL. First, obtain the UI Server
 GET https://{hostname}/api/ui/router/v1?urlType=external
 ```
 
+Note that the no-trailing-slash form can return a 307 redirect and the response may be XML on some middleware — use the trailing-slash form (`/api/ui/router/v1/`) and follow redirects; see [00-Authentication § UI Server URL](00-Authentication.md#ui-server-url).
+
 Then use the returned URL as base:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v2/services` | GET | List available services (transaction business objects only — report services are not listed; see [PDF Report Generation](#pdf-report-generation)) |
+| `/api/v2/services` | GET | List available services (transaction business objects only — all `m_*` services, reports and `m_storedprocedureexecutor` alike, are hidden from the list but still callable via `definition`/`defaults`; see [PDF Report Generation](#pdf-report-generation)) |
 | `/api/v2/definition/{name}` | GET | Get service schema and template |
 | `/api/v2/defaults/{name}` | GET | Get default values for a service |
 | `/api/v2/transaction/get` | POST | Retrieve existing records |
@@ -122,7 +124,7 @@ The main request body for create/update operations:
 
 | Field | Description |
 |-------|-------------|
-| `Status` | `"New"` for create, `"Passed"` on success, `"Failed"` on error |
+| `Status` | `"New"` for create **and** update (there is no working `"Existing"` status — it returns HTTP 500); responses echo `"Passed"`/`"Failed"` |
 | `DataElements` | Array of tabs/sections in the window |
 | `Documents` | Optional array of file attachments |
 
@@ -288,7 +290,7 @@ Other verified XML specifics:
 | `PurchaseOrder` | Purchase Order Entry | Create POs |
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
-| `m_storedprocedureexecutor` | Stored Procedure Executor | Load and execute stored procedure definitions (see [Stored Procedure Executor](#stored-procedure-executor)) |
+| `m_storedprocedureexecutor` | Stored Procedure Executor | Load and execute stored procedure definitions (see [Stored Procedure Executor](#stored-procedure-executor)) (hidden from `/api/v2/services` — see the [PDF Report Generation](#pdf-report-generation) discovery note) |
 
 ### Report Services
 
@@ -296,6 +298,7 @@ Other verified XML specifics:
 |---------|------------|---------|
 | `m_reprintpurchaseorders` | PO Reprint | Purchase order PDF reprints (see [PDF Report Generation](#pdf-report-generation)) |
 | `m_reprintpicktickets` | Pick Ticket Reprint | Pick ticket PDF reprints |
+| `m_picktickets` | Pick Ticket generation | Creates the pick ticket and returns its PDF (see [PDF Report Generation](#pdf-report-generation)) |
 
 ### Production, Assembly & Labor Services
 
@@ -651,7 +654,7 @@ payload = {
                 "Keys": [],
                 "Rows": [{
                     "Edits": [
-                        {"Name": "oe_order_item_id", "Value": "ITEM123"},
+                        {"Name": "oe_order_item_id", "Value": "WIDGET-001"},
                         {"Name": "unit_quantity", "Value": "1"}
                     ],
                     "RelativeDateEdits": []
@@ -671,6 +674,14 @@ response = httpx.post(
     verify=False
 )
 response.raise_for_status()
+result = response.json()
+succeeded = result['Summary']['Succeeded']
+failed = result['Summary']['Failed']
+print(f"Succeeded: {succeeded}, Failed: {failed}")
+
+if result["Summary"]["Failed"] > 0:
+    for msg in result.get("Messages", []):
+        print(f"  Message: {msg}")
 ```
 
 ```csharp
@@ -698,7 +709,7 @@ var payload = new
                     Keys = Array.Empty<string>(),
                     Rows = new[] {
                         new { Edits = new[] {
-                            new { Name = "oe_order_item_id", Value = "ITEM123" },
+                            new { Name = "oe_order_item_id", Value = "WIDGET-001" },
                             new { Name = "unit_quantity", Value = "1" }
                         }}
                     }
@@ -713,6 +724,22 @@ var content = new StringContent(
     Encoding.UTF8, "application/json");
 var response = await client.PostAsync(
     $"{uiServerUrl}/api/v2/transaction", content);
+response.EnsureSuccessStatusCode();
+
+var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine(
+    $"Succeeded: {result["Summary"]!["Succeeded"]}, " +
+    $"Failed: {result["Summary"]!["Failed"]}");
+
+if ((int)result["Summary"]!["Failed"]! > 0)
+{
+    var messages = result["Messages"] as JArray;
+    if (messages != null)
+    {
+        foreach (var msg in messages)
+            Console.WriteLine($"  Message: {msg}");
+    }
+}
 ```
 <!-- /tabs -->
 
@@ -1037,9 +1064,10 @@ auth_resp.raise_for_status()
 token = auth_resp.json()["AccessToken"]
 
 router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1?urlType=external",
+    f"{base_url}/api/ui/router/v1/?urlType=external",
     headers={"Authorization": f"Bearer {token}"},
     verify=False,
+    follow_redirects=True,
 )
 router_resp.raise_for_status()
 ui_server_url = router_resp.json()["Url"].rstrip("/")
@@ -1404,9 +1432,10 @@ auth_resp.raise_for_status()
 token = auth_resp.json()["AccessToken"]
 
 router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1?urlType=external",
+    f"{base_url}/api/ui/router/v1/?urlType=external",
     headers={"Authorization": f"Bearer {token}"},
     verify=False,
+    follow_redirects=True,
 )
 router_resp.raise_for_status()
 ui_server_url = router_resp.json()["Url"].rstrip("/")
@@ -1816,7 +1845,7 @@ The response is a **JSON array** (even for a single document). Each element cont
     "DateTimeStamp": "/Date(1776344580327)/",
     "ErrorMessage": "Unexpected results generating document request from criteria. --> Messages returned during document request processing: <No records to print for this range.",
     "ErrorType": "P21.UI.BulkEditor.BulkEditException",
-    "HostName": "p21web-22",
+    "HostName": "p21web-01",
     "InnerException": null
 }
 ```
@@ -1841,9 +1870,10 @@ auth_resp.raise_for_status()
 token = auth_resp.json()["AccessToken"]
 
 router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1?urlType=external",
+    f"{base_url}/api/ui/router/v1/?urlType=external",
     headers={"Authorization": f"Bearer {token}"},
     verify=False,
+    follow_redirects=True,
 )
 router_resp.raise_for_status()
 ui_server_url = router_resp.json()["Url"].rstrip("/")
@@ -2092,9 +2122,10 @@ auth_resp.raise_for_status()
 token = auth_resp.json()["AccessToken"]
 
 router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1?urlType=external",
+    f"{base_url}/api/ui/router/v1/?urlType=external",
     headers={"Authorization": f"Bearer {token}"},
     verify=False,
+    follow_redirects=True,
 )
 router_resp.raise_for_status()
 ui_server_url = router_resp.json()["Url"].rstrip("/")

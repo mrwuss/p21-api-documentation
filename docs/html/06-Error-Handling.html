@@ -533,7 +533,7 @@
 <tr>
 <td>408</td>
 <td>Request Timeout</td>
-<td>Server took too long to respond</td>
+<td>Client took too long to send the request</td>
 </tr>
 <tr>
 <td>409</td>
@@ -712,6 +712,16 @@
 </code></pre></div>
 
 <p><strong>Solution</strong>: Check the service definition for required fields and order.</p>
+<p><strong>HTTP 500 on <code>Status: "Existing"</code></strong></p>
+<p><code>POST /api/v2/transaction</code> with <code>Status: "Existing"</code> returns HTTP 500 <code>NullReferenceException</code> (at <code>ToInternalBeSpecification</code>) — a platform-wide bug, not a payload problem, confirmed across multiple services.</p>
+<p><strong>Solution</strong>: Use <code>Status: "New"</code> with key fields identifying the existing record — keyed <code>"New"</code> rows act as an upsert (update on key match, insert when absent). See <a href="03-Transaction-API.html#updating-an-existing-contract">Transaction API - Updating an Existing Contract</a>.</p>
+<p><strong>Report Services Look Broken (But Aren't)</strong></p>
+<p>Two traps when working with report (<code>m_*</code>) services:</p>
+<ul>
+<li><code>GET /api/v2/services?type=report</code> returns an <strong>empty list</strong> (and other <code>type</code> values return 400) — report services are hidden from discovery but still callable.</li>
+<li><code>POST /api/v2/transaction</code> <strong>accepts</strong> <code>m_*</code> payloads and returns <code>Succeeded</code> while emitting <strong>nothing</strong>. Reports must run via <code>POST /api/v2/process/pdfreport</code>.</li>
+</ul>
+<p>See <a href="03-Transaction-API.html#pdf-report-generation">Transaction API - PDF Report Generation</a>.</p>
 <p><strong>Service Fails on <code>/transaction</code> Endpoint</strong></p>
 <p>Some services silently fail or return errors when sent to <code>/api/v2/transaction</code>. These services must use <code>/api/v2/commands</code> instead. See <a href="03-Transaction-API.html#commands-endpoint">Transaction API - Commands Endpoint</a> for the full list of affected services.</p>
 <h3 id="session-pool-contamination">Session Pool Contamination</h3>
@@ -740,7 +750,7 @@
 
 <p><strong>Solution</strong>: Start a new session.</p>
 <p><strong>Session Timeout</strong>
-Default timeout is typically 6 minutes of inactivity.</p>
+Sessions expire after the configured <code>SessionTimeout</code> of inactivity (server default 60 seconds; longer on some configurations). See <a href="04-Interactive-API.html#session-parameters-userparameters">Interactive API - Session Parameters</a>.</p>
 <p><strong>Solution</strong>: Keep sessions short, end when done.</p>
 <h3 id="window-errors">Window Errors</h3>
 <p><strong>Window Not Open</strong></p>
@@ -768,7 +778,7 @@ Default timeout is typically 6 minutes of inactivity.</p>
 </code></pre></div>
 
 <p><strong>Cause</strong>: Using <code>?windowId=</code> on an endpoint that expects <code>?id=</code>, or vice versa. The v2 API is inconsistent — most endpoints use <code>?id=</code> but the tools endpoint uses <code>?windowId=</code>.</p>
-<p><strong>Solution</strong>: See <a href="04-Interactive-API.html#data-operations-v2---recommended">Interactive API - Query Parameter Inconsistency</a> for the correct parameter per endpoint.</p>
+<p><strong>Solution</strong>: See <a href="04-Interactive-API.html#data-operations-v2-recommended">Interactive API - Query Parameter Inconsistency</a> for the correct parameter per endpoint.</p>
 <h3 id="field-not-found">Field Not Found</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Field &#39;invalid_field&#39; not found in datawindow &#39;d_form&#39;&quot;</span>
@@ -985,6 +995,9 @@ Default timeout is typically 6 minutes of inactivity.</p>
 </code></pre></div>
 </div>
 </div>
+<blockquote>
+<p><strong>Not all 500s are transient.</strong> Some HTTP 500s are deterministic and will fail on every retry — notably Transaction API <code>Status: "Existing"</code> (<code>NullReferenceException</code>) and XML payloads with wrong DataContract element order. Fix the payload instead of retrying those.</p>
+</blockquote>
 <hr />
 <h2 id="debugging-tips">Debugging Tips</h2>
 <h3 id="enable-verbose-logging">Enable Verbose Logging</h3>
@@ -1156,6 +1169,21 @@ Default timeout is typically 6 minutes of inactivity.</p>
 <td>"Unexpected window"</td>
 <td>Transaction</td>
 <td>Use async endpoint, add delays</td>
+</tr>
+<tr>
+<td>500 NullReferenceException on <code>Status: "Existing"</code></td>
+<td>Transaction</td>
+<td>Use <code>Status: "New"</code> + key fields (upsert) — <a href="03-Transaction-API.html#updating-an-existing-contract">details</a></td>
+</tr>
+<tr>
+<td><code>services?type=report</code> empty (other <code>type</code> values 400)</td>
+<td>Transaction</td>
+<td>Expected — report services are hidden; run via <code>/api/v2/process/pdfreport</code></td>
+</tr>
+<tr>
+<td>m_* report returns Succeeded, no output</td>
+<td>Transaction</td>
+<td>Use <code>POST /api/v2/process/pdfreport</code>, not <code>/transaction</code> — <a href="03-Transaction-API.html#pdf-report-generation">details</a></td>
 </tr>
 <tr>
 <td>Session expired</td>

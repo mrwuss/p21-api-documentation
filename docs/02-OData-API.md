@@ -445,8 +445,11 @@ GET /odataservice/odata/table/inv_mast
 
 ```python
 import httpx
-from scripts.common.auth import get_token, get_auth_headers
-from scripts.common.config import load_config
+
+# Helper modules live at examples/python/common — run from examples/python/
+# or add that directory to sys.path (see examples/python/odata/01_basic_query.py)
+from common.auth import get_token, get_auth_headers
+from common.config import load_config
 
 config = load_config()
 token_data = get_token(config)
@@ -457,7 +460,7 @@ response = httpx.get(
     f"{config.odata_url}/table/supplier",
     params={"$top": 10, "$select": "supplier_id,supplier_name"},
     headers=headers,
-    verify=False
+    verify=False  # dev/test only -- verify certificates in production
 )
 response.raise_for_status()
 

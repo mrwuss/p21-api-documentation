@@ -8,9 +8,15 @@ The async endpoint:
 - Processes the transaction in the background
 - Uses a dedicated session (avoids session pool issues)
 - Can send callbacks when complete
+- Has a default queue capacity of 2 - submissions beyond that are
+  rejected until in-flight requests complete
+
+By default the script is a DRY RUN: it prints the payload and exits
+without posting. Pass --execute to actually submit the transaction.
 
 Usage:
-    python examples/python/transaction/06_async_operations.py
+    python examples/python/transaction/06_async_operations.py            # dry run
+    python examples/python/transaction/06_async_operations.py --execute  # submits
 """
 
 import sys
@@ -18,6 +24,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import argparse
+import json
 import httpx
 import time
 from datetime import datetime
@@ -28,9 +36,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def build_test_payload() -> dict:
+def build_test_payload(description: str) -> dict:
     """Build a simple test payload."""
-    timestamp = datetime.now().strftime("%H%M%S%f")
     return {
         "Name": "SalesPricePage",
         "UseCodeValues": False,
@@ -46,9 +53,9 @@ def build_test_payload() -> dict:
                             "Edits": [
                                 {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
                                 {"Name": "company_id", "Value": "ACME"},
-                                {"Name": "supplier_id", "Value": 10.0},
+                                {"Name": "supplier_id", "Value": "10"},
                                 {"Name": "product_group_id", "Value": "MISC"},
-                                {"Name": "description", "Value": f"ASYNC-TEST-{timestamp}"},
+                                {"Name": "description", "Value": description},
                                 {"Name": "pricing_method_cd", "Value": "Source"},
                                 {"Name": "source_price_cd", "Value": "Supplier List Price"},
                                 {"Name": "effective_date", "Value": datetime.now().strftime("%Y-%m-%d")},
@@ -125,7 +132,34 @@ def wait_for_completion(ui_server_url: str, request_id: str, headers: dict,
     raise TimeoutError(f"Request {request_id} did not complete within {timeout} seconds")
 
 
+def read_back_by_description(config, headers: dict, description: str) -> list:
+    """Read back the created price page via OData, filtered on description.
+
+    The async status response does not return the generated price_page_uid,
+    so an OData query on the unique test description is the simplest
+    read-back. Read-back is the only proof of persistence.
+    """
+    response = httpx.get(
+        f"{config.odata_url}/table/price_page",
+        params={
+            "$filter": f"description eq '{description}'",
+            "$select": "price_page_uid,description,row_status_flag",
+        },
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=30.0
+    )
+    response.raise_for_status()
+    return response.json().get("value", [])
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Submit an async transaction to the Transaction API")
+    parser.add_argument("--execute", action="store_true",
+                        help="Actually POST the transaction (default: dry run, print payload only)")
+    args = parser.parse_args()
+
     print("Transaction API - Async Operations")
     print("=" * 60)
 
@@ -140,7 +174,17 @@ def main():
     print("\n1. Submit async transaction:")
     print("-" * 50)
 
-    payload = build_test_payload()
+    description = f"ASYNC-TEST-{datetime.now().strftime('%H%M%S%f')}"
+    payload = build_test_payload(description)
+
+    if not args.execute:
+        print("\n  DRY RUN - full payload that would be posted:")
+        print(json.dumps(payload, indent=2))
+        print("\n  Re-run with --execute to submit the transaction.")
+        print("\n" + "=" * 60)
+        print("Async operations example complete (dry run)!")
+        return
+
     print(f"  Submitting async request for: SalesPricePage")
 
     try:
@@ -175,6 +219,18 @@ def main():
         if messages:
             # Messages may contain the result or error
             print(f"    Messages: {messages[:200]}...")
+
+        # Verify with a read-back via OData - the only proof of persistence
+        if final_status.get("Status") == "Complete":
+            print("\n  Verifying via OData read-back...")
+            rows = read_back_by_description(config, headers, description)
+            if rows:
+                row = rows[0]
+                print(f"  VERIFIED: price_page_uid {row.get('price_page_uid')} "
+                      f"created with description '{row.get('description')}'")
+            else:
+                print(f"  WARNING: no price_page row found for '{description}' -")
+                print("  the async request completed but the record did not persist")
 
     except httpx.HTTPStatusError as e:
         print(f"\n  HTTP Error: {e.response.status_code}")
@@ -213,6 +269,8 @@ def main():
     print("- Better for long-running operations")
     print("- Callback support for notification")
     print("- Request ID for tracking/retry")
+    print("\nNote: the async queue capacity defaults to 2 - throttle")
+    print("submissions or poll for completion before queueing more.")
 
 
 if __name__ == "__main__":

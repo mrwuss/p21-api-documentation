@@ -62,6 +62,8 @@ Generates a production-order pick ticket with `m_picktickets`, decodes the base6
 ```python
 import base64
 
+import httpx  # p21_auth() from recipes/README.md
+
 BASE_URL = "https://play.p21server.com"
 USERNAME = "api_user"
 PASSWORD = "api_pass"
@@ -199,7 +201,7 @@ foreach (var doc in documents.OfType<JObject>())
 ```
 <!-- /tabs -->
 
-> **Payload files:** [JSON](../../examples/payloads/json/generate-pick-ticket-pdf.json) (XML untested for the pdfreport endpoint) — validator-verified, see [payloads README](../../examples/payloads/README.md).
+> **Payload files:** [JSON](../../examples/payloads/json/generate-pick-ticket-pdf.json) · [reprint JSON](../../examples/payloads/json/reprint-purchase-order-pdf.json) (XML untested for the pdfreport endpoint) — validator-verified, see [payloads README](../../examples/payloads/README.md).
 >
 > **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/generate_pick_ticket_pdf.py`](../../examples/python/recipes/generate_pick_ticket_pdf.py) · [`examples/csharp/Recipes/GeneratePickTicketPdf.cs`](../../examples/csharp/Recipes/GeneratePickTicketPdf.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 

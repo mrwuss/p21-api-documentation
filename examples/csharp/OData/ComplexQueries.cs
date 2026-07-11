@@ -94,10 +94,10 @@ public static class ComplexQueries
         data = await odata.QueryAsync(
             "price_page",
             select: "price_page_uid,description,supplier_id",
-            filter: "contains(description,'IND_OEM') and row_status_flag eq 704",
+            filter: "contains(description,'ACME_BOOK_A') and row_status_flag eq 704",
             top: 5);
 
-        Console.WriteLine("  Pages with 'IND_OEM' in description:");
+        Console.WriteLine("  Pages with 'ACME_BOOK_A' in description:");
         foreach (var page in data["value"]!)
         {
             var desc = page["description"]?.ToString() ?? "N/A";

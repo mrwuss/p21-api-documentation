@@ -401,7 +401,7 @@
 <li><a href="#overview">Overview</a></li>
 <li><a href="#token-endpoints">Token Endpoints</a><ul>
 <li><a href="#v2-endpoint-recommended">V2 Endpoint (Recommended)</a></li>
-<li><a href="#v1-endpoint-deprecated-security-risk">V1 Endpoint (Deprecated — Security Risk)</a></li>
+<li><a href="#v1-endpoint-deprecated-security-risk">V1 Endpoint (Deprecated-Security Risk)</a></li>
 </ul>
 </li>
 <li><a href="#method-1-user-credentials">Method 1: User Credentials</a><ul>
@@ -476,7 +476,7 @@
 </code></pre></div>
 
 <p>The V2 endpoint accepts credentials in the request body.</p>
-<h3 id="v1-endpoint-deprecated-security-risk">V1 Endpoint (Deprecated — Security Risk)</h3>
+<h3 id="v1-endpoint-deprecated-security-risk">V1 Endpoint (Deprecated-Security Risk)</h3>
 <div class="highlight"><pre><span></span><code><span class="err">POST https://{hostname}/api/security/token</span>
 </code></pre></div>
 
@@ -512,7 +512,7 @@
 
 <h3 id="v1-request-legacy-not-recommended">V1 Request (Legacy — Not Recommended)</h3>
 <blockquote>
-<p><strong>Credentials are in headers — see <a href="#v1-endpoint-deprecated-security-risk">security warning above</a>.</strong></p>
+<p><strong>Do not use this pattern.</strong> Credentials are in headers — see <a href="#v1-endpoint-deprecated-security-risk">security warning above</a>. The raw request below is shown for reference only (e.g., to recognize it in legacy code), deliberately without helper code. New integrations must use the V2 endpoint.</p>
 </blockquote>
 <p><strong>Request:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
@@ -543,20 +543,8 @@
     <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">get_token_v1</span><span class="p">(</span><span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get token using V1 endpoint (legacy).&quot;&quot;&quot;</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/security/token&quot;</span><span class="p">,</span>
-        <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span>
-            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">password</span><span class="p">,</span>
-            <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span>
-        <span class="p">},</span>
-        <span class="n">content</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
-    <span class="p">)</span>
-    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="c1"># No V1 helper is provided — the V1 endpoint puts credentials in</span>
+<span class="c1"># HTTP headers, which get logged by proxies and middleware.</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -588,24 +576,8 @@
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 
-<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get token using V1 endpoint (legacy).&lt;/summary&gt;</span>
-<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenV1Async</span><span class="p">(</span>
-<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">username</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">password</span><span class="p">)</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">();</span>
-<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;username&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">username</span><span class="p">);</span>
-<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;password&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="p">);</span>
-<span class="w">        </span><span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="s">&quot;Accept&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
-<span class="w">            </span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
-<span class="w">            </span><span class="s">$&quot;{baseUrl}/api/security/token&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
-<span class="w">        </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
-
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
-<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="c1">// No V1 helper is provided — the V1 endpoint puts credentials in</span>
+<span class="w">    </span><span class="c1">// HTTP headers, which get logged by proxies and middleware.</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -1330,6 +1302,7 @@
 
 <blockquote>
 <p><strong>307 redirect gotcha:</strong> On some installations, <code>GET /api/ui/router/v1?urlType=external</code> (no trailing slash after <code>v1</code>) responds with a <strong>307 redirect</strong> to the trailing-slash form. HTTP clients that do not follow redirects by default — including <code>httpx</code> — receive the 307 and an HTML body instead of the JSON response. Either request <code>/api/ui/router/v1/?urlType=external</code> (trailing slash) directly, or enable redirect following (<code>httpx.get(..., follow_redirects=True)</code>). C# <code>HttpClient</code> follows GET redirects by default and is unaffected. Verified live on a 25.2 system (July 2026).</p>
+<p><strong>XML responses:</strong> As with the token endpoint, some middleware returns <strong>XML</strong> for the router response even with <code>Accept: application/json</code>. Parse JSON first and fall back to XML (see <a href="#xml-token-responses">XML Token Responses</a>).</p>
 </blockquote>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -1337,7 +1310,9 @@
     <button class="tab-btn" data-lang="csharp">C#</button>
   </div>
   <div class="tab-panel active" data-lang="python">
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server_url</span><span class="p">(</span><span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server_url</span><span class="p">(</span><span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get UI server URL for Interactive/Transaction APIs.&quot;&quot;&quot;</span>
     <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>  <span class="c1"># trailing slash avoids a 307</span>
@@ -1345,7 +1320,15 @@
         <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="c1"># Try JSON first; some middleware returns XML (like the token endpoint)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Could not parse router response: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">500</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1357,6 +1340,8 @@
 <span class="w">        </span><span class="s">$&quot;{baseUrl}/api/ui/router/v1?urlType=external&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 
+<span class="w">    </span><span class="c1">// Some middleware returns XML here — if JObject.Parse fails, fall back</span>
+<span class="w">    </span><span class="c1">// to regex extraction of &lt;Url&gt; (same pattern as ParseTokenResponse below)</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="s">&quot;Url&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">().</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
@@ -1487,7 +1472,7 @@
 <tr>
 <td>404</td>
 <td>Wrong endpoint</td>
-<td>Use <code>/api/security/token</code> or <code>/api/security/token/v2</code></td>
+<td>Use <code>/api/security/token/v2</code></td>
 </tr>
 <tr>
 <td>200 (XML body)</td>

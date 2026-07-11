@@ -11,6 +11,10 @@
             <Row>
               <Edits>
                 <Edit>
+                  <Name>company_id</Name>
+                  <Value>ACME</Value>
+                </Edit>
+                <Edit>
                   <Name>location_id</Name>
                   <Value>10</Value>
                 </Edit>

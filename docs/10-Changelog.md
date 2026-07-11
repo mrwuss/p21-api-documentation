@@ -194,12 +194,17 @@ First tagged release. This wave cross-checked the docs against a community proce
 | Claude Jones | [@RadAJones](https://github.com/RadAJones) | Reusable P21 API client with sync/async support ([PR #16](https://github.com/mrwuss/p21-api-documentation/pull/16)) |
 | Sibin Francis | [@sibinfrancisaj](https://github.com/sibinfrancisaj) | Inventory REST API documentation ([PR #23](https://github.com/mrwuss/p21-api-documentation/pull/23)) |
 | NextTWis | [@NextTWis](https://github.com/NextTWis) | Postman Collection for P21 API verification ([PR #24](https://github.com/mrwuss/p21-api-documentation/pull/24)) |
+| Alex Westemeier | [@AWestemeier](https://github.com/AWestemeier) | Report-service discovery, Transaction upsert + IgnoreDisabled findings, production lifecycle verification |
 | Jeff Poss | | PDF Report Generation endpoint discovery |
-| Felipe Maurer | | Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI |
+| Felipe Maurer | | Entity API taxonomy correction, UDT Service API discovery and testing, Inventory pricing endpoints, Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI |
 | Kevin Landry | | Stored Procedure Executor execution via Interactive API |
-| Brad Vandenbogaerde | | SP Executor database tables, Visual Rule response/callback TAPI limitation |
+| Brad Vandenbogaerde | | UDT database tables and SaaS hostname fix, SP Executor database tables, Visual Rule response/callback TAPI limitation |
 | Justin Cassidy | | DynaChange as root cause for "Column is disabled" errors |
 | Neil Timmerman | | TAPI HTTP 200 response validation gotcha |
+| John Kennedy | | UDT Service SQL keyword issue, Inventory pricing URL-encoding testing (forward-slash limitation) |
+| Jon Christie | | UDT response format quirk, `TabName: null` pattern for tabless response windows |
+| David Sokoloski | | UDT P21 help docs reference, first discovered the 25.2 DatawindowName 4-parameter workaround |
+| Jeff Patterson | | Confirmed the 25.2 DatawindowName fix, PO Receiving Group and ConvertPOToVoucher reports |
 
 ---
 

@@ -116,9 +116,28 @@ namespace P21Examples.Common
             var response = await client.GetAsync(
                 $"{baseUrl}/api/ui/router/v1?urlType=external");
             response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync();
-            var data = JObject.Parse(json);
-            return data["Url"]!.ToString().TrimEnd('/');
+            var body = await response.Content.ReadAsStringAsync();
+
+            // Try JSON first (mirrors ParseTokenResponse's dual-format approach)
+            try
+            {
+                var data = JObject.Parse(body);
+                var jsonUrl = data["Url"]?.ToString();
+                if (!string.IsNullOrEmpty(jsonUrl))
+                    return jsonUrl.TrimEnd('/');
+            }
+            catch (JsonReaderException)
+            {
+                // Not valid JSON — fall through to XML parsing
+            }
+
+            // Fall back to XML (some P21 instances return XML from the router)
+            var match = Regex.Match(body, @"<Url>([^<]+)</Url>");
+            if (match.Success)
+                return match.Groups[1].Value.TrimEnd('/');
+
+            throw new InvalidOperationException(
+                $"Could not parse Url from router response: {body.Substring(0, Math.Min(500, body.Length))}");
         }
 
         /// <summary>

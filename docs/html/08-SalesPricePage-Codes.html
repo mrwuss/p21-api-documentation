@@ -529,20 +529,27 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json</span><span class="p">;</span>
 <span class="k">using</span><span class="w"> </span><span class="nn">Newtonsoft.Json.Linq</span><span class="p">;</span>
 
-<span class="c1">// Helper to send a change_data request to the Interactive API v2</span>
+<span class="c1">// Helper to send a v2 change request to the Interactive API</span>
 <span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
 <span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">tabName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tabName</span><span class="p">,</span>
-<span class="w">        </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
-<span class="w">        </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span>
-<span class="w">        </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span>
+<span class="w">        </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">        </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tabName</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindowName</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fieldName</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
 <span class="w">    </span><span class="p">};</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
-<span class="w">        </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/data?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">        </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
 <span class="w">    </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="p">}</span>
 
@@ -579,10 +586,9 @@
 <span class="w">    </span><span class="s">&quot;FORM&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;form&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;expiration_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;2030-12-31&quot;</span><span class="p">);</span>
 
 <span class="c1">// Step 9: Switch to VALUES tab</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;TabName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="w"> </span><span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">tabContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">tabPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
 
 <span class="c1">// Step 10-11: Set calculation method and value</span>
 <span class="k">await</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
@@ -590,9 +596,10 @@
 <span class="k">await</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
 <span class="w">    </span><span class="s">&quot;VALUES&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;values&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;calculation_value1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;0.85&quot;</span><span class="p">);</span>
 
-<span class="c1">// Save</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">saveResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/save?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">null</span><span class="p">);</span>
+<span class="c1">// Save — v2 takes the bare WindowId string as the JSON body</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">saveContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="s">$&quot;\&quot;{windowId}\&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">saveResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/data&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">saveContent</span><span class="p">);</span>
 <span class="n">saveResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">saveResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
 </code></pre></div>
@@ -662,13 +669,20 @@
 <div class="highlight"><pre><span></span><code><span class="c1">// Correct - use display value</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;values&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;calculation_method_cd&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Mark Up&quot;</span>
+<span class="w">    </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;values&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;calculation_method_cd&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Mark Up&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/data?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/change&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
 
 <span class="c1">// Incorrect - do not use code</span>
 <span class="c1">// [&quot;Value&quot;] = &quot;229&quot;  // This will NOT work</span>
@@ -730,19 +744,23 @@
 <tbody>
 <tr>
 <td>220</td>
-<td>Value</td>
-</tr>
-<tr>
-<td>221</td>
 <td>Source</td>
 </tr>
 <tr>
-<td>222</td>
-<td>Order</td>
+<td>221</td>
+<td>Price</td>
+</tr>
+<tr>
+<td>234</td>
+<td>Pricing Libraries</td>
+</tr>
+<tr>
+<td>300</td>
+<td>None</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Note:</strong> Some P21 environments may show different display values (e.g., "Margin", "Fixed"). The codes above were verified in a working implementation. Always test in your environment.</p>
+<p><strong>Note:</strong> Corrected against live <code>code_p21</code> reads (July 2026); earlier published values were misassigned. Code mappings may still vary between P21 versions — always verify in your environment.</p>
 <hr />
 <h2 id="source-price-form-tab">Source Price (FORM Tab)</h2>
 <p>The <code>source_price_cd</code> field determines the base price source.</p>
@@ -810,18 +828,23 @@
 <tbody>
 <tr>
 <td>220</td>
-<td>Value</td>
-</tr>
-<tr>
-<td>221</td>
 <td>Source</td>
 </tr>
 <tr>
 <td>222</td>
 <td>Order</td>
 </tr>
+<tr>
+<td>227</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>300</td>
+<td>None</td>
+</tr>
 </tbody>
 </table>
+<p><strong>Note:</strong> Corrected against live <code>code_p21</code> reads (July 2026); earlier published values were misassigned.</p>
 <hr />
 <h2 id="commission-cost-calculation-method-costs-tab">Commission Cost Calculation Method (COSTS Tab)</h2>
 <p>The <code>commission_cost_calc_method_cd</code> on the COSTS tab (different from VALUES tab).</p>
@@ -882,42 +905,25 @@
 </div>
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="c1">// Example discovery code — open window and load a price page</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">openPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ServiceName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;SalesPricePage&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">openContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">openPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">openResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/window?serviceName=SalesPricePage&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">null</span><span class="p">);</span>
+<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/window&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">openContent</span><span class="p">);</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">openResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">openResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openResult</span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
 
-<span class="c1">// Load a specific price page</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">changePayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
-<span class="p">{</span>
-<span class="w">    </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;FORM&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;form&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;price_page_uid&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;45556&quot;</span>
-<span class="p">};</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">changeContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
-<span class="w">    </span><span class="n">changePayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/data?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">changeContent</span><span class="p">);</span>
+<span class="c1">// Load a specific price page (ChangeDataAsync helper defined above)</span>
+<span class="k">await</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;FORM&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;form&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;price_page_uid&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;45556&quot;</span><span class="p">);</span>
 
 <span class="c1">// Switch to VALUES tab</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;TabName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="w"> </span><span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">tabContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">tabPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
 
 <span class="c1">// Try setting a display value</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">markUpPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
-<span class="p">{</span>
-<span class="w">    </span><span class="na">[&quot;TabName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;values&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;calculation_method_cd&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Mark Up&quot;</span>
-<span class="p">};</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">markUpContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
-<span class="w">    </span><span class="n">markUpPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/data?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">markUpContent</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;VALUES&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;values&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;calculation_method_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Mark Up&quot;</span><span class="p">);</span>
 
 <span class="c1">// Read back the code from window state</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">stateResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
@@ -1125,7 +1131,7 @@
 <span class="kt">var</span><span class="w"> </span><span class="k">select</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;price_page_uid,description,price_page_type_cd,&quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">    </span><span class="s">&quot;product_group_id,discount_group_id,supplier_id&quot;</span><span class="p">;</span>
 
-<span class="kt">var</span><span class="w"> </span><span class="n">queryUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{baseUrl}/api/dataaccess/v1/table/sales_price_page&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">queryUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{baseUrl}/odataservice/odata/table/sales_price_page&quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">    </span><span class="s">$&quot;?$filter={Uri.EscapeDataString(filter)}&amp;$select={Uri.EscapeDataString(select)}&quot;</span><span class="p">;</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">queryUrl</span><span class="p">);</span>
 <span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
@@ -1210,9 +1216,9 @@
 </div>
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="c1">// Switch to VALUES tab</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;TabName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;VALUES&quot;</span><span class="w"> </span><span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">tabContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">tabPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
 
 <span class="c1">// Set calculation method</span>
 <span class="k">await</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
@@ -1316,9 +1322,9 @@
 </div>
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="c1">// Switch to COSTS tab</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;TabName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;COSTS&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;COSTS&quot;</span><span class="w"> </span><span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">tabContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">tabPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
 
 <span class="c1">// Set commission cost calculation method</span>
 <span class="k">await</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
@@ -1346,9 +1352,9 @@
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
-<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;TabName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;COSTS&quot;</span><span class="w"> </span><span class="p">};</span>
+<div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">tabPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;PageName&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;COSTS&quot;</span><span class="w"> </span><span class="p">};</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">tabContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">tabPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
-<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab?id={windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{baseUrl}/api/ui/interactive/v2/tab&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">tabContent</span><span class="p">);</span>
 
 <span class="k">await</span><span class="w"> </span><span class="nf">ChangeDataAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
 <span class="w">    </span><span class="s">&quot;COSTS&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;costs&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;commission_cost_calc_method_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Multiplier&quot;</span><span class="p">);</span>

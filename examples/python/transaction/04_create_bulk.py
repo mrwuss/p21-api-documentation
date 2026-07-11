@@ -6,8 +6,12 @@ Demonstrates creating multiple records in a single request.
 The Transaction API can process multiple transactions at once,
 which is more efficient than making individual requests.
 
+By default the script is a DRY RUN: it prints the payload and exits
+without posting. Pass --execute to actually create the records.
+
 Usage:
-    python examples/python/transaction/04_create_bulk.py
+    python examples/python/transaction/04_create_bulk.py            # dry run
+    python examples/python/transaction/04_create_bulk.py --execute  # creates
 """
 
 import sys
@@ -15,6 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import argparse
+import json
 import httpx
 from datetime import datetime
 from common.auth import get_token, get_auth_headers, get_ui_server_url
@@ -48,7 +54,7 @@ def build_bulk_payload(records: list[dict]) -> dict:
                         "Edits": [
                             {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
                             {"Name": "company_id", "Value": "ACME"},
-                            {"Name": "supplier_id", "Value": float(record["supplier_id"])},
+                            {"Name": "supplier_id", "Value": str(record["supplier_id"])},
                             {"Name": "product_group_id", "Value": record["product_group"]},
                             {"Name": "description", "Value": record["description"]},
                             {"Name": "pricing_method_cd", "Value": "Source"},
@@ -99,7 +105,42 @@ def create_bulk(ui_server_url: str, payload: dict, headers: dict, verify_ssl: bo
     return response.json()
 
 
+def read_back_price_page(ui_server_url: str, price_page_uid: str, headers: dict,
+                         verify_ssl: bool) -> dict:
+    """Read back a created price page via POST /api/v2/transaction/get.
+
+    Read-back is the only proof of persistence — HTTP 200 + Summary alone
+    only proves the request was processed.
+    """
+    payload = {
+        "ServiceName": "SalesPricePage",
+        "TransactionStates": [
+            {
+                "DataElementName": "FORM.form",
+                "Keys": [
+                    {"Name": "price_page_uid", "Value": str(price_page_uid)}
+                ]
+            }
+        ]
+    }
+    response = httpx.post(
+        f"{ui_server_url}/api/v2/transaction/get",
+        headers=headers,
+        json=payload,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=30.0
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Bulk-create price pages via the Transaction API")
+    parser.add_argument("--execute", action="store_true",
+                        help="Actually POST the transaction (default: dry run, print payload only)")
+    args = parser.parse_args()
+
     print("Transaction API - Bulk Create Records")
     print("=" * 60)
 
@@ -146,6 +187,14 @@ def main():
     print(f"    Service: {payload['Name']}")
     print(f"    Transactions: {len(payload['Transactions'])}")
 
+    if not args.execute:
+        print("\n  DRY RUN - full payload that would be posted:")
+        print(json.dumps(payload, indent=2))
+        print("\n  Re-run with --execute to create the records.")
+        print("\n" + "=" * 60)
+        print("Bulk create example complete (dry run)!")
+        return
+
     try:
         result = create_bulk(ui_server_url, payload, headers, config.verify_ssl)
 
@@ -168,6 +217,7 @@ def main():
         # Show created UIDs
         results = result.get("Results", {})
         transactions = results.get("Transactions", [])
+        created_uids = []
 
         if transactions:
             print("\n  Created Records:")
@@ -183,6 +233,31 @@ def main():
 
                 status_marker = "OK" if status == "Passed" else "FAIL"
                 print(f"    [{status_marker}] Transaction {i}: UID={uid}, Status={status}")
+                if status == "Passed" and uid:
+                    created_uids.append(uid)
+
+        # Verify with read-backs: fetch each created page via
+        # /api/v2/transaction/get. Read-back is the only proof of persistence.
+        if created_uids:
+            print("\n  Verifying via /api/v2/transaction/get:")
+            for uid in created_uids:
+                try:
+                    readback = read_back_price_page(
+                        ui_server_url, uid, headers, config.verify_ssl
+                    )
+                    rb_desc = None
+                    for trans in readback.get("Transactions", []):
+                        for elem in trans.get("DataElements", []):
+                            for row in elem.get("Rows", []):
+                                for edit in row.get("Edits", []):
+                                    if edit.get("Name") == "description":
+                                        rb_desc = edit.get("Value")
+                    if rb_desc:
+                        print(f"    [VERIFIED] UID {uid}: description '{rb_desc}'")
+                    else:
+                        print(f"    [WARNING] UID {uid}: read-back returned no description")
+                except httpx.HTTPStatusError as e:
+                    print(f"    [FAIL] UID {uid}: read-back HTTP {e.response.status_code}")
 
         # Summary
         print("\n" + "-" * 50)

@@ -534,7 +534,7 @@ UDT tables must be exposed through the Data Services API. If a UDT table is not 
 ### Querying UDTs via OData
 
 ```http
-GET /api/dataaccess/v1/udt_custom_orders?$filter=status eq 'pending'
+GET /odataservice/odata/table/udt_custom_orders?$filter=status eq 'pending'
 Authorization: Bearer <ACCESS_TOKEN>
 Accept: application/json
 ```
@@ -545,7 +545,7 @@ Accept: application/json
 ```python
 # Query UDT data via OData
 resp = client.get(
-    f"{base_url}/api/dataaccess/v1/udt_custom_orders",
+    f"{base_url}/odataservice/odata/table/udt_custom_orders",
     params={"$filter": "status eq 'pending'"},
 )
 resp.raise_for_status()
@@ -561,7 +561,7 @@ for row in data.get("value", []):
 ```csharp
 // Query UDT data via OData
 var resp = await client.GetAsync(
-    "/api/dataaccess/v1/udt_custom_orders?$filter=status eq 'pending'"
+    "/odataservice/odata/table/udt_custom_orders?$filter=status eq 'pending'"
 );
 resp.EnsureSuccessStatusCode();
 var data = JObject.Parse(await resp.Content.ReadAsStringAsync());
@@ -810,7 +810,7 @@ print(f"Insert: errorNo={result['errorNo']}, {result['errorMessage']}")
 
 # 2. READ via OData to get row_uid
 resp = client.get(
-    f"{base_url}/api/dataaccess/v1/{TABLE}",
+    f"{base_url}/odataservice/odata/table/{TABLE}",
     params={"$filter": "order_ref eq 'ORD-2026-100'"},
 )
 resp.raise_for_status()
@@ -927,7 +927,7 @@ Console.WriteLine($"Insert: errorNo={result["errorNo"]}, {result["errorMessage"]
 
 // 2. READ via OData to get row_uid
 resp = await client.GetAsync(
-    $"/api/dataaccess/v1/{table}?$filter=order_ref eq 'ORD-2026-100'"
+    $"/odataservice/odata/table/{table}?$filter=order_ref eq 'ORD-2026-100'"
 );
 resp.EnsureSuccessStatusCode();
 var data = JObject.Parse(await resp.Content.ReadAsStringAsync());

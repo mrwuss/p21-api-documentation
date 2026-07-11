@@ -265,6 +265,8 @@ foreach (var row in de["Rows"] as JArray ?? new JArray())
 ```
 <!-- /tabs -->
 
+> **Payload file:** [JSON](../../examples/payloads/json/generate-pick-ticket-pdf.json) — validator-verified. (XML untested for the pdfreport endpoint.)
+>
 > **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/production_order_runbook.py`](../../examples/python/recipes/production_order_runbook.py) · [`examples/csharp/Recipes/ProductionOrderRunbook.cs`](../../examples/csharp/Recipes/ProductionOrderRunbook.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
 
 ## Gotchas

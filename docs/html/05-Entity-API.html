@@ -740,7 +740,7 @@
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
 
-<p>See <a href="00-Authentication.html">Authentication</a> for token generation. Per the SDK, tokens expire after <strong>24 hours</strong>.</p>
+<p>See <a href="00-Authentication.html">Authentication</a> for token generation. Per the SDK, <strong>user-credential tokens</strong> expire after <strong>24 hours</strong>; consumer-key tokens last far longer (years).</p>
 <h3 id="consumer-key-behavior">Consumer Key Behavior</h3>
 <p>When using Consumer Key authentication with the Entity API:</p>
 <table>
@@ -1012,19 +1012,7 @@
 - <code>VendorAddress</code> - Mailing and physical address
 - <code>VendorPurchaseAccounts</code> - Purchase account configuration
 - <code>VendorContract</code> - Contract information</p>
-<p><strong>Inventory:</strong>
-- <code>Locations</code> - Warehouse location stock data
-- <code>Suppliers</code> - Vendor/supplier information
-- <code>UnitsOfMeasure</code> - UOM definitions and conversion factors
-- <code>LocationSuppliers</code> - Supplier-location specific data
-- <code>Lot</code> - Lot tracking information
-- <code>LocationMSPs</code> - Location specific pricing
-- <code>Service</code> - Service related data
-- <code>ServiceContracts</code> - linked service contracts
-- <code>Notes</code> - Item notes
-- <code>MSDS</code> - Material Safety Data Sheets
-- <code>RestrictedClasses</code> - Class restrictions
-- <code>AltCodes</code> - Alternate item codes</p>
+<p><strong>Inventory:</strong> see the <a href="11-Inventory-REST-API.html#extended-properties-reference">Inventory REST API extended properties reference</a> for the full list for <code>/api/inventory/parts</code>.</p>
 <p><strong>Contact:</strong>
 - <code>ContactDocuments</code> - Associated documents
 - <code>ContactLeadSources</code> - Lead source tracking

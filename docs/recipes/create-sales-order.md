@@ -76,6 +76,8 @@ Do **not** send `company_id` — it is a disabled column on the Order window. Fo
 
 <!-- tabs -->
 ```python
+import httpx  # p21_auth() from recipes/README.md
+
 BASE_URL = "https://play.p21server.com"
 USERNAME = "api_user"
 PASSWORD = "api_pass"
@@ -155,6 +157,30 @@ for txn in result["Results"]["Transactions"]:
                     order_no = edit.get("Value")
 
 print(f"Created order_no: {order_no}")
+
+# Read back via OData -- Succeeded is not proof every value landed (see Verify)
+hdr = httpx.get(
+    f"{BASE_URL}/odataservice/odata/table/oe_hdr",
+    params={"$filter": f"order_no eq '{order_no}'"},
+    headers=headers, verify=False,
+)
+hdr.raise_for_status()
+print(f"oe_hdr rows: {len(hdr.json()['value'])}")
+
+lines = httpx.get(
+    f"{BASE_URL}/odataservice/odata/table/oe_line",
+    params={"$filter": f"order_no eq '{order_no}'"},
+    headers=headers, verify=False,
+)
+lines.raise_for_status()
+line_count = len(lines.json()["value"])
+submitted = 2  # WIDGET-001 + WIDGET-002
+if line_count != submitted:
+    print(f"WARNING: {line_count} oe_line rows, submitted {submitted} -- "
+          "a DynaChange auto-answer can drop a line while the transaction "
+          "still reports Succeeded (see Gotchas)")
+else:
+    print(f"All {line_count} lines present")
 ```
 
 ```csharp
@@ -236,6 +262,25 @@ var orderNo = result.SelectTokens(
     .FirstOrDefault()?.ToString();
 
 Console.WriteLine($"Created order_no: {orderNo}");
+
+// Read back via OData -- Succeeded is not proof every value landed (see Verify)
+var hdrResp = await session.Http.GetAsync(
+    "https://play.p21server.com/odataservice/odata/table/oe_hdr" +
+    $"?$filter=order_no eq '{orderNo}'");
+hdrResp.EnsureSuccessStatusCode();
+var hdrRows = (JArray)JObject.Parse(await hdrResp.Content.ReadAsStringAsync())["value"]!;
+Console.WriteLine($"oe_hdr rows: {hdrRows.Count}");
+
+var lineResp = await session.Http.GetAsync(
+    "https://play.p21server.com/odataservice/odata/table/oe_line" +
+    $"?$filter=order_no eq '{orderNo}'");
+lineResp.EnsureSuccessStatusCode();
+var lineCount = ((JArray)JObject.Parse(await lineResp.Content.ReadAsStringAsync())["value"]!).Count;
+const int submitted = 2; // WIDGET-001 + WIDGET-002
+Console.WriteLine(lineCount != submitted
+    ? $"WARNING: {lineCount} oe_line rows, submitted {submitted} -- a DynaChange " +
+      "auto-answer can drop a line while the transaction still reports Succeeded (see Gotchas)"
+    : $"All {lineCount} lines present");
 ```
 <!-- /tabs -->
 

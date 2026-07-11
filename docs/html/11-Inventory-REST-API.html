@@ -473,7 +473,7 @@
 </blockquote>
 <hr />
 <h2 id="overview">Overview</h2>
-<p>P21 provides an <strong>Inventory REST API</strong> at <code>/api/inventory/parts</code> for CRUD operations on inventory items (<code>inv_mast</code>). This is a <strong>separate API</strong> from the <a href="05-Entity-API.html">Entity API</a> at <code>/api/entity/</code> — it uses its own base path and has different behavior.</p>
+<p>P21 provides inventory item CRUD at <code>/api/inventory/parts</code> (backed by <code>inv_mast</code>). This is <strong>part of the same REST API</strong> as the <a href="05-Entity-API.html"><code>/api/entity/</code> endpoints</a> — a different <strong>endpoint family</strong> with its own base path and behavior, documented separately for readability only. (In Epicor's naming, "Entity API" is an umbrella term covering the whole REST API plus the eCommerce SOAP API — see <a href="05-Entity-API.html#terminology--epicors-naming-july-2026">Terminology</a>.)</p>
 <p>The Inventory REST API is significant because it provides:
 - <strong>Read access</strong> to <code>inv_loc</code> (inventory location) records via extended properties
 - <strong>Write access</strong> to append new <code>inv_loc</code> and <code>inventory_supplier</code> records, or update existing ones, via PUT
@@ -567,12 +567,13 @@
 </table>
 <hr />
 <h2 id="comparison-with-entity-api">Comparison with Entity API</h2>
+<p>Both endpoint families belong to the <strong>same REST API</strong> (see <a href="05-Entity-API.html#terminology--epicors-naming-july-2026">Terminology — Epicor's Naming</a>); this table contrasts how the two families behave:</p>
 <table>
 <thead>
 <tr>
 <th>Feature</th>
-<th>Entity API</th>
-<th>Inventory REST API</th>
+<th><code>/api/entity/</code> endpoints</th>
+<th><code>/api/inventory/parts</code></th>
 </tr>
 </thead>
 <tbody>
@@ -1835,7 +1836,7 @@
 <span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Date(1776347610527)/&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Item is not valid or not defined at this location&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Business.Common.BusinessException&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-22&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-01&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>

@@ -1016,7 +1016,7 @@
 <li>Verify the table appears in the OData metadata</li>
 </ol>
 <h3 id="querying-udts-via-odata">Querying UDTs via OData</h3>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/dataaccess/v1/udt_custom_orders?$filter=status eq &#39;pending&#39;</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/udt_custom_orders?$filter=status eq &#39;pending&#39;</span>
 <span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>
 <span class="err">Accept: application/json</span>
 </code></pre></div>
@@ -1029,7 +1029,7 @@
   <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="c1"># Query UDT data via OData</span>
 <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/dataaccess/v1/udt_custom_orders&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/odataservice/odata/table/udt_custom_orders&quot;</span><span class="p">,</span>
     <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;status eq &#39;pending&#39;&quot;</span><span class="p">},</span>
 <span class="p">)</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
@@ -1044,7 +1044,7 @@
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="c1">// Query UDT data via OData</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">&quot;/api/dataaccess/v1/udt_custom_orders?$filter=status eq &#39;pending&#39;&quot;</span>
+<span class="w">    </span><span class="s">&quot;/odataservice/odata/table/udt_custom_orders?$filter=status eq &#39;pending&#39;&quot;</span>
 <span class="p">);</span>
 <span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
@@ -1428,7 +1428,7 @@
 
 <span class="c1"># 2. READ via OData to get row_uid</span>
 <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/dataaccess/v1/</span><span class="si">{</span><span class="n">TABLE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">TABLE</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
     <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;order_ref eq &#39;ORD-2026-100&#39;&quot;</span><span class="p">},</span>
 <span class="p">)</span>
 <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
@@ -1544,7 +1544,7 @@
 
 <span class="c1">// 2. READ via OData to get row_uid</span>
 <span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;/api/dataaccess/v1/{table}?$filter=order_ref eq &#39;ORD-2026-100&#39;&quot;</span>
+<span class="w">    </span><span class="s">$&quot;/odataservice/odata/table/{table}?$filter=order_ref eq &#39;ORD-2026-100&#39;&quot;</span>
 <span class="p">);</span>
 <span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>

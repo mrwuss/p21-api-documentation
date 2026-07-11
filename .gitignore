@@ -26,5 +26,5 @@ scraped/
 # Local reference clones (third-party repos, never commit)
 reference/
 
-# Misc local files
-*.png
+# Misc local files (repo root only)
+/*.png

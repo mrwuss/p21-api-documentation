@@ -10,8 +10,12 @@ exact field names and DataElement structure for your P21 version.
 The field names below are based on the standard TimeEntry service
 definition and may need adjustment.
 
+By default the script is a DRY RUN: it prints the payload and exits
+without posting. Pass --execute to actually record the labor entry.
+
 Usage:
-    python examples/python/production/03_record_labor_hours.py
+    python examples/python/production/03_record_labor_hours.py            # dry run
+    python examples/python/production/03_record_labor_hours.py --execute  # records
 """
 
 import sys
@@ -20,6 +24,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import argparse
 import json
 import httpx
 from datetime import datetime
@@ -69,7 +74,8 @@ def build_timeentry_payload(
 
     Args:
         company_id: Company identifier (e.g., "ACME")
-        technician_id: Technician/employee ID who performed the work
+        technician_id: Technician contact ID (not a user ID) who
+            performed the work - this is a contact record ID
         entry_date: Date of the labor entry (YYYY-MM-DD format)
         prod_order_number: Production order number to record hours against
         service_labor_id: Service/labor code identifier
@@ -103,7 +109,8 @@ def build_timeentry_payload(
                                 "Edits": [
                                     # Company this labor entry belongs to
                                     {"Name": "company_id", "Value": company_id},
-                                    # Technician/employee performing the work
+                                    # Technician performing the work -
+                                    # a contact ID (not a user ID)
                                     {"Name": "technician_id", "Value": technician_id},
                                     # Date the labor was performed
                                     {"Name": "entry_date", "Value": entry_date},
@@ -123,9 +130,10 @@ def build_timeentry_payload(
                             {
                                 "Edits": [
                                     # Production order to charge hours against
+                                    # (Values are always strings)
                                     {
                                         "Name": "prod_order_number",
-                                        "Value": float(prod_order_number),
+                                        "Value": str(prod_order_number),
                                     },
                                     # Service/labor code (defines the type of work)
                                     {
@@ -176,7 +184,34 @@ def submit_transaction(
     return response.json()
 
 
+def read_back_labor(config, headers: dict, prod_order_number: int) -> list:
+    """Read back labor rows via OData (prod_order_line_comp_labor).
+
+    Read-back is the only proof of persistence. transaction/get on
+    TimeEntry is awkward (technician-scoped header), so an OData query
+    on the production order is the simplest verification.
+    """
+    response = httpx.get(
+        f"{config.odata_url}/table/prod_order_line_comp_labor",
+        params={
+            "$filter": f"prod_order_number eq {prod_order_number}",
+            "$top": 10,
+        },
+        headers=headers,
+        verify=config.verify_ssl,
+        follow_redirects=True,
+        timeout=30.0,
+    )
+    response.raise_for_status()
+    return response.json().get("value", [])
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Record labor hours via the TimeEntry service")
+    parser.add_argument("--execute", action="store_true",
+                        help="Actually POST the transaction (default: dry run, print payload only)")
+    args = parser.parse_args()
+
     print("Transaction API - Record Labor Hours")
     print("=" * 60)
 
@@ -197,21 +232,22 @@ def main() -> None:
     start_time = "08:00"
     end_time = "10:30"
     time_worked = 2.5  # 2 hours 30 minutes
+    prod_order_number = 1001
 
     print("\nBuilding labor entry:")
     print("  Company:          ACME")
-    print("  Technician:       TECH001")
+    print("  Technician:       300 (a contact ID, not a user ID)")
     print(f"  Date:             {entry_date}")
-    print("  Production Order: 1001")
+    print(f"  Production Order: {prod_order_number}")
     print("  Service/Labor ID: LABOR-STD")
     print(f"  Time:             {start_time} - {end_time} ({time_worked}h)")
     print("  Labor Type:       Rate")
 
     payload = build_timeentry_payload(
         company_id="ACME",
-        technician_id="TECH001",
+        technician_id="300",  # contact ID, not a user ID
         entry_date=entry_date,
-        prod_order_number=1001,
+        prod_order_number=prod_order_number,
         service_labor_id="LABOR-STD",
         start_time=start_time,
         end_time=end_time,
@@ -237,6 +273,17 @@ def main() -> None:
 
     print("\nFull payload:")
     print(json.dumps(payload, indent=2))
+
+    # ------------------------------------------------------------------
+    # Dry-run gate: stop here unless --execute was passed
+    # ------------------------------------------------------------------
+    if not args.execute:
+        print("\n" + "-" * 50)
+        print("DRY RUN - nothing was posted.")
+        print("Re-run with --execute to record the labor entry.")
+        print("\n" + "=" * 60)
+        print("Labor hours recording example complete (dry run)!")
+        return
 
     # ------------------------------------------------------------------
     # Submit the transaction
@@ -285,6 +332,26 @@ def main() -> None:
                                 print(f"      {name}: {value}")
 
             print("\n  SUCCESS: Labor hours recorded!")
+
+            # Verify with a read-back - the only proof of persistence
+            print("\n  Verifying via OData (prod_order_line_comp_labor)...")
+            try:
+                rows = read_back_labor(config, headers, prod_order_number)
+                if rows:
+                    print(f"  VERIFIED: {len(rows)} labor row(s) on production order "
+                          f"{prod_order_number}:")
+                    for row in rows[:3]:
+                        print(f"    technician {row.get('technician_id')}: "
+                              f"{row.get('time_worked')} on {row.get('entry_date')}")
+                else:
+                    print(f"  WARNING: no labor rows found for production order "
+                          f"{prod_order_number}.")
+                    print("  Verify manually via OData:")
+                    print("    GET /odataservice/odata/table/prod_order_line_comp_labor"
+                          f"?$filter=prod_order_number eq {prod_order_number}")
+            except httpx.HTTPStatusError as e:
+                print(f"  Read-back failed: HTTP {e.response.status_code}")
+                print("  Verify manually via OData table prod_order_line_comp_labor")
         else:
             print("\n  FAILED: Labor entry not created")
             print("  Check messages above for details.")

@@ -194,7 +194,7 @@ public static class OpenWindow
             }
 
             // Get window state
-            // GET /api/ui/interactive/v2/window?windowId={windowId}
+            // GET /api/ui/interactive/v2/window?id={windowId}
             Console.WriteLine("\n3. Getting window state (raw HTTP):");
             Console.WriteLine(new string('-', 50));
 

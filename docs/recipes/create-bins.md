@@ -129,6 +129,17 @@ for start in range(0, len(to_create), BATCH_SIZE):
     for bin_id, txn in zip(batch, (result.get("Results") or {}).get("Transactions") or []):
         if txn["Status"] != "Passed":
             print(f"  FAILED: {bin_id}")
+
+# Read back every created bin through p21_view_bin (mirrors the Verify section)
+for bin_id in to_create:
+    check = httpx.get(
+        f"{BASE_URL}/odataservice/odata/view/p21_view_bin",
+        params={"$filter": f"location_id eq {LOCATION_ID} and bin_id eq '{bin_id}'"},
+        headers=headers, verify=False,
+    )
+    check.raise_for_status()
+    found = bool(check.json()["value"])
+    print(f"{bin_id}: {'found' if found else 'MISSING'}")
 ```
 
 ```csharp
@@ -217,6 +228,17 @@ foreach (var batch in toCreate.Chunk(BatchSize))
     foreach (var (binId, txn) in batch.Zip(txns))
         if ((string?)txn["Status"] != "Passed")
             Console.WriteLine($"  FAILED: {binId}");
+}
+
+// Read back every created bin through p21_view_bin (mirrors the Verify section)
+foreach (var binId in toCreate)
+{
+    var checkResp = await session.Http.GetAsync(
+        "https://play.p21server.com/odataservice/odata/view/p21_view_bin" +
+        $"?$filter=location_id eq {LocationId} and bin_id eq '{binId}'");
+    checkResp.EnsureSuccessStatusCode();
+    var found = JObject.Parse(await checkResp.Content.ReadAsStringAsync())["value"]!.Any();
+    Console.WriteLine($"{binId}: {(found ? "found" : "MISSING")}");
 }
 ```
 <!-- /tabs -->

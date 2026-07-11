@@ -40,6 +40,12 @@ public static class AsyncOperations
         var payload = BuildTestPayload();
         Console.WriteLine("  Submitting async request for: SalesPricePage");
 
+        // WRITE SAFETY gate — print the full payload and require EXECUTE.
+        Console.WriteLine("\n  Full payload:");
+        Console.WriteLine(payload.ToString());
+        if (!CreateSingle.ConfirmExecute())
+            return;
+
         try
         {
             // P21Client.Transaction.CreateAsyncOperation wraps POST /api/v2/transaction/async
@@ -83,6 +89,14 @@ public static class AsyncOperations
                 var preview = messages.Length > 200 ? messages[..200] + "..." : messages;
                 Console.WriteLine($"    Messages: {preview}");
             }
+
+            // A "Complete" async status is not proof of persistence — read
+            // the record back via POST /api/v2/transaction/get (see
+            // CreateSingle.VerifyCreatedAsync) or an OData query before
+            // trusting the write.
+            Console.WriteLine("\n  Note: verify persistence with a read-back");
+            Console.WriteLine("  (POST /api/v2/transaction/get or OData) — the async status");
+            Console.WriteLine("  alone is not proof the record was saved.");
         }
         catch (HttpRequestException ex)
         {
@@ -159,7 +173,8 @@ public static class AsyncOperations
                                     {
                                         new JObject { ["Name"] = "price_page_type_cd", ["Value"] = "Supplier / Product Group" },
                                         new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                        new JObject { ["Name"] = "supplier_id", ["Value"] = 10.0 },
+                                        // Value is always a STRING in Transaction API payloads
+                                        new JObject { ["Name"] = "supplier_id", ["Value"] = "10" },
                                         new JObject { ["Name"] = "product_group_id", ["Value"] = "MISC" },
                                         new JObject { ["Name"] = "description", ["Value"] = $"ASYNC-TEST-{timestamp}" },
                                         new JObject { ["Name"] = "pricing_method_cd", ["Value"] = "Source" },

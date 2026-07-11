@@ -25,14 +25,6 @@
                   "Value": "10"
                 },
                 {
-                  "Name": "ship_to_id",
-                  "Value": "200"
-                },
-                {
-                  "Name": "contact_id",
-                  "Value": "300"
-                },
-                {
                   "Name": "order_date",
                   "Value": "2030-01-05"
                 },
@@ -47,6 +39,14 @@
                 {
                   "Name": "taker",
                   "Value": "JSMITH"
+                },
+                {
+                  "Name": "ship_to_id",
+                  "Value": "200"
+                },
+                {
+                  "Name": "contact_id",
+                  "Value": "300"
                 }
               ],
               "RelativeDateEdits": []
@@ -67,6 +67,19 @@
                 {
                   "Name": "unit_quantity",
                   "Value": "5"
+                }
+              ],
+              "RelativeDateEdits": []
+            },
+            {
+              "Edits": [
+                {
+                  "Name": "oe_order_item_id",
+                  "Value": "WIDGET-002"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "2"
                 }
               ],
               "RelativeDateEdits": []

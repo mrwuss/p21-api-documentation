@@ -54,7 +54,11 @@
                 </Edit>
                 <Edit>
                   <Name>end_time</Name>
-                  <Value>2030-01-05T09:30:00</Value>
+                  <Value>2030-01-05T12:00:00</Value>
+                </Edit>
+                <Edit>
+                  <Name>labor_type_cd</Name>
+                  <Value>Rate</Value>
                 </Edit>
               </Edits>
               <RelativeDateEdits />

@@ -4,7 +4,7 @@ P21 API Authentication
 Provides functions for obtaining and using P21 API tokens.
 
 Two authentication methods are supported:
-1. User Credentials - Username and password in headers
+1. User Credentials - Username and password in the request body (V2 endpoint)
 2. Consumer Key - Application key for service accounts
 
 See docs/00-Authentication.md for full documentation.
@@ -47,6 +47,27 @@ def _parse_token_response(response: httpx.Response) -> dict:
         raise ValueError(f"Could not parse AccessToken from response: {text[:500]}")
 
     return result
+
+
+def _parse_router_response(response: httpx.Response) -> str:
+    """Parse the router response, handling both JSON and XML formats.
+
+    Like the token endpoints, the router can return XML instead of JSON on
+    some middleware instances. Tries JSON first, then falls back to XML
+    regex parsing (mirrors _parse_token_response).
+    """
+    try:
+        data = response.json()
+        if isinstance(data, dict) and data.get("Url"):
+            return data["Url"]
+    except (ValueError, KeyError):
+        pass  # Not valid JSON — fall back to XML
+
+    match = re.search(r"<Url>([^<]+)</Url>", response.text)
+    if match:
+        return match.group(1)
+
+    raise ValueError(f"Could not parse Url from router response: {response.text[:500]}")
 
 
 def get_token(
@@ -191,7 +212,8 @@ def get_ui_server_url(base_url: str, token: str, verify_ssl: bool = False) -> st
             headers=get_auth_headers(token)
         )
         response.raise_for_status()
-        return response.json()["Url"].rstrip("/")
+        # Router may respond with JSON or XML — handle both
+        return _parse_router_response(response).rstrip("/")
 
 
 if __name__ == "__main__":

@@ -253,6 +253,16 @@ namespace P21Examples.Common
         {
             return new InteractiveSession(_http, _uiServer, responseWindows);
         }
+
+        /// <summary>
+        /// Wrap an already-open window ID (e.g., a popup/response window ID
+        /// taken from a "windowopened" event) in an InteractiveWindow so its
+        /// tools can be discovered and clicked.
+        /// </summary>
+        public InteractiveWindow AttachWindow(string windowId)
+        {
+            return new InteractiveWindow(windowId, _http, _uiServer);
+        }
     }
 
     /// <summary>
@@ -351,20 +361,19 @@ namespace P21Examples.Common
 
         /// <summary>
         /// Change a field value (v2 format).
-        /// DatawindowName is required in P21 25.2+.
+        /// DatawindowName is REQUIRED in P21 25.2+ and is always sent.
         /// </summary>
         public async Task<InteractiveResult> ChangeDataAsync(
             string tabName, string fieldName, string value,
-            string datawindowName = "")
+            string datawindowName)
         {
             var change = new JObject
             {
                 ["TabName"] = tabName,
+                ["DatawindowName"] = datawindowName,
                 ["FieldName"] = fieldName,
                 ["Value"] = value
             };
-            if (!string.IsNullOrEmpty(datawindowName))
-                change["DatawindowName"] = datawindowName;
 
             var payload = new JObject
             {
@@ -376,10 +385,11 @@ namespace P21Examples.Common
 
         /// <summary>
         /// Change multiple fields at once (v2 format).
+        /// DatawindowName is REQUIRED in P21 25.2+ and is always sent.
         /// </summary>
         public async Task<InteractiveResult> ChangeFieldsAsync(
             string tabName, Dictionary<string, string> fields,
-            string datawindowName = "")
+            string datawindowName)
         {
             var changes = new JArray();
             foreach (var kvp in fields)
@@ -387,11 +397,10 @@ namespace P21Examples.Common
                 var change = new JObject
                 {
                     ["TabName"] = tabName,
+                    ["DatawindowName"] = datawindowName,
                     ["FieldName"] = kvp.Key,
                     ["Value"] = kvp.Value
                 };
-                if (!string.IsNullOrEmpty(datawindowName))
-                    change["DatawindowName"] = datawindowName;
                 changes.Add(change);
             }
 

@@ -6,7 +6,7 @@
 
 ## Overview
 
-Prophet 21 provides four different APIs for external data access and manipulation. This guide helps you choose the right API for your use case.
+Prophet 21 provides several APIs for external data access and manipulation. This guide helps you choose the right API for your use case.
 
 ## Quick Decision Table
 
@@ -16,6 +16,8 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 | Bulk create records | **Transaction API** | Stateless, supports batching |
 | Complex business workflows | **Interactive API** | Full business logic, validation |
 | Simple CRUD (customers, vendors, contacts, addresses) | **Entity API** | Stateless, domain objects |
+| CRUD on inventory items and locations (`inv_loc`) | **Inventory REST API** | Stateless GET → modify → PUT |
+| Write to user-defined tables (`udt_*`) | **UDT Service API** | Stateless insert/update/delete; read via OData |
 | Update existing records (keyed fields) | **Transaction API** | `Status: "New"` + keyed rows updates and upserts (verified) |
 | Update records behind dialogs/prompts | **Interactive API** | Only API that can answer response windows |
 | Handle response dialogs | **Interactive API** | Only API with dialog handling |
@@ -27,17 +29,17 @@ Prophet 21 provides four different APIs for external data access and manipulatio
 
 ## API Comparison
 
-| Feature | OData | Transaction | Interactive | Entity |
-|---------|-------|-------------|-------------|--------|
-| **Read Data** | Excellent | Limited | Good | Good (4 entities) |
-| **Create Data** | No | Excellent | Good | Good (4 entities) |
-| **Update Data** | No | Good* | Excellent | Good (4 entities) |
-| **Delete Data** | No | No | Via UI | Via flag |
-| **Bulk Operations** | Yes (read) | Yes | No | No |
-| **Business Logic** | No | Partial | Full | No |
-| **Session Required** | No | No | Yes | No |
-| **Stateful** | No | No | Yes | No |
-| **Response Dialogs** | N/A | N/A | Yes | N/A |
+| Feature | OData | Transaction | Interactive | Entity | Inventory REST | UDT Service |
+|---------|-------|-------------|-------------|--------|----------------|-------------|
+| **Read Data** | Excellent | Limited | Good | Good (4 entities) | Good (items) | No (use OData) |
+| **Create Data** | No | Excellent | Good | Good (4 entities) | Good (items) | Good (UDT rows) |
+| **Update Data** | No | Good* | Excellent | Good (4 entities) | Good (items/locations) | Good (by `row_uid`) |
+| **Delete Data** | No | No | Via UI | Via flag | No | Yes |
+| **Bulk Operations** | Yes (read) | Yes | No | No | No | Yes (multi-row insert) |
+| **Business Logic** | No | Partial | Full | No | Partial (validation) | No |
+| **Session Required** | No | No | Yes | No | No | No |
+| **Stateful** | No | No | Yes | No | No | No |
+| **Response Dialogs** | N/A | N/A | Yes | N/A | N/A | N/A |
 
 *Transaction API updates use `Status: "New"` with keyed rows (there is no working "Existing" status — it returns HTTP 500). Keyed rows behave as an **upsert**: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See [Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract). Flows that pop validation dialogs still need the Interactive API.
 
@@ -175,7 +177,8 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 - **Entity-based** - works with P21 domain objects (not raw table rows)
 - **Simple CRUD** - create, read, update via REST
 - **Stateless** - no session management required
-- **Limited scope** - only 4 entities: customers, vendors, contacts, addresses
+- **Umbrella term** - Epicor's "Entity API" covers the whole REST API, including the `/api/entity/`, `/api/inventory/`, and `/api/sales/` endpoint families (see the Terminology section of the [Entity API doc](05-Entity-API.md))
+- **`/api/entity/` scope** - the `/api/entity/` endpoint family covers only 4 entities: customers, vendors, contacts, addresses
 - **Composite keys** - customers/vendors use `{CompanyId}_{Id}` format
 - **Address limitations** - Address entity has no `/new` template and no PUT/update (read and create only)
 
@@ -185,7 +188,9 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 - You prefer stateless REST over Interactive API session management
 
 ### Don't Use When
-- You need orders, items, invoices, POs, or other entities (not available)
+- You need orders — those live in the same REST API at `/api/sales/orders` (see [Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families))
+- You need inventory items — use the [Inventory REST API](11-Inventory-REST-API.md) (`/api/inventory/parts`)
+- You need invoices, POs, or other business objects (no endpoint family found)
 - You need bulk operations (use Transaction API)
 - You need full business logic validation (use Interactive API)
 
@@ -193,6 +198,68 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 - Look up customer with address: `GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress`
 - Search vendors: `GET /api/entity/vendors/?$query=startswith(VendorName, 'ABC')`
 - Get contact details: `GET /api/entity/contacts/1`
+
+---
+
+## Inventory REST API
+
+### Best For
+- Inventory item CRUD, including location-level (`inv_loc`) data
+- Multi-company workflows (adding items to new companies/locations)
+- Item availability and pricing lookups
+
+### Characteristics
+- **Stateless** - no session management required
+- **Item-centric** - single base path `/api/inventory/parts`, keyed by ItemId
+- **GET → modify → PUT pattern** - fetch the full payload, change or append, PUT it back
+- **`inv_loc` access** - read, append, and update location records via extended properties
+- **Validation** - P21 validates changed values (e.g., invalid ProductGroupId is rejected)
+
+### Use When
+- You need to read item details including location-specific data
+- You need to append or update `inv_loc` / `inventory_supplier` records
+- You need to create items or add existing items to new companies
+
+### Don't Use When
+- You only need read access (use OData - faster, no payload round-trip)
+- You need bulk operations across many items (use Transaction API)
+- The change triggers dialogs or complex window logic (use Interactive API)
+
+### Example Use Cases
+- Read an item with locations: `GET /api/inventory/parts/WIDGET-001?extendedproperties=*`
+- Add an item to a new company/location (GET → append → PUT)
+- Update `inv_loc` fields like Sellable or ProductGroupId (GET → modify → PUT)
+
+See [Inventory REST API](11-Inventory-REST-API.md) for full details.
+
+---
+
+## UDT Service API
+
+### Best For
+- Writing to user-defined tables (`udt_*`) from external systems
+- Automating data entry for custom workflows built on UDTs
+
+### Characteristics
+- **Write-only** - insert, update, and delete endpoints; read UDT data via OData
+- **Stateless** - no session management required
+- **Column-based payloads** - data sent as column name/value pairs
+- **Condition-based targeting** - updates and deletes identify rows via `row_uid`
+
+### Use When
+- You need to insert, update, or delete rows in a `udt_*` table
+- B2B integrations that write to custom P21 tables
+
+### Don't Use When
+- You need to read UDT data (use OData - the UDT Service API has no read endpoints)
+- You're working with standard P21 tables (use the other APIs)
+
+### Example Use Cases
+- Insert rows: `POST /udtservice/api/udtdata/insertudtdata`
+- Update rows by `row_uid`: `PUT /udtservice/api/udtdata/updateudtdata`
+- Delete rows: `DELETE /udtservice/api/udtdata/deleteudtdata`
+
+See [UDT Service API](13-UDT-Service-API.md) for full details.
 
 ---
 
@@ -204,6 +271,14 @@ Start
   ├─ Need to READ data only?
   │   │
   │   └─ Yes → Use OData API
+  │
+  ├─ Writing to a user-defined table (udt_*)?
+  │   │
+  │   └─ Yes → Use UDT Service API
+  │
+  ├─ CRUD on inventory items / inv_loc?
+  │   │
+  │   └─ Yes → Use Inventory REST API
   │
   ├─ Need to CREATE multiple records?
   │   │
@@ -296,5 +371,7 @@ Measured against production P21 instance:
 - [Transaction API](03-Transaction-API.md)
 - [Interactive API](04-Interactive-API.md)
 - [Entity API](05-Entity-API.md)
+- [Inventory REST API](11-Inventory-REST-API.md)
 - [Production & Labor API](12-Production-Labor-API.md)
+- [UDT Service API](13-UDT-Service-API.md)
 - [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
