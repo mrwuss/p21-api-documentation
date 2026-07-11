@@ -398,6 +398,7 @@
             <div class="page-toc" id="page-toc">
                 <div class="toc">
 <ul>
+<li><a href="#2026-07-10-v111">2026-07-10 — v1.1.1</a></li>
 <li><a href="#2026-07-10-v110">2026-07-10 — v1.1.0</a></li>
 <li><a href="#2026-07-10-v100">2026-07-10 — v1.0.0</a></li>
 <li><a href="#2026-07-06">2026-07-06</a></li>
@@ -438,6 +439,16 @@
 <hr />
 <p>All notable changes to this documentation project are listed below, grouped by date. This project uses <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <hr />
+<h2 id="2026-07-10-v111">2026-07-10 — v1.1.1</h2>
+<p>End-to-end alignment audit: nine area agents checked <strong>every tracked file</strong> against the session's live-verified findings; ~118 findings triaged and fixed in one pass (PR #94). Highlights:</p>
+<ul>
+<li><strong>fix:</strong> Interactive API client code in the batch-patterns guide taught calls that fail — <code>?windowId=</code> on <code>/v2/window</code>/<code>/v2/data</code> (only <code>/v2/tools</code> takes it), event <code>Data</code> accessed as a dict (it is a key/value list), <code>resp["Tools"]</code> on a bare-array response — corrected in both languages; five legacy Python interactive scripts carried the same parameter bug — Fixes #93 — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> SalesPricePage code tables corrected against live <code>code_p21</code> reads (220=Source, 221=Price, 227=Value; earlier published values were misassigned), and that doc's C# tabs rewritten from a nonexistent endpoint surface to the real v2 API — Fixes #93 — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> Response-window examples in both languages modernized from the pre-2026 "dialogs cannot be answered" framing to the verified <code>GET/POST /v2/tools</code> answer flow (live-tested; only <code>w_message</code> boxes remain auto-answered), which also surfaced and fixed a latent VALUES-datawindow name bug — Fixes #93 — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> Both languages' "update existing" examples built payloads that would INSERT (no record identification) — corrected with the key field included and an explicit unverified-for-this-service caveat; all <code>/api/dataaccess/v1</code> OData URLs replaced (live-verified 404; <code>/odataservice/odata</code> is the working route) — Fixes #93 — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> Every write example now dry-runs by default (<code>--execute</code> / typing <code>EXECUTE</code>) and verifies with a read-back where practical; shared clients harden the router call (redirects + XML fallback) and require <code>DatawindowName</code>; <code>Value</code> is a string in every payload-building path — Fixes #93 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Selection guide now covers the Inventory REST and UDT Service APIs and routes <code>/api/sales/orders</code> correctly; error guide gains the <code>Status: "Existing"</code> and report-service traps; changelog contributors table refreshed — Fixes #93 — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-07-10-v110">2026-07-10 — v1.1.0</h2>
 <p>Example-layout reorg: the repo now serves all four consumption styles symmetrically — Python, C#, JSON, XML.</p>
 <ul>

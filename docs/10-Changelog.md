@@ -8,6 +8,17 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-07-10 — v1.1.1
+
+End-to-end alignment audit: nine area agents checked **every tracked file** against the session's live-verified findings; ~118 findings triaged and fixed in one pass (PR #94). Highlights:
+
+- **fix:** Interactive API client code in the batch-patterns guide taught calls that fail — `?windowId=` on `/v2/window`/`/v2/data` (only `/v2/tools` takes it), event `Data` accessed as a dict (it is a key/value list), `resp["Tools"]` on a bare-array response — corrected in both languages; five legacy Python interactive scripts carried the same parameter bug — Fixes #93 — *@mrwuss*
+- **fix:** SalesPricePage code tables corrected against live `code_p21` reads (220=Source, 221=Price, 227=Value; earlier published values were misassigned), and that doc's C# tabs rewritten from a nonexistent endpoint surface to the real v2 API — Fixes #93 — *@mrwuss*
+- **fix:** Response-window examples in both languages modernized from the pre-2026 "dialogs cannot be answered" framing to the verified `GET/POST /v2/tools` answer flow (live-tested; only `w_message` boxes remain auto-answered), which also surfaced and fixed a latent VALUES-datawindow name bug — Fixes #93 — *@mrwuss*
+- **fix:** Both languages' "update existing" examples built payloads that would INSERT (no record identification) — corrected with the key field included and an explicit unverified-for-this-service caveat; all `/api/dataaccess/v1` OData URLs replaced (live-verified 404; `/odataservice/odata` is the working route) — Fixes #93 — *@mrwuss*
+- **feat:** Every write example now dry-runs by default (`--execute` / typing `EXECUTE`) and verifies with a read-back where practical; shared clients harden the router call (redirects + XML fallback) and require `DatawindowName`; `Value` is a string in every payload-building path — Fixes #93 — *@mrwuss*
+- **docs:** Selection guide now covers the Inventory REST and UDT Service APIs and routes `/api/sales/orders` correctly; error guide gains the `Status: "Existing"` and report-service traps; changelog contributors table refreshed — Fixes #93 — *@mrwuss*
+
 ## 2026-07-10 — v1.1.0
 
 Example-layout reorg: the repo now serves all four consumption styles symmetrically — Python, C#, JSON, XML.
