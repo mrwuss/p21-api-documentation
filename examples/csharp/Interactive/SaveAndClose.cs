@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json;
@@ -58,7 +59,7 @@ public static class SaveAndClose
             }
             else
             {
-                Console.WriteLine("\n  FAILED to create price page");
+                Console.WriteLine("\n  Price page not created (save failed or dry run)");
             }
         }
         catch (HttpRequestException ex)
@@ -144,10 +145,20 @@ public static class SaveAndClose
             await window.ChangeFieldsAsync("VALUES", new Dictionary<string, string>
             {
                 ["calculation_method_cd"] = "Multiplier",
-                ["calculation_value1"] = p.Multiplier.ToString("F2")
+                ["calculation_value1"] = p.Multiplier.ToString("F2", CultureInfo.InvariantCulture)
             }, datawindowName: "d_values");
 
-            // Step 6: Save
+            // Step 6: Save — WRITE SAFETY gate first.
+            Console.WriteLine($"    About to SAVE price page '{p.Description}' " +
+                              $"(supplier {p.SupplierId}, group {p.ProductGroup}, " +
+                              $"multiplier {p.Multiplier.ToString("F2", CultureInfo.InvariantCulture)})");
+            if (!ConfirmExecute())
+            {
+                await window.CloseAsync();
+                window = null;
+                return false;
+            }
+
             // v2 save sends just the window ID string as the body, not an object.
             var saveResult = await window.SaveDataAsync();
 
@@ -165,9 +176,13 @@ public static class SaveAndClose
                 return false;
             }
 
-            // Get saved data to confirm
+            // Get saved data to confirm. NOTE: save status alone is not
+            // proof of persistence — verify with an independent read-back
+            // (OData or /transaction/get). See docs/04-Interactive-API.md,
+            // "Verifying Writes (Don't Trust Save Status Alone)".
             var data = await window.GetDataAsync();
             Console.WriteLine($"    Data saved (Status: {data.Status})");
+            Console.WriteLine("    Verify with an independent read-back (see docs/04, Verifying Writes)");
 
             // Step 7: Close window
             await window.CloseAsync();
@@ -265,10 +280,14 @@ public static class SaveAndClose
             });
             Console.WriteLine("  Set calculation fields");
 
-            // Save
+            // Save — WRITE SAFETY gate first.
             // PUT /api/ui/interactive/v2/data
             // Body: bare GUID string (not an object!) — e.g., "\"abc-123-...\""
             Console.WriteLine("\n5. Saving...");
+            Console.WriteLine($"  About to SAVE price page 'IAPI-RAW-{timestamp}'");
+            if (!ConfirmExecute())
+                return;  // finally block closes the window and ends the session
+
             var saveContent = new StringContent(
                 JsonConvert.SerializeObject(windowId),  // Serializes as "\"guid-string\""
                 Encoding.UTF8,
@@ -285,6 +304,12 @@ public static class SaveAndClose
 
             if (status == 3)
                 Console.WriteLine("  WARNING: Save blocked by response window!");
+
+            // Save status alone is not proof of persistence — verify with an
+            // independent read-back (OData or /transaction/get). See
+            // docs/04-Interactive-API.md, "Verifying Writes (Don't Trust
+            // Save Status Alone)".
+            Console.WriteLine("  Verify with an independent read-back (see docs/04, Verifying Writes)");
 
             // Close window
             Console.WriteLine("\n6. Closing window...");
@@ -317,6 +342,22 @@ public static class SaveAndClose
             }
             catch { /* cleanup */ }
         }
+    }
+
+    /// <summary>
+    /// WRITE SAFETY gate (same pattern as Recipes/RecipeHelpers.ConfirmExecute).
+    /// Returns true only when the user types EXECUTE; anything else = dry run.
+    /// </summary>
+    internal static bool ConfirmExecute()
+    {
+        Console.WriteLine();
+        Console.Write("Type EXECUTE to save, anything else = dry run: ");
+        var answer = Console.ReadLine()?.Trim();
+        if (answer == "EXECUTE")
+            return true;
+
+        Console.WriteLine("Dry run - nothing was saved.");
+        return false;
     }
 
     // ---------------------------------------------------------------

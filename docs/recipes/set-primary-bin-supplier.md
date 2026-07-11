@@ -89,12 +89,15 @@ resp = httpx.post(f"{ui_server}/api/v2/transaction",
                   headers=headers, json=payload, verify=False, timeout=120)
 resp.raise_for_status()
 result = resp.json()
-print(f"Succeeded: {result['Summary']['Succeeded']}, "
-      f"Failed: {result['Summary']['Failed']}")
-for msg in result.get("Messages") or []:
-    print(f"  {msg}")  # watch for 'Unexpected response window: Item Issues Detected'
+summary = result["Summary"]
+print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
+if summary["Failed"] > 0 or summary["Succeeded"] == 0:
+    # A hard failure is NOT the silent no-op — read the Messages and stop here.
+    for msg in result.get("Messages") or []:
+        print(f"  {msg}")  # watch for 'Unexpected response window: Item Issues Detected'
+    raise SystemExit("Write failed")
 
-# MANDATORY verification — a silent no-op still reports Succeeded = 1.
+# MANDATORY verification (success path) — a silent no-op still reports Succeeded = 1.
 # Write target is the inventory_supplier_x_loc flag; READ inv_loc.primary_supplier_id.
 mast = httpx.get(
     f"{BASE_URL}/odataservice/odata/table/inv_mast",
@@ -164,12 +167,17 @@ var resp = await session.Http.PostAsync(
     new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
 resp.EnsureSuccessStatusCode();
 var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine($"Succeeded: {result["Summary"]!["Succeeded"]}, " +
-                  $"Failed: {result["Summary"]!["Failed"]}");
-foreach (var msg in result["Messages"] as JArray ?? new JArray())
-    Console.WriteLine($"  {msg}"); // watch for 'Unexpected response window: Item Issues Detected'
+var summary = result["Summary"]!;
+Console.WriteLine($"Succeeded: {summary["Succeeded"]}, Failed: {summary["Failed"]}");
+if ((int)summary["Failed"]! > 0 || (int)summary["Succeeded"]! == 0)
+{
+    // A hard failure is NOT the silent no-op — read the Messages and stop here.
+    foreach (var msg in result["Messages"] as JArray ?? new JArray())
+        Console.WriteLine($"  {msg}"); // watch for 'Unexpected response window: Item Issues Detected'
+    return;
+}
 
-// MANDATORY verification — a silent no-op still reports Succeeded = 1.
+// MANDATORY verification (success path) — a silent no-op still reports Succeeded = 1.
 // Write target is the inventory_supplier_x_loc flag; READ inv_loc.primary_supplier_id.
 var mastResp = await session.Http.GetAsync(
     "https://play.p21server.com/odataservice/odata/table/inv_mast" +

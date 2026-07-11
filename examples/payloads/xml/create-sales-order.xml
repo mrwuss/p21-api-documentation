@@ -23,14 +23,6 @@
                   <Value>10</Value>
                 </Edit>
                 <Edit>
-                  <Name>ship_to_id</Name>
-                  <Value>200</Value>
-                </Edit>
-                <Edit>
-                  <Name>contact_id</Name>
-                  <Value>300</Value>
-                </Edit>
-                <Edit>
                   <Name>order_date</Name>
                   <Value>2030-01-05</Value>
                 </Edit>
@@ -45,6 +37,14 @@
                 <Edit>
                   <Name>taker</Name>
                   <Value>JSMITH</Value>
+                </Edit>
+                <Edit>
+                  <Name>ship_to_id</Name>
+                  <Value>200</Value>
+                </Edit>
+                <Edit>
+                  <Name>contact_id</Name>
+                  <Value>300</Value>
                 </Edit>
               </Edits>
               <RelativeDateEdits />
@@ -65,6 +65,19 @@
                 <Edit>
                   <Name>unit_quantity</Name>
                   <Value>5</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>oe_order_item_id</Name>
+                  <Value>WIDGET-002</Value>
+                </Edit>
+                <Edit>
+                  <Name>unit_quantity</Name>
+                  <Value>2</Value>
                 </Edit>
               </Edits>
               <RelativeDateEdits />

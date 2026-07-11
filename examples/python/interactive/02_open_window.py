@@ -68,9 +68,10 @@ class InteractiveSession:
 
     def get_window(self, window_id: str) -> dict:
         """Get the current state of a window."""
+        # Note: /v2/window uses ?id= (only /v2/tools uses ?windowId=)
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
-            params={"windowId": window_id},
+            params={"id": window_id},
             headers=self.headers
         )
         response.raise_for_status()
@@ -80,7 +81,7 @@ class InteractiveSession:
         """Close a window."""
         response = self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
-            params={"windowId": window_id},
+            params={"id": window_id},
             headers=self.headers
         )
         response.raise_for_status()

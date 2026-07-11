@@ -7,8 +7,13 @@ This is the typical pattern for creating records via the Interactive API.
 
 IMPORTANT: As of P21 25.2, DatawindowName is REQUIRED in change requests.
 
+By default the script drives the window read-only and SKIPS the save
+(field changes are discarded when the window closes). Pass --execute
+to actually save the record.
+
 Usage:
-    python examples/python/interactive/04_save_and_close.py
+    python examples/python/interactive/04_save_and_close.py            # no save
+    python examples/python/interactive/04_save_and_close.py --execute  # saves
 """
 
 import sys
@@ -17,6 +22,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import argparse
 import httpx
 from datetime import datetime
 from common.auth import get_token, get_auth_headers, get_ui_server_url
@@ -60,9 +66,10 @@ class InteractiveSession:
         return response.json()
 
     def close_window(self, window_id: str):
+        # Note: /v2/window uses ?id= (only /v2/tools uses ?windowId=)
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
-            params={"windowId": window_id},
+            params={"id": window_id},
             headers=self.headers
         )
 
@@ -106,9 +113,10 @@ class InteractiveSession:
 
     def get_data(self, window_id: str) -> dict:
         """Get current data from window."""
+        # Note: /v2/data uses ?id= (only /v2/tools uses ?windowId=)
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/data",
-            params={"windowId": window_id},
+            params={"id": window_id},
             headers=self.headers
         )
         response.raise_for_status()
@@ -116,7 +124,8 @@ class InteractiveSession:
 
 
 def create_price_page(session: InteractiveSession, supplier_id: int,
-                       product_group: str, description: str, multiplier: float) -> dict:
+                       product_group: str, description: str, multiplier: float,
+                       execute: bool = False) -> dict:
     """
     Create a price page using the Interactive API v2.
 
@@ -126,7 +135,7 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
     3. Fill in form fields
     4. Change to VALUES tab
     5. Set calculation fields
-    6. Save
+    6. Save (only when execute=True; otherwise skipped and discarded)
     7. Close window
 
     Returns:
@@ -181,17 +190,31 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
         # Step 5: Set calculation method and value
         session.change_data(window_id, [
-            {"TabName": "VALUES", "DatawindowName": "d_values",
+            {"TabName": "VALUES", "DatawindowName": "values",
              "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"TabName": "VALUES", "DatawindowName": "d_values",
+            {"TabName": "VALUES", "DatawindowName": "values",
              "FieldName": "calculation_value1", "Value": str(multiplier)},
         ])
 
-        # Step 6: Save
+        # Step 6: Save (gated - skipped on dry runs)
+        if not execute:
+            print("    DRY RUN: skipping save (window changes are discarded on close)")
+            session.close_window(window_id)
+            window_id = None
+            return {"success": True, "saved": False, "data": None}
+
         result = session.save_data(window_id)
 
-        # Check for blocked status (Status 3 = dialog opened)
-        if result.get("Status") == 3:
+        # ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+        status = result.get("Status")
+        if status == 2:
+            # Failure - surface the validation messages and bail out
+            messages = result.get("Messages") or []
+            print("    SAVE FAILED (Status 2):")
+            for msg in messages:
+                print(f"      - {msg}")
+            raise RuntimeError(f"Save failed: {messages or 'no messages returned'}")
+        if status == 3:
             raise RuntimeError("Save blocked by response window - manual intervention needed")
 
         # Get the saved data to retrieve UID
@@ -201,9 +224,9 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
         session.close_window(window_id)
         window_id = None
 
-        return {"success": True, "data": data}
+        return {"success": True, "saved": True, "data": data}
 
-    except (httpx.HTTPError, OSError):
+    except (httpx.HTTPError, OSError, RuntimeError):
         if window_id:
             try:
                 session.close_window(window_id)
@@ -213,8 +236,15 @@ def create_price_page(session: InteractiveSession, supplier_id: int,
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Interactive API save-and-close workflow")
+    parser.add_argument("--execute", action="store_true",
+                        help="Actually save the record (default: drive the window read-only, skip save)")
+    args = parser.parse_args()
+
     print("Interactive API - Save and Close (v2)")
     print("=" * 60)
+    if not args.execute:
+        print("DRY RUN: save will be skipped (pass --execute to save)")
 
     config = load_config()
     token_data = get_token(config)
@@ -243,12 +273,16 @@ def main():
             supplier_id=10,
             product_group="MISC",
             description=description,
-            multiplier=0.80
+            multiplier=0.80,
+            execute=args.execute
         )
 
-        if result["success"]:
+        if result["success"] and result.get("saved"):
             print("\n  SUCCESS: Price page created!")
             print(f"  Description: {description}")
+        elif result["success"]:
+            print("\n  DRY RUN complete - window driven, nothing saved.")
+            print("  Re-run with --execute to save the record.")
         else:
             print("\n  FAILED to create price page")
 

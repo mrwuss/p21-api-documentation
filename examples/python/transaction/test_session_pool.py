@@ -11,9 +11,9 @@ Results help diagnose intermittent failures caused by dirty session pools.
 """
 
 import asyncio
+import sys
 import httpx
 import json
-import os
 import time
 import random
 from datetime import datetime
@@ -21,12 +21,13 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
-from dotenv import load_dotenv
-load_dotenv(Path(__file__).parent.parent / ".env")
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from common.config import load_config
 
-BASE_URL = os.getenv("P21_BASE_URL", "https://play.p21server.com")
-USERNAME = os.getenv("P21_USERNAME")
-PASSWORD = os.getenv("P21_PASSWORD")
+_config = load_config()
+BASE_URL = _config.base_url
+USERNAME = _config.username
+PASSWORD = _config.password
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -96,7 +97,7 @@ class SessionPoolTester:
                                 "Edits": [
                                     {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
                                     {"Name": "company_id", "Value": "ACME"},
-                                    {"Name": "supplier_id", "Value": 10.0},
+                                    {"Name": "supplier_id", "Value": "10"},
                                     {"Name": "product_group_id", "Value": "MISC"},
                                     {"Name": "description", "Value": f"SESSION-TEST-{datetime.now().strftime('%H%M%S%f')}"},
                                     {"Name": "pricing_method_cd", "Value": "Source"},
@@ -381,6 +382,15 @@ async def main():
     print("=" * 70)
     print(f"Server: {BASE_URL}")
     print(f"Time: {datetime.now().isoformat()}")
+
+    # This diagnostic CREATES real records (~40 temporary price pages).
+    # Require explicit confirmation before running.
+    print("\nWARNING: this test creates temporary SalesPricePage records")
+    print("on the target server (one per request, ~40 total).")
+    answer = input('Type EXECUTE to run the session-pool test (creates temporary price pages): ')
+    if answer.strip() != "EXECUTE":
+        print("Aborted - nothing was created.")
+        return
 
     tester = SessionPoolTester(BASE_URL, USERNAME, PASSWORD)
 

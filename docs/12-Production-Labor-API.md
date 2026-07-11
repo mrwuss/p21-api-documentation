@@ -84,7 +84,7 @@ GET /api/v2/definition/TimeEntry
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `company_id` | Char | Yes | Company ID |
-| `technician_id` | Char | Yes | Technician/worker ID |
+| `technician_id` | Char | Yes | Technician's **contact ID** (a contact record, not a P21 user ID) |
 | `entry_date` | Datetime | Yes | Date of time entry |
 
 #### Labor Lines -- `TP_LABORRECORDING.prod_order_line_comp_labor` (List)
@@ -102,7 +102,11 @@ GET /api/v2/definition/TimeEntry
 | `labor_type_cd` | Long | Yes | `Rate`, `OT Rate`, or `Prem Rate` |
 | `cc_completeprodorder` | Char | No | Complete production order flag |
 
+> **Field order matters.** On the labor grid, fields must be entered in a strict order or the downstream fields stay disabled: `prod_order_number` → `item_id` → `component_labor_id` → `start_time` → `end_time`. See [Time Entry Against a Production Order (Quick Time Entry)](#time-entry-against-a-production-order-quick-time-entry) for the verified mechanics.
+
 ### Example: Record Labor Hours
+
+The example below posts labor by `service_labor_id` without `item_id` — the **service-labor variant**. To record labor against a specific production-order assembly line and labor component, use the production-order grid path (`prod_order_number` → `item_id` → `component_labor_id` → `start_time` → `end_time`) described in [Quick Time Entry](#time-entry-against-a-production-order-quick-time-entry).
 
 <!-- tabs -->
 ```python
@@ -124,7 +128,7 @@ payload = {
                 "Rows": [{
                     "Edits": [
                         {"Name": "company_id", "Value": "ACME"},
-                        {"Name": "technician_id", "Value": "TECH001"},
+                        {"Name": "technician_id", "Value": "300"},
                         {"Name": "entry_date", "Value": "2026-03-06"}
                     ],
                     "RelativeDateEdits": []
@@ -185,7 +189,7 @@ var payload = new JObject
                             ["Edits"] = new JArray
                             {
                                 new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                new JObject { ["Name"] = "technician_id", ["Value"] = "TECH001" },
+                                new JObject { ["Name"] = "technician_id", ["Value"] = "300" },
                                 new JObject { ["Name"] = "entry_date", ["Value"] = "2026-03-06" }
                             },
                             ["RelativeDateEdits"] = new JArray()
@@ -203,7 +207,7 @@ var payload = new JObject
                         {
                             ["Edits"] = new JArray
                             {
-                                new JObject { ["Name"] = "prod_order_number", ["Value"] = 1001 },
+                                new JObject { ["Name"] = "prod_order_number", ["Value"] = "1001" },
                                 new JObject { ["Name"] = "service_labor_id", ["Value"] = "LABOR01" },
                                 new JObject { ["Name"] = "start_time", ["Value"] = "2026-03-06T08:00:00" },
                                 new JObject { ["Name"] = "end_time", ["Value"] = "2026-03-06T12:00:00" },
@@ -465,7 +469,7 @@ Everything in this section was verified live against a P21 test environment (cre
 - Stock on hand → the line **allocates it and no production order spawns** (`qty_allocated > 0`, no link).
 - Short → a production order spawns **for the shortfall**, linked via `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`).
 
-Neither min/max settings nor `make = 'Y'` is required for this path. Gotchas: the customer's **salesrep must be valid at the sales location** (a DynaChange rule blocks the order otherwise), and the **order date must differ from the required date**. Enter the order via the Interactive API when the line must explode — see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
+Neither min/max settings nor `make = 'Y'` is required for this path. Gotchas: the customer's **salesrep must be valid at the sales location** (a DynaChange rule blocks the order otherwise), and the **`requested_date` must be after the `order_date`**. Enter the order via the Interactive API when the line must explode — see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
 
 **Path B — Direct build-to-stock.** Drive the `ProductionOrder` window: set the header `source_loc_id` (the make location — where components are stocked *and* the finished item exists) plus any required user-defined fields, then on `TABPAGE_17.tp_17_dw_17` set `assembly_item_id` and `qty_to_make` (add a row and select it for each additional line). No sales order involved. If the finished item isn't set up at the source location, the save fails with *"item ID does not exist at your source location."*
 
@@ -657,10 +661,19 @@ import httpx
 # After authentication and getting ui_server_url...
 headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
 
+# Create the session first -- response window handling is a session-level
+# setting, not a window-open option
+response = httpx.post(
+    f"{ui_server_url}/api/ui/interactive/sessions",
+    headers=headers,
+    json={"ResponseWindowHandlingEnabled": True},
+    verify=False
+)
+response.raise_for_status()
+
 # Open Production Order Entry window
 open_payload = {
-    "ServiceName": "ProductionOrder",
-    "ResponseWindowHandlingEnabled": False
+    "ServiceName": "ProductionOrder"
 }
 
 response = httpx.post(
@@ -677,7 +690,7 @@ print(f"Window opened: {window_id}")
 # Retrieve a production order
 change_payload = {
     "WindowId": window_id,
-    "Changes": [{
+    "List": [{
         "TabName": "TABPAGE_1",
         "DatawindowName": "tp_1_dw_1",
         "FieldName": "prod_order_number",
@@ -705,11 +718,19 @@ data = response.json()
 ```
 
 ```csharp
+// Create the session first -- response window handling is a session-level
+// setting, not a window-open option
+var sessionPayload = new JObject { ["ResponseWindowHandlingEnabled"] = true };
+var sessionContent = new StringContent(
+    sessionPayload.ToString(), Encoding.UTF8, "application/json");
+var sessionResp = await client.PostAsync(
+    $"{uiServerUrl}/api/ui/interactive/sessions", sessionContent);
+sessionResp.EnsureSuccessStatusCode();
+
 // Open Production Order Entry window
 var openPayload = new JObject
 {
-    ["ServiceName"] = "ProductionOrder",
-    ["ResponseWindowHandlingEnabled"] = false
+    ["ServiceName"] = "ProductionOrder"
 };
 
 var openContent = new StringContent(
@@ -727,7 +748,7 @@ Console.WriteLine($"Window opened: {windowId}");
 var changePayload = new JObject
 {
     ["WindowId"] = windowId,
-    ["Changes"] = new JArray
+    ["List"] = new JArray
     {
         new JObject
         {
@@ -787,7 +808,7 @@ headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json"
 
 # Query production orders (after enabling in SOA Admin)
 response = httpx.get(
-    f"{base_url}/api/dataaccess/v1/prod_order_hdr",
+    f"{base_url}/odataservice/odata/table/prod_order_hdr",
     params={"$filter": "company_id eq 'ACME'", "$top": "10"},
     headers=headers,
     verify=False
@@ -800,7 +821,7 @@ for order in orders:
 
 ```csharp
 var response = await client.GetAsync(
-    $"{baseUrl}/api/dataaccess/v1/prod_order_hdr" +
+    $"{baseUrl}/odataservice/odata/table/prod_order_hdr" +
     "?$filter=company_id eq 'ACME'&$top=10");
 response.EnsureSuccessStatusCode();
 
@@ -826,7 +847,7 @@ See [OData API](02-OData-API.md) for full query syntax including `$filter`, `$se
 3. **Validate labor codes** - Ensure `service_labor_id` values exist before referencing them in `TimeEntry` payloads. Use the `Labor` service or OData to look up valid codes.
 4. **Include DatawindowName** - Always include `DatawindowName` in Interactive API v2 change requests. This is required in P21 25.2+.
 5. **Check Summary on responses** - Always check `Summary.Succeeded` and `Summary.Failed` in Transaction API responses.
-6. **Consider async for bulk** - Use the async Transaction endpoint (`/api/v2/transaction/async`) for large batches of labor entries to avoid session pool issues.
+6. **Consider async for bulk** - Use the async Transaction endpoint (`/api/v2/transaction/async`) for large batches of labor entries to avoid session pool issues (note the default async queue capacity is 2).
 7. **Time format** - The `time_worked` field uses `HH:MM` string format (e.g., `"4:00"` for 4 hours), not decimal hours.
 
 ---

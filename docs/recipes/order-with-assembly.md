@@ -79,6 +79,8 @@ Includes an `answer_response_windows` helper grounded in the [Response Windows](
 
 <!-- tabs -->
 ```python
+import httpx  # p21_auth() from recipes/README.md
+
 BASE_URL = "https://play.p21server.com"
 USERNAME = "api_user"
 PASSWORD = "api_pass"
@@ -214,6 +216,7 @@ try:
         headers=headers, verify=False,
     )
     data.raise_for_status()
+    order_no = None
     for dw in data.json():
         if dw.get("Name") == "order":
             row = dw["Data"][dw.get("ActiveRow", 0)]
@@ -224,6 +227,29 @@ finally:
     httpx.delete(f"{iapi}/v2/window", params={"id": window_id},
                  headers=headers, verify=False)
     httpx.delete(f"{iapi}/sessions", headers=headers, verify=False)
+
+# 10. Verify via OData (mirrors the Verify section): assembly codes on the
+#     lines, and the production-order link for the assembly line.
+lines = httpx.get(
+    f"{BASE_URL}/odataservice/odata/table/oe_line",
+    params={"$filter": f"order_no eq '{order_no}'"},
+    headers=headers, verify=False,
+)
+lines.raise_for_status()
+for line in lines.json()["value"]:
+    # assembly: B = kit parent, N = component, P = production-order line,
+    # S = build-to-stock allocation
+    print(f"Line {line['line_no']}: assembly={line['assembly']}")
+    if line["assembly"] == "P":
+        link = httpx.get(
+            f"{BASE_URL}/odataservice/odata/table/prod_order_line_link",
+            params={"$filter": f"transaction_uid eq {line['oe_line_uid']} "
+                               "and trans_type eq 'O'"},
+            headers=headers, verify=False,
+        )
+        link.raise_for_status()
+        linked = bool(link.json()["value"])
+        print(f"  prod_order_line_link: {'present' if linked else 'MISSING'}")
 ```
 
 ```csharp
@@ -302,6 +328,7 @@ var winResp = await http.PostAsync($"{iapi}/v2/window",
 winResp.EnsureSuccessStatusCode();
 var windowId = JObject.Parse(await winResp.Content.ReadAsStringAsync())["WindowId"]!.ToString();
 
+string? orderNo = null;
 try
 {
     // 3. Header -- TABPAGE_1 / datawindow "order". quote OFF = real order.
@@ -330,7 +357,7 @@ try
 
     // 7. Save -- v2 body is the bare window-ID JSON string (an object => 422)
     var saveResp = await http.PutAsync($"{iapi}/v2/data",
-        new StringContent(JsonConvert.SerializeObject(windowId), Encoding.UTF8, "application/json"));
+        new StringContent($"\"{windowId}\"", Encoding.UTF8, "application/json"));
     saveResp.EnsureSuccessStatusCode();
     var result = JObject.Parse(await saveResp.Content.ReadAsStringAsync());
     while (IsBlocked(result))  // follow-on prompts: answer with proceed button
@@ -351,7 +378,8 @@ try
         if (dw["Name"]?.ToString() != "order") continue;
         var columns = (dw["Columns"] as JArray)!.Select(c => c.ToString()).ToList();
         var row = (dw["Data"] as JArray)![(int?)dw["ActiveRow"] ?? 0];
-        Console.WriteLine($"Created order_no: {row[columns.IndexOf("order_no")]}");
+        orderNo = row[columns.IndexOf("order_no")]?.ToString();
+        Console.WriteLine($"Created order_no: {orderNo}");
     }
 }
 finally
@@ -359,6 +387,26 @@ finally
     // 9. Clean up (window uses ?id=; sessions endpoint takes no parameter)
     await http.DeleteAsync($"{iapi}/v2/window?id={windowId}");
     await http.DeleteAsync($"{iapi}/sessions");
+}
+
+// 10. Verify via OData (mirrors the Verify section): assembly codes on the
+//     lines, and the production-order link for the assembly line.
+var lineResp = await http.GetAsync(
+    "https://play.p21server.com/odataservice/odata/table/oe_line" +
+    $"?$filter=order_no eq '{orderNo}'");
+lineResp.EnsureSuccessStatusCode();
+foreach (var line in (JArray)JObject.Parse(await lineResp.Content.ReadAsStringAsync())["value"]!)
+{
+    // assembly: B = kit parent, N = component, P = production-order line,
+    // S = build-to-stock allocation
+    Console.WriteLine($"Line {line["line_no"]}: assembly={line["assembly"]}");
+    if (line["assembly"]?.ToString() != "P") continue;
+    var linkResp = await http.GetAsync(
+        "https://play.p21server.com/odataservice/odata/table/prod_order_line_link" +
+        $"?$filter=transaction_uid eq {line["oe_line_uid"]} and trans_type eq 'O'");
+    linkResp.EnsureSuccessStatusCode();
+    var linked = ((JArray)JObject.Parse(await linkResp.Content.ReadAsStringAsync())["value"]!).Any();
+    Console.WriteLine($"  prod_order_line_link: {(linked ? "present" : "MISSING")}");
 }
 ```
 <!-- /tabs -->

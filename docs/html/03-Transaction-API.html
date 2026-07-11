@@ -535,6 +535,7 @@
 <div class="highlight"><pre><span></span><code><span class="err">GET https://{hostname}/api/ui/router/v1?urlType=external</span>
 </code></pre></div>
 
+<p>Note that the no-trailing-slash form can return a 307 redirect and the response may be XML on some middleware — use the trailing-slash form (<code>/api/ui/router/v1/</code>) and follow redirects; see <a href="00-Authentication.html#ui-server-url">00-Authentication § UI Server URL</a>.</p>
 <p>Then use the returned URL as base:</p>
 <table>
 <thead>
@@ -548,7 +549,7 @@
 <tr>
 <td><code>/api/v2/services</code></td>
 <td>GET</td>
-<td>List available services (transaction business objects only — report services are not listed; see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
+<td>List available services (transaction business objects only — all <code>m_*</code> services, reports and <code>m_storedprocedureexecutor</code> alike, are hidden from the list but still callable via <code>definition</code>/<code>defaults</code>; see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
 </tr>
 <tr>
 <td><code>/api/v2/definition/{name}</code></td>
@@ -706,7 +707,7 @@
 <tbody>
 <tr>
 <td><code>Status</code></td>
-<td><code>"New"</code> for create, <code>"Passed"</code> on success, <code>"Failed"</code> on error</td>
+<td><code>"New"</code> for create <strong>and</strong> update (there is no working <code>"Existing"</code> status — it returns HTTP 500); responses echo <code>"Passed"</code>/<code>"Failed"</code></td>
 </tr>
 <tr>
 <td><code>DataElements</code></td>
@@ -1027,7 +1028,7 @@
 <tr>
 <td><code>m_storedprocedureexecutor</code></td>
 <td>Stored Procedure Executor</td>
-<td>Load and execute stored procedure definitions (see <a href="#stored-procedure-executor">Stored Procedure Executor</a>)</td>
+<td>Load and execute stored procedure definitions (see <a href="#stored-procedure-executor">Stored Procedure Executor</a>) (hidden from <code>/api/v2/services</code> — see the <a href="#pdf-report-generation">PDF Report Generation</a> discovery note)</td>
 </tr>
 </tbody>
 </table>
@@ -1050,6 +1051,11 @@
 <td><code>m_reprintpicktickets</code></td>
 <td>Pick Ticket Reprint</td>
 <td>Pick ticket PDF reprints</td>
+</tr>
+<tr>
+<td><code>m_picktickets</code></td>
+<td>Pick Ticket generation</td>
+<td>Creates the pick ticket and returns its PDF (see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -1508,7 +1514,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
                 <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
                 <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
                     <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
-                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ITEM123&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">}</span>
                     <span class="p">],</span>
                     <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]</span>
@@ -1528,6 +1534,14 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
 <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="n">succeeded</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;Succeeded&#39;</span><span class="p">]</span>
+<span class="n">failed</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;Failed&#39;</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Succeeded: </span><span class="si">{</span><span class="n">succeeded</span><span class="si">}</span><span class="s2">, Failed: </span><span class="si">{</span><span class="n">failed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">][</span><span class="s2">&quot;Failed&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Message: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1555,7 +1569,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span>
 <span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span>
 <span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span>
-<span class="w">                            </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ITEM123&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                            </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1&quot;</span><span class="w"> </span><span class="p">}</span>
 <span class="w">                        </span><span class="p">}}</span>
 <span class="w">                    </span><span class="p">}</span>
@@ -1570,6 +1584,22 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="w">    </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/v2/transaction&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;Succeeded: {result[&quot;</span><span class="n">Summary</span><span class="s">&quot;]![&quot;</span><span class="n">Succeeded</span><span class="s">&quot;]}, &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">    </span><span class="s">$&quot;Failed: {result[&quot;</span><span class="n">Summary</span><span class="s">&quot;]![&quot;</span><span class="n">Failed</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="kt">int</span><span class="p">)</span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Summary&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;Failed&quot;</span><span class="p">]</span><span class="o">!</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">[</span><span class="s">&quot;Messages&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">messages</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">messages</span><span class="p">)</span>
+<span class="w">            </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  Message: {msg}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
 </code></pre></div>
 </div>
 </div>
@@ -2073,9 +2103,10 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="n">token</span> <span class="o">=</span> <span class="n">auth_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
 <span class="n">router_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">router_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">router_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
@@ -2544,9 +2575,10 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="n">token</span> <span class="o">=</span> <span class="n">auth_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
 <span class="n">router_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">router_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">router_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
@@ -2946,7 +2978,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="w">    </span><span class="nt">&quot;DateTimeStamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/Date(1776344580327)/&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unexpected results generating document request from criteria. --&gt; Messages returned during document request processing: &lt;No records to print for this range.&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.UI.BulkEditor.BulkEditException&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-22&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;HostName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;p21web-01&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;InnerException&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -2975,9 +3007,10 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="n">token</span> <span class="o">=</span> <span class="n">auth_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
 <span class="n">router_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">router_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">router_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
@@ -3219,9 +3252,10 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="n">token</span> <span class="o">=</span> <span class="n">auth_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
 <span class="n">router_resp</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">router_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 <span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">router_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>

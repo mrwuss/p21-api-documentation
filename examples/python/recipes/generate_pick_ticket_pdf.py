@@ -21,6 +21,7 @@ Usage:
 import argparse
 import base64
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -125,6 +126,39 @@ def save_documents(documents: list[dict]) -> None:
               f"{'-- verified %PDF header' if is_pdf else '-- WARNING: not a PDF'}")
 
 
+def read_ticket_status(ui_server: str, headers: dict, verify_ssl: bool,
+                       ticket_no: str) -> None:
+    """Read the new ticket back via /transaction/get and print its status.
+
+    Args:
+        ui_server: UI server URL.
+        headers: Auth headers.
+        verify_ssl: Whether to verify SSL certificates.
+        ticket_no: Production pick-ticket number (from the PDF FileName).
+    """
+    get_payload = {
+        "ServiceName": "ProductionOrderPicking",
+        "TransactionStates": [{
+            "DataElementName": "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
+            "Keys": [{"Name": "prod_pick_ticket_number", "Value": ticket_no}],
+        }],
+    }
+    resp = httpx.post(f"{ui_server}/api/v2/transaction/get",
+                      headers=headers, json=get_payload, verify=verify_ssl,
+                      follow_redirects=True, timeout=60)
+    resp.raise_for_status()
+
+    for txn in resp.json().get("Transactions", []):
+        for de in txn.get("DataElements", []):
+            for row in de.get("Rows", []):
+                fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
+                if "row_status_flag" in fields:
+                    # 702 = Open, 1962 = Confirmed, 1268 = Completed
+                    print(f"Ticket {fields.get('prod_pick_ticket_number')} "
+                          f"for prod order {fields.get('prod_order_number')}: "
+                          f"status {fields.get('row_status_flag')}")
+
+
 def main() -> None:
     """Entry point: build payload; on --execute run the report and save the PDF."""
     parser = argparse.ArgumentParser(
@@ -156,9 +190,13 @@ def main() -> None:
 
     documents = run_report(ui_server, headers, config.verify_ssl, payload)
     save_documents(documents)
-    print("\nTo prove the pick-ticket row landed, reprint it with "
-          "m_reprintpicktickets using the ticket number from the FileName "
-          "(beg_prod_pick_ticket_no / end_prod_pick_ticket_no).")
+
+    # --- Read the new ticket back (number comes from the FileName) ---
+    file_name = documents[0].get("FileName", "")
+    match = re.match(r"PPT(\d+)", file_name)
+    if not match:
+        raise SystemExit(f"Could not extract ticket number from '{file_name}'")
+    read_ticket_status(ui_server, headers, config.verify_ssl, match.group(1))
 
 
 if __name__ == "__main__":

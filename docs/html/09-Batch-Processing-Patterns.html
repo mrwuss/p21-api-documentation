@@ -448,7 +448,7 @@
 <p>This document covers patterns learned from operating a production system that created <strong>700+ price pages</strong> across 25+ suppliers using the Interactive API (v2).</p>
 <hr />
 <h2 id="session-per-batch-pattern">Session-Per-Batch Pattern</h2>
-<p>Interactive API sessions have a default idle timeout of approximately <strong>6 minutes</strong>. When processing many operations, a single session will time out between operations if any individual operation takes longer than expected or if there are delays between operations.</p>
+<p>Interactive API sessions are cleaned up after the server's configured <code>SessionTimeout</code> (default <strong>60 seconds</strong> per the <a href="04-Interactive-API.html#session-parameters-userparameters">session-parameter table</a> in the Interactive API guide; approximately 6 minutes was observed on one production configuration). When processing many operations, a single session will time out between operations if any individual operation takes longer than expected or if there are delays between operations.</p>
 <h3 id="pattern">Pattern</h3>
 <p>Start a new session for each batch of ~25 operations. This keeps each session well within the timeout window while minimizing session creation overhead.</p>
 <div class="code-tabs">
@@ -895,6 +895,9 @@
 </code></pre></div>
 </div>
 </div>
+<blockquote>
+<p><strong>Verify after save:</strong> A save can report success without persisting your edits (silently-dropped changes look identical by status code). After every save, read the record back and compare — see <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a>.</p>
+</blockquote>
 <h3 id="bulk-expiration">Bulk Expiration</h3>
 <p>Expiration follows the same batch patterns as creation. Process in batches with session-per-batch:</p>
 <div class="code-tabs">
@@ -1047,10 +1050,11 @@
             <span class="s2">&quot;Blocked&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
         <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">status</span>
 
-        <span class="n">messages</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">response_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Events&quot;</span><span class="p">,</span> <span class="p">[]):</span>
-            <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span>
-                <span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Message&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="c1"># Failure details live in the response&#39;s top-level Messages array</span>
+        <span class="c1"># (each message has Text and Type), not in Events.</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Text&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">response_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">]</span>
 
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
             <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span>
@@ -1060,11 +1064,14 @@
             <span class="n">raw</span><span class="o">=</span><span class="n">response_data</span><span class="p">,</span>
         <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the first event matching the given name.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the Data of the first event matching the given name.</span>
+
+<span class="sd">        Event Data is a key/value list: [{&quot;Key&quot;: ..., &quot;Value&quot;: ...}].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">event_name</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="k">return</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span> <span class="p">[])</span>
         <span class="k">return</span> <span class="kc">None</span>
 </code></pre></div>
 </div>
@@ -1108,17 +1115,12 @@
 <span class="w">            </span><span class="n">statusCode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">statusToken</span><span class="p">.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">();</span>
 <span class="w">        </span><span class="p">}</span>
 
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">        </span><span class="c1">// Failure details live in the response&#39;s top-level Messages array</span>
+<span class="w">        </span><span class="c1">// (each message has Text and Type), not in Events.</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseData</span><span class="p">[</span><span class="s">&quot;Messages&quot;</span><span class="p">]</span><span class="o">?</span>
+<span class="w">            </span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">m</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">m</span><span class="p">[</span><span class="s">&quot;Text&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="n">ToList</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
 <span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">events</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">responseData</span><span class="p">[</span><span class="s">&quot;Events&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToObject</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="p">();</span>
-
-<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">evt</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">events</span><span class="p">)</span>
-<span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">evt</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;message&quot;</span><span class="p">)</span>
-<span class="w">            </span><span class="p">{</span>
-<span class="w">                </span><span class="kt">string</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">evt</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Message&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
-<span class="w">                </span><span class="n">messages</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span>
-<span class="w">            </span><span class="p">}</span>
-<span class="w">        </span><span class="p">}</span>
 
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Result</span>
 <span class="w">        </span><span class="p">{</span>
@@ -1130,11 +1132,14 @@
 <span class="w">        </span><span class="p">};</span>
 <span class="w">    </span><span class="p">}</span>
 
-<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get the first event matching the given name.&lt;/summary&gt;</span>
-<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">JObject</span><span class="o">?</span><span class="w"> </span><span class="n">GetEvent</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">eventName</span><span class="p">)</span>
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// Get the Data of the first event matching the given name.</span>
+<span class="w">    </span><span class="c1">/// Event Data is a key/value list: [{&quot;Key&quot;: ..., &quot;Value&quot;: ...}].</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">JArray</span><span class="o">?</span><span class="w"> </span><span class="n">GetEvent</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">eventName</span><span class="p">)</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Events</span><span class="p">.</span><span class="n">FirstOrDefault</span><span class="p">(</span><span class="n">e</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">e</span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">eventName</span><span class="p">)</span>
-<span class="w">            </span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToObject</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">            </span><span class="o">?</span><span class="p">[</span><span class="s">&quot;Data&quot;</span><span class="p">]</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">JArray</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -1152,11 +1157,14 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract auto-generated key (e.g., price_page_uid) from result events.</span>
 
 <span class="sd">    After saving a new record, P21 fires a &#39;keygenerated&#39; event</span>
-<span class="sd">    containing the new UID.</span>
+<span class="sd">    containing the new UID. Event Data is a key/value list:</span>
+<span class="sd">    [{&quot;Key&quot;: ..., &quot;Value&quot;: ...}].</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">event_data</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="s2">&quot;keygenerated&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">event_data</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">kv</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="s2">&quot;keygenerated&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">kv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="k">continue</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
@@ -1164,11 +1172,11 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract window ID from a &#39;windowopened&#39; event.</span>
 
 <span class="sd">    When a response window/dialog opens, the API returns this event</span>
-<span class="sd">    with the new window&#39;s ID.</span>
+<span class="sd">    with Data [{&quot;Key&quot;: &quot;windowid&quot;, &quot;Value&quot;: &quot;&lt;new-window-id&gt;&quot;}].</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">event_data</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="s2">&quot;windowopened&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">event_data</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;WindowId&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">kv</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="s2">&quot;windowopened&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="k">if</span> <span class="n">kv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Key&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;windowid&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">kv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">None</span>
 </code></pre></div>
 </div>
@@ -1176,15 +1184,19 @@
 <div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;</span>
 <span class="c1">/// Extract auto-generated key (e.g., price_page_uid) from result events.</span>
 <span class="c1">/// After saving a new record, P21 fires a &#39;keygenerated&#39; event</span>
-<span class="c1">/// containing the new UID.</span>
+<span class="c1">/// containing the new UID. Event Data is a key/value list:</span>
+<span class="c1">/// [{&quot;Key&quot;: ..., &quot;Value&quot;: ...}].</span>
 <span class="c1">/// &lt;/summary&gt;</span>
 <span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="kt">int?</span><span class="w"> </span><span class="n">GetGeneratedKey</span><span class="p">(</span><span class="n">Result</span><span class="w"> </span><span class="n">result</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">eventData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">GetEvent</span><span class="p">(</span><span class="s">&quot;keygenerated&quot;</span><span class="p">);</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eventData</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">eventData</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">kv</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">eventData</span><span class="p">)</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">eventData</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="p">;</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kt">int</span><span class="p">.</span><span class="n">TryParse</span><span class="p">(</span><span class="k">value</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">key</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="p">.</span><span class="n">TryParse</span><span class="p">(</span><span class="n">kv</span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">key</span><span class="p">))</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">key</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
 <span class="p">}</span>
@@ -1192,12 +1204,14 @@
 <span class="c1">/// &lt;summary&gt;</span>
 <span class="c1">/// Extract window ID from a &#39;windowopened&#39; event.</span>
 <span class="c1">/// When a response window/dialog opens, the API returns this event</span>
-<span class="c1">/// with the new window&#39;s ID.</span>
+<span class="c1">/// with Data [{&quot;Key&quot;: &quot;windowid&quot;, &quot;Value&quot;: &quot;&amp;lt;new-window-id&amp;gt;&quot;}].</span>
 <span class="c1">/// &lt;/summary&gt;</span>
 <span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">GetOpenedWindowId</span><span class="p">(</span><span class="n">Result</span><span class="w"> </span><span class="n">result</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">eventData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">GetEvent</span><span class="p">(</span><span class="s">&quot;windowopened&quot;</span><span class="p">);</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">eventData</span><span class="o">?</span><span class="p">[</span><span class="s">&quot;WindowId&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">eventData</span><span class="o">?</span>
+<span class="w">        </span><span class="p">.</span><span class="n">FirstOrDefault</span><span class="p">(</span><span class="n">kv</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">kv</span><span class="p">[</span><span class="s">&quot;Key&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;windowid&quot;</span><span class="p">)</span><span class="o">?</span>
+<span class="w">        </span><span class="na">[&quot;Value&quot;]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">();</span>
 <span class="p">}</span>
 </code></pre></div>
 </div>
@@ -1318,12 +1332,16 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the current window state.&quot;&quot;&quot;</span>
         <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;/api/ui/interactive/v2/window?windowId=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;/api/ui/interactive/v2/window?id=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">resp</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_tools</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get available tools (buttons) for the window.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get available tools (buttons) for the window.</span>
+
+<span class="sd">        Note: GET /v2/tools returns a bare JSON array (not an object),</span>
+<span class="sd">        and it is the one v2 endpoint that takes ?windowId= instead of ?id=.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;/api/ui/interactive/v2/tools?windowId=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
@@ -1342,7 +1360,7 @@
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Close this window.&quot;&quot;&quot;</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">_delete</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;/api/ui/interactive/v2/window?windowId=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;/api/ui/interactive/v2/window?id=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">window_id</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
 </code></pre></div>
 </div>
@@ -1476,15 +1494,18 @@
 <span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetStateAsync</span><span class="p">()</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/window?windowId={WindowId}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/window?id={WindowId}&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 
-<span class="w">    </span><span class="c1">/// &lt;summary&gt;Get available tools (buttons) for the window.&lt;/summary&gt;</span>
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// Get available tools (buttons) for the window.</span>
+<span class="w">    </span><span class="c1">/// GET /v2/tools returns a bare JSON array (not an object), and it is</span>
+<span class="w">    </span><span class="c1">/// the one v2 endpoint that takes ?windowId= instead of ?id=.</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
 <span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JArray</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetToolsAsync</span><span class="p">()</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">GetArrayAsync</span><span class="p">(</span>
 <span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/tools?windowId={WindowId}&quot;</span><span class="p">);</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">resp</span><span class="p">[</span><span class="s">&quot;Tools&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToObject</span><span class="o">&lt;</span><span class="n">JArray</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">();</span>
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="c1">/// &lt;summary&gt;Run a tool (click a button) in the window.&lt;/summary&gt;</span>
@@ -1504,7 +1525,7 @@
 <span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">CloseAsync</span><span class="p">()</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">_client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span>
-<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/window?windowId={WindowId}&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="s">$&quot;/api/ui/interactive/v2/window?id={WindowId}&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">ValueTask</span><span class="w"> </span><span class="nf">DisposeAsync</span><span class="p">()</span>
@@ -1543,7 +1564,7 @@
 <span class="sd">    Usage:</span>
 <span class="sd">        async with P21Client(base_url, username, password) as client:</span>
 <span class="sd">            window = await client.open_window(service_name=&quot;SalesPricePage&quot;)</span>
-<span class="sd">            result = await window.change_data(&quot;FORM&quot;, &quot;description&quot;, &quot;Test&quot;)</span>
+<span class="sd">            result = await window.change_data(&quot;FORM&quot;, &quot;form&quot;, &quot;description&quot;, &quot;Test&quot;)</span>
 <span class="sd">            await window.save_data()</span>
 <span class="sd">            await window.close()</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1627,7 +1648,9 @@
 
     <span class="c1"># --- HTTP helpers ---</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="c1"># Most endpoints return a JSON object; GET /v2/tools returns</span>
+        <span class="c1"># a bare JSON array.</span>
         <span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_client</span><span class="p">()</span>
         <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ui_server_url</span><span class="si">}{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_headers</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
@@ -1832,6 +1855,16 @@
 <span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{_uiServerUrl}{path}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
 <span class="w">        </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">/// &lt;summary&gt;</span>
+<span class="w">    </span><span class="c1">/// GET an endpoint that returns a bare JSON array (e.g. GET /v2/tools).</span>
+<span class="w">    </span><span class="c1">/// &lt;/summary&gt;</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JArray</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetArrayAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">path</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">_httpClient</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="s">$&quot;{_uiServerUrl}{path}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">JArray</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="c1">/// &lt;summary&gt;PUT with a raw string body (used for save_data v2).&lt;/summary&gt;</span>

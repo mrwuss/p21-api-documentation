@@ -87,20 +87,27 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-// Helper to send a change_data request to the Interactive API v2
+// Helper to send a v2 change request to the Interactive API
 async Task ChangeDataAsync(HttpClient client, string baseUrl, string windowId,
     string tabName, string datawindowName, string fieldName, string value)
 {
     var payload = new JObject
     {
-        ["TabName"] = tabName,
-        ["DatawindowName"] = datawindowName,
-        ["FieldName"] = fieldName,
-        ["Value"] = value
+        ["WindowId"] = windowId,
+        ["List"] = new JArray
+        {
+            new JObject
+            {
+                ["TabName"] = tabName,
+                ["DatawindowName"] = datawindowName,
+                ["FieldName"] = fieldName,
+                ["Value"] = value
+            }
+        }
     };
     var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
     var resp = await client.PutAsync(
-        $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", content);
+        $"{baseUrl}/api/ui/interactive/v2/change", content);
     resp.EnsureSuccessStatusCode();
 }
 
@@ -137,10 +144,9 @@ await ChangeDataAsync(client, baseUrl, windowId,
     "FORM", "form", "expiration_date", "2030-12-31");
 
 // Step 9: Switch to VALUES tab
-var tabPayload = new JObject { ["TabName"] = "VALUES" };
+var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "VALUES" };
 var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync(
-    $"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
 
 // Step 10-11: Set calculation method and value
 await ChangeDataAsync(client, baseUrl, windowId,
@@ -148,9 +154,10 @@ await ChangeDataAsync(client, baseUrl, windowId,
 await ChangeDataAsync(client, baseUrl, windowId,
     "VALUES", "values", "calculation_value1", "0.85");
 
-// Save
-var saveResp = await client.PostAsync(
-    $"{baseUrl}/api/ui/interactive/v2/save?id={windowId}", null);
+// Save — v2 takes the bare WindowId string as the JSON body
+var saveContent = new StringContent($"\"{windowId}\"", Encoding.UTF8, "application/json");
+var saveResp = await client.PutAsync(
+    $"{baseUrl}/api/ui/interactive/v2/data", saveContent);
 saveResp.EnsureSuccessStatusCode();
 var result = JObject.Parse(await saveResp.Content.ReadAsStringAsync());
 ```
@@ -198,13 +205,20 @@ window.change_data("VALUES", "calculation_method_cd", "229", datawindow_name="va
 // Correct - use display value
 var payload = new JObject
 {
-    ["TabName"] = "VALUES",
-    ["DatawindowName"] = "values",
-    ["FieldName"] = "calculation_method_cd",
-    ["Value"] = "Mark Up"
+    ["WindowId"] = windowId,
+    ["List"] = new JArray
+    {
+        new JObject
+        {
+            ["TabName"] = "VALUES",
+            ["DatawindowName"] = "values",
+            ["FieldName"] = "calculation_method_cd",
+            ["Value"] = "Mark Up"
+        }
+    }
 };
 var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", content);
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/change", content);
 
 // Incorrect - do not use code
 // ["Value"] = "229"  // This will NOT work
@@ -236,11 +250,12 @@ The `pricing_method_cd` field controls how the source price is used.
 
 | Code | Display Value |
 |------|---------------|
-| 220 | Value |
-| 221 | Source |
-| 222 | Order |
+| 220 | Source |
+| 221 | Price |
+| 234 | Pricing Libraries |
+| 300 | None |
 
-**Note:** Some P21 environments may show different display values (e.g., "Margin", "Fixed"). The codes above were verified in a working implementation. Always test in your environment.
+**Note:** Corrected against live `code_p21` reads (July 2026); earlier published values were misassigned. Code mappings may still vary between P21 versions — always verify in your environment.
 
 ---
 
@@ -271,9 +286,12 @@ Using the wrong combination of source price and calculation method produces inco
 
 | Code | Display Value |
 |------|---------------|
-| 220 | Value |
-| 221 | Source |
+| 220 | Source |
 | 222 | Order |
+| 227 | Value |
+| 300 | None |
+
+**Note:** Corrected against live `code_p21` reads (July 2026); earlier published values were misassigned.
 
 ---
 
@@ -323,42 +341,25 @@ state = window.get_state()
 
 ```csharp
 // Example discovery code — open window and load a price page
+var openPayload = new JObject { ["ServiceName"] = "SalesPricePage" };
+var openContent = new StringContent(openPayload.ToString(), Encoding.UTF8, "application/json");
 var openResp = await client.PostAsync(
-    $"{baseUrl}/api/ui/interactive/v2/window?serviceName=SalesPricePage", null);
+    $"{baseUrl}/api/ui/interactive/v2/window", openContent);
 var openResult = JObject.Parse(await openResp.Content.ReadAsStringAsync());
 var windowId = openResult["WindowId"]?.ToString();
 
-// Load a specific price page
-var changePayload = new JObject
-{
-    ["TabName"] = "FORM",
-    ["DatawindowName"] = "form",
-    ["FieldName"] = "price_page_uid",
-    ["Value"] = "45556"
-};
-var changeContent = new StringContent(
-    changePayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync(
-    $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", changeContent);
+// Load a specific price page (ChangeDataAsync helper defined above)
+await ChangeDataAsync(client, baseUrl, windowId,
+    "FORM", "form", "price_page_uid", "45556");
 
 // Switch to VALUES tab
-var tabPayload = new JObject { ["TabName"] = "VALUES" };
+var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "VALUES" };
 var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync(
-    $"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
 
 // Try setting a display value
-var markUpPayload = new JObject
-{
-    ["TabName"] = "VALUES",
-    ["DatawindowName"] = "values",
-    ["FieldName"] = "calculation_method_cd",
-    ["Value"] = "Mark Up"
-};
-var markUpContent = new StringContent(
-    markUpPayload.ToString(), Encoding.UTF8, "application/json");
-var result = await client.PutAsync(
-    $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}", markUpContent);
+await ChangeDataAsync(client, baseUrl, windowId,
+    "VALUES", "values", "calculation_method_cd", "Mark Up");
 
 // Read back the code from window state
 var stateResp = await client.GetAsync(
@@ -549,7 +550,7 @@ var filter = $"supplier_id eq {supplierId} " +
 var select = "price_page_uid,description,price_page_type_cd," +
     "product_group_id,discount_group_id,supplier_id";
 
-var queryUrl = $"{baseUrl}/api/dataaccess/v1/table/sales_price_page" +
+var queryUrl = $"{baseUrl}/odataservice/odata/table/sales_price_page" +
     $"?$filter={Uri.EscapeDataString(filter)}&$select={Uri.EscapeDataString(select)}";
 var resp = await client.GetAsync(queryUrl);
 resp.EnsureSuccessStatusCode();
@@ -623,9 +624,9 @@ await window.change_data("VALUES", "calculation_value5", "0.72",
 
 ```csharp
 // Switch to VALUES tab
-var tabPayload = new JObject { ["TabName"] = "VALUES" };
+var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "VALUES" };
 var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
 
 // Set calculation method
 await ChangeDataAsync(client, baseUrl, windowId,
@@ -708,9 +709,9 @@ await window.change_data("COSTS", "commission_cost_value1", "1.01",
 
 ```csharp
 // Switch to COSTS tab
-var tabPayload = new JObject { ["TabName"] = "COSTS" };
+var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "COSTS" };
 var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
 
 // Set commission cost calculation method
 await ChangeDataAsync(client, baseUrl, windowId,
@@ -742,9 +743,9 @@ await window.change_data("COSTS", "commission_cost_value1", "1.01",
 **C#**
 
 ```csharp
-var tabPayload = new JObject { ["TabName"] = "COSTS" };
+var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "COSTS" };
 var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab?id={windowId}", tabContent);
+await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
 
 await ChangeDataAsync(client, baseUrl, windowId,
     "COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier");

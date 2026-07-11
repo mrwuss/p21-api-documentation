@@ -10,7 +10,7 @@
 
 ## Overview
 
-P21 provides an **Inventory REST API** at `/api/inventory/parts` for CRUD operations on inventory items (`inv_mast`). This is a **separate API** from the [Entity API](05-Entity-API.md) at `/api/entity/` — it uses its own base path and has different behavior.
+P21 provides inventory item CRUD at `/api/inventory/parts` (backed by `inv_mast`). This is **part of the same REST API** as the [`/api/entity/` endpoints](05-Entity-API.md) — a different **endpoint family** with its own base path and behavior, documented separately for readability only. (In Epicor's naming, "Entity API" is an umbrella term covering the whole REST API plus the eCommerce SOAP API — see [Terminology](05-Entity-API.md#terminology--epicors-naming-july-2026).)
 
 The Inventory REST API is significant because it provides:
 - **Read access** to `inv_loc` (inventory location) records via extended properties
@@ -60,7 +60,9 @@ Example: `https://play.p21server.com/api/inventory/parts`
 
 ## Comparison with Entity API
 
-| Feature | Entity API | Inventory REST API |
+Both endpoint families belong to the **same REST API** (see [Terminology — Epicor's Naming](05-Entity-API.md#terminology--epicors-naming-july-2026)); this table contrasts how the two families behave:
+
+| Feature | `/api/entity/` endpoints | `/api/inventory/parts` |
 |---------|-----------|-------------------|
 | Base path | `/api/entity/{resource}` | `/api/inventory/parts` |
 | Key format | Composite (`ACME_10`) or numeric | String ItemId (`WIDGET-001`) |
@@ -1157,7 +1159,7 @@ When the item is not valid or not defined at the requested location, the API ret
     "DateTimeStamp": "/Date(1776347610527)/",
     "ErrorMessage": "Item is not valid or not defined at this location",
     "ErrorType": "P21.Business.Common.BusinessException",
-    "HostName": "p21web-22",
+    "HostName": "p21web-01",
     "InnerException": null
 }
 ```

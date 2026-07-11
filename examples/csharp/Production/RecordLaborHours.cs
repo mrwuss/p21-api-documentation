@@ -29,6 +29,7 @@
 //     ]
 //   }
 
+using System.Globalization;
 using Newtonsoft.Json.Linq;
 using P21Examples.Common;
 
@@ -54,8 +55,8 @@ public static class RecordLaborHours
         var hoursWorked = 4.0;
 
         Console.WriteLine($"\nRecording labor hours:");
-        Console.WriteLine($"  Technician: TECH001");
-        Console.WriteLine($"  Production Order: 1001");
+        Console.WriteLine($"  Technician: 300 (a contact ID, not a user ID)");
+        Console.WriteLine($"  Production Order: 1000123");
         Console.WriteLine($"  Date: {entryDate}");
         Console.WriteLine($"  Time: {startTime} - {endTime} ({hoursWorked} hours)");
         Console.WriteLine(new string('-', 50));
@@ -63,10 +64,11 @@ public static class RecordLaborHours
         // Build the Transaction API payload
         var payload = BuildLaborEntryPayload(
             companyId: "ACME",
-            technicianId: "TECH001",
+            technicianId: "300",          // contact ID, not a user ID
             entryDate: entryDate,
-            prodOrderNumber: 1001,
-            serviceLaborId: "LABOR01",
+            prodOrderNumber: 1000123,
+            itemId: "ASSY-100",           // the assembly line's item
+            componentLaborId: "LABOR-SHOP",
             startTime: startTime,
             endTime: endTime,
             timeWorked: hoursWorked,
@@ -103,6 +105,12 @@ public static class RecordLaborHours
                 }
             }
         }
+
+        // WRITE SAFETY gate — print the full payload and require EXECUTE.
+        Console.WriteLine("\n  Full payload:");
+        Console.WriteLine(payload.ToString());
+        if (!ConfirmExecute())
+            return;
 
         try
         {
@@ -149,6 +157,13 @@ public static class RecordLaborHours
                 }
 
                 Console.WriteLine("\n  SUCCESS: Labor hours recorded!");
+
+                // READ-BACK — the only proof of persistence is reading the
+                // entry back. Verify via POST /api/v2/transaction/get
+                // (ServiceName "TimeEntry") or an OData query against
+                // prod_order_line_comp_labor for this prod_order_number.
+                Console.WriteLine("\n  Verify: read the entry back via /transaction/get or OData");
+                Console.WriteLine("  (prod_order_line_comp_labor) before trusting the write.");
             }
             else
             {
@@ -176,18 +191,25 @@ public static class RecordLaborHours
 
         Console.WriteLine("\n" + new string('=', 60));
         Console.WriteLine("Record labor hours example complete!");
-        Console.WriteLine("\nNote: This example uses test data (ACME/TECH001/1001).");
-        Console.WriteLine("Adjust company_id, technician_id, and prod_order_number for your environment.");
+        Console.WriteLine("\nNote: This example uses test data (ACME/300/1000123).");
+        Console.WriteLine("Adjust company_id, technician_id (a contact ID), and");
+        Console.WriteLine("prod_order_number for your environment.");
     }
 
     /// <summary>
     /// Build a Transaction API payload for recording labor hours via TimeEntry.
+    ///
+    /// Field order in the labor grid is STRICT (see docs/12-Production-Labor-API.md,
+    /// "Time Entry Against a Production Order (Quick Time Entry)"):
+    /// prod_order_number -> item_id -> component_labor_id -> start_time -> end_time.
+    /// Out of order, the downstream fields stay disabled.
     /// </summary>
     /// <param name="companyId">Company ID (e.g., "ACME").</param>
-    /// <param name="technicianId">Technician ID (e.g., "TECH001").</param>
-    /// <param name="entryDate">Date of the labor entry (yyyy-MM-dd).</param>
+    /// <param name="technicianId">Technician ID — a CONTACT ID (e.g., "300"), not a user ID.</param>
+    /// <param name="entryDate">Date of the labor entry (yyyy-MM-dd). The accounting period must be open.</param>
     /// <param name="prodOrderNumber">Production order number.</param>
-    /// <param name="serviceLaborId">Service/labor ID (e.g., "LABOR01").</param>
+    /// <param name="itemId">The assembly line's item ID (e.g., "ASSY-100").</param>
+    /// <param name="componentLaborId">Labor component ID (e.g., "LABOR-SHOP").</param>
     /// <param name="startTime">Start time (HH:mm).</param>
     /// <param name="endTime">End time (HH:mm).</param>
     /// <param name="timeWorked">Total hours worked (decimal).</param>
@@ -197,7 +219,8 @@ public static class RecordLaborHours
         string technicianId,
         string entryDate,
         int prodOrderNumber,
-        string serviceLaborId,
+        string itemId,
+        string componentLaborId,
         string startTime,
         string endTime,
         double timeWorked,
@@ -244,10 +267,16 @@ public static class RecordLaborHours
                             {
                                 new JObject
                                 {
+                                    // STRICT edit order (docs/12, Quick Time Entry):
+                                    // prod_order_number -> item_id -> component_labor_id
+                                    // -> start_time -> end_time. Downstream fields stay
+                                    // disabled if entered out of order.
                                     ["Edits"] = new JArray
                                     {
-                                        new JObject { ["Name"] = "prod_order_number", ["Value"] = (double)prodOrderNumber },
-                                        new JObject { ["Name"] = "service_labor_id", ["Value"] = serviceLaborId },
+                                        // Value is always a STRING in Transaction API payloads
+                                        new JObject { ["Name"] = "prod_order_number", ["Value"] = prodOrderNumber.ToString(CultureInfo.InvariantCulture) },
+                                        new JObject { ["Name"] = "item_id", ["Value"] = itemId },
+                                        new JObject { ["Name"] = "component_labor_id", ["Value"] = componentLaborId },
                                         new JObject { ["Name"] = "start_time", ["Value"] = startTime },
                                         new JObject { ["Name"] = "end_time", ["Value"] = endTime },
                                         new JObject { ["Name"] = "time_worked", ["Value"] = FormatTimeWorked(timeWorked) },
@@ -261,6 +290,22 @@ public static class RecordLaborHours
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// WRITE SAFETY gate (same pattern as Recipes/RecipeHelpers.ConfirmExecute).
+    /// Returns true only when the user types EXECUTE; anything else = dry run.
+    /// </summary>
+    internal static bool ConfirmExecute()
+    {
+        Console.WriteLine();
+        Console.Write("Type EXECUTE to post this write, anything else = dry run: ");
+        var answer = Console.ReadLine()?.Trim();
+        if (answer == "EXECUTE")
+            return true;
+
+        Console.WriteLine("Dry run - nothing was posted.");
+        return false;
     }
 
     /// <summary>

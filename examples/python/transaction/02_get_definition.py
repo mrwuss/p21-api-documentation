@@ -13,7 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import httpx
-import json
 from common.auth import get_token, get_auth_headers, get_ui_server_url
 from common.config import load_config
 
@@ -189,8 +188,10 @@ def main():
 
     print("\n" + "=" * 60)
     print("Definition examples complete!")
-    print("\nTip: Save full definition to file for reference:")
-    print("  response.json() | json.dump(f, indent=2)")
+    print("\nTip: Save the full definition to a file for reference:")
+    print('  import json')
+    print('  with open("definition.json", "w") as f:')
+    print('      json.dump(definition, f, indent=2)')
 
 
 if __name__ == "__main__":

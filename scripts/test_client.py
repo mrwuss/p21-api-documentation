@@ -74,8 +74,8 @@ def main():
         except Exception as e:
             print(f"   FAIL — {e}")
 
-        # --- 4. OData API: query (expected 401) ---
-        print("\n4. OData API — query supplier (expected 401)...")
+        # --- 4. OData API: query (may 401 if the key lacks OData scope) ---
+        print("\n4. OData API — query supplier (may 401 if the key lacks OData scope)...")
         try:
             result = client.odata.query("supplier", top=1)
             print(f"   Unexpected OK — {result}")

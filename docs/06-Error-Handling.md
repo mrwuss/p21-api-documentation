@@ -29,7 +29,7 @@ This guide covers error handling across all P21 APIs, including HTTP status code
 | 403 | Forbidden | Insufficient permissions |
 | 404 | Not Found | Invalid endpoint, resource doesn't exist |
 | 405 | Method Not Allowed | Wrong HTTP method for endpoint |
-| 408 | Request Timeout | Server took too long to respond |
+| 408 | Request Timeout | Client took too long to send the request |
 | 409 | Conflict | Resource conflict (concurrent updates) |
 | 422 | Unprocessable Entity | Validation failed |
 
@@ -185,6 +185,21 @@ Always check `Summary.Failed` even on HTTP 200 responses.
 
 **Solution**: Check the service definition for required fields and order.
 
+**HTTP 500 on `Status: "Existing"`**
+
+`POST /api/v2/transaction` with `Status: "Existing"` returns HTTP 500 `NullReferenceException` (at `ToInternalBeSpecification`) — a platform-wide bug, not a payload problem, confirmed across multiple services.
+
+**Solution**: Use `Status: "New"` with key fields identifying the existing record — keyed `"New"` rows act as an upsert (update on key match, insert when absent). See [Transaction API - Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract).
+
+**Report Services Look Broken (But Aren't)**
+
+Two traps when working with report (`m_*`) services:
+
+- `GET /api/v2/services?type=report` returns an **empty list** (and other `type` values return 400) — report services are hidden from discovery but still callable.
+- `POST /api/v2/transaction` **accepts** `m_*` payloads and returns `Succeeded` while emitting **nothing**. Reports must run via `POST /api/v2/process/pdfreport`.
+
+See [Transaction API - PDF Report Generation](03-Transaction-API.md#pdf-report-generation).
+
 **Service Fails on `/transaction` Endpoint**
 
 Some services silently fail or return errors when sent to `/api/v2/transaction`. These services must use `/api/v2/commands` instead. See [Transaction API - Commands Endpoint](03-Transaction-API.md#commands-endpoint) for the full list of affected services.
@@ -226,7 +241,7 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 **Solution**: Start a new session.
 
 **Session Timeout**
-Default timeout is typically 6 minutes of inactivity.
+Sessions expire after the configured `SessionTimeout` of inactivity (server default 60 seconds; longer on some configurations). See [Interactive API - Session Parameters](04-Interactive-API.md#session-parameters-userparameters).
 
 **Solution**: Keep sessions short, end when done.
 
@@ -265,7 +280,7 @@ When a response window opens, the API returns:
 
 **Cause**: Using `?windowId=` on an endpoint that expects `?id=`, or vice versa. The v2 API is inconsistent — most endpoints use `?id=` but the tools endpoint uses `?windowId=`.
 
-**Solution**: See [Interactive API - Query Parameter Inconsistency](04-Interactive-API.md#data-operations-v2---recommended) for the correct parameter per endpoint.
+**Solution**: See [Interactive API - Query Parameter Inconsistency](04-Interactive-API.md#data-operations-v2-recommended) for the correct parameter per endpoint.
 
 ### Field Not Found
 
@@ -512,6 +527,8 @@ async Task<HttpResponseMessage> RetryRequestAsync(
 
 <!-- /tabs -->
 
+> **Not all 500s are transient.** Some HTTP 500s are deterministic and will fail on every retry — notably Transaction API `Status: "Existing"` (`NullReferenceException`) and XML payloads with wrong DataContract element order. Fix the payload instead of retrying those.
+
 ---
 
 ## Debugging Tips
@@ -674,6 +691,9 @@ void CheckTokenExpiry(string token)
 | 307 Redirect | Entity | Add `follow_redirects=True` (list endpoints) |
 | Request timeout | All | Increase timeout, check network |
 | "Unexpected window" | Transaction | Use async endpoint, add delays |
+| 500 NullReferenceException on `Status: "Existing"` | Transaction | Use `Status: "New"` + key fields (upsert) — [details](03-Transaction-API.md#updating-an-existing-contract) |
+| `services?type=report` empty (other `type` values 400) | Transaction | Expected — report services are hidden; run via `/api/v2/process/pdfreport` |
+| m_* report returns Succeeded, no output | Transaction | Use `POST /api/v2/process/pdfreport`, not `/transaction` — [details](03-Transaction-API.md#pdf-report-generation) |
 | Session expired | Interactive | Start new session |
 | "Blocked" status | Interactive | Handle response window |
 | 422 "Window ID not provided" | Interactive | Use `?id=` not `?windowId=` (except tools) |

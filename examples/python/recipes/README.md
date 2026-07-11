@@ -1,19 +1,19 @@
 # Recipe Scripts
 
-End-to-end runnable Python versions of the [cookbook recipes](../../docs/recipes/README.md) — one script per recipe page. Each script mirrors its page's Python example, adapted to this repo's conventions (`common.auth` / `common.config` instead of the inline `p21_auth()` helper).
+End-to-end runnable Python versions of the [cookbook recipes](../../../docs/recipes/README.md) — one script per recipe page. Each script mirrors its page's Python example, adapted to this repo's conventions (`common.auth` / `common.config` instead of the inline `p21_auth()` helper).
 
 | Script | Recipe page |
 |--------|-------------|
-| `update_contract_lines.py` | [update-contract-lines.md](../../docs/recipes/update-contract-lines.md) |
-| `edit_contract_bins.py` | [edit-contract-bins.md](../../docs/recipes/edit-contract-bins.md) |
-| `create_bins.py` | [create-bins.md](../../docs/recipes/create-bins.md) |
-| `create_sales_order.py` | [create-sales-order.md](../../docs/recipes/create-sales-order.md) |
-| `order_with_assembly.py` | [order-with-assembly.md](../../docs/recipes/order-with-assembly.md) |
-| `set_primary_bin_supplier.py` | [set-primary-bin-supplier.md](../../docs/recipes/set-primary-bin-supplier.md) |
-| `generate_pick_ticket_pdf.py` | [generate-pick-ticket-pdf.md](../../docs/recipes/generate-pick-ticket-pdf.md) |
-| `production_order_runbook.py` | [production-order-runbook.md](../../docs/recipes/production-order-runbook.md) |
-| `record_labor_time.py` | [record-labor-time.md](../../docs/recipes/record-labor-time.md) |
-| `inventory_adjustment.py` | [inventory-adjustment.md](../../docs/recipes/inventory-adjustment.md) |
+| `update_contract_lines.py` | [update-contract-lines.md](../../../docs/recipes/update-contract-lines.md) |
+| `edit_contract_bins.py` | [edit-contract-bins.md](../../../docs/recipes/edit-contract-bins.md) |
+| `create_bins.py` | [create-bins.md](../../../docs/recipes/create-bins.md) |
+| `create_sales_order.py` | [create-sales-order.md](../../../docs/recipes/create-sales-order.md) |
+| `order_with_assembly.py` | [order-with-assembly.md](../../../docs/recipes/order-with-assembly.md) |
+| `set_primary_bin_supplier.py` | [set-primary-bin-supplier.md](../../../docs/recipes/set-primary-bin-supplier.md) |
+| `generate_pick_ticket_pdf.py` | [generate-pick-ticket-pdf.md](../../../docs/recipes/generate-pick-ticket-pdf.md) |
+| `production_order_runbook.py` | [production-order-runbook.md](../../../docs/recipes/production-order-runbook.md) |
+| `record_labor_time.py` | [record-labor-time.md](../../../docs/recipes/record-labor-time.md) |
+| `inventory_adjustment.py` | [inventory-adjustment.md](../../../docs/recipes/inventory-adjustment.md) |
 
 ## Setup
 

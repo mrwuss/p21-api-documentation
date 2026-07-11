@@ -13,6 +13,10 @@
             {
               "Edits": [
                 {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
                   "Name": "location_id",
                   "Value": "10"
                 },

@@ -132,7 +132,9 @@ def odata(table: str, filter_expr: str) -> list[dict]:
     resp.raise_for_status()
     return resp.json()["value"]
 
-hdr = odata("job_price_hdr", f"contract_no eq '{CONTRACT_NO}'")[0]
+# Renewals can return two headers for one contract_no — match job_no too.
+hdr = odata("job_price_hdr",
+            f"contract_no eq '{CONTRACT_NO}' and job_no eq '{JOB_NO}'")[0]
 for e in bin_edits:
     im_uid = odata("inv_mast", f"item_id eq '{e['item_id']}'")[0]["inv_mast_uid"]
     line = odata("job_price_line",
@@ -239,7 +241,9 @@ async Task<JArray> ODataAsync(string table, string filter)
     return (JArray)JObject.Parse(await r.Content.ReadAsStringAsync())["value"]!;
 }
 
-var hdr = (JObject)(await ODataAsync("job_price_hdr", $"contract_no eq '{ContractNo}'"))[0];
+// Renewals can return two headers for one contract_no — match job_no too.
+var hdr = (JObject)(await ODataAsync("job_price_hdr",
+    $"contract_no eq '{ContractNo}' and job_no eq '{JobNo}'"))[0];
 foreach (var e in binEdits)
 {
     var imUid = (await ODataAsync("inv_mast", $"item_id eq '{e.ItemId}'"))[0]["inv_mast_uid"];

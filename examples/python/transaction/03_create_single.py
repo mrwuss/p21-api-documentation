@@ -6,8 +6,12 @@ Demonstrates creating a single record using the Transaction API.
 This example creates a price page, which is relatively safe for testing
 as it can be easily expired/deactivated.
 
+By default the script is a DRY RUN: it prints the payload and exits
+without posting. Pass --execute to actually create the record.
+
 Usage:
-    python examples/python/transaction/03_create_single.py
+    python examples/python/transaction/03_create_single.py            # dry run
+    python examples/python/transaction/03_create_single.py --execute  # creates
 """
 
 import sys
@@ -15,6 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import argparse
+import json
 import httpx
 from datetime import datetime
 from common.auth import get_token, get_auth_headers, get_ui_server_url
@@ -42,7 +48,7 @@ def build_price_page_payload(description: str, supplier_id: int, product_group: 
                             "Edits": [
                                 {"Name": "price_page_type_cd", "Value": "Supplier / Product Group"},
                                 {"Name": "company_id", "Value": "ACME"},
-                                {"Name": "supplier_id", "Value": float(supplier_id)},
+                                {"Name": "supplier_id", "Value": str(supplier_id)},
                                 {"Name": "product_group_id", "Value": product_group},
                                 {"Name": "description", "Value": description},
                                 {"Name": "pricing_method_cd", "Value": "Source"},
@@ -88,7 +94,42 @@ def create_record(ui_server_url: str, payload: dict, headers: dict, verify_ssl: 
     return response.json()
 
 
+def read_back_price_page(ui_server_url: str, price_page_uid: str, headers: dict,
+                         verify_ssl: bool) -> dict:
+    """Read back a created price page via POST /api/v2/transaction/get.
+
+    Read-back is the only proof of persistence — HTTP 200 + Summary alone
+    only proves the request was processed.
+    """
+    payload = {
+        "ServiceName": "SalesPricePage",
+        "TransactionStates": [
+            {
+                "DataElementName": "FORM.form",
+                "Keys": [
+                    {"Name": "price_page_uid", "Value": str(price_page_uid)}
+                ]
+            }
+        ]
+    }
+    response = httpx.post(
+        f"{ui_server_url}/api/v2/transaction/get",
+        headers=headers,
+        json=payload,
+        verify=verify_ssl,
+        follow_redirects=True,
+        timeout=30.0
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Create a single price page via the Transaction API")
+    parser.add_argument("--execute", action="store_true",
+                        help="Actually POST the transaction (default: dry run, print payload only)")
+    args = parser.parse_args()
+
     print("Transaction API - Create Single Record")
     print("=" * 60)
 
@@ -119,6 +160,14 @@ def main():
     print(f"    Transactions: {len(payload['Transactions'])}")
     print(f"    DataElements: {len(payload['Transactions'][0]['DataElements'])}")
 
+    if not args.execute:
+        print("\n  DRY RUN - full payload that would be posted:")
+        print(json.dumps(payload, indent=2))
+        print("\n  Re-run with --execute to create the record.")
+        print("\n" + "=" * 60)
+        print("Create single record example complete (dry run)!")
+        return
+
     try:
         result = create_record(ui_server_url, payload, headers, config.verify_ssl)
 
@@ -141,6 +190,7 @@ def main():
             # Extract created record details
             results = result.get("Results", {})
             transactions = results.get("Transactions", [])
+            created_uid = None
 
             if transactions:
                 trans = transactions[0]
@@ -152,9 +202,37 @@ def main():
                     for row in elem.get("Rows", []):
                         for edit in row.get("Edits", []):
                             if edit.get("Name") == "price_page_uid":
-                                print(f"    Created UID: {edit.get('Value')}")
+                                created_uid = edit.get("Value")
+                                print(f"    Created UID: {created_uid}")
 
             print("\n  SUCCESS: Price page created!")
+
+            # Verify with a read-back: fetch the created page via
+            # /api/v2/transaction/get. Read-back is the only proof of
+            # persistence.
+            if created_uid:
+                print("\n  Verifying via /api/v2/transaction/get...")
+                try:
+                    readback = read_back_price_page(
+                        ui_server_url, created_uid, headers, config.verify_ssl
+                    )
+                    rb_desc = None
+                    for trans in readback.get("Transactions", []):
+                        for elem in trans.get("DataElements", []):
+                            for row in elem.get("Rows", []):
+                                for edit in row.get("Edits", []):
+                                    if edit.get("Name") == "description":
+                                        rb_desc = edit.get("Value")
+                    if rb_desc == description:
+                        print(f"  VERIFIED: read-back returned description '{rb_desc}'")
+                    elif rb_desc is not None:
+                        print(f"  WARNING: read-back description mismatch: '{rb_desc}'")
+                    else:
+                        print("  WARNING: read-back returned no description field")
+                except httpx.HTTPStatusError as e:
+                    print(f"  Read-back failed: HTTP {e.response.status_code}")
+            else:
+                print("\n  WARNING: no price_page_uid in response - cannot read back")
 
         else:
             print("\n  FAILED: Record not created")

@@ -14,7 +14,7 @@ This document covers patterns learned from operating a production system that cr
 
 ## Session-Per-Batch Pattern
 
-Interactive API sessions have a default idle timeout of approximately **6 minutes**. When processing many operations, a single session will time out between operations if any individual operation takes longer than expected or if there are delays between operations.
+Interactive API sessions are cleaned up after the server's configured `SessionTimeout` (default **60 seconds** per the [session-parameter table](04-Interactive-API.md#session-parameters-userparameters) in the Interactive API guide; approximately 6 minutes was observed on one production configuration). When processing many operations, a single session will time out between operations if any individual operation takes longer than expected or if there are delays between operations.
 
 ### Pattern
 
@@ -453,6 +453,8 @@ public async Task<bool> ExpirePricePageAsync(
 
 <!-- /tabs -->
 
+> **Verify after save:** A save can report success without persisting your edits (silently-dropped changes look identical by status code). After every save, read the record back and compare — see [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone).
+
 ### Bulk Expiration
 
 Expiration follows the same batch patterns as creation. Process in batches with session-per-batch:
@@ -613,10 +615,11 @@ class Result:
             "Blocked": 3,
         }.get(status, 0) if isinstance(status, str) else status
 
-        messages = []
-        for event in response_data.get("Events", []):
-            if event.get("Name") == "message":
-                messages.append(event.get("Data", {}).get("Message", ""))
+        # Failure details live in the response's top-level Messages array
+        # (each message has Text and Type), not in Events.
+        messages = [
+            m.get("Text", "") for m in response_data.get("Messages", [])
+        ]
 
         return cls(
             status_code=status_code,
@@ -626,11 +629,14 @@ class Result:
             raw=response_data,
         )
 
-    def get_event(self, event_name: str) -> dict | None:
-        """Get the first event matching the given name."""
+    def get_event(self, event_name: str) -> list[dict] | None:
+        """Get the Data of the first event matching the given name.
+
+        Event Data is a key/value list: [{"Key": ..., "Value": ...}].
+        """
         for event in self.events:
             if event.get("Name") == event_name:
-                return event.get("Data", {})
+                return event.get("Data", [])
         return None
 ```
 
@@ -676,17 +682,12 @@ public class Result
             statusCode = statusToken.Value<int>();
         }
 
-        var messages = new List<string>();
+        // Failure details live in the response's top-level Messages array
+        // (each message has Text and Type), not in Events.
+        var messages = responseData["Messages"]?
+            .Select(m => m["Text"]?.ToString() ?? "")
+            .ToList() ?? new List<string>();
         var events = responseData["Events"]?.ToObject<List<JObject>>() ?? new();
-
-        foreach (var evt in events)
-        {
-            if (evt["Name"]?.ToString() == "message")
-            {
-                string msg = evt["Data"]?["Message"]?.ToString() ?? "";
-                messages.Add(msg);
-            }
-        }
 
         return new Result
         {
@@ -698,11 +699,14 @@ public class Result
         };
     }
 
-    /// <summary>Get the first event matching the given name.</summary>
-    public JObject? GetEvent(string eventName)
+    /// <summary>
+    /// Get the Data of the first event matching the given name.
+    /// Event Data is a key/value list: [{"Key": ..., "Value": ...}].
+    /// </summary>
+    public JArray? GetEvent(string eventName)
     {
         return Events.FirstOrDefault(e => e["Name"]?.ToString() == eventName)
-            ?["Data"]?.ToObject<JObject>();
+            ?["Data"] as JArray;
     }
 }
 ```
@@ -722,11 +726,14 @@ def get_generated_key(result: Result) -> int | None:
     """Extract auto-generated key (e.g., price_page_uid) from result events.
 
     After saving a new record, P21 fires a 'keygenerated' event
-    containing the new UID.
+    containing the new UID. Event Data is a key/value list:
+    [{"Key": ..., "Value": ...}].
     """
-    event_data = result.get_event("keygenerated")
-    if event_data:
-        return int(event_data.get("Value", 0))
+    for kv in result.get_event("keygenerated") or []:
+        try:
+            return int(kv.get("Value", ""))
+        except (ValueError, TypeError):
+            continue
     return None
 
 
@@ -734,11 +741,11 @@ def get_opened_window_id(result: Result) -> str | None:
     """Extract window ID from a 'windowopened' event.
 
     When a response window/dialog opens, the API returns this event
-    with the new window's ID.
+    with Data [{"Key": "windowid", "Value": "<new-window-id>"}].
     """
-    event_data = result.get_event("windowopened")
-    if event_data:
-        return event_data.get("WindowId")
+    for kv in result.get_event("windowopened") or []:
+        if kv.get("Key") == "windowid":
+            return kv.get("Value")
     return None
 ```
 
@@ -748,15 +755,19 @@ def get_opened_window_id(result: Result) -> str | None:
 /// <summary>
 /// Extract auto-generated key (e.g., price_page_uid) from result events.
 /// After saving a new record, P21 fires a 'keygenerated' event
-/// containing the new UID.
+/// containing the new UID. Event Data is a key/value list:
+/// [{"Key": ..., "Value": ...}].
 /// </summary>
 public static int? GetGeneratedKey(Result result)
 {
     var eventData = result.GetEvent("keygenerated");
-    if (eventData != null)
+    if (eventData == null)
+        return null;
+
+    foreach (var kv in eventData)
     {
-        string value = eventData["Value"]?.ToString() ?? "0";
-        return int.TryParse(value, out int key) ? key : null;
+        if (int.TryParse(kv["Value"]?.ToString(), out int key))
+            return key;
     }
     return null;
 }
@@ -764,12 +775,14 @@ public static int? GetGeneratedKey(Result result)
 /// <summary>
 /// Extract window ID from a 'windowopened' event.
 /// When a response window/dialog opens, the API returns this event
-/// with the new window's ID.
+/// with Data [{"Key": "windowid", "Value": "&lt;new-window-id&gt;"}].
 /// </summary>
 public static string? GetOpenedWindowId(Result result)
 {
     var eventData = result.GetEvent("windowopened");
-    return eventData?["WindowId"]?.ToString();
+    return eventData?
+        .FirstOrDefault(kv => kv["Key"]?.ToString() == "windowid")?
+        ["Value"]?.ToString();
 }
 ```
 
@@ -891,12 +904,16 @@ class Window:
     async def get_state(self) -> dict:
         """Get the current window state."""
         resp = await self.client._get(
-            f"/api/ui/interactive/v2/window?windowId={self.window_id}"
+            f"/api/ui/interactive/v2/window?id={self.window_id}"
         )
         return resp
 
     async def get_tools(self) -> list[dict]:
-        """Get available tools (buttons) for the window."""
+        """Get available tools (buttons) for the window.
+
+        Note: GET /v2/tools returns a bare JSON array (not an object),
+        and it is the one v2 endpoint that takes ?windowId= instead of ?id=.
+        """
         resp = await self.client._get(
             f"/api/ui/interactive/v2/tools?windowId={self.window_id}"
         )
@@ -915,7 +932,7 @@ class Window:
     async def close(self) -> None:
         """Close this window."""
         await self.client._delete(
-            f"/api/ui/interactive/v2/window?windowId={self.window_id}"
+            f"/api/ui/interactive/v2/window?id={self.window_id}"
         )
 ```
 
@@ -1051,15 +1068,18 @@ public class Window : IAsyncDisposable
     public async Task<JObject> GetStateAsync()
     {
         return await _client.GetAsync(
-            $"/api/ui/interactive/v2/window?windowId={WindowId}");
+            $"/api/ui/interactive/v2/window?id={WindowId}");
     }
 
-    /// <summary>Get available tools (buttons) for the window.</summary>
+    /// <summary>
+    /// Get available tools (buttons) for the window.
+    /// GET /v2/tools returns a bare JSON array (not an object), and it is
+    /// the one v2 endpoint that takes ?windowId= instead of ?id=.
+    /// </summary>
     public async Task<JArray> GetToolsAsync()
     {
-        var resp = await _client.GetAsync(
+        return await _client.GetArrayAsync(
             $"/api/ui/interactive/v2/tools?windowId={WindowId}");
-        return resp["Tools"]?.ToObject<JArray>() ?? new JArray();
     }
 
     /// <summary>Run a tool (click a button) in the window.</summary>
@@ -1079,7 +1099,7 @@ public class Window : IAsyncDisposable
     public async Task CloseAsync()
     {
         await _client.DeleteAsync(
-            $"/api/ui/interactive/v2/window?windowId={WindowId}");
+            $"/api/ui/interactive/v2/window?id={WindowId}");
     }
 
     public async ValueTask DisposeAsync()
@@ -1119,7 +1139,7 @@ class P21Client:
     Usage:
         async with P21Client(base_url, username, password) as client:
             window = await client.open_window(service_name="SalesPricePage")
-            result = await window.change_data("FORM", "description", "Test")
+            result = await window.change_data("FORM", "form", "description", "Test")
             await window.save_data()
             await window.close()
     """
@@ -1203,7 +1223,9 @@ class P21Client:
 
     # --- HTTP helpers ---
 
-    async def _get(self, path: str, **kwargs) -> dict:
+    async def _get(self, path: str, **kwargs) -> dict | list:
+        # Most endpoints return a JSON object; GET /v2/tools returns
+        # a bare JSON array.
         client = self._get_client()
         resp = await client.get(
             f"{self.ui_server_url}{path}", headers=self._headers, **kwargs
@@ -1410,6 +1432,16 @@ public class P21Client : IAsyncDisposable
         var resp = await _httpClient.PutAsync($"{_uiServerUrl}{path}", content);
         resp.EnsureSuccessStatusCode();
         return JObject.Parse(await resp.Content.ReadAsStringAsync());
+    }
+
+    /// <summary>
+    /// GET an endpoint that returns a bare JSON array (e.g. GET /v2/tools).
+    /// </summary>
+    public async Task<JArray> GetArrayAsync(string path)
+    {
+        var resp = await _httpClient.GetAsync($"{_uiServerUrl}{path}");
+        resp.EnsureSuccessStatusCode();
+        return JArray.Parse(await resp.Content.ReadAsStringAsync());
     }
 
     /// <summary>PUT with a raw string body (used for save_data v2).</summary>

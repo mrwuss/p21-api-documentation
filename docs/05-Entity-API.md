@@ -171,7 +171,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
 
-See [Authentication](00-Authentication.md) for token generation. Per the SDK, tokens expire after **24 hours**.
+See [Authentication](00-Authentication.md) for token generation. Per the SDK, **user-credential tokens** expire after **24 hours**; consumer-key tokens last far longer (years).
 
 ### Consumer Key Behavior
 
@@ -393,19 +393,7 @@ GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 - `VendorPurchaseAccounts` - Purchase account configuration
 - `VendorContract` - Contract information
 
-**Inventory:**
-- `Locations` - Warehouse location stock data
-- `Suppliers` - Vendor/supplier information
-- `UnitsOfMeasure` - UOM definitions and conversion factors
-- `LocationSuppliers` - Supplier-location specific data
-- `Lot` - Lot tracking information
-- `LocationMSPs` - Location specific pricing
-- `Service` - Service related data
-- `ServiceContracts` - linked service contracts
-- `Notes` - Item notes
-- `MSDS` - Material Safety Data Sheets
-- `RestrictedClasses` - Class restrictions
-- `AltCodes` - Alternate item codes
+**Inventory:** see the [Inventory REST API extended properties reference](11-Inventory-REST-API.md#extended-properties-reference) for the full list for `/api/inventory/parts`.
 
 **Contact:**
 - `ContactDocuments` - Associated documents

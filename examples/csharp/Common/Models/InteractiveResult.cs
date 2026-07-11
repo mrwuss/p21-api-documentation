@@ -36,8 +36,10 @@ namespace P21Examples.Common.Models
                 result.WindowId = obj["WindowId"]?.ToString()
                     ?? obj["windowId"]?.ToString();
 
-                // Status: integer (1=Success, 2=Failure, 3=Blocked)
-                result.Status = obj["Status"]?.Value<int>() ?? 0;
+                // Status: usually an integer (0=None, 1=Success, 2=Failure,
+                // 3=Blocked), but some serialization contexts return the
+                // enum name as a string — handle both without throwing.
+                result.Status = ParseStatus(obj["Status"]);
 
                 // Messages
                 var msgs = obj["Messages"] ?? obj["messages"];
@@ -60,6 +62,33 @@ namespace P21Examples.Common.Models
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Parse the Status token as an integer or as an enum-name string
+        /// ("None"/"Success"/"Failure"/"Blocked", or a numeric string).
+        /// Never throws; unknown values map to 0 (None).
+        /// </summary>
+        internal static int ParseStatus(JToken? token)
+        {
+            if (token == null || token.Type == JTokenType.Null)
+                return 0;
+
+            if (token.Type == JTokenType.Integer)
+                return token.Value<int>();
+
+            var text = token.ToString().Trim();
+            if (int.TryParse(text, out var numeric))
+                return numeric;
+
+            return text.ToLowerInvariant() switch
+            {
+                "none" => 0,
+                "success" => 1,
+                "failure" => 2,
+                "blocked" => 3,
+                _ => 0
+            };
         }
 
         /// <summary>

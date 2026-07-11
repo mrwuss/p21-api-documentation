@@ -979,8 +979,11 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
   </div>
   <div class="tab-panel active" data-lang="python">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scripts.common.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_token</span><span class="p">,</span> <span class="n">get_auth_headers</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scripts.common.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_config</span>
+
+<span class="c1"># Helper modules live at examples/python/common — run from examples/python/</span>
+<span class="c1"># or add that directory to sys.path (see examples/python/odata/01_basic_query.py)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">common.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_token</span><span class="p">,</span> <span class="n">get_auth_headers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">common.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_config</span>
 
 <span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">()</span>
 <span class="n">token_data</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
@@ -991,7 +994,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">odata_url</span><span class="si">}</span><span class="s2">/table/supplier&quot;</span><span class="p">,</span>
     <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;supplier_id,supplier_name&quot;</span><span class="p">},</span>
     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
-    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>  <span class="c1"># dev/test only -- verify certificates in production</span>
 <span class="p">)</span>
 <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 

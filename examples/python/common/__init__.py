@@ -1,6 +1,6 @@
 """Common utilities for P21 API examples."""
 
-from .auth import get_token, get_auth_headers, _parse_token_response
+from .auth import get_token, get_auth_headers
 from .config import load_config, P21Config
 from .client import (
     P21Client,

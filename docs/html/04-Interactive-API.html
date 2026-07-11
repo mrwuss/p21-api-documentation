@@ -406,7 +406,7 @@
 <li><a href="#endpoints">Endpoints</a><ul>
 <li><a href="#session-management">Session Management</a></li>
 <li><a href="#window-operations-v2">Window Operations (v2)</a></li>
-<li><a href="#data-operations-v2-recommended">Data Operations (v2 - Recommended)</a></li>
+<li><a href="#data-operations-v2-recommended">Data Operations (v2, Recommended)</a></li>
 <li><a href="#data-operations-v1-legacy">Data Operations (v1 - Legacy)</a></li>
 </ul>
 </li>
@@ -596,7 +596,7 @@
 </tr>
 </tbody>
 </table>
-<h3 id="data-operations-v2-recommended">Data Operations (v2 - Recommended)</h3>
+<h3 id="data-operations-v2-recommended">Data Operations (v2, Recommended)</h3>
 <blockquote>
 <p><strong>Important:</strong> Some P21 servers only support v2 endpoints. If you receive 404 errors on v1 endpoints, use v2 instead.</p>
 </blockquote>
@@ -890,7 +890,7 @@
 
 <p>Response:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;3f2b8c9e-1234-4a5b-9c0d-7e8f9a0b1c2d&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;Title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sales Price Page Entry&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
 <span class="p">}</span>
@@ -900,7 +900,7 @@
 <p><strong>v2 Format (Recommended):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/cha</span><span class="kc">n</span><span class="err">ge</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;3f2b8c9e-1234-4a5b-9c0d-7e8f9a0b1c2d&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;List&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">        </span><span class="p">{</span>
 <span class="w">            </span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span>
@@ -1002,6 +1002,7 @@
 </table>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;form&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10050&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;ValueType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Data&quot;</span>
@@ -1026,7 +1027,7 @@
 <h3 id="4-save-data">4. Save Data</h3>
 <p><strong>v2 Format (Recommended):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/da</span><span class="kc">ta</span>
-<span class="s2">&quot;w_sales_price_page&quot;</span>
+<span class="s2">&quot;3f2b8c9e-1234-4a5b-9c0d-7e8f9a0b1c2d&quot;</span>
 </code></pre></div>
 
 <blockquote>
@@ -1445,7 +1446,8 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">InteractiveClient</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">verify_ssl</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="c1"># verify_ssl=False is for dev/test servers with self-signed certs only</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">verify_ssl</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
@@ -1463,10 +1465,13 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
         <span class="bp">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Trailing slash matters: the no-slash form can answer with a</span>
+        <span class="c1"># 307 redirect, so follow redirects as well.</span>
         <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1?urlType=external&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
             <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
-            <span class="n">verify</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span>
+            <span class="n">verify</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verify_ssl</span><span class="p">,</span>
+            <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
         <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ui_server_url</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
@@ -1505,7 +1510,8 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">_token</span><span class="p">;</span>
 <span class="w">    </span><span class="k">private</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">_uiServerUrl</span><span class="p">;</span>
 
-<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="nf">InteractiveClient</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">username</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">password</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">verifySsl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">)</span>
+<span class="w">    </span><span class="c1">// verifySsl: false is for dev/test servers with self-signed certs only</span>
+<span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="nf">InteractiveClient</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">username</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">password</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">verifySsl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">)</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="n">_baseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">.</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
 <span class="w">        </span><span class="n">_username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">username</span><span class="p">;</span>
@@ -1957,6 +1963,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Pick confirmation MUST be windowed.</strong> A Transaction-API-only confirm produces a shell — the status flips and <code>qty_confirmed</code> is set, but <code>qty_applied</code> stays 0 and no stock moves. See <a href="12-Production-Labor-API.html#confirming-the-pick--use-the-interactive-api">Confirming the Pick</a>.</p>
+</blockquote>
 <p>See <a href="12-Production-Labor-API.html">Production &amp; Labor API</a> for detailed field definitions.</p>
 <hr />
 <h2 id="example-linking-price-page-to-price-book">Example: Linking Price Page to Price Book</h2>
@@ -1977,7 +1986,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <span class="sd">    Args:</span>
 <span class="sd">        client: Authenticated P21Client with active session</span>
 <span class="sd">        price_page_uid: The price page UID to link</span>
-<span class="sd">        price_book_id: The price book ID (e.g., &quot;P2 IND_OEM_HUGE&quot;)</span>
+<span class="sd">        price_book_id: The price book ID (e.g., &quot;ACME_BOOK_A&quot;)</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        True if successful</span>
@@ -2105,9 +2114,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <h3 id="price-book-naming-and-lookup-strategies">Price Book Naming and Lookup Strategies</h3>
 <p>In production P21 environments, price book names are often inconsistent. For example, the same conceptual book might be named differently across environments or suppliers:</p>
 <ul>
-<li><code>P2 IND_OEM_LARGE</code></li>
-<li><code>P2_JOBBER_HUGE</code></li>
-<li><code>P2_TP_Huge</code></li>
+<li><code>ACME_BOOK_B</code></li>
+<li><code>ACME_BOOK_C</code></li>
+<li><code>ACME_BOOK_D</code></li>
 </ul>
 <p><strong>Strategy: Case-Insensitive OData Lookup</strong></p>
 <p>Use <code>contains()</code> with case-insensitive matching to find books by partial name:</p>
@@ -2125,7 +2134,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 
 <span class="sd">    Args:</span>
 <span class="sd">        odata_client: OData API client</span>
-<span class="sd">        search_terms: List of partial names to try (e.g., [&quot;IND_OEM&quot;, &quot;JOBBER&quot;])</span>
+<span class="sd">        search_terms: List of partial names to try (e.g., [&quot;BOOK_B&quot;, &quot;BOOK_C&quot;])</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Price book record or None</span>
@@ -2890,7 +2899,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <span class="c1"># 4. Change the field and save</span>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/change&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[</span>
-        <span class="p">{</span><span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_18&quot;</span><span class="p">,</span> <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;product_group_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;NEW_VALUE&quot;</span><span class="p">}</span>
+        <span class="p">{</span><span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_18&quot;</span><span class="p">,</span> <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="s2">&quot;inv_loc_detail&quot;</span><span class="p">,</span> <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;product_group_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;NEW_VALUE&quot;</span><span class="p">}</span>
     <span class="p">]})</span>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/v2/data&quot;</span><span class="p">,</span>
@@ -2920,7 +2929,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <span class="w">        </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
 <span class="w">        </span><span class="n">List</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
 <span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">TabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_18&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">FieldName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;product_group_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;NEW_VALUE&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">TabName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_18&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">DatawindowName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;inv_loc_detail&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">FieldName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;product_group_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;NEW_VALUE&quot;</span><span class="w"> </span><span class="p">}</span>
 <span class="w">        </span><span class="p">}</span>
 <span class="w">    </span><span class="p">});</span>
 <span class="k">await</span><span class="w"> </span><span class="n">http</span><span class="p">.</span><span class="n">PutAsync</span><span class="p">(</span><span class="s">$&quot;{uiUrl}/api/ui/interactive/v2/data&quot;</span><span class="p">,</span>
@@ -2972,7 +2981,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </div>
 <p><strong>Important:</strong> This is different from the <a href="#row-selection-synchronization-bug-list--detail">row selection synchronization bug</a> documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.</p>
 <h3 id="key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</h3>
-<p>Sending a grid row's <strong>key field</strong> in a <code>change</code> request commits the row cursor — any field in the same <code>List</code> (or a later call) that follows the key field is <strong>silently ignored</strong> (the call still returns Status 0/Success). Example: on the JobContractPricing BINS grid, <code>contract_bin_id</code> is the key; if it appears before the quantity fields, the quantities never land.</p>
+<p>Sending a grid row's <strong>key field</strong> in a <code>change</code> request commits the row cursor — any field in the same <code>List</code> (or a later call) that follows the key field is <strong>silently ignored</strong> (the call still returns a success status). Example: on the JobContractPricing BINS grid, <code>contract_bin_id</code> is the key; if it appears before the quantity fields, the quantities never land.</p>
 <p><strong>Guidance:</strong></p>
 <ul>
 <li>When only <em>changing</em> values on an already-selected row, <strong>don't send the key field at all</strong> — select the row, then change the non-key fields.</li>

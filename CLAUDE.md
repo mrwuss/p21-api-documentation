@@ -25,9 +25,9 @@ When editing docs, keep INDEX.md's anchors in sync (renaming a heading breaks it
 | API | Purpose | Use When | Status |
 |-----|---------|----------|--------|
 | **OData** | Read-only data access via standard OData protocol | Quick reads, reporting, lookups | Working |
-| **Transaction API** | Stateless bulk data manipulation | Bulk creates, external integrations | Working |
+| **Transaction API** | Stateless bulk data manipulation | Bulk creates, keyed updates/upserts, external integrations | Working |
 | **Interactive API** | Stateful window interactions with business logic | Complex workflows, validation needed | Working |
-| **Entity API** | CRUD on domain objects (customer, vendor, contact, address) | Simple record operations on 4 entities | Working (`/api/entity/`) |
+| **Entity API** | REST CRUD — `/api/entity/` (4 entities) plus other endpoint families (e.g. `/api/sales/orders`) | Simple record operations on 4 entities | Working (`/api/entity/`) |
 | **Inventory REST API** | CRUD on inventory items, multi-company workflows | Item reads, appending locations/suppliers | Working (`/api/inventory/parts`) |
 | **Production & Labor** | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking | Working (Transaction + Interactive) |
 | **UDT Service API** | CRUD on user-defined tables | Custom table maintenance | Working (`/udtservice/api/udtdata/`) |
@@ -72,9 +72,12 @@ p21-api-documentation/
 │       ├── json/                # One .json per documented task
 │       └── xml/                 # DataContract-correct XML counterparts
 │
+├── postman/                     # Postman collection for all APIs
+│
 └── scripts/                     # Repo tooling (NOT API examples)
     ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
     ├── validate_payload.py      # Offline payload validator (JSON/XML shape + schema checks)
+    ├── test_client.py           # Smoke-test client against a live tenant
     └── generate_html.py         # MD to HTML converter (supports tabbed code blocks)
 ```
 
@@ -101,8 +104,13 @@ python examples/python/odata/01_basic_query.py
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.p21server.com`) |
-| `P21_USERNAME` | Yes | P21 API username |
-| `P21_PASSWORD` | Yes | P21 API password |
+| `P21_USERNAME` | Yes* | P21 API username |
+| `P21_PASSWORD` | Yes* | P21 API password |
+| `P21_CONSUMER_KEY` | No | Consumer key GUID (alternative to username/password) |
+| `P21_CONSUMER_USERNAME` | No | P21 username for consumer key auth (required for Interactive API) |
+| `P21_VERIFY_SSL` | No | Set `true` to verify TLS certificates; example ships `false` for test tenants |
+
+*Not required when using consumer key authentication. See [Authentication docs](docs/00-Authentication.md).
 
 ---
 

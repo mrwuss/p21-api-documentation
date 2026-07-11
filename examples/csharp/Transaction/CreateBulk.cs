@@ -7,6 +7,7 @@
 // more efficient than making individual requests. All transactions in a
 // single request share the same session pool context.
 
+using System.Globalization;
 using Newtonsoft.Json.Linq;
 using P21Examples.Common;
 
@@ -59,6 +60,12 @@ public static class CreateBulk
         Console.WriteLine($"    Service: {payload["Name"]}");
         Console.WriteLine($"    Transactions: {(payload["Transactions"] as JArray)?.Count}");
 
+        // WRITE SAFETY gate — print the full payload and require EXECUTE.
+        Console.WriteLine("\n  Full payload:");
+        Console.WriteLine(payload.ToString());
+        if (!CreateSingle.ConfirmExecute())
+            return;
+
         try
         {
             var result = await client.Transaction.CreateAsync(payload);
@@ -83,6 +90,7 @@ public static class CreateBulk
             var resultsObj = result.Results as JObject;
             var transactions = resultsObj?["Transactions"] as JArray;
 
+            var createdUids = new List<(string Uid, string Description)>();
             if (transactions?.Count > 0)
             {
                 Console.WriteLine("\n  Created Records:");
@@ -97,7 +105,17 @@ public static class CreateBulk
 
                     var statusMarker = status == "Passed" ? "OK" : "FAIL";
                     Console.WriteLine($"    [{statusMarker}] Transaction {i + 1}: UID={uid ?? "N/A"}, Status={status}");
+
+                    if (status == "Passed" && uid != null && i < records.Length)
+                        createdUids.Add((uid, records[i].Description));
                 }
+            }
+
+            // READ-BACK — the only proof of persistence is reading each
+            // record back (POST /api/v2/transaction/get keyed by UID).
+            foreach (var (uid, description) in createdUids)
+            {
+                await CreateSingle.VerifyCreatedAsync(client, uid, description);
             }
 
             // Summary
@@ -160,7 +178,8 @@ public static class CreateBulk
                                 {
                                     new JObject { ["Name"] = "price_page_type_cd", ["Value"] = "Supplier / Product Group" },
                                     new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                    new JObject { ["Name"] = "supplier_id", ["Value"] = (double)record.SupplierId },
+                                    // Value is always a STRING in Transaction API payloads
+                                    new JObject { ["Name"] = "supplier_id", ["Value"] = record.SupplierId.ToString(CultureInfo.InvariantCulture) },
                                     new JObject { ["Name"] = "product_group_id", ["Value"] = record.ProductGroup },
                                     new JObject { ["Name"] = "description", ["Value"] = record.Description },
                                     new JObject { ["Name"] = "pricing_method_cd", ["Value"] = "Source" },
@@ -188,7 +207,7 @@ public static class CreateBulk
                                 ["Edits"] = new JArray
                                 {
                                     new JObject { ["Name"] = "calculation_method_cd", ["Value"] = "Multiplier" },
-                                    new JObject { ["Name"] = "calculation_value1", ["Value"] = record.Multiplier.ToString() }
+                                    new JObject { ["Name"] = "calculation_value1", ["Value"] = record.Multiplier.ToString(CultureInfo.InvariantCulture) }
                                 },
                                 ["RelativeDateEdits"] = new JArray()
                             }

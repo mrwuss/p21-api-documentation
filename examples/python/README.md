@@ -8,7 +8,7 @@ Runnable Python examples for every P21 API, mirroring the [C# examples](../cshar
 | `odata/` | Read-only queries: basics, filtering, pagination, complex queries |
 | `transaction/` | Service discovery, definitions, create single/bulk, updates, async, session-pool diagnostics |
 | `interactive/` | Session lifecycle, windows, field changes, saves, response windows, multi-step workflows |
-| `entity/` | Entity API CRUD on customers/vendors/contacts/addresses |
+| `entity/` | Entity API umbrella endpoints (customers, orders, parts via `/api/sales/`, `/api/inventory/`) |
 | `production/` | Production & Labor services: discovery, definitions, labor hours |
 | `recipes/` | End-to-end scripts for the [recipes cookbook](../../docs/recipes/README.md) — **dry-run by default**, `--execute` posts and verifies |
 

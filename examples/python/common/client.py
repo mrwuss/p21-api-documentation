@@ -36,10 +36,10 @@ import httpx
 
 try:
     from .config import P21Config, load_config
-    from .auth import _parse_token_response
+    from .auth import _parse_token_response, _parse_router_response
 except ImportError:
     from config import P21Config, load_config
-    from auth import _parse_token_response
+    from auth import _parse_token_response, _parse_router_response
 
 logger = logging.getLogger(__name__)
 
@@ -187,38 +187,45 @@ class Window:
         tab_name: str,
         field_name: str,
         value: str,
-        datawindow_name: str = "",
+        datawindow_name: str,
     ) -> Result:
         """Change a field value (v2 List format).
 
-        Note: datawindow_name is required in P21 25.2+. Always provide it.
+        Args:
+            tab_name: Tab page containing the field (e.g., "FORM").
+            field_name: Column name from SQL Information.
+            value: New value (always a string).
+            datawindow_name: Datawindow containing the field (e.g., "form").
+                REQUIRED — P21 25.2+ rejects change requests without it.
         """
         change: dict[str, str] = {
             "TabName": tab_name,
+            "DatawindowName": datawindow_name,
             "FieldName": field_name,
             "Value": value,
         }
-        if datawindow_name:
-            change["DatawindowName"] = datawindow_name
         body = {"WindowId": self.window_id, "List": [change]}
         resp = self._client.put(f"{self._ui}/api/ui/interactive/v2/change", json=body)
         return Result.from_response(resp)
 
     def change_fields(self, tab_name: str, fields: dict[str, str],
-                      datawindow_name: str = "") -> Result:
+                      datawindow_name: str) -> Result:
         """Change multiple fields at once.
 
-        Note: datawindow_name is required in P21 25.2+. Always provide it.
+        Args:
+            tab_name: Tab page containing the fields (e.g., "FORM").
+            fields: Mapping of field name -> new value.
+            datawindow_name: Datawindow containing the fields (e.g., "form").
+                REQUIRED — P21 25.2+ rejects change requests without it.
         """
         changes = []
         for fname, fval in fields.items():
             change: dict[str, str] = {
                 "TabName": tab_name,
+                "DatawindowName": datawindow_name,
                 "FieldName": fname,
                 "Value": fval,
             }
-            if datawindow_name:
-                change["DatawindowName"] = datawindow_name
             changes.append(change)
         body = {"WindowId": self.window_id, "List": changes}
         resp = self._client.put(f"{self._ui}/api/ui/interactive/v2/change", json=body)
@@ -306,32 +313,38 @@ class AsyncWindow:
         tab_name: str,
         field_name: str,
         value: str,
-        datawindow_name: str = "",
+        datawindow_name: str,
     ) -> Result:
-        """Change a field value. datawindow_name is required in P21 25.2+."""
+        """Change a field value.
+
+        datawindow_name is REQUIRED — P21 25.2+ rejects change requests
+        without it.
+        """
         change: dict[str, str] = {
             "TabName": tab_name,
+            "DatawindowName": datawindow_name,
             "FieldName": field_name,
             "Value": value,
         }
-        if datawindow_name:
-            change["DatawindowName"] = datawindow_name
         body = {"WindowId": self.window_id, "List": [change]}
         resp = await self._client.put(f"{self._ui}/api/ui/interactive/v2/change", json=body)
         return Result.from_response(resp)
 
     async def change_fields(self, tab_name: str, fields: dict[str, str],
-                            datawindow_name: str = "") -> Result:
-        """Change multiple fields. datawindow_name is required in P21 25.2+."""
+                            datawindow_name: str) -> Result:
+        """Change multiple fields.
+
+        datawindow_name is REQUIRED — P21 25.2+ rejects change requests
+        without it.
+        """
         changes = []
         for fname, fval in fields.items():
             change: dict[str, str] = {
                 "TabName": tab_name,
+                "DatawindowName": datawindow_name,
                 "FieldName": fname,
                 "Value": fval,
             }
-            if datawindow_name:
-                change["DatawindowName"] = datawindow_name
             changes.append(change)
         body = {"WindowId": self.window_id, "List": changes}
         resp = await self._client.put(f"{self._ui}/api/ui/interactive/v2/change", json=body)
@@ -984,7 +997,8 @@ class P21Client:
         client = self._get_client()
         resp = client.get(f"{self.config.base_url}/api/ui/router/v1?urlType=external")
         resp.raise_for_status()
-        self._ui_server = resp.json()["Url"].rstrip("/")
+        # Router may respond with JSON or XML — handle both
+        self._ui_server = _parse_router_response(resp).rstrip("/")
         return self._ui_server
 
     def _init_namespaces(self) -> None:
@@ -1103,7 +1117,8 @@ class AsyncP21Client:
         client = self._get_client()
         resp = await client.get(f"{self.config.base_url}/api/ui/router/v1?urlType=external")
         resp.raise_for_status()
-        self._ui_server = resp.json()["Url"].rstrip("/")
+        # Router may respond with JSON or XML — handle both
+        self._ui_server = _parse_router_response(resp).rstrip("/")
         return self._ui_server
 
     async def _init_namespaces(self) -> None:

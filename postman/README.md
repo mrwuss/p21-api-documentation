@@ -17,7 +17,7 @@ This directory contains a **Postman Collection** for the Prophet 21 APIs. It all
 - **Run Auth first** - Most endpoints require the TOKEN and UI_SERVER_URL variables, which are set automatically when you run the Authentication requests.
 - **Transaction and Interactive APIs** use the UI Server URL (auto-captured), not the base P21 URL.
 - **Interactive API requests must run in order** - they share a stateful session. Always end your session when done.
-- **Entity API** only supports 4 entities: customers, vendors, contacts, addresses. Uses composite keys for customers/vendors (e.g., `ACME_10`).
+- **Entity API** — `/api/entity/` covers 4 entities (customers, vendors, contacts, addresses; composite keys like `ACME_10`); other REST endpoint families exist — see [docs/05-Entity-API.md](../docs/05-Entity-API.md).
 
 ## How to Contribute
 

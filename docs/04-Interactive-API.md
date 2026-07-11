@@ -51,7 +51,7 @@ Then use the returned URL as base:
 | `/api/ui/interactive/v2/window?id={windowId}` | GET | Get window state |
 | `/api/ui/interactive/v2/window?id={windowId}` | DELETE | Close window |
 
-### Data Operations (v2 - Recommended)
+### Data Operations (v2, Recommended)
 
 > **Important:** Some P21 servers only support v2 endpoints. If you receive 404 errors on v1 endpoints, use v2 instead.
 
@@ -185,7 +185,7 @@ Or by menu title:
 Response:
 ```json
 {
-    "WindowId": "w_sales_price_page",
+    "WindowId": "3f2b8c9e-1234-4a5b-9c0d-7e8f9a0b1c2d",
     "Title": "Sales Price Page Entry",
     "DataElements": [...]
 }
@@ -198,7 +198,7 @@ Response:
 ```json
 PUT /api/ui/interactive/v2/change
 {
-    "WindowId": "w_sales_price_page",
+    "WindowId": "3f2b8c9e-1234-4a5b-9c0d-7e8f9a0b1c2d",
     "List": [
         {
             "TabName": "FORM",
@@ -253,6 +253,7 @@ Each change request supports an optional `ValueType` field:
 ```json
 {
     "TabName": "FORM",
+    "DatawindowName": "form",
     "FieldName": "supplier_id",
     "Value": "10050",
     "ValueType": "Data"
@@ -283,7 +284,7 @@ PUT /api/ui/interactive/v1/change
 
 ```json
 PUT /api/ui/interactive/v2/data
-"w_sales_price_page"
+"3f2b8c9e-1234-4a5b-9c0d-7e8f9a0b1c2d"
 ```
 
 > **Critical:** In v2, send just the WindowId GUID string as the JSON body - NOT wrapped in an object. This is a common source of 422 errors.
@@ -735,7 +736,8 @@ For datawindow or field-level tools, include the optional fields:
 import httpx
 
 class InteractiveClient:
-    def __init__(self, base_url, username, password, verify_ssl=False):
+    # verify_ssl=False is for dev/test servers with self-signed certs only
+    def __init__(self, base_url, username, password, verify_ssl=True):
         self.base_url = base_url.rstrip('/')
         self.username = username
         self.password = password
@@ -753,10 +755,13 @@ class InteractiveClient:
         self.token = response.json()["AccessToken"]
 
     def get_ui_server(self):
+        # Trailing slash matters: the no-slash form can answer with a
+        # 307 redirect, so follow redirects as well.
         response = httpx.get(
-            f"{self.base_url}/api/ui/router/v1?urlType=external",
+            f"{self.base_url}/api/ui/router/v1/?urlType=external",
             headers={"Authorization": f"Bearer {self.token}"},
-            verify=self.verify_ssl
+            verify=self.verify_ssl,
+            follow_redirects=True
         )
         response.raise_for_status()
         self.ui_server_url = response.json()["Url"].rstrip("/")
@@ -797,7 +802,8 @@ public class InteractiveClient
     private string? _token;
     private string? _uiServerUrl;
 
-    public InteractiveClient(string baseUrl, string username, string password, bool verifySsl = false)
+    // verifySsl: false is for dev/test servers with self-signed certs only
+    public InteractiveClient(string baseUrl, string username, string password, bool verifySsl = true)
     {
         _baseUrl = baseUrl.TrimEnd('/');
         _username = username;
@@ -1138,6 +1144,8 @@ See the `examples/python/interactive/` directory:
 | Shift Maintenance | Shift | Shift definitions |
 | Production Order Processing | ProductionOrderProcessing | Process/complete production orders |
 
+> **Pick confirmation MUST be windowed.** A Transaction-API-only confirm produces a shell — the status flips and `qty_confirmed` is set, but `qty_applied` stays 0 and no stock moves. See [Confirming the Pick](12-Production-Labor-API.md#confirming-the-pick--use-the-interactive-api).
+
 See [Production & Labor API](12-Production-Labor-API.md) for detailed field definitions.
 
 ---
@@ -1161,7 +1169,7 @@ async def link_page_to_book(
     Args:
         client: Authenticated P21Client with active session
         price_page_uid: The price page UID to link
-        price_book_id: The price book ID (e.g., "P2 IND_OEM_HUGE")
+        price_book_id: The price book ID (e.g., "ACME_BOOK_A")
 
     Returns:
         True if successful
@@ -1293,9 +1301,9 @@ public async Task<bool> LinkPageToBookAsync(
 
 In production P21 environments, price book names are often inconsistent. For example, the same conceptual book might be named differently across environments or suppliers:
 
-- `P2 IND_OEM_LARGE`
-- `P2_JOBBER_HUGE`
-- `P2_TP_Huge`
+- `ACME_BOOK_B`
+- `ACME_BOOK_C`
+- `ACME_BOOK_D`
 
 **Strategy: Case-Insensitive OData Lookup**
 
@@ -1314,7 +1322,7 @@ async def find_price_book(
 
     Args:
         odata_client: OData API client
-        search_terms: List of partial names to try (e.g., ["IND_OEM", "JOBBER"])
+        search_terms: List of partial names to try (e.g., ["BOOK_B", "BOOK_C"])
 
     Returns:
         Price book record or None
@@ -1814,7 +1822,7 @@ await client.put(f"{ui_url}/api/ui/interactive/v2/tab", headers=headers,
 # 4. Change the field and save
 await client.put(f"{ui_url}/api/ui/interactive/v2/change", headers=headers,
     json={"WindowId": window_id, "List": [
-        {"TabName": "TABPAGE_18", "FieldName": "product_group_id", "Value": "NEW_VALUE"}
+        {"TabName": "TABPAGE_18", "DatawindowName": "inv_loc_detail", "FieldName": "product_group_id", "Value": "NEW_VALUE"}
     ]})
 await client.put(
     f"{ui_url}/api/ui/interactive/v2/data",
@@ -1846,7 +1854,7 @@ await http.PutAsJsonAsync($"{uiUrl}/api/ui/interactive/v2/change",
         WindowId = windowId,
         List = new[]
         {
-            new { TabName = "TABPAGE_18", FieldName = "product_group_id", Value = "NEW_VALUE" }
+            new { TabName = "TABPAGE_18", DatawindowName = "inv_loc_detail", FieldName = "product_group_id", Value = "NEW_VALUE" }
         }
     });
 await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/data",
@@ -1910,7 +1918,7 @@ public async Task SelectRowSafeAsync(Window window, int row, string datawindowNa
 
 ### Key Fields Commit the Cursor (Later Fields Silently Ignored)
 
-Sending a grid row's **key field** in a `change` request commits the row cursor — any field in the same `List` (or a later call) that follows the key field is **silently ignored** (the call still returns Status 0/Success). Example: on the JobContractPricing BINS grid, `contract_bin_id` is the key; if it appears before the quantity fields, the quantities never land.
+Sending a grid row's **key field** in a `change` request commits the row cursor — any field in the same `List` (or a later call) that follows the key field is **silently ignored** (the call still returns a success status). Example: on the JobContractPricing BINS grid, `contract_bin_id` is the key; if it appears before the quantity fields, the quantities never land.
 
 **Guidance:**
 

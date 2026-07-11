@@ -637,7 +637,7 @@
 <td><code>technician_id</code></td>
 <td>Char</td>
 <td>Yes</td>
-<td>Technician/worker ID</td>
+<td>Technician's <strong>contact ID</strong> (a contact record, not a P21 user ID)</td>
 </tr>
 <tr>
 <td><code>entry_date</code></td>
@@ -720,7 +720,11 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Field order matters.</strong> On the labor grid, fields must be entered in a strict order or the downstream fields stay disabled: <code>prod_order_number</code> → <code>item_id</code> → <code>component_labor_id</code> → <code>start_time</code> → <code>end_time</code>. See <a href="#time-entry-against-a-production-order-quick-time-entry">Time Entry Against a Production Order (Quick Time Entry)</a> for the verified mechanics.</p>
+</blockquote>
 <h3 id="example-record-labor-hours">Example: Record Labor Hours</h3>
+<p>The example below posts labor by <code>service_labor_id</code> without <code>item_id</code> — the <strong>service-labor variant</strong>. To record labor against a specific production-order assembly line and labor component, use the production-order grid path (<code>prod_order_number</code> → <code>item_id</code> → <code>component_labor_id</code> → <code>start_time</code> → <code>end_time</code>) described in <a href="#time-entry-against-a-production-order-quick-time-entry">Quick Time Entry</a>.</p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -745,7 +749,7 @@
                 <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
                     <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
-                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;technician_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;TECH001&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;technician_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;entry_date&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-06&quot;</span><span class="p">}</span>
                     <span class="p">],</span>
                     <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[]</span>
@@ -806,7 +810,7 @@
 <span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
 <span class="w">                            </span><span class="p">{</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="w"> </span><span class="p">},</span>
-<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;technician_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TECH001&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;technician_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;300&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;entry_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-03-06&quot;</span><span class="w"> </span><span class="p">}</span>
 <span class="w">                            </span><span class="p">},</span>
 <span class="w">                            </span><span class="na">[&quot;RelativeDateEdits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span><span class="p">()</span>
@@ -824,7 +828,7 @@
 <span class="w">                        </span><span class="p">{</span>
 <span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
 <span class="w">                            </span><span class="p">{</span>
-<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;prod_order_number&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1001</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;prod_order_number&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1001&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;service_labor_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;LABOR01&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;start_time&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-03-06T08:00:00&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;end_time&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-03-06T12:00:00&quot;</span><span class="w"> </span><span class="p">},</span>
@@ -1441,7 +1445,7 @@
 <li>Stock on hand → the line <strong>allocates it and no production order spawns</strong> (<code>qty_allocated &gt; 0</code>, no link).</li>
 <li>Short → a production order spawns <strong>for the shortfall</strong>, linked via <code>prod_order_line_link</code> (<code>transaction_uid = oe_line.oe_line_uid</code>, <code>trans_type = 'O'</code>).</li>
 </ul>
-<p>Neither min/max settings nor <code>make = 'Y'</code> is required for this path. Gotchas: the customer's <strong>salesrep must be valid at the sales location</strong> (a DynaChange rule blocks the order otherwise), and the <strong>order date must differ from the required date</strong>. Enter the order via the Interactive API when the line must explode — see <a href="04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a>.</p>
+<p>Neither min/max settings nor <code>make = 'Y'</code> is required for this path. Gotchas: the customer's <strong>salesrep must be valid at the sales location</strong> (a DynaChange rule blocks the order otherwise), and the <strong><code>requested_date</code> must be after the <code>order_date</code></strong>. Enter the order via the Interactive API when the line must explode — see <a href="04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a>.</p>
 <p><strong>Path B — Direct build-to-stock.</strong> Drive the <code>ProductionOrder</code> window: set the header <code>source_loc_id</code> (the make location — where components are stocked <em>and</em> the finished item exists) plus any required user-defined fields, then on <code>TABPAGE_17.tp_17_dw_17</code> set <code>assembly_item_id</code> and <code>qty_to_make</code> (add a row and select it for each additional line). No sales order involved. If the finished item isn't set up at the source location, the save fails with <em>"item ID does not exist at your source location."</em></p>
 <p>Location notes: the production order's make location comes from <code>prod_order_hdr.source_location_id</code>. Physical components source from the stocking location; <strong>intangible components</strong> (labor, burden, charge items) can source from a paired non-stock location if the environment is configured that way — which is why a production order commonly has <strong>two pick tickets</strong> (parts + labor/intangibles). Dates stay synced between a linked sales order and its production order; quantities are copied once at entry and then move independently.</p>
 <h3 id="printing-the-pick-ticket-and-form">Printing the Pick Ticket and Form</h3>
@@ -1810,10 +1814,19 @@
 <span class="c1"># After authentication and getting ui_server_url...</span>
 <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="s2">&quot;Bearer &lt;token&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
 
+<span class="c1"># Create the session first -- response window handling is a session-level</span>
+<span class="c1"># setting, not a window-open option</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server_url</span><span class="si">}</span><span class="s2">/api/ui/interactive/sessions&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+<span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
 <span class="c1"># Open Production Order Entry window</span>
 <span class="n">open_payload</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;ProductionOrder&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span> <span class="kc">False</span>
+    <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;ProductionOrder&quot;</span>
 <span class="p">}</span>
 
 <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
@@ -1830,7 +1843,7 @@
 <span class="c1"># Retrieve a production order</span>
 <span class="n">change_payload</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span>
-    <span class="s2">&quot;Changes&quot;</span><span class="p">:</span> <span class="p">[{</span>
+    <span class="s2">&quot;List&quot;</span><span class="p">:</span> <span class="p">[{</span>
         <span class="s2">&quot;TabName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span>
         <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="s2">&quot;tp_1_dw_1&quot;</span><span class="p">,</span>
         <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="s2">&quot;prod_order_number&quot;</span><span class="p">,</span>
@@ -1858,11 +1871,19 @@
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
-<div class="highlight"><pre><span></span><code><span class="c1">// Open Production Order Entry window</span>
+<div class="highlight"><pre><span></span><code><span class="c1">// Create the session first -- response window handling is a session-level</span>
+<span class="c1">// setting, not a window-open option</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">sessionPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="w"> </span><span class="p">};</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">sessionContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">    </span><span class="n">sessionPayload</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">sessionResp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServerUrl}/api/ui/interactive/sessions&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">sessionContent</span><span class="p">);</span>
+<span class="n">sessionResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="c1">// Open Production Order Entry window</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">openPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="na">[&quot;ServiceName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ProductionOrder&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;ResponseWindowHandlingEnabled&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span>
+<span class="w">    </span><span class="na">[&quot;ServiceName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ProductionOrder&quot;</span>
 <span class="p">};</span>
 
 <span class="kt">var</span><span class="w"> </span><span class="n">openContent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
@@ -1880,7 +1901,7 @@
 <span class="kt">var</span><span class="w"> </span><span class="n">changePayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
-<span class="w">    </span><span class="na">[&quot;Changes&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
+<span class="w">    </span><span class="na">[&quot;List&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span>
 <span class="w">        </span><span class="p">{</span>
@@ -1963,7 +1984,7 @@
 
 <span class="c1"># Query production orders (after enabling in SOA Admin)</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/api/dataaccess/v1/prod_order_hdr&quot;</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/odataservice/odata/table/prod_order_hdr&quot;</span><span class="p">,</span>
     <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id eq &#39;ACME&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>
     <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="n">verify</span><span class="o">=</span><span class="kc">False</span>
@@ -1976,7 +1997,7 @@
 </div>
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">    </span><span class="s">$&quot;{baseUrl}/api/dataaccess/v1/prod_order_hdr&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">    </span><span class="s">$&quot;{baseUrl}/odataservice/odata/table/prod_order_hdr&quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">    </span><span class="s">&quot;?$filter=company_id eq &#39;ACME&#39;&amp;$top=10&quot;</span><span class="p">);</span>
 <span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 
@@ -2000,7 +2021,7 @@
 <li><strong>Validate labor codes</strong> - Ensure <code>service_labor_id</code> values exist before referencing them in <code>TimeEntry</code> payloads. Use the <code>Labor</code> service or OData to look up valid codes.</li>
 <li><strong>Include DatawindowName</strong> - Always include <code>DatawindowName</code> in Interactive API v2 change requests. This is required in P21 25.2+.</li>
 <li><strong>Check Summary on responses</strong> - Always check <code>Summary.Succeeded</code> and <code>Summary.Failed</code> in Transaction API responses.</li>
-<li><strong>Consider async for bulk</strong> - Use the async Transaction endpoint (<code>/api/v2/transaction/async</code>) for large batches of labor entries to avoid session pool issues.</li>
+<li><strong>Consider async for bulk</strong> - Use the async Transaction endpoint (<code>/api/v2/transaction/async</code>) for large batches of labor entries to avoid session pool issues (note the default async queue capacity is 2).</li>
 <li><strong>Time format</strong> - The <code>time_worked</code> field uses <code>HH:MM</code> string format (e.g., <code>"4:00"</code> for 4 hours), not decimal hours.</li>
 </ol>
 <hr />

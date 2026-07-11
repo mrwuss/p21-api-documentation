@@ -35,7 +35,7 @@ dotnet run --project Recipes      # end-to-end tasks; writes gated behind typing
 
 ```
 P21Examples.sln
-Common/                     # Shared library (netstandard2.0)
+Common/                     # Shared library (net8.0)
   P21Config.cs              # Environment variable loading
   P21Auth.cs                # Token auth (V2 for credentials; V1 only for consumer keys), XML/JSON dual parsing
   P21Client.cs              # HttpClient wrapper for all 4 APIs

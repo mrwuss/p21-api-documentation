@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json;
@@ -50,7 +51,7 @@ public static class ComplexWorkflow
             Console.WriteLine("\n2. Creating single price page:");
             Console.WriteLine(new string('-', 50));
 
-            await CreatePricePageWorkflowAsync(session, new PricePageConfig
+            var created = await CreatePricePageWorkflowAsync(session, new PricePageConfig
             {
                 Description = $"WORKFLOW-{timestamp}-A",
                 SupplierId = 10,
@@ -58,7 +59,9 @@ public static class ComplexWorkflow
                 Multiplier = 0.75
             });
 
-            Console.WriteLine("\n  Price page created successfully!");
+            Console.WriteLine(created
+                ? "\n  Price page created successfully!"
+                : "\n  Price page not created (dry run).");
 
             // Could create more records in the same session...
 
@@ -113,7 +116,7 @@ public static class ComplexWorkflow
     /// 6. Save
     /// 7. Close window
     /// </summary>
-    private static async Task CreatePricePageWorkflowAsync(
+    private static async Task<bool> CreatePricePageWorkflowAsync(
         InteractiveSession session, PricePageConfig p)
     {
         Console.WriteLine($"\n  Creating: {p.Description}");
@@ -166,11 +169,19 @@ public static class ComplexWorkflow
             await window.ChangeFieldsAsync("VALUES", new Dictionary<string, string>
             {
                 ["calculation_method_cd"] = "Multiplier",
-                ["calculation_value1"] = p.Multiplier.ToString("F2")
+                ["calculation_value1"] = p.Multiplier.ToString("F2", CultureInfo.InvariantCulture)
             }, datawindowName: "d_values");
             Console.WriteLine("OK");
 
-            // Step 6: Save
+            // Step 6: Save — WRITE SAFETY gate first.
+            Console.WriteLine($"    About to SAVE price page '{p.Description}' " +
+                              $"(supplier {p.SupplierId}, group {p.ProductGroup})");
+            if (!SaveAndClose.ConfirmExecute())
+            {
+                await window.CloseAsync();
+                return false;
+            }
+
             Console.Write("    Saving... ");
             var result = await window.SaveDataAsync();
 
@@ -186,10 +197,17 @@ public static class ComplexWorkflow
 
             Console.WriteLine("OK");
 
+            // Save status alone is not proof of persistence — verify with an
+            // independent read-back (OData or /transaction/get). See
+            // docs/04-Interactive-API.md, "Verifying Writes (Don't Trust
+            // Save Status Alone)".
+            Console.WriteLine("    Verify with an independent read-back (see docs/04, Verifying Writes)");
+
             // Step 7: Close window
             Console.Write("    Closing window... ");
             await window.CloseAsync();
             Console.WriteLine("OK");
+            return true;
         }
         catch (Exception ex)
         {
@@ -326,7 +344,18 @@ public static class ComplexWorkflow
             });
             Console.WriteLine("OK");
 
-            // Save — v2 sends bare GUID string body
+            // Save — v2 sends bare GUID string body. WRITE SAFETY gate first.
+            Console.WriteLine($"    About to SAVE price page '{description}'");
+            if (!SaveAndClose.ConfirmExecute())
+            {
+                // Dry run: close the window without saving; the finally
+                // block ends the session.
+                await http.DeleteAsync(
+                    $"{uiServerUrl}/api/ui/interactive/v2/window?id={windowId}");
+                windowId = null;
+                return;
+            }
+
             Console.Write("    Saving... ");
             var saveContent = new StringContent(
                 JsonConvert.SerializeObject(windowId),
@@ -343,6 +372,10 @@ public static class ComplexWorkflow
                 throw new InvalidOperationException("Save blocked by response window");
 
             Console.WriteLine("OK");
+
+            // Save status alone is not proof of persistence — verify with an
+            // independent read-back (see docs/04, "Verifying Writes").
+            Console.WriteLine("    Verify with an independent read-back (see docs/04, Verifying Writes)");
 
             // Close window
             Console.Write("    Closing window... ");

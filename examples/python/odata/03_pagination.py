@@ -45,7 +45,11 @@ def get_page(base_url: str, table: str, headers: dict,
 def get_all_records(base_url: str, table: str, headers: dict,
                     filter_expr: str = None, page_size: int = 100,
                     verify_ssl: bool = False) -> list:
-    """Fetch all records with automatic pagination."""
+    """Fetch all records with automatic pagination.
+
+    Note: for real bulk preloads use page sizes of 5,000-25,000 -- the
+    small pages in this demo just keep the example output fast to read.
+    """
     records = []
     skip = 0
 

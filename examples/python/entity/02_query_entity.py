@@ -65,7 +65,7 @@ def main():
             top=5
         )
 
-        print(f"  Found {len(customers)} customer(s) in Iowa:")
+        print(f"  Found {len(customers)} customer(s) in NY:")
         for customer in customers[:5]:
             code = customer.get("CustomerCode", "N/A")
             name = customer.get("CustomerName", "Unknown")[:35]
@@ -142,7 +142,7 @@ def main():
             top=5
         )
 
-        print(f"  Found {len(customers)} Iowa customer(s) with credit > $5000:")
+        print(f"  Found {len(customers)} NY customer(s) with credit > $5000:")
         for customer in customers[:5]:
             code = customer.get("CustomerCode", "N/A")
             name = customer.get("CustomerName", "Unknown")[:30]
@@ -168,7 +168,7 @@ def main():
             top=5
         )
 
-        print(f"  Found {len(customers)} customer(s) in IA or IL:")
+        print(f"  Found {len(customers)} customer(s) in NY or IL:")
         for customer in customers[:5]:
             code = customer.get("CustomerCode", "N/A")
             name = customer.get("CustomerName", "Unknown")[:30]

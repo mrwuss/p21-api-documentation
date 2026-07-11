@@ -269,7 +269,7 @@ public static class ChangeData
             Console.WriteLine($"  Status: {tabResult["Status"]}");
 
             // Get data
-            // GET /api/ui/interactive/v2/data?windowId={windowId}
+            // GET /api/ui/interactive/v2/data?id={windowId}
             Console.WriteLine("\n5. Getting data (raw HTTP):");
             Console.WriteLine(new string('-', 50));
 

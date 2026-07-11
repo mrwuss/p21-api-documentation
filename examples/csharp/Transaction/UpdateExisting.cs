@@ -5,8 +5,20 @@
 //
 // To update a record:
 //   1. Fetch it via POST /api/v2/transaction/get (with key fields)
-//   2. Build an update payload with only the changed fields
-//   3. Send via POST /api/v2/transaction (Status is still "New")
+//   2. Build an update payload that IDENTIFIES the record (its key field
+//      goes in the FORM Edits — for SalesPricePage that is price_page_uid,
+//      per the KeyDefinitions in GET /api/v2/definition/SalesPricePage:
+//      [{"Location": "form", "Name": "price_page_uid"}]) plus only the
+//      changed fields
+//   3. Send via POST /api/v2/transaction (Status is still "New" — sending
+//      "Existing" returns HTTP 500 platform-wide)
+//
+// !!! UNVERIFIED: the SalesPricePage update path shown here has NOT been
+// !!! verified live. The corrected payload shape follows the VERIFIED
+// !!! JobContractPricing update pattern (Status "New", FORM Keys empty,
+// !!! key fields inside Edits) — see docs/03-Transaction-API.md,
+// !!! "Updating an Existing Contract". Verify with a read-back before
+// !!! relying on it.
 //
 // The /get endpoint uses a different payload structure:
 //   {
@@ -131,8 +143,12 @@ public static class UpdateExisting
         // -----------------------------------------------------------------
         Console.WriteLine("\n\n2. Update payload structure:");
         Console.WriteLine(new string('-', 50));
-        Console.WriteLine("  Updates require identifying the record via /get first,");
-        Console.WriteLine("  then sending only the changed fields.");
+        Console.WriteLine("  Updates use Status \"New\" and identify the record by its");
+        Console.WriteLine("  key field (price_page_uid) inside the FORM Edits, alongside");
+        Console.WriteLine("  the changed fields. Fetch current values via /get first.");
+        Console.WriteLine("  NOTE: this exact service's update path is UNVERIFIED — the");
+        Console.WriteLine("  shape follows the verified JobContractPricing pattern");
+        Console.WriteLine("  (docs/03-Transaction-API.md, 'Updating an Existing Contract').");
 
         var updatePayload = BuildUpdatePayload(
             pricePageUid: testUid,
@@ -217,13 +233,25 @@ public static class UpdateExisting
         Console.WriteLine("Update examples complete!");
         Console.WriteLine("\nImportant notes:");
         Console.WriteLine("- Always fetch the record first with /transaction/get");
-        Console.WriteLine("- Only include fields you want to change");
+        Console.WriteLine("- Include the identifying key (price_page_uid) in the FORM Edits,");
+        Console.WriteLine("  plus only the fields you want to change");
         Console.WriteLine("- The 'Status' in the request is still 'New' for updates");
+        Console.WriteLine("  ('Existing' returns HTTP 500 platform-wide)");
+        Console.WriteLine("- SalesPricePage updates are UNVERIFIED; the verified reference");
+        Console.WriteLine("  is JobContractPricing (docs/03, 'Updating an Existing Contract')");
+        Console.WriteLine("- Verify with a read-back (/transaction/get) after any update");
     }
 
     /// <summary>
     /// Build a Transaction API payload for updating a price page.
-    /// Only includes the fields that are being changed.
+    /// Identifies the record via price_page_uid (the service's only
+    /// KeyDefinition, located on "form") in the FORM Edits — mirroring the
+    /// verified JobContractPricing pattern where FORM Keys stays empty and
+    /// key fields ride in Edits — plus only the fields being changed.
+    ///
+    /// UNVERIFIED for SalesPricePage specifically: this shape follows the
+    /// verified JobContractPricing update path (docs/03-Transaction-API.md,
+    /// "Updating an Existing Contract"). Verify with a read-back.
     /// </summary>
     /// <param name="pricePageUid">The UID of the price page to update.</param>
     /// <param name="newDescription">New description, or null to skip.</param>
@@ -235,8 +263,18 @@ public static class UpdateExisting
         double? newMultiplier = null,
         bool expire = false)
     {
-        // Build edits for the FORM data element (only changed fields)
-        var formEdits = new JArray();
+        // Build edits for the FORM data element. The identifying key field
+        // (price_page_uid, per the definition's KeyDefinitions) goes FIRST
+        // in Edits; FORM Keys stays empty, as in the verified
+        // JobContractPricing update pattern.
+        var formEdits = new JArray
+        {
+            new JObject
+            {
+                ["Name"] = "price_page_uid",
+                ["Value"] = pricePageUid.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            }
+        };
 
         if (!string.IsNullOrEmpty(newDescription))
         {
@@ -281,7 +319,7 @@ public static class UpdateExisting
                     {
                         ["Edits"] = new JArray
                         {
-                            new JObject { ["Name"] = "calculation_value1", ["Value"] = newMultiplier.Value.ToString() }
+                            new JObject { ["Name"] = "calculation_value1", ["Value"] = newMultiplier.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) }
                         },
                         ["RelativeDateEdits"] = new JArray()
                     }

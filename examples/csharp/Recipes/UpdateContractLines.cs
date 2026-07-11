@@ -12,6 +12,7 @@
 //   - end_date must be >= today; the header is re-validated on every save.
 //   - IgnoreDisabled: true (top level) is required for commission-cost writes.
 
+using System.Globalization;
 using Newtonsoft.Json.Linq;
 using P21Examples.Common;
 using static P21Examples.Recipes.RecipeHelpers;
@@ -130,7 +131,7 @@ public static class UpdateContractLines
                         Edit("item_id",        itemId),
                         Edit("uom",            uom),
                         Edit("pricing_method", "Price"),           // MUST come before price
-                        Edit("price",          price.ToString()),
+                        Edit("price",          price.ToString(CultureInfo.InvariantCulture)),
                     },
                     ["RelativeDateEdits"] = new JArray() } }
             },
@@ -153,7 +154,7 @@ public static class UpdateContractLines
                 ["Rows"] = new JArray { new JObject { ["Edits"] = new JArray {
                     Edit("item_id",                 itemId),
                     Edit("commission_cost_type_cd", "Value"),      // type BEFORE value
-                    Edit("commission_cost_value",   commissionCost.ToString()!),
+                    Edit("commission_cost_value",   commissionCost.Value.ToString(CultureInfo.InvariantCulture)),
                 } } }
             });
         }

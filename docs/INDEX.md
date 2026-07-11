@@ -64,9 +64,11 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Assembly / BOM** definition | — | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
 | Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service----nested-location-edits) |
 | **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service----creating-bins) |
-| **Sales price pages** (codes, breaks, field order) | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) |
+| **Sales price pages** (codes, breaks, field order) | — | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) |
 | Customers / vendors / contacts / addresses (simple CRUD) | [05 § CRUD Operations](05-Entity-API.md#crud-operations) |
+| Read/create **sales orders via REST** (`/api/sales/orders`) | — | [05 § Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families) |
 | Inventory items: read / create / update locations | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
+| Customer-specific **price + availability** lookup | — | [11 § Pricing Endpoints](11-Inventory-REST-API.md#pricing-endpoints) |
 | User-defined tables (UDT) rows | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) |
 
 ## Drive a window (Interactive API)

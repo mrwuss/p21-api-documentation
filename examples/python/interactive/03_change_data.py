@@ -66,9 +66,10 @@ class InteractiveSession:
         return response.json()
 
     def close_window(self, window_id: str):
+        # Note: /v2/window uses ?id= (only /v2/tools uses ?windowId=)
         self.client.delete(
             f"{self.ui_server_url}/api/ui/interactive/v2/window",
-            params={"windowId": window_id},
+            params={"id": window_id},
             headers=self.headers
         )
 
@@ -111,9 +112,10 @@ class InteractiveSession:
 
     def get_data(self, window_id: str) -> dict:
         """Get the current data from a window."""
+        # Note: /v2/data uses ?id= (only /v2/tools uses ?windowId=)
         response = self.client.get(
             f"{self.ui_server_url}/api/ui/interactive/v2/data",
-            params={"windowId": window_id},
+            params={"id": window_id},
             headers=self.headers
         )
         response.raise_for_status()
@@ -190,8 +192,8 @@ def main():
 
         # Change fields on new tab
         result = session.change_data(window_id, [
-            {"TabName": "VALUES", "DatawindowName": "d_values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
-            {"TabName": "VALUES", "DatawindowName": "d_values", "FieldName": "calculation_value1", "Value": "0.75"},
+            {"TabName": "VALUES", "DatawindowName": "values", "FieldName": "calculation_method_cd", "Value": "Multiplier"},
+            {"TabName": "VALUES", "DatawindowName": "values", "FieldName": "calculation_value1", "Value": "0.75"},
         ])
         print("  Changed calculation fields")
         print(f"  Status: {result.get('Status')}")

@@ -233,7 +233,8 @@ public static class CreateEntity
         Console.WriteLine("  - No /new template endpoint (returns 500)");
         Console.WriteLine("  - No PUT for updates (only POST for create)");
         Console.WriteLine("  - To create an address, POST directly with field values");
-        Console.WriteLine("  - To update an address, use Interactive API or direct SQL");
+        Console.WriteLine("  - To update an address, use the Interactive API");
+        Console.WriteLine("    (or another documented REST path where one exists)");
 
         // -----------------------------------------------------------------
         // Summary
