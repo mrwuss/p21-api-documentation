@@ -65,7 +65,7 @@ For C#: `cd examples/csharp && dotnet build`, then `dotnet run --project <Projec
 
 All documentation pages include tabbed Python/C# code blocks; the [online docs](https://mrwuss.github.io/p21-api-documentation/html/) sync language selection across every block on a page.
 
-**Sharing a section:** on the online [Changelog](https://mrwuss.github.io/p21-api-documentation/html/10-Changelog.html) and [Breaking Changes](https://mrwuss.github.io/p21-api-documentation/html/14-Breaking-Changes.html) pages, hovering any section heading reveals a **Copy HTML** button — handy for quoting a release or a single breaking-change entry in a forum post. It copies that section only (a parent section brings its subsections with it), with every link rewritten to an absolute URL so it still resolves once pasted elsewhere.
+**Sharing a section:** on the online [Changelog](https://mrwuss.github.io/p21-api-documentation/html/10-Changelog.html) and [Breaking Changes](https://mrwuss.github.io/p21-api-documentation/html/14-Breaking-Changes.html) pages, hovering any section heading reveals a **Copy BBCode** button — handy for quoting a release or a single breaking-change entry on the [P21 forum](https://forums.p21ww.org/). It copies that section only (a parent section brings its subsections with it), as forum-ready BBCode with every link rewritten to an absolute URL so it still resolves once pasted.
 
 ## Environment Variables
 

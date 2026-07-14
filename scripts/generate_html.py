@@ -36,14 +36,247 @@ GITHUB_BLOB_BASE = "https://github.com/mrwuss/p21-api-documentation/blob/master/
 # into absolute ones, so a section pasted into a forum still resolves.
 SITE_BASE = "https://mrwuss.github.io/p21-api-documentation/html/"
 
-# Pages that get a per-section "Copy HTML" button on every h2/h3/h4, for
-# quoting a release or a single finding elsewhere (e.g. a forum post).
+# Pages that get a per-section "Copy BBCode" button on every h2/h3/h4, for
+# quoting a release or a single finding on the P21 forum.
 #
 # Every heading, deliberately: an earlier version only matched "interesting"
 # headings (dated releases; "P21 <version>" and its entries) and silently
 # skipped each page's own Overview -- the first heading anyone hovers -- which
 # read as the feature being broken. A predictable rule beats a clever one.
 COPY_SECTION_PAGES = {"10-Changelog", "14-Breaking-Changes"}
+
+# Per-section copy button. Kept OUT of the page f-string: this is brace-heavy
+# JS, and doubling every one of them is how a Python `True` once got
+# interpolated into a JS boolean. Tokens are substituted below.
+#
+# Target forum accepts BBCode but NOT [list]/[*], [quote] or [code], so:
+#   lists       -> bullet lines
+#   code blocks -> plain text (line breaks kept, no monospace)
+#   blockquotes -> contents inlined
+#   tables      -> one line per row, cells joined with " | ", header bolded
+COPY_SECTION_JS = r"""
+        // ===== Copy a section as BBCode (for the P21 forum) =====
+        (function () {
+            var COPY_SECTIONS = __ENABLED__;
+            var PAGE_URL = "__PAGE_URL__";
+            if (!COPY_SECTIONS || !PAGE_URL) return;
+
+            var content = document.querySelector('main.content');
+            if (!content) return;
+
+            var LABEL = 'Copy BBCode';
+
+            // A section is its heading plus every following sibling up to the
+            // next heading of the same or higher rank.
+            function sectionNodes(heading) {
+                var level = parseInt(heading.tagName.slice(1), 10);
+                var nodes = [heading];
+                var el = heading.nextElementSibling;
+                while (el) {
+                    var m = /^H([1-6])$/.exec(el.tagName);
+                    if (m && parseInt(m[1], 10) <= level) break;
+                    nodes.push(el);
+                    el = el.nextElementSibling;
+                }
+                return nodes;
+            }
+
+            // Resolve against this page's canonical URL -- NOT document.baseURI,
+            // which is a file:// path when the page is opened locally and would
+            // bake dead links into the paste.
+            function abs(url) {
+                if (!url) return '';
+                try { return new URL(url, PAGE_URL).href; } catch (e) { return url; }
+            }
+
+            function indent(depth) {
+                return new Array(depth + 1).join('   ');
+            }
+
+            // DOM -> BBCode.
+            function bb(node, depth) {
+                if (node.nodeType === 3) {
+                    // Collapse markup whitespace; PRE is handled before we recurse.
+                    return node.textContent.replace(/\s+/g, ' ');
+                }
+                if (node.nodeType !== 1) return '';
+
+                var tag = node.tagName;
+
+                function kids(d) {
+                    var out = '';
+                    Array.prototype.forEach.call(node.childNodes, function (c) {
+                        out += bb(c, d === undefined ? depth : d);
+                    });
+                    return out;
+                }
+
+                switch (tag) {
+                    case 'H1': case 'H2': case 'H3': case 'H4': case 'H5': case 'H6':
+                        return '\n[b]' + kids().trim() + '[/b]\n\n';
+
+                    case 'P':
+                        return kids().trim() + '\n\n';
+
+                    case 'BR':
+                        return '\n';
+
+                    case 'STRONG': case 'B': {
+                        var b = kids().trim();
+                        return b ? '[b]' + b + '[/b]' : '';
+                    }
+
+                    case 'EM': case 'I': {
+                        var i = kids().trim();
+                        return i ? '[i]' + i + '[/i]' : '';
+                    }
+
+                    case 'CODE':
+                        // No [code] on this forum -- inline code rides as plain text.
+                        return node.textContent.replace(/\s+/g, ' ');
+
+                    case 'PRE':
+                        // No [code] either -- keep the line breaks, drop the styling.
+                        return '\n' + node.textContent.replace(/\s+$/, '') + '\n\n';
+
+                    case 'A': {
+                        var href = abs(node.getAttribute('href'));
+                        var text = kids().trim();
+                        if (!href) return text;
+                        if (!text) return '[url]' + href + '[/url]';
+                        return '[url=' + href + ']' + text + '[/url]';
+                    }
+
+                    case 'IMG': {
+                        var src = abs(node.getAttribute('src'));
+                        return src ? '\n[img]' + src + '[/img]\n' : '';
+                    }
+
+                    case 'UL': case 'OL': {
+                        // No [list]/[*] -- emit bullet lines instead.
+                        var out = '\n';
+                        var n = 0;
+                        Array.prototype.forEach.call(node.children, function (li) {
+                            if (li.tagName !== 'LI') return;
+                            n++;
+                            var marker = (tag === 'OL') ? (n + '. ')
+                                       : (depth > 0 ? '- ' : '• ');
+                            var body = '';
+                            Array.prototype.forEach.call(li.childNodes, function (c) {
+                                body += bb(c, depth + 1);
+                            });
+                            body = body.replace(/\n{3,}/g, '\n\n').trim();
+                            // Keep wrapped/nested lines under the bullet.
+                            body = body.replace(/\n/g, '\n' + indent(depth + 1));
+                            out += indent(depth) + marker + body + '\n';
+                        });
+                        return out + '\n';
+                    }
+
+                    case 'TABLE': {
+                        var lines = '\n';
+                        Array.prototype.forEach.call(node.querySelectorAll('tr'), function (tr) {
+                            var cells = [];
+                            Array.prototype.forEach.call(tr.children, function (cell) {
+                                var v = '';
+                                Array.prototype.forEach.call(cell.childNodes, function (c) {
+                                    v += bb(c, depth);
+                                });
+                                cells.push(v.replace(/\s+/g, ' ').trim());
+                            });
+                            if (!cells.length) return;
+                            var line = cells.join(' | ');
+                            if (tr.querySelector('th')) line = '[b]' + line + '[/b]';
+                            lines += line + '\n';
+                        });
+                        return lines + '\n';
+                    }
+
+                    case 'BLOCKQUOTE':
+                        // No [quote] -- the callouts already lead with bold text.
+                        return '\n' + kids().trim() + '\n\n';
+
+                    case 'HR':
+                        return '\n';
+
+                    default:
+                        return kids();
+                }
+            }
+
+            function sectionBBCode(heading) {
+                var wrap = document.createElement('div');
+                sectionNodes(heading).forEach(function (n) {
+                    wrap.appendChild(n.cloneNode(true));
+                });
+                Array.prototype.forEach.call(
+                    wrap.querySelectorAll('.copy-section-btn'),
+                    function (b) { b.parentNode.removeChild(b); });
+
+                var out = '';
+                Array.prototype.forEach.call(wrap.childNodes, function (c) {
+                    out += bb(c, 0);
+                });
+                return out
+                    .replace(/[ \t]+\n/g, '\n')   // trailing spaces
+                    .replace(/\n{3,}/g, '\n\n')   // runs of blank lines
+                    .trim();
+            }
+
+            function copyText(text) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    return navigator.clipboard.writeText(text);
+                }
+                return Promise.reject(new Error('clipboard API unavailable'));
+            }
+
+            // file:// and older browsers.
+            function fallbackCopy(text) {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                document.body.appendChild(ta);
+                ta.select();
+                var ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                document.body.removeChild(ta);
+                return ok;
+            }
+
+            function flash(btn, cls, label) {
+                btn.textContent = label;
+                btn.classList.add(cls);
+                setTimeout(function () {
+                    btn.textContent = LABEL;
+                    btn.classList.remove(cls);
+                }, 1600);
+            }
+
+            Array.prototype.forEach.call(
+                content.querySelectorAll('h2, h3, h4'), function (h) {
+                    var btn = document.createElement('button');
+                    btn.className = 'copy-section-btn';
+                    btn.type = 'button';
+                    btn.textContent = LABEL;
+                    btn.title = 'Copy this section as forum BBCode, with links '
+                              + 'rewritten to absolute URLs so they work when pasted';
+                    btn.addEventListener('click', function (ev) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        var text = sectionBBCode(h);
+                        copyText(text).then(function () {
+                            flash(btn, 'copied', 'Copied!');
+                        }).catch(function () {
+                            if (fallbackCopy(text)) flash(btn, 'copied', 'Copied!');
+                            else flash(btn, 'failed', 'Copy failed');
+                        });
+                    });
+                    h.appendChild(btn);
+                });
+        })();
+"""
 
 # Page index: (filename_stem, display_title)
 # Generated dynamically from markdown files
@@ -322,9 +555,14 @@ def get_html_template(
         page_url: This page's absolute URL on the published site. Copied
             sections resolve their links against it, so a section pasted
             elsewhere still points back here.
-        copy_sections: Give every h2/h3/h4 a "Copy HTML" button. See
+        copy_sections: Give every h2/h3/h4 a "Copy BBCode" button. See
             COPY_SECTION_PAGES.
     """
+    copy_js = ""
+    if copy_sections and page_url:
+        copy_js = COPY_SECTION_JS.replace("__PAGE_URL__", page_url).replace(
+            "__ENABLED__", "true"
+        )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -820,143 +1058,7 @@ def get_html_template(
             }});
         }})();
 
-        // ===== Copy a section as HTML (for pasting into a forum) =====
-        (function () {{
-            var COPY_SECTIONS = {str(bool(copy_sections)).lower()};
-            var PAGE_URL = "{page_url}";
-            if (!COPY_SECTIONS || !PAGE_URL) return;
-
-            var content = document.querySelector('main.content');
-            if (!content) return;
-
-            var LABEL = 'Copy HTML';
-
-            // A section is its heading plus every following sibling up to the
-            // next heading of the same or higher rank.
-            function sectionNodes(heading) {{
-                var level = parseInt(heading.tagName.slice(1), 10);
-                var nodes = [heading];
-                var el = heading.nextElementSibling;
-                while (el) {{
-                    var m = /^H([1-6])$/.exec(el.tagName);
-                    if (m && parseInt(m[1], 10) <= level) break;
-                    nodes.push(el);
-                    el = el.nextElementSibling;
-                }}
-                return nodes;
-            }}
-
-            // Resolve links against this page's canonical URL -- NOT
-            // document.baseURI, which is a file:// path when the page is
-            // opened locally and would produce dead links in the paste.
-            function absolutise(root) {{
-                var fix = function (el, attr) {{
-                    var val = el.getAttribute(attr);
-                    if (!val) return;
-                    try {{
-                        el.setAttribute(attr, new URL(val, PAGE_URL).href);
-                    }} catch (e) {{
-                        /* leave anything unparseable exactly as it was */
-                    }}
-                }};
-                Array.prototype.forEach.call(
-                    root.querySelectorAll('a[href]'), function (a) {{ fix(a, 'href'); }});
-                Array.prototype.forEach.call(
-                    root.querySelectorAll('img[src]'), function (i) {{ fix(i, 'src'); }});
-            }}
-
-            // Syntax highlighting is a pile of <span class="k"> that means
-            // nothing without this page's stylesheet -- flatten to plain code.
-            function flattenCode(root) {{
-                Array.prototype.forEach.call(
-                    root.querySelectorAll('div.highlight'), function (div) {{
-                        var pre = document.createElement('pre');
-                        var code = document.createElement('code');
-                        code.textContent = div.textContent.replace(/\\s+$/, '');
-                        pre.appendChild(code);
-                        div.parentNode.replaceChild(pre, div);
-                    }});
-            }}
-
-            function sectionHtml(heading) {{
-                var wrap = document.createElement('div');
-                sectionNodes(heading).forEach(function (n) {{
-                    wrap.appendChild(n.cloneNode(true));
-                }});
-                Array.prototype.forEach.call(
-                    wrap.querySelectorAll('.copy-section-btn'),
-                    function (b) {{ b.parentNode.removeChild(b); }});
-                flattenCode(wrap);
-                absolutise(wrap);
-                // ids are page-local and would collide once pasted elsewhere
-                Array.prototype.forEach.call(
-                    wrap.querySelectorAll('[id]'),
-                    function (n) {{ n.removeAttribute('id'); }});
-                return wrap.innerHTML.trim();
-            }}
-
-            // text/html so a rich editor pastes it rendered; text/plain carries
-            // the markup itself for a source view. One write, both flavours.
-            function writeClipboard(html) {{
-                if (navigator.clipboard && window.ClipboardItem) {{
-                    try {{
-                        return navigator.clipboard.write([new ClipboardItem({{
-                            'text/html': new Blob([html], {{ type: 'text/html' }}),
-                            'text/plain': new Blob([html], {{ type: 'text/plain' }})
-                        }})]);
-                    }} catch (e) {{
-                        return Promise.reject(e);
-                    }}
-                }}
-                return Promise.reject(new Error('clipboard API unavailable'));
-            }}
-
-            // file:// and older browsers get the markup as plain text.
-            function fallbackCopy(text) {{
-                var ta = document.createElement('textarea');
-                ta.value = text;
-                ta.setAttribute('readonly', '');
-                ta.style.position = 'fixed';
-                ta.style.top = '-1000px';
-                document.body.appendChild(ta);
-                ta.select();
-                var ok = false;
-                try {{ ok = document.execCommand('copy'); }} catch (e) {{ ok = false; }}
-                document.body.removeChild(ta);
-                return ok;
-            }}
-
-            function flash(btn, cls, label) {{
-                btn.textContent = label;
-                btn.classList.add(cls);
-                setTimeout(function () {{
-                    btn.textContent = LABEL;
-                    btn.classList.remove(cls);
-                }}, 1600);
-            }}
-
-            Array.prototype.forEach.call(
-                content.querySelectorAll('h2, h3, h4'), function (h) {{
-                    var btn = document.createElement('button');
-                    btn.className = 'copy-section-btn';
-                    btn.type = 'button';
-                    btn.textContent = LABEL;
-                    btn.title = 'Copy this section as HTML, with links rewritten '
-                              + 'to absolute URLs so they work when pasted elsewhere';
-                    btn.addEventListener('click', function (ev) {{
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        var html = sectionHtml(h);
-                        writeClipboard(html).then(function () {{
-                            flash(btn, 'copied', 'Copied!');
-                        }}).catch(function () {{
-                            if (fallbackCopy(html)) flash(btn, 'copied', 'Copied!');
-                            else flash(btn, 'failed', 'Copy failed');
-                        }});
-                    }});
-                    h.appendChild(btn);
-                }});
-        }})();
+{copy_js}
     </script>
 </body>
 </html>"""

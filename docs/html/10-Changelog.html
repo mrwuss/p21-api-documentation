@@ -510,7 +510,7 @@
 <li><strong>docs:</strong> New <strong>2026.1 observations</strong> in doc 14 — the <strong>middleware version has no endpoint</strong> but rides the session-create response (<code>Properties[0].Properties.fullversion</code>), the only reliable way to confirm your build; <strong><code>GET /v2/data</code> returns only a varying subset of a window's datawindows</strong> (a datawindow's absence proves nothing — it is not a reliable field-level read-back); a <strong>nonexistent <code>DatawindowName</code> fails loudly</strong> with HTTP 400 rather than silently; and <code>DatawindowName</code> is <strong>optional for header fields on 26.1</strong> though still required on 25.2, so keep sending it — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> 2026.1 release-guide notes — Epicor attributes the release's platform work to <strong>".NET Platform Modernization: migration to .NET 10 and a re-architected middleware home page"</strong>, consistent with (though not confirmed by Epicor as the cause of) the content-negotiation and contract changes above; <strong>2026.1 is the last release to support SQL Server 2016</strong> (2026.2 requires 2019+); Crystal Reports reaches SAP end-of-support <strong>31 Dec 2028</strong>, with Report Studio and Epicor Forms Service as the forward path — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> The UDT <code>row_uid</code> hazard promoted into the <strong><a href="14-Breaking-Changes.html#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">Breaking Changes registry</a></strong> as 2026.1 entry 7, the standing alerts header, the <strong><a href="06-Error-Handling.html#udt-service-errors">Error Handling</a></strong> guide (a new <em>UDT Service Errors</em> section keyed on the literal strings you'd search for — <code>"Invalid Row Uid!"</code>, <code>"[0] rows deleted ... successfully!"</code>, <code>"Conditions cannot be blank or none!"</code>, <code>"Invalid UDT table"</code> / <code>"Incompatible table for bulk insert"</code>), and the task index. Doc 14's overview was <strong>softened to match what we can actually prove</strong>: this entry has no prior-version comparison (no pre-2026.1 tenant remained), so rather than let the page keep implying every entry was A/B'd, the registry now states that entries lacking a prior-version check say so — and entry 7 says so — <em>@mrwuss</em></li>
-<li><strong>feat(site):</strong> <strong>Per-section "Copy HTML" buttons</strong> on the Changelog and Breaking Changes — for quoting a release, a version's findings, or a single entry in a forum post. Hovering <strong>any</strong> heading (h2/h3/h4) reveals the button; it copies <strong>that section only</strong>, stopping cleanly at the next heading of equal or higher rank, so an entry copies alone while its parent version copies with every entry nested under it. Every link is rewritten to an <strong>absolute URL</strong> so it still resolves once pasted — including same-page anchors, and resolved against the page's canonical published URL rather than <code>document.baseURI</code> (which would bake in a <code>file://</code> path when the page is opened locally). Syntax-highlight <code>&lt;span&gt;</code>s are flattened to plain <code>&lt;pre&gt;&lt;code&gt;</code> (their classes mean nothing without this site's stylesheet) and page-local <code>id</code>s are stripped so they can't collide with the host page. Copied as both <code>text/html</code> and <code>text/plain</code>, so it pastes rendered into a rich editor and as markup into a source view, with an <code>execCommand</code> fallback for non-secure contexts — <em>@mrwuss</em></li>
+<li><strong>feat(site):</strong> <strong>Per-section "Copy BBCode" buttons</strong> on the Changelog and Breaking Changes — for quoting a release, a version's findings, or a single entry on the <a href="https://forums.p21ww.org/">P21 forum</a>. Hovering <strong>any</strong> heading (h2/h3/h4) reveals the button; it copies <strong>that section only</strong>, stopping cleanly at the next heading of equal or higher rank, so an entry copies alone while its parent version copies with every entry nested under it. Every link is rewritten to an <strong>absolute URL</strong> so it still resolves once pasted — including same-page anchors, and resolved against the page's canonical published URL rather than <code>document.baseURI</code> (which would bake in a <code>file://</code> path when the page is opened locally). Output is BBCode targeted at a forum that accepts <strong>no <code>[list]</code>/<code>[*]</code>, <code>[quote]</code> or <code>[code]</code></strong>: lists become <code>•</code> bullet lines (nested ones indented), tables one line per row (cells joined with <code>|</code>, header bolded), code blocks and inline code plain text with line breaks preserved, and blockquotes inlined — the ⚠ callouts already lead with bold, so they still read as warnings. Verified across all 45 sections on both pages: no forbidden tags, no relative URLs, no unbalanced tags — <em>@mrwuss</em></li>
 <li><strong>fix(site):</strong> <strong>23 broken anchor links repaired</strong> across the docs and recipes — every heading containing an em-dash (e.g. <em>"Upsert Semantics — Keyed Rows…"</em>, <em>"No Joins — Chain Queries by UID"</em>, <em>"Cost Model — Know This…"</em>) was linked with a <strong>double</strong> hyphen while the generator emits a <strong>single</strong> one, so the links silently landed at the top of the page instead of the section. Eight of them were in <code>INDEX.md</code> itself — the routing layer whose entire job is jumping to the right section — plus five recipe pages and four cross-doc references. Found by validating every link against the <strong>generated HTML ids</strong> rather than a re-implemented slug rule; all <strong>277</strong> anchor links across <code>docs/**/*.md</code> now resolve — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Dropping a UDT also needs an <strong>OData schema refresh</strong> — until it runs, queries against the dropped table return <code>404 "Invalid object name 'dbo.{udt}'."</code>, distinct from the <strong>empty-bodied</strong> 404 of a table that was never exposed; the wording tells you which situation you're in — <em>@mrwuss</em></li>
 <li><strong>fix:</strong> <strong>UDT update and delete cannot reach data in a 2026.1-created UDT</strong> (doc 13) — both endpoints are hard-wired to a literal <strong><code>row_uid</code></strong> column, but 2026.1's User Defined Table Maintenance names the primary key <strong><code>udt_{tablename}_uid</code></strong> and creates no <code>row_uid</code>. Update then returns <code>400 {"error":["Invalid Row Uid!"]}</code> for <em>every</em> condition (the real PK name, any other column, any casing, string or int), and <strong>delete returns HTTP 200 <code>{"errorNo": 0, "errorMessage": "[0] rows deleted ... successfully!"}</code> while deleting nothing</strong> — only the <code>[0]</code> count betrays the no-op. Also found: <strong>delete reads <code>conditions</code> from the payload's top level</strong>, not nested in <code>rows[]</code> as documented (the nested form 400s with <em>"Conditions cannot be blank or none!"</em>); both forms are now shown. Found while clearing the bulk-API probe rows — the deletion silently "succeeded" four times before a read-back showed the count unchanged. Guidance added: verify <code>row_uid</code> exists (<code>$select=row_uid</code>) before relying on these endpoints, and check the row count in <code>errorMessage</code> rather than <code>errorNo</code> — <em>@mrwuss</em></li>
@@ -890,7 +890,8 @@
             });
         })();
 
-        // ===== Copy a section as HTML (for pasting into a forum) =====
+
+        // ===== Copy a section as BBCode (for the P21 forum) =====
         (function () {
             var COPY_SECTIONS = true;
             var PAGE_URL = "https://mrwuss.github.io/p21-api-documentation/html/10-Changelog.html";
@@ -899,7 +900,7 @@
             var content = document.querySelector('main.content');
             if (!content) return;
 
-            var LABEL = 'Copy HTML';
+            var LABEL = 'Copy BBCode';
 
             // A section is its heading plus every following sibling up to the
             // next heading of the same or higher rank.
@@ -916,39 +917,130 @@
                 return nodes;
             }
 
-            // Resolve links against this page's canonical URL -- NOT
-            // document.baseURI, which is a file:// path when the page is
-            // opened locally and would produce dead links in the paste.
-            function absolutise(root) {
-                var fix = function (el, attr) {
-                    var val = el.getAttribute(attr);
-                    if (!val) return;
-                    try {
-                        el.setAttribute(attr, new URL(val, PAGE_URL).href);
-                    } catch (e) {
-                        /* leave anything unparseable exactly as it was */
-                    }
-                };
-                Array.prototype.forEach.call(
-                    root.querySelectorAll('a[href]'), function (a) { fix(a, 'href'); });
-                Array.prototype.forEach.call(
-                    root.querySelectorAll('img[src]'), function (i) { fix(i, 'src'); });
+            // Resolve against this page's canonical URL -- NOT document.baseURI,
+            // which is a file:// path when the page is opened locally and would
+            // bake dead links into the paste.
+            function abs(url) {
+                if (!url) return '';
+                try { return new URL(url, PAGE_URL).href; } catch (e) { return url; }
             }
 
-            // Syntax highlighting is a pile of <span class="k"> that means
-            // nothing without this page's stylesheet -- flatten to plain code.
-            function flattenCode(root) {
-                Array.prototype.forEach.call(
-                    root.querySelectorAll('div.highlight'), function (div) {
-                        var pre = document.createElement('pre');
-                        var code = document.createElement('code');
-                        code.textContent = div.textContent.replace(/\s+$/, '');
-                        pre.appendChild(code);
-                        div.parentNode.replaceChild(pre, div);
+            function indent(depth) {
+                return new Array(depth + 1).join('   ');
+            }
+
+            // DOM -> BBCode.
+            function bb(node, depth) {
+                if (node.nodeType === 3) {
+                    // Collapse markup whitespace; PRE is handled before we recurse.
+                    return node.textContent.replace(/\s+/g, ' ');
+                }
+                if (node.nodeType !== 1) return '';
+
+                var tag = node.tagName;
+
+                function kids(d) {
+                    var out = '';
+                    Array.prototype.forEach.call(node.childNodes, function (c) {
+                        out += bb(c, d === undefined ? depth : d);
                     });
+                    return out;
+                }
+
+                switch (tag) {
+                    case 'H1': case 'H2': case 'H3': case 'H4': case 'H5': case 'H6':
+                        return '\n[b]' + kids().trim() + '[/b]\n\n';
+
+                    case 'P':
+                        return kids().trim() + '\n\n';
+
+                    case 'BR':
+                        return '\n';
+
+                    case 'STRONG': case 'B': {
+                        var b = kids().trim();
+                        return b ? '[b]' + b + '[/b]' : '';
+                    }
+
+                    case 'EM': case 'I': {
+                        var i = kids().trim();
+                        return i ? '[i]' + i + '[/i]' : '';
+                    }
+
+                    case 'CODE':
+                        // No [code] on this forum -- inline code rides as plain text.
+                        return node.textContent.replace(/\s+/g, ' ');
+
+                    case 'PRE':
+                        // No [code] either -- keep the line breaks, drop the styling.
+                        return '\n' + node.textContent.replace(/\s+$/, '') + '\n\n';
+
+                    case 'A': {
+                        var href = abs(node.getAttribute('href'));
+                        var text = kids().trim();
+                        if (!href) return text;
+                        if (!text) return '[url]' + href + '[/url]';
+                        return '[url=' + href + ']' + text + '[/url]';
+                    }
+
+                    case 'IMG': {
+                        var src = abs(node.getAttribute('src'));
+                        return src ? '\n[img]' + src + '[/img]\n' : '';
+                    }
+
+                    case 'UL': case 'OL': {
+                        // No [list]/[*] -- emit bullet lines instead.
+                        var out = '\n';
+                        var n = 0;
+                        Array.prototype.forEach.call(node.children, function (li) {
+                            if (li.tagName !== 'LI') return;
+                            n++;
+                            var marker = (tag === 'OL') ? (n + '. ')
+                                       : (depth > 0 ? '- ' : '• ');
+                            var body = '';
+                            Array.prototype.forEach.call(li.childNodes, function (c) {
+                                body += bb(c, depth + 1);
+                            });
+                            body = body.replace(/\n{3,}/g, '\n\n').trim();
+                            // Keep wrapped/nested lines under the bullet.
+                            body = body.replace(/\n/g, '\n' + indent(depth + 1));
+                            out += indent(depth) + marker + body + '\n';
+                        });
+                        return out + '\n';
+                    }
+
+                    case 'TABLE': {
+                        var lines = '\n';
+                        Array.prototype.forEach.call(node.querySelectorAll('tr'), function (tr) {
+                            var cells = [];
+                            Array.prototype.forEach.call(tr.children, function (cell) {
+                                var v = '';
+                                Array.prototype.forEach.call(cell.childNodes, function (c) {
+                                    v += bb(c, depth);
+                                });
+                                cells.push(v.replace(/\s+/g, ' ').trim());
+                            });
+                            if (!cells.length) return;
+                            var line = cells.join(' | ');
+                            if (tr.querySelector('th')) line = '[b]' + line + '[/b]';
+                            lines += line + '\n';
+                        });
+                        return lines + '\n';
+                    }
+
+                    case 'BLOCKQUOTE':
+                        // No [quote] -- the callouts already lead with bold text.
+                        return '\n' + kids().trim() + '\n\n';
+
+                    case 'HR':
+                        return '\n';
+
+                    default:
+                        return kids();
+                }
             }
 
-            function sectionHtml(heading) {
+            function sectionBBCode(heading) {
                 var wrap = document.createElement('div');
                 sectionNodes(heading).forEach(function (n) {
                     wrap.appendChild(n.cloneNode(true));
@@ -956,32 +1048,25 @@
                 Array.prototype.forEach.call(
                     wrap.querySelectorAll('.copy-section-btn'),
                     function (b) { b.parentNode.removeChild(b); });
-                flattenCode(wrap);
-                absolutise(wrap);
-                // ids are page-local and would collide once pasted elsewhere
-                Array.prototype.forEach.call(
-                    wrap.querySelectorAll('[id]'),
-                    function (n) { n.removeAttribute('id'); });
-                return wrap.innerHTML.trim();
+
+                var out = '';
+                Array.prototype.forEach.call(wrap.childNodes, function (c) {
+                    out += bb(c, 0);
+                });
+                return out
+                    .replace(/[ \t]+\n/g, '\n')   // trailing spaces
+                    .replace(/\n{3,}/g, '\n\n')   // runs of blank lines
+                    .trim();
             }
 
-            // text/html so a rich editor pastes it rendered; text/plain carries
-            // the markup itself for a source view. One write, both flavours.
-            function writeClipboard(html) {
-                if (navigator.clipboard && window.ClipboardItem) {
-                    try {
-                        return navigator.clipboard.write([new ClipboardItem({
-                            'text/html': new Blob([html], { type: 'text/html' }),
-                            'text/plain': new Blob([html], { type: 'text/plain' })
-                        })]);
-                    } catch (e) {
-                        return Promise.reject(e);
-                    }
+            function copyText(text) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    return navigator.clipboard.writeText(text);
                 }
                 return Promise.reject(new Error('clipboard API unavailable'));
             }
 
-            // file:// and older browsers get the markup as plain text.
+            // file:// and older browsers.
             function fallbackCopy(text) {
                 var ta = document.createElement('textarea');
                 ta.value = text;
@@ -1011,22 +1096,23 @@
                     btn.className = 'copy-section-btn';
                     btn.type = 'button';
                     btn.textContent = LABEL;
-                    btn.title = 'Copy this section as HTML, with links rewritten '
-                              + 'to absolute URLs so they work when pasted elsewhere';
+                    btn.title = 'Copy this section as forum BBCode, with links '
+                              + 'rewritten to absolute URLs so they work when pasted';
                     btn.addEventListener('click', function (ev) {
                         ev.preventDefault();
                         ev.stopPropagation();
-                        var html = sectionHtml(h);
-                        writeClipboard(html).then(function () {
+                        var text = sectionBBCode(h);
+                        copyText(text).then(function () {
                             flash(btn, 'copied', 'Copied!');
                         }).catch(function () {
-                            if (fallbackCopy(html)) flash(btn, 'copied', 'Copied!');
+                            if (fallbackCopy(text)) flash(btn, 'copied', 'Copied!');
                             else flash(btn, 'failed', 'Copy failed');
                         });
                     });
                     h.appendChild(btn);
                 });
         })();
+
     </script>
 </body>
 </html>
