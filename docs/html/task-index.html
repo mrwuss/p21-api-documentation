@@ -655,6 +655,11 @@
 <td>—</td>
 <td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a></td>
 </tr>
+<tr>
+<td>Bulk-load a UDT from CSV (2026.1+)</td>
+<td>—</td>
+<td><a href="13-UDT-Service-API.html#bulk-data-api-20261">13 § Bulk Data API</a> — CSV upload; <strong>headerless file silently inserts nothing</strong></td>
+</tr>
 </tbody>
 </table>
 <h2 id="drive-a-window-interactive-api">Drive a window (Interactive API)</h2>
@@ -813,7 +818,11 @@
 <tbody>
 <tr>
 <td><strong>Upgrading P21? What breaks between versions</strong></td>
-<td><a href="14-Breaking-Changes.html">14 Breaking Changes</a> — 2026.1 (Accept-header 500, ghost sessions, silent-false-success hazards) · 25.2 (DatawindowName)</td>
+<td><a href="14-Breaking-Changes.html">14 Breaking Changes</a> — 2026.1 (Accept-header 500, ghost sessions, non-atomic batched changes) · 25.2 (DatawindowName)</td>
+</tr>
+<tr>
+<td>Which middleware build am I on?</td>
+<td><a href="14-Breaking-Changes.html#reading-the-middleware-version">14 § Reading the middleware version</a> — no version endpoint; it rides the session-create response</td>
 </tr>
 <tr>
 <td>Error catalog by API</td>

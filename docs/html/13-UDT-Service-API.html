@@ -435,6 +435,12 @@
 <li><a href="#example_2">Example</a></li>
 </ul>
 </li>
+<li><a href="#bulk-data-api-20261">Bulk Data API (2026.1+)</a><ul>
+<li><a href="#contract">Contract</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#example_3">Example</a></li>
+</ul>
+</li>
 <li><a href="#reading-udt-data-odata">Reading UDT Data (OData)</a><ul>
 <li><a href="#prerequisites">Prerequisites</a></li>
 <li><a href="#querying-udts-via-odata">Querying UDTs via OData</a></li>
@@ -480,8 +486,12 @@
 <blockquote>
 <p><strong>Source</strong>: Official P21 Help Documentation (Zendesk) + community working code + actual API testing (April 2026).</p>
 </blockquote>
-<p>P21 provides a <strong>UDT Service API</strong> at <code>/udtservice/api/udtdata/</code> for writing to User Defined Tables (UDTs). UDTs are custom tables created through P21's User Defined Table Maintenance window, prefixed with <code>udt_</code> in the database.</p>
+<p>P21 provides a <strong>UDT Service API</strong> at <code>/udtservice/api/udtdata/</code> for writing to User Defined Tables (UDTs). UDTs are custom tables created through P21's User Defined Table Maintenance window, prefixed with <code>udt_</code> in the database (the window also creates a matching <code>udv_</code> view).</p>
 <p>The UDT Service API handles <strong>write operations</strong> (insert, update, delete). For <strong>reading</strong> UDT data, use the <a href="02-OData-API.html">OData API</a> — UDT tables are queryable via Data Services like any other P21 table.</p>
+<p>On <strong>2026.1 and later</strong> there is a second, differently-shaped endpoint for high-volume loads: the <a href="#bulk-data-api-20261">Bulk Data API</a> (<code>/udtservice/api/bulkupload/{table}</code>), which bulk-inserts from an uploaded CSV file instead of a JSON body.</p>
+<blockquote>
+<p><strong>Creating a UDT is a UI-only operation.</strong> There is no API path to define a new UDT — it is not among the Transaction API's services, and no corresponding Interactive API window could be opened. Use P21's <strong>User Defined Table Maintenance</strong> window. A newly created UDT is <strong>not visible to OData until the schema is refreshed</strong> (SOA Admin → <em>Refresh OData API service</em>, see <a href="#prerequisites">Prerequisites</a>); the Bulk Data API, by contrast, sees it immediately.</p>
+</blockquote>
 <h3 id="key-characteristics">Key Characteristics</h3>
 <ul>
 <li><strong>Write-only</strong> — Three endpoints for insert, update, and delete</li>
@@ -500,9 +510,10 @@
 <h3 id="limitations">Limitations</h3>
 <ul>
 <li><strong>Write only</strong> — No read/query endpoints; use OData for reads</li>
-<li><strong>No schema discovery</strong> — No endpoint to list available tables or columns</li>
+<li><strong>No endpoint-based schema discovery</strong> — no service endpoint lists tables or columns, but the catalog is readable over OData: <code>master_udt_definition</code> (one row per UDT: <code>udt_table_name</code>, <code>udt_view_name</code>) and <code>master_udt_definition_column</code> (per-column name, <code>datatype_cd</code>, <code>length</code>, <code>precision</code>/<code>scale</code>, <code>nullable_flag</code>, <code>df_value</code>). Verified on 2026.1.</li>
 <li><strong>SQL keyword filtering</strong> — Values containing SQL keywords (e.g., "drop", "insert") may be rejected even in legitimate data</li>
 <li><strong>UID-based conditions only</strong> — Updates and deletes require <code>row_uid</code> to identify target rows</li>
+<li><strong>Bulk upload is insert-only</strong> — the <a href="#bulk-data-api-20261">Bulk Data API</a> has no update or delete counterpart</li>
 </ul>
 <hr />
 <h2 id="base-url">Base URL</h2>
@@ -538,6 +549,11 @@
 <td><code>DELETE</code></td>
 <td><code>/udtservice/api/udtdata/deleteudtdata</code></td>
 <td>Delete rows by condition</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/udtservice/api/bulkupload/{table}</code></td>
+<td><strong>2026.1+</strong> — bulk-insert rows from a CSV file (<a href="#bulk-data-api-20261">details</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -1002,6 +1018,230 @@
 </div>
 <blockquote>
 <p><strong>Note:</strong> The <code>DELETE</code> HTTP method with a JSON body is non-standard. Some HTTP clients require using <code>request()</code> or <code>SendAsync()</code> with an explicit <code>HttpRequestMessage</code> to include a body on DELETE requests.</p>
+</blockquote>
+<hr />
+<h2 id="bulk-data-api-20261">Bulk Data API (2026.1+)</h2>
+<blockquote>
+<p><strong>Source</strong>: Live verification against a 2026.1 tenant (July 2026). Epicor's <em>Prophet 21 Release 2026.1 Release Guide</em> announces this as a core enhancement — <em>"Bulk Data API for User-Defined Tables – A new API enables high-volume data uploads into user-defined tables"</em> — but names no endpoint, and the in-middleware SDK reference (<code>/docs/p21sdk</code>) does not document it. Everything below was established by probing the live service and confirming every result with an OData read-back.</p>
+</blockquote>
+<p><code>POST /udtservice/api/bulkupload/{table}</code> bulk-inserts rows into a UDT from an uploaded <strong>CSV file</strong>. It is a different shape from the JSON <code>udtdata</code> endpoints above: a <code>multipart/form-data</code> file upload, not a JSON body.</p>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/udtservice/api/bulkupload/udt_custom_orders</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer &lt;ACCESS_TOKEN&gt;</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">multipart/form-data; boundary=----X</span>
+
+------X
+Content-Disposition: form-data; name=&quot;file&quot;; filename=&quot;orders.csv&quot;
+Content-Type: text/csv
+
+order_code,description,qty,order_date
+A1,First order,1.5,2026-01-15
+------X--
+</code></pre></div>
+
+<p>Success returns HTTP 200:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;isSuccessful&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Data uploaded successfully to udt_custom_orders.&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<h3 id="contract">Contract</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Verified behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Method</strong></td>
+<td><code>POST</code> only — <code>GET</code>/<code>PUT</code>/<code>OPTIONS</code> return 405 with <code>Allow: POST</code></td>
+</tr>
+<tr>
+<td><strong>URL segment</strong></td>
+<td>The <strong>table name</strong>, not an action — <code>/bulkupload/udt_custom_orders</code></td>
+</tr>
+<tr>
+<td><strong>Body</strong></td>
+<td><code>multipart/form-data</code>. Any other content type returns <strong>415</strong> with an empty body</td>
+</tr>
+<tr>
+<td><strong>Form field name</strong></td>
+<td>Must be <strong><code>file</code></strong> — any other name returns a 400 validation error naming <code>file</code> as required</td>
+</tr>
+<tr>
+<td><strong>File format</strong></td>
+<td><strong>Comma-delimited CSV with a header row.</strong> Tab-delimited is rejected</td>
+</tr>
+<tr>
+<td><strong>Header names</strong></td>
+<td>Must match the UDT columns <strong>exactly — case-sensitive, no surrounding whitespace</strong></td>
+</tr>
+<tr>
+<td><strong>Column subset</strong></td>
+<td>Allowed — omitted columns are written as <code>NULL</code></td>
+</tr>
+<tr>
+<td><strong>Column order</strong></td>
+<td>Irrelevant — mapped by header name</td>
+</tr>
+<tr>
+<td><strong>Quoting</strong></td>
+<td>Standard CSV quoting works (embedded commas and quotes round-trip)</td>
+</tr>
+<tr>
+<td><strong>Filename / extension / content-type</strong></td>
+<td>Ignored — <code>.txt</code>, no extension, and <code>application/octet-stream</code> all upload fine</td>
+</tr>
+<tr>
+<td><strong>Atomicity</strong></td>
+<td><strong>All-or-nothing</strong> — one bad row rejects the whole file and inserts nothing</td>
+</tr>
+<tr>
+<td><strong>Duplicates</strong></td>
+<td><strong>Insert-only, no upsert</strong> — uploading the same key twice creates two rows</td>
+</tr>
+<tr>
+<td><strong>Volume</strong></td>
+<td>1,000 rows in a single call verified (no cap established)</td>
+</tr>
+<tr>
+<td><strong>Update / delete</strong></td>
+<td>No counterpart — <code>/bulkupdate</code> and <code>/bulkdelete</code> are 404</td>
+</tr>
+<tr>
+<td><strong>Target table</strong></td>
+<td>Must be a registered UDT. Ordinary P21 tables (<code>supplier</code>, <code>inv_mast</code>, <code>po_hdr</code>) return <code>"Incompatible table for bulk insert: {table}"</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="gotchas">Gotchas</h3>
+<blockquote>
+<p>⚠️ <strong>A CSV without a header row reports success and inserts nothing.</strong> The service treats the first line as the header, finds no data rows beneath it, and returns HTTP 200 <code>{"isSuccessful": true}</code> having written <strong>zero rows</strong>. A migration or nightly job that omits the header logs a clean success for every run while loading nothing. <strong>Always verify the row count with an OData read-back</strong> — the response body cannot tell you how many rows landed (it reports no count at all).</p>
+<p>⚠️ <strong>Values are silently rounded to the column's scale.</strong> Into a <code>decimal(2,1)</code> column, <code>1.66</code> stores as <code>1.7</code>, <code>1.64</code> as <code>1.6</code>, and <code>1.99</code> as <code>2.0</code> — HTTP 200, no warning. Scale overflow is silent; only <em>precision</em> overflow errors (<code>99.9</code> into <code>decimal(2,1)</code> returns 400). Match your file's precision to the column definition rather than relying on the API to flag it.</p>
+</blockquote>
+<p><strong><code>NULL</code> can only be expressed by omitting the column.</strong> A blank value (<code>A1,</code>) and the literal text <code>NULL</code> both return 400 (<code>"The given value '' ... cannot be converted to type decimal"</code>) — even when the column is nullable. Consequence: <strong>one file cannot mix rows that have a value with rows that don't</strong> for the same column; split them into separate uploads by column-presence.</p>
+<p><strong>Rows are not attributed to the API user.</strong> The auto-generated audit columns default to <code>suser_sname()</code> / <code>GETDATE()</code>, so <code>created_by</code> records the <strong>middleware's SQL login</strong> (e.g. <code>Admin</code>), not the authenticated caller. The file <em>can</em> set <code>created_by</code> explicitly and the supplied value is stored as-is — these columns are writable, so don't treat them as a trustworthy audit trail. The identity PK (<code>udt_{name}_uid</code>) is the exception: a value supplied in the file is silently ignored and the server-assigned identity wins.</p>
+<p><strong>Errors identify the offending column, not the row.</strong> Failures return a bare JSON string with the column position and name — e.g. <code>"The given value 'abc' of type String from the data source cannot be converted to type decimal for Column 3 [qty]."</code> or <code>"The given ColumnName 'not_a_column' does not match up with any column in data source."</code>. There is no row number, so on a large file you get no direct pointer to which record failed.</p>
+<h3 id="example_3">Example</h3>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">TABLE</span> <span class="o">=</span> <span class="s2">&quot;udt_custom_orders&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">bulk_upload</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bulk-insert rows into a UDT from an in-memory CSV.</span>
+
+<span class="sd">    The header row is mandatory — without it the service returns success and</span>
+<span class="sd">    inserts nothing. Column names are case-sensitive and must match the UDT.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;no rows to upload&quot;</span><span class="p">)</span>
+
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">fieldnames</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>          <span class="c1"># REQUIRED — omitting it silently inserts 0 rows</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/udtservice/api/bulkupload/</span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+        <span class="n">files</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;upload.csv&quot;</span><span class="p">,</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span> <span class="s2">&quot;text/csv&quot;</span><span class="p">)},</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">row_count</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read-back — the upload response carries no row count.&quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$count&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;$top&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">},</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;@odata.count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+
+<span class="c1"># Usage — count before and after, because &quot;isSuccessful&quot; does not mean &quot;inserted&quot;</span>
+<span class="n">before</span> <span class="o">=</span> <span class="n">row_count</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">TABLE</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">bulk_upload</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">TABLE</span><span class="p">,</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;order_code&quot;</span><span class="p">:</span> <span class="s2">&quot;A1&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;First order&quot;</span><span class="p">,</span> <span class="s2">&quot;qty&quot;</span><span class="p">:</span> <span class="s2">&quot;1.5&quot;</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;order_code&quot;</span><span class="p">:</span> <span class="s2">&quot;A2&quot;</span><span class="p">,</span> <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Second order&quot;</span><span class="p">,</span> <span class="s2">&quot;qty&quot;</span><span class="p">:</span> <span class="s2">&quot;2.5&quot;</span><span class="p">},</span>
+<span class="p">])</span>
+<span class="n">after</span> <span class="o">=</span> <span class="n">row_count</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">TABLE</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;message&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> — rows inserted: </span><span class="si">{</span><span class="n">after</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">before</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Globalization</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">CsvHelper</span><span class="p">;</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;udt_custom_orders&quot;</span><span class="p">;</span>
+
+<span class="c1">/// &lt;summary&gt;Bulk-inserts rows into a UDT from an in-memory CSV.&lt;/summary&gt;</span>
+<span class="c1">/// &lt;remarks&gt;</span>
+<span class="c1">/// The header row is mandatory — without it the service returns success and</span>
+<span class="c1">/// inserts nothing. Column names are case-sensitive and must match the UDT.</span>
+<span class="c1">/// &lt;/remarks&gt;</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">BulkUploadAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="n">IEnumerable</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rows</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">buffer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MemoryStream</span><span class="p">();</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">using</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">writer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StreamWriter</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span><span class="w"> </span><span class="n">leaveOpen</span><span class="p">:</span><span class="w"> </span><span class="k">true</span><span class="p">))</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="nf">using</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">csv</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">CsvWriter</span><span class="p">(</span><span class="n">writer</span><span class="p">,</span><span class="w"> </span><span class="n">CultureInfo</span><span class="p">.</span><span class="n">InvariantCulture</span><span class="p">))</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">csv</span><span class="p">.</span><span class="n">WriteRecordsAsync</span><span class="p">(</span><span class="n">rows</span><span class="p">);</span><span class="w">   </span><span class="c1">// writes the header automatically</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MultipartFormDataContent</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ByteArrayContent</span><span class="p">(</span><span class="n">buffer</span><span class="p">.</span><span class="n">ToArray</span><span class="p">());</span>
+<span class="w">    </span><span class="n">file</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">ContentType</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeHeaderValue</span><span class="p">(</span><span class="s">&quot;text/csv&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// The form field MUST be named &quot;file&quot; — any other name is rejected.</span>
+<span class="w">    </span><span class="n">content</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;file&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;upload.csv&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/udtservice/api/bulkupload/{table}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="c1">/// &lt;summary&gt;Read-back — the upload response carries no row count.&lt;/summary&gt;</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="w"> </span><span class="n">RowCountAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">table</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{table}?$count=true&amp;$top=0&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JObject</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">json</span><span class="p">[</span><span class="s">&quot;@odata.count&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">Value</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Usage — count before and after, because &quot;isSuccessful&quot; does not mean &quot;inserted&quot;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">before</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">RowCountAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">Table</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">BulkUploadAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">Table</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">order_code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;A1&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;First order&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">qty</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1.5&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">order_code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;A2&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Second order&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">qty</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2.5&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="p">});</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">RowCountAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">Table</span><span class="p">);</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{message} — rows inserted: {after - before}&quot;</span><span class="p">);</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Verification scope:</strong> established against one purpose-built UDT (<code>char</code>, <code>decimal</code>, and <code>date</code> columns) on a 2026.1 test tenant, with every claim confirmed by an OData read-back. Behavior against other column types (e.g. <code>bit</code>, <code>text</code>) and files larger than 1,000 rows is untested. Because 2026.1 is the first release to ship this endpoint and no 25.2 tenant remained available, the "new in 2026.1" attribution rests on Epicor's release guide rather than an A/B test.</p>
 </blockquote>
 <hr />
 <h2 id="reading-udt-data-odata">Reading UDT Data (OData)</h2>

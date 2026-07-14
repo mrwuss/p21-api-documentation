@@ -70,6 +70,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Inventory items: read / create / update locations | — | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
 | Customer-specific **price + availability** lookup | — | [11 § Pricing Endpoints](11-Inventory-REST-API.md#pricing-endpoints) |
 | User-defined tables (UDT) rows | — | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) |
+| Bulk-load a UDT from CSV (2026.1+) | — | [13 § Bulk Data API](13-UDT-Service-API.md#bulk-data-api-20261) — CSV upload; **headerless file silently inserts nothing** |
 
 ## Drive a window (Interactive API)
 
@@ -118,7 +119,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 
 | Task | Where |
 |------|-------|
-| **Upgrading P21? What breaks between versions** | [14 Breaking Changes](14-Breaking-Changes.md) — 2026.1 (Accept-header 500, ghost sessions, silent-false-success hazards) · 25.2 (DatawindowName) |
+| **Upgrading P21? What breaks between versions** | [14 Breaking Changes](14-Breaking-Changes.md) — 2026.1 (Accept-header 500, ghost sessions, non-atomic batched changes) · 25.2 (DatawindowName) |
+| Which middleware build am I on? | [14 § Reading the middleware version](14-Breaking-Changes.md#reading-the-middleware-version) — no version endpoint; it rides the session-create response |
 | Error catalog by API | [06 Error Handling](06-Error-Handling.md) (per-API sections) |
 | Quick symptom → cause table | [06 § Common Issues Quick Reference](06-Error-Handling.md#common-issues-quick-reference) |
 | Auth failures | [06 § Authentication Errors](06-Error-Handling.md#authentication-errors) |

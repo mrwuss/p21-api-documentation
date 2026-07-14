@@ -12,9 +12,13 @@
 
 > **Source**: Official P21 Help Documentation (Zendesk) + community working code + actual API testing (April 2026).
 
-P21 provides a **UDT Service API** at `/udtservice/api/udtdata/` for writing to User Defined Tables (UDTs). UDTs are custom tables created through P21's User Defined Table Maintenance window, prefixed with `udt_` in the database.
+P21 provides a **UDT Service API** at `/udtservice/api/udtdata/` for writing to User Defined Tables (UDTs). UDTs are custom tables created through P21's User Defined Table Maintenance window, prefixed with `udt_` in the database (the window also creates a matching `udv_` view).
 
 The UDT Service API handles **write operations** (insert, update, delete). For **reading** UDT data, use the [OData API](02-OData-API.md) — UDT tables are queryable via Data Services like any other P21 table.
+
+On **2026.1 and later** there is a second, differently-shaped endpoint for high-volume loads: the [Bulk Data API](#bulk-data-api-20261) (`/udtservice/api/bulkupload/{table}`), which bulk-inserts from an uploaded CSV file instead of a JSON body.
+
+> **Creating a UDT is a UI-only operation.** There is no API path to define a new UDT — it is not among the Transaction API's services, and no corresponding Interactive API window could be opened. Use P21's **User Defined Table Maintenance** window. A newly created UDT is **not visible to OData until the schema is refreshed** (SOA Admin → *Refresh OData API service*, see [Prerequisites](#prerequisites)); the Bulk Data API, by contrast, sees it immediately.
 
 ### Key Characteristics
 
@@ -34,9 +38,10 @@ The UDT Service API handles **write operations** (insert, update, delete). For *
 ### Limitations
 
 - **Write only** — No read/query endpoints; use OData for reads
-- **No schema discovery** — No endpoint to list available tables or columns
+- **No endpoint-based schema discovery** — no service endpoint lists tables or columns, but the catalog is readable over OData: `master_udt_definition` (one row per UDT: `udt_table_name`, `udt_view_name`) and `master_udt_definition_column` (per-column name, `datatype_cd`, `length`, `precision`/`scale`, `nullable_flag`, `df_value`). Verified on 2026.1.
 - **SQL keyword filtering** — Values containing SQL keywords (e.g., "drop", "insert") may be rejected even in legitimate data
 - **UID-based conditions only** — Updates and deletes require `row_uid` to identify target rows
+- **Bulk upload is insert-only** — the [Bulk Data API](#bulk-data-api-20261) has no update or delete counterpart
 
 ---
 
@@ -59,6 +64,7 @@ Example: `https://play.p21server.com/udtservice/api/udtdata/`
 | `POST` | `/udtservice/api/udtdata/insertudtdata` | Insert one or more rows |
 | `PUT` | `/udtservice/api/udtdata/updateudtdata` | Update rows by condition |
 | `DELETE` | `/udtservice/api/udtdata/deleteudtdata` | Delete rows by condition |
+| `POST` | `/udtservice/api/bulkupload/{table}` | **2026.1+** — bulk-insert rows from a CSV file ([details](#bulk-data-api-20261)) |
 
 ---
 
@@ -514,6 +520,188 @@ else
 <!-- /tabs -->
 
 > **Note:** The `DELETE` HTTP method with a JSON body is non-standard. Some HTTP clients require using `request()` or `SendAsync()` with an explicit `HttpRequestMessage` to include a body on DELETE requests.
+
+---
+
+## Bulk Data API (2026.1+)
+
+> **Source**: Live verification against a 2026.1 tenant (July 2026). Epicor's *Prophet 21 Release 2026.1 Release Guide* announces this as a core enhancement — *"Bulk Data API for User-Defined Tables – A new API enables high-volume data uploads into user-defined tables"* — but names no endpoint, and the in-middleware SDK reference (`/docs/p21sdk`) does not document it. Everything below was established by probing the live service and confirming every result with an OData read-back.
+
+`POST /udtservice/api/bulkupload/{table}` bulk-inserts rows into a UDT from an uploaded **CSV file**. It is a different shape from the JSON `udtdata` endpoints above: a `multipart/form-data` file upload, not a JSON body.
+
+```http
+POST /udtservice/api/bulkupload/udt_custom_orders HTTP/1.1
+Authorization: Bearer <ACCESS_TOKEN>
+Accept: application/json
+Content-Type: multipart/form-data; boundary=----X
+
+------X
+Content-Disposition: form-data; name="file"; filename="orders.csv"
+Content-Type: text/csv
+
+order_code,description,qty,order_date
+A1,First order,1.5,2026-01-15
+------X--
+```
+
+Success returns HTTP 200:
+
+```json
+{"isSuccessful": true, "message": "Data uploaded successfully to udt_custom_orders."}
+```
+
+### Contract
+
+| Aspect | Verified behavior |
+|--------|-------------------|
+| **Method** | `POST` only — `GET`/`PUT`/`OPTIONS` return 405 with `Allow: POST` |
+| **URL segment** | The **table name**, not an action — `/bulkupload/udt_custom_orders` |
+| **Body** | `multipart/form-data`. Any other content type returns **415** with an empty body |
+| **Form field name** | Must be **`file`** — any other name returns a 400 validation error naming `file` as required |
+| **File format** | **Comma-delimited CSV with a header row.** Tab-delimited is rejected |
+| **Header names** | Must match the UDT columns **exactly — case-sensitive, no surrounding whitespace** |
+| **Column subset** | Allowed — omitted columns are written as `NULL` |
+| **Column order** | Irrelevant — mapped by header name |
+| **Quoting** | Standard CSV quoting works (embedded commas and quotes round-trip) |
+| **Filename / extension / content-type** | Ignored — `.txt`, no extension, and `application/octet-stream` all upload fine |
+| **Atomicity** | **All-or-nothing** — one bad row rejects the whole file and inserts nothing |
+| **Duplicates** | **Insert-only, no upsert** — uploading the same key twice creates two rows |
+| **Volume** | 1,000 rows in a single call verified (no cap established) |
+| **Update / delete** | No counterpart — `/bulkupdate` and `/bulkdelete` are 404 |
+| **Target table** | Must be a registered UDT. Ordinary P21 tables (`supplier`, `inv_mast`, `po_hdr`) return `"Incompatible table for bulk insert: {table}"` |
+
+### Gotchas
+
+> ⚠️ **A CSV without a header row reports success and inserts nothing.** The service treats the first line as the header, finds no data rows beneath it, and returns HTTP 200 `{"isSuccessful": true}` having written **zero rows**. A migration or nightly job that omits the header logs a clean success for every run while loading nothing. **Always verify the row count with an OData read-back** — the response body cannot tell you how many rows landed (it reports no count at all).
+
+> ⚠️ **Values are silently rounded to the column's scale.** Into a `decimal(2,1)` column, `1.66` stores as `1.7`, `1.64` as `1.6`, and `1.99` as `2.0` — HTTP 200, no warning. Scale overflow is silent; only *precision* overflow errors (`99.9` into `decimal(2,1)` returns 400). Match your file's precision to the column definition rather than relying on the API to flag it.
+
+**`NULL` can only be expressed by omitting the column.** A blank value (`A1,`) and the literal text `NULL` both return 400 (`"The given value '' ... cannot be converted to type decimal"`) — even when the column is nullable. Consequence: **one file cannot mix rows that have a value with rows that don't** for the same column; split them into separate uploads by column-presence.
+
+**Rows are not attributed to the API user.** The auto-generated audit columns default to `suser_sname()` / `GETDATE()`, so `created_by` records the **middleware's SQL login** (e.g. `Admin`), not the authenticated caller. The file *can* set `created_by` explicitly and the supplied value is stored as-is — these columns are writable, so don't treat them as a trustworthy audit trail. The identity PK (`udt_{name}_uid`) is the exception: a value supplied in the file is silently ignored and the server-assigned identity wins.
+
+**Errors identify the offending column, not the row.** Failures return a bare JSON string with the column position and name — e.g. `"The given value 'abc' of type String from the data source cannot be converted to type decimal for Column 3 [qty]."` or `"The given ColumnName 'not_a_column' does not match up with any column in data source."`. There is no row number, so on a large file you get no direct pointer to which record failed.
+
+### Example
+
+<!-- tabs -->
+
+**Python:**
+```python
+import csv
+import io
+import httpx
+
+BASE_URL = "https://play.p21server.com"
+TABLE = "udt_custom_orders"
+
+
+def bulk_upload(token: str, table: str, rows: list[dict]) -> dict:
+    """Bulk-insert rows into a UDT from an in-memory CSV.
+
+    The header row is mandatory — without it the service returns success and
+    inserts nothing. Column names are case-sensitive and must match the UDT.
+    """
+    if not rows:
+        raise ValueError("no rows to upload")
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=list(rows[0]))
+    writer.writeheader()          # REQUIRED — omitting it silently inserts 0 rows
+    writer.writerows(rows)
+
+    response = httpx.post(
+        f"{BASE_URL}/udtservice/api/bulkupload/{table}",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+        files={"file": ("upload.csv", buf.getvalue().encode(), "text/csv")},
+        timeout=300,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def row_count(token: str, table: str) -> int:
+    """Read-back — the upload response carries no row count."""
+    response = httpx.get(
+        f"{BASE_URL}/odataservice/odata/table/{table}",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+        params={"$count": "true", "$top": "0"},
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json().get("@odata.count", 0)
+
+
+# Usage — count before and after, because "isSuccessful" does not mean "inserted"
+before = row_count(token, TABLE)
+result = bulk_upload(token, TABLE, [
+    {"order_code": "A1", "description": "First order", "qty": "1.5"},
+    {"order_code": "A2", "description": "Second order", "qty": "2.5"},
+])
+after = row_count(token, TABLE)
+print(f"{result['message']} — rows inserted: {after - before}")
+```
+
+**C#:**
+```csharp
+using System.Globalization;
+using System.Text;
+using CsvHelper;
+
+const string BaseUrl = "https://play.p21server.com";
+const string Table = "udt_custom_orders";
+
+/// <summary>Bulk-inserts rows into a UDT from an in-memory CSV.</summary>
+/// <remarks>
+/// The header row is mandatory — without it the service returns success and
+/// inserts nothing. Column names are case-sensitive and must match the UDT.
+/// </remarks>
+static async Task<string> BulkUploadAsync(
+    HttpClient client, string table, IEnumerable<object> rows)
+{
+    await using var buffer = new MemoryStream();
+    await using (var writer = new StreamWriter(buffer, leaveOpen: true))
+    await using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+    {
+        await csv.WriteRecordsAsync(rows);   // writes the header automatically
+    }
+
+    using var content = new MultipartFormDataContent();
+    var file = new ByteArrayContent(buffer.ToArray());
+    file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+    // The form field MUST be named "file" — any other name is rejected.
+    content.Add(file, "file", "upload.csv");
+
+    var response = await client.PostAsync(
+        $"{BaseUrl}/udtservice/api/bulkupload/{table}", content);
+    response.EnsureSuccessStatusCode();
+    return await response.Content.ReadAsStringAsync();
+}
+
+/// <summary>Read-back — the upload response carries no row count.</summary>
+static async Task<int> RowCountAsync(HttpClient client, string table)
+{
+    var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/{table}?$count=true&$top=0");
+    response.EnsureSuccessStatusCode();
+    var json = JObject.Parse(await response.Content.ReadAsStringAsync());
+    return json["@odata.count"]?.Value<int>() ?? 0;
+}
+
+// Usage — count before and after, because "isSuccessful" does not mean "inserted"
+var before = await RowCountAsync(client, Table);
+var message = await BulkUploadAsync(client, Table, new[]
+{
+    new { order_code = "A1", description = "First order", qty = "1.5" },
+    new { order_code = "A2", description = "Second order", qty = "2.5" },
+});
+var after = await RowCountAsync(client, Table);
+Console.WriteLine($"{message} — rows inserted: {after - before}");
+```
+
+<!-- /tabs -->
+
+> **Verification scope:** established against one purpose-built UDT (`char`, `decimal`, and `date` columns) on a 2026.1 test tenant, with every claim confirmed by an OData read-back. Behavior against other column types (e.g. `bit`, `text`) and files larger than 1,000 rows is untested. Because 2026.1 is the first release to ship this endpoint and no 25.2 tenant remained available, the "new in 2026.1" attribution rests on Epicor's release guide rather than an A/B test.
 
 ---
 

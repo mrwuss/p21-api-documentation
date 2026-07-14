@@ -10,20 +10,33 @@ A version-indexed registry of P21 middleware changes that **break or silently co
 
 | Version | Entries | Severity |
 |---------|---------|----------|
-| [2026.1](#p21-20261) | Empty 500 without `Accept` header · ghost sessions (500/409) · `SessionId` → `Id` · `TabName` no longer accepted on `/v2/tab` · **two silent-false-success hazards** | High — one hard break, two data-integrity hazards |
+| [2026.1](#p21-20261) | Empty 500 without `Accept: application/json` · ghost sessions (500/409) · `SessionId` → `Id` · `TabName` no longer accepted on `/v2/tab` · **silent-false-success on nonexistent-record loads** · **non-atomic batched changes** | High — one hard break, two data-integrity hazards |
 | [25.2](#p21-252) | `DatawindowName` required in change requests | High — hard break for 3-param change calls |
 
 ---
 
 ## P21 2026.1
 
-All findings verified on **2026.1.5873.1** (self-hosted middleware, test tenant) during upgrade validation, June 2026. **None reproduce on 2025.2.5855.0** with identical requests. The empty-500 defect has been reported to Epicor; the contract changes are awaiting written confirmation of intent. Re-verify against your own 2026.1 tenant before relying on the details.
+Originally found on **2026.1.5873.1** during upgrade validation (June 2026), where none of it reproduced on 2025.2.5855.0 with identical requests. **Re-verified July 2026 against a production tenant on 26.1.5894.1**, a later build: entries 1–5 all still reproduce, with the refinements noted below. Entry 6 has been rewritten — the originally reported mechanism did not reproduce on 5894.1 (see that entry). The empty-500 defect has been reported to Epicor; the contract changes are awaiting written confirmation of intent.
+
+> **Finding your build:** there is no version endpoint, but the session-create response carries it — `Properties[0].Properties.fullversion` (e.g. `26.1.5894.1`) and `shortversion` (`26.1`). See [Reading the middleware version](#reading-the-middleware-version) below.
 
 ### 1. Interactive API returns an empty HTTP 500 without an explicit `Accept: application/json` header
 
 **Hard break — every interactive endpoint.**
 
-On 2026.1, any request to `/uiserver0/api/ui/interactive/...` that omits the `Accept` header — or sends `Accept: */*`, which is the **default for most HTTP libraries, including Python `httpx` and .NET `HttpClient`** — fails with an **empty-body HTTP 500**. The identical request with `Accept: application/json` added succeeds. 2025.2 falls back to a default representation instead of failing.
+On 2026.1, any request to `/uiserver0/api/ui/interactive/...` whose `Accept` header does not include `application/json` fails with an **empty-body HTTP 500**. That includes `Accept: */*` — the **default for most HTTP libraries, including Python `httpx` and .NET `HttpClient`**. 2025.2 falls back to a default representation instead of failing.
+
+The rule is *"`application/json` must be present"*, not *"`*/*` is rejected"* — a list containing both works. Verified on 26.1.5894.1, each variant tested from a clean slate:
+
+| `Accept` | Result |
+|----------|--------|
+| `application/json` | 200 |
+| *(header omitted)* | **500, empty body** |
+| `*/*` | **500, empty body** |
+| `application/xml` | **500, empty body** |
+| `text/html` | **500, empty body** |
+| `application/json, */*` | 200 |
 
 ```http
 POST {uiserver}/api/ui/interactive/sessions/ HTTP/1.1
@@ -34,15 +47,21 @@ Accept: application/json        <-- REQUIRED on 2026.1; omit it and you get an e
 {"ResponseWindowHandlingEnabled": true}
 ```
 
+Note that `application/xml` also fails here, even though the `/api/v2` Transaction endpoints negotiate XML happily — this is specific to the interactive surface.
+
 **Mitigation:** send `Accept: application/json` on **every** P21 request, ideally forced in one shared header builder rather than per call site. Every example in this repo already does this — the consequence of omitting it is what changed.
 
 ### 2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)
 
 **Diagnosis trap that amplifies #1.**
 
-When the session create fails with the empty 500 above, the session is still **partially created server-side** — it appears in UI Server Administration and blocks subsequent creates with **409 "Session already exists"** until `SessionCleanupExpiration` (~6 minutes) passes. A retrying integration therefore sees an **alternating 500 / 409 pattern** that looks like a session-pool or concurrency problem and is very hard to trace back to a missing header.
+When the session create fails with the empty 500 above, the session is still **partially created server-side** — it appears in UI Server Administration and blocks subsequent creates with **409 `{"ErrorMessage":"Session already exists."}`** A retrying integration therefore sees an **alternating 500 / 409 pattern** that looks like a session-pool or concurrency problem and is very hard to trace back to a missing header.
 
-**Mitigation:** fix the `Accept` header (#1). If you see 500/409 alternation on 2026.1, check the headers before anything else; waiting out `SessionCleanupExpiration` clears the ghost.
+The ghost also **masks the original error**: once one call has poisoned the session, every subsequent create returns 409 regardless of its headers — so the very header experiment you would run to diagnose #1 reports the wrong answer unless you clear the ghost between attempts.
+
+**Mitigation:** fix the `Accept` header (#1). If you see 500/409 alternation on 2026.1, check the headers before anything else.
+
+**To clear a ghost, `DELETE` the session — don't wait it out.** `DELETE {uiserver}/api/ui/interactive/sessions` returns 200 and a clean create succeeds **immediately** afterward (verified on 26.1.5894.1). Waiting for `SessionCleanupExpiration` (~6 min) also works but is unnecessary; make the delete the first step of your retry path.
 
 ### 3. Session-create response field renamed: `SessionId` → `Id`
 
@@ -67,15 +86,70 @@ PUT /api/ui/interactive/v2/tab
 
 On 2026.1, keying a window to a record that doesn't exist (e.g., setting `po_no` to a nonexistent PO) returns **`Status: 2`** and leaves the window **empty**. 2025.2 returned `Status: 0` for the same action. An integration that treats "not found" as `Status: 0` — or that doesn't gate on load status at all — will **silently proceed to write against an empty window**.
 
-**Mitigation (verified):** do not infer existence from the load status at all. Gate with an **existence pre-read** (OData or `POST /api/v2/transaction/get`) *before* opening/keying the window, and abort on no-match. Treat any non-Success load status as fatal.
+The response does carry a diagnostic, which the original report missed — a successful load returns `Messages: []`, while the nonexistent-record load returns:
 
-### 6. Silent false success: multi-field `/v2/change` drops fields on non-active tabs while returning `Status: 1`
+```json
+{"Status": 2, "Events": [{"Name": "dwcontentchanged", "Data": [...]}],
+ "Messages": [{"Text": "Enter a valid ID or leave ID blank.", "Type": 2}]}
+```
+
+So the failure is detectable in-band. It is still a false-success hazard for any client that gates on `Status` alone, because `Status: 2` on a *load* is easy to mistake for a benign non-success, and the window is left silently empty and writable.
+
+**Mitigation (verified):** do not infer existence from the load status at all. Gate with an **existence pre-read** (OData or `POST /api/v2/transaction/get`) *before* opening/keying the window, and abort on no-match. Treat any non-Success load status as fatal, and inspect `Messages` when logging the reason.
+
+### 6. Batched `/v2/change` is not atomic — a rejected field does not roll back its neighbours
 
 **Data-integrity hazard.**
 
-A single `PUT /v2/change` carrying multiple fields where at least one field belongs to a **tab that is not currently active** returns **`Status: 1` (Success)** while **silently not applying** that field. Observed live on 2026.1: a batched change partially applied, with one date field dropped, and nothing in the response indicated it.
+`PUT /v2/change` takes a `List` of field changes but returns **one top-level result for the whole batch** — there is no per-item status. When one item in the batch is rejected, the call returns an **HTTP 400 error envelope with no `Status` field at all**, while **the other fields in the same batch have already been applied**. Verified on 26.1.5894.1 (PurchaseOrder, no save issued):
 
-**Mitigation (verified):** write **one field per `/change` call**, activating each tab (`PUT /v2/tab`) before changing its fields, and check the status of every call. Then prove the result with a **read-back** — see [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone). A production run of 81 records using this pattern read back with zero silent drops.
+```jsonc
+// One /v2/change carrying two fields: a header field and a disabled line field
+[{"TabName": "TABPAGE_1",  "DatawindowName": "tp_1_dw_1",     "FieldName": "external_po_no", "Value": "ZZ_HDR"},
+ {"TabName": "TABPAGE_18", "DatawindowName": "extended_info", "FieldName": "extended_desc",  "Value": "ZZ_LINE"}]
+
+// Response: HTTP 400
+{"ErrorMessage": "Column is disabled: extended_desc", "ErrorType": null, ...}
+// ...but a read-back shows external_po_no == "ZZ_HDR" — applied and still in the buffer.
+```
+
+A client that treats the 400 as "the change did not happen" is wrong: part of it did. If it then retries or falls through to a save, it commits a partially-applied edit it never intended.
+
+**Mitigation (verified):** write **one field per `/change` call** and check the status of every call, so a failure is unambiguously attributable to one field. Then prove the result with a **read-back** — see [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone). A production run of 81 records using this pattern read back with zero silent drops.
+
+> **Correction (July 2026).** This entry originally reported the mechanism as *"a batch containing a field on a **non-active tab** returns `Status: 1` while silently not applying that field."* That does **not** reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, `DatawindowName` supplied and omitted, target tab active and inactive — the non-active-tab field was **applied every time** with `Status: 1`. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch **is** genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged. If you can reproduce the non-active-tab drop on any 2026.1 build, please [open an issue](https://github.com/mrwuss/p21-api-documentation/issues/new?template=bug-report.md) with the window and field names.
+
+### Related 2026.1 observations (not breaking changes)
+
+Found while re-verifying the above on 26.1.5894.1. None of these are regressions, but each will mislead you while debugging one.
+
+#### Reading the middleware version
+
+There is no version endpoint (`/api/version`, `/api/v2/version` and friends all 404). The **session-create response** carries the build:
+
+```jsonc
+POST {uiserver}/api/ui/interactive/sessions   // Accept: application/json
+{
+  "Id": "3c2aca0b-...",
+  "Properties": [{"Name": "Telemetry", "Properties": {
+      "fullversion": "26.1.5894.1", "shortversion": "26.1", "configurationid": "3694", ...
+  }}]
+}
+```
+
+This is the most reliable way to confirm which build you are actually talking to before trusting any entry on this page.
+
+#### `GET /v2/data` returns only a *subset* of the window's datawindows
+
+The response is a list of datawindow objects, and **which ones appear varies between calls** on the same window — immediately after a load it returned `tp_1_dw_1` + `tp_17_dw_17`; after a change touching the ship-to tab it returned `ship_to` + `tp_17_dw_17` and **omitted `tp_1_dw_1` entirely**. A datawindow's absence therefore proves nothing about the field's value.
+
+Consequence for verification: `/v2/data` is not a reliable field-level read-back. Activate the field's tab first (which reliably brings its datawindow into the response), or verify out-of-band with OData / `POST /api/v2/transaction/get` — the approach [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) already recommends.
+
+#### A nonexistent `DatawindowName` fails loudly, not silently
+
+Naming a datawindow that doesn't exist on the window returns **HTTP 400 `"Unable to find datawindow named dw_1"`** and applies nothing. This is worth knowing precisely *because* it is not a silent-failure mode: if you are hunting a field that "didn't take", a wrong datawindow name is not the culprit — you would have seen a 400.
+
+Relatedly, on 26.1 `DatawindowName` is **optional for header-level fields** — `{"TabName": "SHIP_TO", "FieldName": "ship2_name", "Value": "..."}` with no `DatawindowName` resolves by tab + field and applies correctly. Supplying the correct name also works. Keep sending it: it is still **required** on 25.2 (see [below](#p21-252)), so including it is what makes one client work across both versions.
 
 ---
 

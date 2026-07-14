@@ -214,10 +214,18 @@ window.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
 
 ---
 
-### P21 2026.1 Breaking Changes (June 2026, verified 2026.1.5873.1 vs 2025.2.5855.0)
+### P21 2026.1 Breaking Changes (found 2026.1.5873.1 vs 2025.2.5855.0; re-verified on production 26.1.5894.1, July 2026)
 
-Interactive endpoints return an **empty HTTP 500 without `Accept: application/json`** (`Accept: */*` defaults fail), and the failed session create leaves a **ghost session** (409 "Session already exists" until `SessionCleanupExpiration` ~6 min → alternating 500/409). Contract changes: session-create response `SessionId` → `Id`; `/v2/tab` binds `PageName` only; **silent-false-success hazards** — nonexistent record loads return `Status: 2` with an empty window (was `Status: 0`), and multi-field `/v2/change` drops non-active-tab fields while returning `Status: 1`. Mitigations (all verified): force the Accept header in one shared builder; read `Id` or `SessionId`; existence pre-read before window writes; one field per change call per active tab + read-back. Reported to Epicor (defect pending). Full registry: [docs/14-Breaking-Changes.md](docs/14-Breaking-Changes.md).
+Interactive endpoints return an **empty HTTP 500 unless `Accept` includes `application/json`** — the rule is "json must be present", not "`*/*` is rejected" (`application/json, */*` → 200; `*/*`, `application/xml`, `text/html`, and no header all → empty 500). The failed create leaves a **ghost session** (409 "Session already exists") that also **masks the header experiment**; **`DELETE /sessions` clears it instantly** — don't wait out `SessionCleanupExpiration`. Contract changes: session-create response `SessionId` → `Id`; `/v2/tab` binds `PageName` only (`TabName` → 400). Data-integrity hazards: nonexistent record loads return `Status: 2` with an empty window (was `Status: 0`) **plus `Messages: [{"Text": "Enter a valid ID or leave ID blank."}]`**; and batched `/v2/change` is **non-atomic** — a rejected field returns an HTTP 400 envelope with no `Status` while its neighbours in the batch are already applied.
+
+**Corrected July 2026:** the "non-active-tab fields are silently dropped while returning `Status: 1`" mechanism **does not reproduce** on 5894.1 (8 configurations tested; the field applied every time). 5873.1 is gone, so "fixed later" vs "misattributed" is undecidable — the non-atomic batch produces the same partial-application outcome anyway. Mitigations unchanged: force the Accept header in one shared builder; read `Id` or `SessionId`; existence pre-read before window writes; one field per change call + read-back.
+
+Also verified on 26.1: **no version endpoint** — the build rides the session-create response (`Properties[0].Properties.fullversion`). **`GET /v2/data` returns only a varying subset** of a window's datawindows (absence proves nothing; not a reliable field-level read-back). A **nonexistent `DatawindowName` 400s loudly**; `DatawindowName` is **optional for header fields on 26.1** but still required on 25.2 — keep sending it. Reported to Epicor (defect pending). Full registry: [docs/14-Breaking-Changes.md](docs/14-Breaking-Changes.md).
+
+### UDT Bulk Data API — new in 2026.1 (July 2026)
+
+`POST /udtservice/api/bulkupload/{table}` — `multipart/form-data`, form field **`file`**, comma-delimited **CSV with a mandatory header row** (exact, case-sensitive names). All-or-nothing per file; **insert-only** (no `/bulkupdate`, `/bulkdelete`); 1,000 rows/call verified. **Hazards:** a headerless CSV returns `{"isSuccessful": true}` and inserts **zero rows**; values are **silently rounded to column scale** (`1.66` → `1.7`). `NULL` only via **omitting the column**. Announced in Epicor's 2026.1 release guide with no endpoint named; undocumented in the in-middleware SDK (`/docs/p21sdk`). Creating a UDT is **UI-only** (no API path). See [docs/13](docs/13-UDT-Service-API.md#bulk-data-api-20261).
 
 ---
 
-*Last updated: 2026-07-10*
+*Last updated: 2026-07-14*
