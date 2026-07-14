@@ -512,7 +512,7 @@
 <li><strong>Write only</strong> — No read/query endpoints; use OData for reads</li>
 <li><strong>No endpoint-based schema discovery</strong> — no service endpoint lists tables or columns, but the catalog is readable over OData: <code>master_udt_definition</code> (one row per UDT: <code>udt_table_name</code>, <code>udt_view_name</code>) and <code>master_udt_definition_column</code> (per-column name, <code>datatype_cd</code>, <code>length</code>, <code>precision</code>/<code>scale</code>, <code>nullable_flag</code>, <code>df_value</code>). Verified on 2026.1.</li>
 <li><strong>SQL keyword filtering</strong> — Values containing SQL keywords (e.g., "drop", "insert") may be rejected even in legitimate data</li>
-<li><strong>UID-based conditions only</strong> — Updates and deletes require <code>row_uid</code> to identify target rows</li>
+<li><strong>UID-based conditions only</strong> — Updates and deletes require a literal <strong><code>row_uid</code> column</strong>, which UDTs created on 2026.1 <strong>do not have</strong> (their PK is <code>udt_{tablename}_uid</code>). On such tables update always 400s and delete silently deletes nothing — see the <a href="#update">warning under Update</a></li>
 <li><strong>Bulk upload is insert-only</strong> — the <a href="#bulk-data-api-20261">Bulk Data API</a> has no update or delete counterpart</li>
 </ul>
 <hr />
@@ -826,6 +826,15 @@
 <hr />
 <h2 id="update">Update</h2>
 <p>Update existing rows in a UDT table. Use <code>conditions</code> to identify which rows to update (typically by <code>row_uid</code>) and <code>columns</code> to specify the new values.</p>
+<blockquote>
+<p>⚠️ <strong>Update and Delete require a literal <code>row_uid</code> column — and UDTs created on 2026.1 don't have one.</strong> Both endpoints are hard-wired to a column named exactly <code>row_uid</code>. P21's <strong>User Defined Table Maintenance</strong> window on 2026.1 names the primary key <strong><code>udt_{tablename}_uid</code></strong> (e.g. <code>udt_custom_orders_uid</code>) and creates <strong>no</strong> <code>row_uid</code>, which makes both endpoints unable to target any row on such a table:</p>
+<ul>
+<li><strong>Update</strong> returns <code>400 {"error":["Invalid Row Uid!"]}</code> for <strong>every</strong> condition — <code>row_uid</code>, the real PK name, or any other column; casing and string-vs-int variants all fail identically.</li>
+<li><strong>Delete</strong> is worse: it returns <strong>HTTP 200 <code>{"errorNo": 0, "errorMessage": "[0] rows deleted from [table] table successfully!"}</code></strong> and deletes nothing. The word <em>"successfully"</em> with <code>errorNo: 0</code> reads as a clean delete — <strong>only the <code>[0]</code> row count reveals the no-op.</strong></li>
+</ul>
+<p><strong>Before relying on update/delete, confirm your UDT actually has a <code>row_uid</code> column</strong> (<code>GET /odataservice/odata/table/{udt}?$select=row_uid</code> — a 404 saying <em>"Could not find a property named 'row_uid'"</em> means it doesn't). If it doesn't, these endpoints cannot reach your data; use P21's maintenance UI or direct SQL. <strong>Always check the row count in <code>errorMessage</code></strong> rather than trusting <code>errorNo: 0</code>.</p>
+<p>The <code>row_uid</code> convention is well-attested by the contributors who documented these endpoints, so tables that predate 2026.1 evidently do have the column. We could not A/B this against a pre-2026.1 tenant — verified July 2026 on one 2026.1-created UDT.</p>
+</blockquote>
 <h3 id="request_1">Request</h3>
 <div class="highlight"><pre><span></span><code><span class="err">PUT /udtservice/api/udtdata/updateudtdata</span>
 <span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>
@@ -928,6 +937,12 @@
 <hr />
 <h2 id="delete">Delete</h2>
 <p>Delete rows from a UDT table. Use <code>conditions</code> to identify which rows to remove (typically by <code>row_uid</code>).</p>
+<blockquote>
+<p>⚠️ <strong>Delete reports success even when it deletes nothing</strong> — and on a 2026.1-created UDT (no <code>row_uid</code> column) it deletes nothing at all. See the <a href="#update">warning under Update</a>; check the <code>[N]</code> row count in <code>errorMessage</code>, never <code>errorNo</code> alone.</p>
+<p><strong>Payload note — <code>conditions</code> placement differs from Update.</strong> Delete reads <code>conditions</code> from the <strong>top level</strong> of the payload; nesting it inside <code>rows[]</code> (the shape Update uses, and the shape shown below) returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code> on 2026.1. Both forms are documented here because the nested form is what the endpoint's original contributors used successfully — if the documented payload below returns that error, move <code>conditions</code> up a level:</p>
+<p><code>json
+{"table": "udt_custom_orders", "conditions": [{"name": "row_uid", "value": "12345"}]}</code></p>
+</blockquote>
 <h3 id="request_2">Request</h3>
 <div class="highlight"><pre><span></span><code><span class="err">DELETE /udtservice/api/udtdata/deleteudtdata</span>
 <span class="err">Authorization: Bearer &lt;ACCESS_TOKEN&gt;</span>

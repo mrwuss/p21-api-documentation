@@ -40,7 +40,7 @@ On **2026.1 and later** there is a second, differently-shaped endpoint for high-
 - **Write only** — No read/query endpoints; use OData for reads
 - **No endpoint-based schema discovery** — no service endpoint lists tables or columns, but the catalog is readable over OData: `master_udt_definition` (one row per UDT: `udt_table_name`, `udt_view_name`) and `master_udt_definition_column` (per-column name, `datatype_cd`, `length`, `precision`/`scale`, `nullable_flag`, `df_value`). Verified on 2026.1.
 - **SQL keyword filtering** — Values containing SQL keywords (e.g., "drop", "insert") may be rejected even in legitimate data
-- **UID-based conditions only** — Updates and deletes require `row_uid` to identify target rows
+- **UID-based conditions only** — Updates and deletes require a literal **`row_uid` column**, which UDTs created on 2026.1 **do not have** (their PK is `udt_{tablename}_uid`). On such tables update always 400s and delete silently deletes nothing — see the [warning under Update](#update)
 - **Bulk upload is insert-only** — the [Bulk Data API](#bulk-data-api-20261) has no update or delete counterpart
 
 ---
@@ -317,6 +317,15 @@ else
 
 Update existing rows in a UDT table. Use `conditions` to identify which rows to update (typically by `row_uid`) and `columns` to specify the new values.
 
+> ⚠️ **Update and Delete require a literal `row_uid` column — and UDTs created on 2026.1 don't have one.** Both endpoints are hard-wired to a column named exactly `row_uid`. P21's **User Defined Table Maintenance** window on 2026.1 names the primary key **`udt_{tablename}_uid`** (e.g. `udt_custom_orders_uid`) and creates **no** `row_uid`, which makes both endpoints unable to target any row on such a table:
+>
+> - **Update** returns `400 {"error":["Invalid Row Uid!"]}` for **every** condition — `row_uid`, the real PK name, or any other column; casing and string-vs-int variants all fail identically.
+> - **Delete** is worse: it returns **HTTP 200 `{"errorNo": 0, "errorMessage": "[0] rows deleted from [table] table successfully!"}`** and deletes nothing. The word *"successfully"* with `errorNo: 0` reads as a clean delete — **only the `[0]` row count reveals the no-op.**
+>
+> **Before relying on update/delete, confirm your UDT actually has a `row_uid` column** (`GET /odataservice/odata/table/{udt}?$select=row_uid` — a 404 saying *"Could not find a property named 'row_uid'"* means it doesn't). If it doesn't, these endpoints cannot reach your data; use P21's maintenance UI or direct SQL. **Always check the row count in `errorMessage`** rather than trusting `errorNo: 0`.
+>
+> The `row_uid` convention is well-attested by the contributors who documented these endpoints, so tables that predate 2026.1 evidently do have the column. We could not A/B this against a pre-2026.1 tenant — verified July 2026 on one 2026.1-created UDT.
+
 ### Request
 
 ```http
@@ -425,6 +434,14 @@ else
 ## Delete
 
 Delete rows from a UDT table. Use `conditions` to identify which rows to remove (typically by `row_uid`).
+
+> ⚠️ **Delete reports success even when it deletes nothing** — and on a 2026.1-created UDT (no `row_uid` column) it deletes nothing at all. See the [warning under Update](#update); check the `[N]` row count in `errorMessage`, never `errorNo` alone.
+
+> **Payload note — `conditions` placement differs from Update.** Delete reads `conditions` from the **top level** of the payload; nesting it inside `rows[]` (the shape Update uses, and the shape shown below) returns `400 {"error":["Conditions cannot be blank or none!"]}` on 2026.1. Both forms are documented here because the nested form is what the endpoint's original contributors used successfully — if the documented payload below returns that error, move `conditions` up a level:
+>
+> ```json
+> {"table": "udt_custom_orders", "conditions": [{"name": "row_uid", "value": "12345"}]}
+> ```
 
 ### Request
 
