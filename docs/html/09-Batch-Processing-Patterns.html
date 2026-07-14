@@ -317,6 +317,7 @@
 
         h2:hover > .copy-section-btn,
         h3:hover > .copy-section-btn,
+        h4:hover > .copy-section-btn,
         .copy-section-btn:focus {
             opacity: 1;
         }
@@ -2322,29 +2323,14 @@
 
         // ===== Copy a section as HTML (for pasting into a forum) =====
         (function () {
+            var COPY_SECTIONS = false;
             var PAGE_URL = "https://mrwuss.github.io/p21-api-documentation/html/09-Batch-Processing-Patterns.html";
-            var COPY_MODE = "";
-            if (!COPY_MODE || !PAGE_URL) return;
+            if (!COPY_SECTIONS || !PAGE_URL) return;
 
             var content = document.querySelector('main.content');
             if (!content) return;
 
             var LABEL = 'Copy HTML';
-
-            // Which headings start a copyable section?
-            function isSectionHeading(el) {
-                var text = (el.textContent || '').trim();
-                if (COPY_MODE === 'changelog') {
-                    // Dated release sections: "2026-07-14 — v1.3.0"
-                    return el.tagName === 'H2' && /^\d{4}-\d{2}-\d{2}/.test(text);
-                }
-                if (COPY_MODE === 'breaking') {
-                    // Version sections, plus each entry beneath them
-                    if (el.tagName === 'H2') return /^P21\s/.test(text);
-                    if (el.tagName === 'H3') return true;
-                }
-                return false;
-            }
 
             // A section is its heading plus every following sibling up to the
             // next heading of the same or higher rank.
@@ -2451,8 +2437,7 @@
             }
 
             Array.prototype.forEach.call(
-                content.querySelectorAll('h2, h3'), function (h) {
-                    if (!isSectionHeading(h)) return;
+                content.querySelectorAll('h2, h3, h4'), function (h) {
                     var btn = document.createElement('button');
                     btn.className = 'copy-section-btn';
                     btn.type = 'button';

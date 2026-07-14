@@ -36,14 +36,14 @@ GITHUB_BLOB_BASE = "https://github.com/mrwuss/p21-api-documentation/blob/master/
 # into absolute ones, so a section pasted into a forum still resolves.
 SITE_BASE = "https://mrwuss.github.io/p21-api-documentation/html/"
 
-# Pages that get a per-section "Copy HTML" button, and the rule picking which
-# headings start a copyable section:
-#   "changelog" -- <h2> dated release sections (2026-07-14 - v1.3.0)
-#   "breaking"  -- <h2> version sections (P21 2026.1) and each <h3> entry
-COPY_SECTION_MODES = {
-    "10-Changelog": "changelog",
-    "14-Breaking-Changes": "breaking",
-}
+# Pages that get a per-section "Copy HTML" button on every h2/h3/h4, for
+# quoting a release or a single finding elsewhere (e.g. a forum post).
+#
+# Every heading, deliberately: an earlier version only matched "interesting"
+# headings (dated releases; "P21 <version>" and its entries) and silently
+# skipped each page's own Overview -- the first heading anyone hovers -- which
+# read as the feature being broken. A predictable rule beats a clever one.
+COPY_SECTION_PAGES = {"10-Changelog", "14-Breaking-Changes"}
 
 # Page index: (filename_stem, display_title)
 # Generated dynamically from markdown files
@@ -311,7 +311,7 @@ def get_html_template(
     sidebar_html: str,
     content: str,
     page_url: str = "",
-    copy_mode: str = "",
+    copy_sections: bool = False,
 ) -> str:
     """Return the full HTML page with sidebar layout.
 
@@ -322,8 +322,8 @@ def get_html_template(
         page_url: This page's absolute URL on the published site. Copied
             sections resolve their links against it, so a section pasted
             elsewhere still points back here.
-        copy_mode: "changelog", "breaking", or "" to disable the per-section
-            copy buttons. See COPY_SECTION_MODES.
+        copy_sections: Give every h2/h3/h4 a "Copy HTML" button. See
+            COPY_SECTION_PAGES.
     """
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -644,6 +644,7 @@ def get_html_template(
 
         h2:hover > .copy-section-btn,
         h3:hover > .copy-section-btn,
+        h4:hover > .copy-section-btn,
         .copy-section-btn:focus {{
             opacity: 1;
         }}
@@ -821,29 +822,14 @@ def get_html_template(
 
         // ===== Copy a section as HTML (for pasting into a forum) =====
         (function () {{
+            var COPY_SECTIONS = {str(bool(copy_sections)).lower()};
             var PAGE_URL = "{page_url}";
-            var COPY_MODE = "{copy_mode}";
-            if (!COPY_MODE || !PAGE_URL) return;
+            if (!COPY_SECTIONS || !PAGE_URL) return;
 
             var content = document.querySelector('main.content');
             if (!content) return;
 
             var LABEL = 'Copy HTML';
-
-            // Which headings start a copyable section?
-            function isSectionHeading(el) {{
-                var text = (el.textContent || '').trim();
-                if (COPY_MODE === 'changelog') {{
-                    // Dated release sections: "2026-07-14 — v1.3.0"
-                    return el.tagName === 'H2' && /^\\d{{4}}-\\d{{2}}-\\d{{2}}/.test(text);
-                }}
-                if (COPY_MODE === 'breaking') {{
-                    // Version sections, plus each entry beneath them
-                    if (el.tagName === 'H2') return /^P21\\s/.test(text);
-                    if (el.tagName === 'H3') return true;
-                }}
-                return false;
-            }}
 
             // A section is its heading plus every following sibling up to the
             // next heading of the same or higher rank.
@@ -950,8 +936,7 @@ def get_html_template(
             }}
 
             Array.prototype.forEach.call(
-                content.querySelectorAll('h2, h3'), function (h) {{
-                    if (!isSectionHeading(h)) return;
+                content.querySelectorAll('h2, h3, h4'), function (h) {{
                     var btn = document.createElement('button');
                     btn.className = 'copy-section-btn';
                     btn.type = 'button';
@@ -1088,7 +1073,7 @@ def convert_md_to_html(md_file: Path) -> Path:
         sidebar_html,
         html_content,
         page_url=page_url,
-        copy_mode="" if is_recipe else COPY_SECTION_MODES.get(md_file.stem, ""),
+        copy_sections=not is_recipe and md_file.stem in COPY_SECTION_PAGES,
     )
 
     # Write output
