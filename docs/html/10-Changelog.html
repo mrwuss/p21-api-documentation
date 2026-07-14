@@ -242,6 +242,7 @@
             .print-btn {
                 display: none;
             }
+            .copy-section-btn { display: none; }
             h1 { page-break-after: avoid; margin-top: 0; }
             h2 { page-break-after: avoid; margin-top: 20pt; }
             h3 { page-break-after: avoid; margin-top: 15pt; }
@@ -294,6 +295,53 @@
 
         .print-btn:hover {
             background: #1a5276;
+        }
+
+        /* ===== Copy-section button ===== */
+        .copy-section-btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            vertical-align: middle;
+            margin-left: 12px;
+            padding: 4px 9px;
+            color: #2874a6;
+            background: #eaf2f8;
+            border: 1px solid #aed6f1;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity .15s ease, background .15s ease;
+        }
+
+        h2:hover > .copy-section-btn,
+        h3:hover > .copy-section-btn,
+        .copy-section-btn:focus {
+            opacity: 1;
+        }
+
+        .copy-section-btn:hover {
+            background: #d4e6f1;
+        }
+
+        .copy-section-btn.copied {
+            opacity: 1;
+            color: #1e8449;
+            background: #eafaf1;
+            border-color: #a9dfbf;
+        }
+
+        .copy-section-btn.failed {
+            opacity: 1;
+            color: #a93226;
+            background: #fdedec;
+            border-color: #f5b7b1;
+        }
+
+        /* Touch devices never hover -- keep the buttons visible there. */
+        @media (hover: none) {
+            .copy-section-btn { opacity: 1; }
         }
 
         /* ===== Code Tabs ===== */
@@ -461,6 +509,7 @@
 <li><strong>docs:</strong> New <strong>2026.1 observations</strong> in doc 14 — the <strong>middleware version has no endpoint</strong> but rides the session-create response (<code>Properties[0].Properties.fullversion</code>), the only reliable way to confirm your build; <strong><code>GET /v2/data</code> returns only a varying subset of a window's datawindows</strong> (a datawindow's absence proves nothing — it is not a reliable field-level read-back); a <strong>nonexistent <code>DatawindowName</code> fails loudly</strong> with HTTP 400 rather than silently; and <code>DatawindowName</code> is <strong>optional for header fields on 26.1</strong> though still required on 25.2, so keep sending it — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> 2026.1 release-guide notes — Epicor attributes the release's platform work to <strong>".NET Platform Modernization: migration to .NET 10 and a re-architected middleware home page"</strong>, consistent with (though not confirmed by Epicor as the cause of) the content-negotiation and contract changes above; <strong>2026.1 is the last release to support SQL Server 2016</strong> (2026.2 requires 2019+); Crystal Reports reaches SAP end-of-support <strong>31 Dec 2028</strong>, with Report Studio and Epicor Forms Service as the forward path — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> The UDT <code>row_uid</code> hazard promoted into the <strong><a href="14-Breaking-Changes.html#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">Breaking Changes registry</a></strong> as 2026.1 entry 7, the standing alerts header, the <strong><a href="06-Error-Handling.html#udt-service-errors">Error Handling</a></strong> guide (a new <em>UDT Service Errors</em> section keyed on the literal strings you'd search for — <code>"Invalid Row Uid!"</code>, <code>"[0] rows deleted ... successfully!"</code>, <code>"Conditions cannot be blank or none!"</code>, <code>"Invalid UDT table"</code> / <code>"Incompatible table for bulk insert"</code>), and the task index. Doc 14's overview was <strong>softened to match what we can actually prove</strong>: this entry has no prior-version comparison (no pre-2026.1 tenant remained), so rather than let the page keep implying every entry was A/B'd, the registry now states that entries lacking a prior-version check say so — and entry 7 says so — <em>@mrwuss</em></li>
+<li><strong>feat(site):</strong> <strong>Per-section "Copy HTML" buttons</strong> on the Changelog (each dated release) and Breaking Changes (each version section <em>and</em> each individual entry) — for quoting a release or a single finding in a forum post. Hovering a heading reveals the button; it copies <strong>that section only</strong>, stopping cleanly at the next heading of equal or higher rank. Every link is rewritten to an <strong>absolute URL</strong> so it still resolves once pasted — including same-page anchors, and resolved against the page's canonical published URL rather than <code>document.baseURI</code> (which would bake in a <code>file://</code> path when the page is opened locally). Syntax-highlight <code>&lt;span&gt;</code>s are flattened to plain <code>&lt;pre&gt;&lt;code&gt;</code> (their classes mean nothing without this site's stylesheet) and page-local <code>id</code>s are stripped so they can't collide with the host page. Copied as both <code>text/html</code> and <code>text/plain</code>, so it pastes rendered into a rich editor and as markup into a source view, with an <code>execCommand</code> fallback for non-secure contexts — <em>@mrwuss</em></li>
 <li><strong>fix(site):</strong> <strong>23 broken anchor links repaired</strong> across the docs and recipes — every heading containing an em-dash (e.g. <em>"Upsert Semantics — Keyed Rows…"</em>, <em>"No Joins — Chain Queries by UID"</em>, <em>"Cost Model — Know This…"</em>) was linked with a <strong>double</strong> hyphen while the generator emits a <strong>single</strong> one, so the links silently landed at the top of the page instead of the section. Eight of them were in <code>INDEX.md</code> itself — the routing layer whose entire job is jumping to the right section — plus five recipe pages and four cross-doc references. Found by validating every link against the <strong>generated HTML ids</strong> rather than a re-implemented slug rule; all <strong>277</strong> anchor links across <code>docs/**/*.md</code> now resolve — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Dropping a UDT also needs an <strong>OData schema refresh</strong> — until it runs, queries against the dropped table return <code>404 "Invalid object name 'dbo.{udt}'."</code>, distinct from the <strong>empty-bodied</strong> 404 of a table that was never exposed; the wording tells you which situation you're in — <em>@mrwuss</em></li>
 <li><strong>fix:</strong> <strong>UDT update and delete cannot reach data in a 2026.1-created UDT</strong> (doc 13) — both endpoints are hard-wired to a literal <strong><code>row_uid</code></strong> column, but 2026.1's User Defined Table Maintenance names the primary key <strong><code>udt_{tablename}_uid</code></strong> and creates no <code>row_uid</code>. Update then returns <code>400 {"error":["Invalid Row Uid!"]}</code> for <em>every</em> condition (the real PK name, any other column, any casing, string or int), and <strong>delete returns HTTP 200 <code>{"errorNo": 0, "errorMessage": "[0] rows deleted ... successfully!"}</code> while deleting nothing</strong> — only the <code>[0]</code> count betrays the no-op. Also found: <strong>delete reads <code>conditions</code> from the payload's top level</strong>, not nested in <code>rows[]</code> as documented (the nested form 400s with <em>"Conditions cannot be blank or none!"</em>); both forms are now shown. Found while clearing the bulk-API probe rows — the deletion silently "succeeded" four times before a read-back showed the count unchanged. Guidance added: verify <code>row_uid</code> exists (<code>$select=row_uid</code>) before relying on these endpoints, and check the row count in <code>errorMessage</code> rather than <code>errorNo</code> — <em>@mrwuss</em></li>
@@ -838,6 +887,160 @@
                     });
                 });
             });
+        })();
+
+        // ===== Copy a section as HTML (for pasting into a forum) =====
+        (function () {
+            var PAGE_URL = "https://mrwuss.github.io/p21-api-documentation/html/10-Changelog.html";
+            var COPY_MODE = "changelog";
+            if (!COPY_MODE || !PAGE_URL) return;
+
+            var content = document.querySelector('main.content');
+            if (!content) return;
+
+            var LABEL = 'Copy HTML';
+
+            // Which headings start a copyable section?
+            function isSectionHeading(el) {
+                var text = (el.textContent || '').trim();
+                if (COPY_MODE === 'changelog') {
+                    // Dated release sections: "2026-07-14 — v1.3.0"
+                    return el.tagName === 'H2' && /^\d{4}-\d{2}-\d{2}/.test(text);
+                }
+                if (COPY_MODE === 'breaking') {
+                    // Version sections, plus each entry beneath them
+                    if (el.tagName === 'H2') return /^P21\s/.test(text);
+                    if (el.tagName === 'H3') return true;
+                }
+                return false;
+            }
+
+            // A section is its heading plus every following sibling up to the
+            // next heading of the same or higher rank.
+            function sectionNodes(heading) {
+                var level = parseInt(heading.tagName.slice(1), 10);
+                var nodes = [heading];
+                var el = heading.nextElementSibling;
+                while (el) {
+                    var m = /^H([1-6])$/.exec(el.tagName);
+                    if (m && parseInt(m[1], 10) <= level) break;
+                    nodes.push(el);
+                    el = el.nextElementSibling;
+                }
+                return nodes;
+            }
+
+            // Resolve links against this page's canonical URL -- NOT
+            // document.baseURI, which is a file:// path when the page is
+            // opened locally and would produce dead links in the paste.
+            function absolutise(root) {
+                var fix = function (el, attr) {
+                    var val = el.getAttribute(attr);
+                    if (!val) return;
+                    try {
+                        el.setAttribute(attr, new URL(val, PAGE_URL).href);
+                    } catch (e) {
+                        /* leave anything unparseable exactly as it was */
+                    }
+                };
+                Array.prototype.forEach.call(
+                    root.querySelectorAll('a[href]'), function (a) { fix(a, 'href'); });
+                Array.prototype.forEach.call(
+                    root.querySelectorAll('img[src]'), function (i) { fix(i, 'src'); });
+            }
+
+            // Syntax highlighting is a pile of <span class="k"> that means
+            // nothing without this page's stylesheet -- flatten to plain code.
+            function flattenCode(root) {
+                Array.prototype.forEach.call(
+                    root.querySelectorAll('div.highlight'), function (div) {
+                        var pre = document.createElement('pre');
+                        var code = document.createElement('code');
+                        code.textContent = div.textContent.replace(/\s+$/, '');
+                        pre.appendChild(code);
+                        div.parentNode.replaceChild(pre, div);
+                    });
+            }
+
+            function sectionHtml(heading) {
+                var wrap = document.createElement('div');
+                sectionNodes(heading).forEach(function (n) {
+                    wrap.appendChild(n.cloneNode(true));
+                });
+                Array.prototype.forEach.call(
+                    wrap.querySelectorAll('.copy-section-btn'),
+                    function (b) { b.parentNode.removeChild(b); });
+                flattenCode(wrap);
+                absolutise(wrap);
+                // ids are page-local and would collide once pasted elsewhere
+                Array.prototype.forEach.call(
+                    wrap.querySelectorAll('[id]'),
+                    function (n) { n.removeAttribute('id'); });
+                return wrap.innerHTML.trim();
+            }
+
+            // text/html so a rich editor pastes it rendered; text/plain carries
+            // the markup itself for a source view. One write, both flavours.
+            function writeClipboard(html) {
+                if (navigator.clipboard && window.ClipboardItem) {
+                    try {
+                        return navigator.clipboard.write([new ClipboardItem({
+                            'text/html': new Blob([html], { type: 'text/html' }),
+                            'text/plain': new Blob([html], { type: 'text/plain' })
+                        })]);
+                    } catch (e) {
+                        return Promise.reject(e);
+                    }
+                }
+                return Promise.reject(new Error('clipboard API unavailable'));
+            }
+
+            // file:// and older browsers get the markup as plain text.
+            function fallbackCopy(text) {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                document.body.appendChild(ta);
+                ta.select();
+                var ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                document.body.removeChild(ta);
+                return ok;
+            }
+
+            function flash(btn, cls, label) {
+                btn.textContent = label;
+                btn.classList.add(cls);
+                setTimeout(function () {
+                    btn.textContent = LABEL;
+                    btn.classList.remove(cls);
+                }, 1600);
+            }
+
+            Array.prototype.forEach.call(
+                content.querySelectorAll('h2, h3'), function (h) {
+                    if (!isSectionHeading(h)) return;
+                    var btn = document.createElement('button');
+                    btn.className = 'copy-section-btn';
+                    btn.type = 'button';
+                    btn.textContent = LABEL;
+                    btn.title = 'Copy this section as HTML, with links rewritten '
+                              + 'to absolute URLs so they work when pasted elsewhere';
+                    btn.addEventListener('click', function (ev) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        var html = sectionHtml(h);
+                        writeClipboard(html).then(function () {
+                            flash(btn, 'copied', 'Copied!');
+                        }).catch(function () {
+                            if (fallbackCopy(html)) flash(btn, 'copied', 'Copied!');
+                            else flash(btn, 'failed', 'Copy failed');
+                        });
+                    });
+                    h.appendChild(btn);
+                });
         })();
     </script>
 </body>

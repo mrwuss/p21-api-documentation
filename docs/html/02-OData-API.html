@@ -242,6 +242,7 @@
             .print-btn {
                 display: none;
             }
+            .copy-section-btn { display: none; }
             h1 { page-break-after: avoid; margin-top: 0; }
             h2 { page-break-after: avoid; margin-top: 20pt; }
             h3 { page-break-after: avoid; margin-top: 15pt; }
@@ -294,6 +295,53 @@
 
         .print-btn:hover {
             background: #1a5276;
+        }
+
+        /* ===== Copy-section button ===== */
+        .copy-section-btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            vertical-align: middle;
+            margin-left: 12px;
+            padding: 4px 9px;
+            color: #2874a6;
+            background: #eaf2f8;
+            border: 1px solid #aed6f1;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity .15s ease, background .15s ease;
+        }
+
+        h2:hover > .copy-section-btn,
+        h3:hover > .copy-section-btn,
+        .copy-section-btn:focus {
+            opacity: 1;
+        }
+
+        .copy-section-btn:hover {
+            background: #d4e6f1;
+        }
+
+        .copy-section-btn.copied {
+            opacity: 1;
+            color: #1e8449;
+            background: #eafaf1;
+            border-color: #a9dfbf;
+        }
+
+        .copy-section-btn.failed {
+            opacity: 1;
+            color: #a93226;
+            background: #fdedec;
+            border-color: #f5b7b1;
+        }
+
+        /* Touch devices never hover -- keep the buttons visible there. */
+        @media (hover: none) {
+            .copy-section-btn { opacity: 1; }
         }
 
         /* ===== Code Tabs ===== */
@@ -1570,6 +1618,160 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
                     });
                 });
             });
+        })();
+
+        // ===== Copy a section as HTML (for pasting into a forum) =====
+        (function () {
+            var PAGE_URL = "https://mrwuss.github.io/p21-api-documentation/html/02-OData-API.html";
+            var COPY_MODE = "";
+            if (!COPY_MODE || !PAGE_URL) return;
+
+            var content = document.querySelector('main.content');
+            if (!content) return;
+
+            var LABEL = 'Copy HTML';
+
+            // Which headings start a copyable section?
+            function isSectionHeading(el) {
+                var text = (el.textContent || '').trim();
+                if (COPY_MODE === 'changelog') {
+                    // Dated release sections: "2026-07-14 — v1.3.0"
+                    return el.tagName === 'H2' && /^\d{4}-\d{2}-\d{2}/.test(text);
+                }
+                if (COPY_MODE === 'breaking') {
+                    // Version sections, plus each entry beneath them
+                    if (el.tagName === 'H2') return /^P21\s/.test(text);
+                    if (el.tagName === 'H3') return true;
+                }
+                return false;
+            }
+
+            // A section is its heading plus every following sibling up to the
+            // next heading of the same or higher rank.
+            function sectionNodes(heading) {
+                var level = parseInt(heading.tagName.slice(1), 10);
+                var nodes = [heading];
+                var el = heading.nextElementSibling;
+                while (el) {
+                    var m = /^H([1-6])$/.exec(el.tagName);
+                    if (m && parseInt(m[1], 10) <= level) break;
+                    nodes.push(el);
+                    el = el.nextElementSibling;
+                }
+                return nodes;
+            }
+
+            // Resolve links against this page's canonical URL -- NOT
+            // document.baseURI, which is a file:// path when the page is
+            // opened locally and would produce dead links in the paste.
+            function absolutise(root) {
+                var fix = function (el, attr) {
+                    var val = el.getAttribute(attr);
+                    if (!val) return;
+                    try {
+                        el.setAttribute(attr, new URL(val, PAGE_URL).href);
+                    } catch (e) {
+                        /* leave anything unparseable exactly as it was */
+                    }
+                };
+                Array.prototype.forEach.call(
+                    root.querySelectorAll('a[href]'), function (a) { fix(a, 'href'); });
+                Array.prototype.forEach.call(
+                    root.querySelectorAll('img[src]'), function (i) { fix(i, 'src'); });
+            }
+
+            // Syntax highlighting is a pile of <span class="k"> that means
+            // nothing without this page's stylesheet -- flatten to plain code.
+            function flattenCode(root) {
+                Array.prototype.forEach.call(
+                    root.querySelectorAll('div.highlight'), function (div) {
+                        var pre = document.createElement('pre');
+                        var code = document.createElement('code');
+                        code.textContent = div.textContent.replace(/\s+$/, '');
+                        pre.appendChild(code);
+                        div.parentNode.replaceChild(pre, div);
+                    });
+            }
+
+            function sectionHtml(heading) {
+                var wrap = document.createElement('div');
+                sectionNodes(heading).forEach(function (n) {
+                    wrap.appendChild(n.cloneNode(true));
+                });
+                Array.prototype.forEach.call(
+                    wrap.querySelectorAll('.copy-section-btn'),
+                    function (b) { b.parentNode.removeChild(b); });
+                flattenCode(wrap);
+                absolutise(wrap);
+                // ids are page-local and would collide once pasted elsewhere
+                Array.prototype.forEach.call(
+                    wrap.querySelectorAll('[id]'),
+                    function (n) { n.removeAttribute('id'); });
+                return wrap.innerHTML.trim();
+            }
+
+            // text/html so a rich editor pastes it rendered; text/plain carries
+            // the markup itself for a source view. One write, both flavours.
+            function writeClipboard(html) {
+                if (navigator.clipboard && window.ClipboardItem) {
+                    try {
+                        return navigator.clipboard.write([new ClipboardItem({
+                            'text/html': new Blob([html], { type: 'text/html' }),
+                            'text/plain': new Blob([html], { type: 'text/plain' })
+                        })]);
+                    } catch (e) {
+                        return Promise.reject(e);
+                    }
+                }
+                return Promise.reject(new Error('clipboard API unavailable'));
+            }
+
+            // file:// and older browsers get the markup as plain text.
+            function fallbackCopy(text) {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                document.body.appendChild(ta);
+                ta.select();
+                var ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                document.body.removeChild(ta);
+                return ok;
+            }
+
+            function flash(btn, cls, label) {
+                btn.textContent = label;
+                btn.classList.add(cls);
+                setTimeout(function () {
+                    btn.textContent = LABEL;
+                    btn.classList.remove(cls);
+                }, 1600);
+            }
+
+            Array.prototype.forEach.call(
+                content.querySelectorAll('h2, h3'), function (h) {
+                    if (!isSectionHeading(h)) return;
+                    var btn = document.createElement('button');
+                    btn.className = 'copy-section-btn';
+                    btn.type = 'button';
+                    btn.textContent = LABEL;
+                    btn.title = 'Copy this section as HTML, with links rewritten '
+                              + 'to absolute URLs so they work when pasted elsewhere';
+                    btn.addEventListener('click', function (ev) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        var html = sectionHtml(h);
+                        writeClipboard(html).then(function () {
+                            flash(btn, 'copied', 'Copied!');
+                        }).catch(function () {
+                            if (fallbackCopy(html)) flash(btn, 'copied', 'Copied!');
+                            else flash(btn, 'failed', 'Copy failed');
+                        });
+                    });
+                    h.appendChild(btn);
+                });
         })();
     </script>
 </body>
