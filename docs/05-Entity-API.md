@@ -19,7 +19,18 @@ Epicor's own use of **"Entity API"** is broader than this document. In Epicor's 
 - This document covers the **`/api/entity/` endpoint family** of the REST API. The [Inventory REST API](11-Inventory-REST-API.md) (`/api/inventory/parts`) is **part of the same REST API**, not a separate API — the two docs are split for readability only.
 - Epicor briefly subdivided the REST API into "V1 API" / "V2 API" — short-lived naming you may still hear; it has **no relation** to `/v2/` segments in eCommerce SOAP URLs.
 
-*Credit: Felipe Maurer ([P21WWUG profile](https://forums.p21ww.org/UserInfo10045.aspx)) — taxonomy correction and 25.1 middleware evidence in [this forum topic](https://forums.p21ww.org/Topic245514-3.aspx); endpoint behavior re-verified live July 2026.*
+**Corroborated by the in-middleware SDK reference** (`/docs/p21sdk` on a 2026.1 tenant), which is Epicor's own first-party catalog and lists exactly **four** APIs — no more:
+
+| SDK name | Epicor's description |
+|----------|----------------------|
+| **Transaction API** | *"...previously known as the v2 API — a stateless REST API that works with most of our system using a metadata model."* |
+| **Entity API** | *"...a very specific set of stateless, fit for purpose REST endpoints using strongly typed business object models."* |
+| **Interactive API** | *"...allowing developers to interact with a stateful Prophet 21 session."* |
+| **Data Services API** | *"...secure reads from your Prophet 21 database using OData protocol."* |
+
+Two things worth noting: Epicor confirms in its own words that the **Transaction API is the artist formerly known as the "v2 API"**, and the SDK's four-way split is by *capability*, not by URL prefix — reinforcing that URL segments don't define API boundaries. The UDT Service and its 2026.1 [Bulk Data API](13-UDT-Service-API.md#bulk-data-api-20261) appear in **none** of the four, despite being documented, supported endpoints — so the SDK catalog is not exhaustive either.
+
+*Credit: Felipe Maurer ([P21WWUG profile](https://forums.p21ww.org/UserInfo10045.aspx)) — taxonomy correction and 25.1 middleware evidence in [this forum topic](https://forums.p21ww.org/Topic245514-3.aspx); endpoint behavior re-verified live July 2026, SDK catalog cross-checked on 2026.1.*
 
 ---
 

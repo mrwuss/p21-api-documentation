@@ -405,6 +405,7 @@
 </li>
 <li><a href="#endpoints">Endpoints</a><ul>
 <li><a href="#base-url-example">Base URL Example</a></li>
+<li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 </ul>
 </li>
 <li><a href="#authentication">Authentication</a><ul>
@@ -517,6 +518,14 @@
 <td><code>/odataservice/odata/view/{viewname}</code></td>
 <td>Query a database view</td>
 </tr>
+<tr>
+<td><code>/odataservice/odata/table/$metadata</code></td>
+<td>Schema document — every exposed table and column</td>
+</tr>
+<tr>
+<td><code>/odataservice/odata/view/$metadata</code></td>
+<td>Schema document for views</td>
+</tr>
 </tbody>
 </table>
 <h3 id="base-url-example">Base URL Example</h3>
@@ -525,6 +534,26 @@
 
 <blockquote>
 <p><strong>Base host, not ui_server:</strong> OData runs on the P21 <strong>base host</strong> — unlike the Transaction and Interactive APIs, it does <strong>not</strong> use the UI server URL returned by the router endpoint. Don't prefix OData paths with the ui_server.</p>
+</blockquote>
+<h3 id="discovering-whats-exposed-metadata">Discovering What's Exposed (<code>$metadata</code>)</h3>
+<p><code>$metadata</code> hangs off the <strong>collection path</strong>, not the service root: <code>/odataservice/odata/table/$metadata</code> works, while <code>/odataservice/odata/$metadata</code> returns <strong>404</strong>. (The correct path is the one echoed in every response's <code>@odata.context</code>.)</p>
+<p>The document is <strong>JSON CSDL</strong>, not the XML EDMX you may expect, and it is large — roughly 4 MB and ~3,400 tables on a stock tenant. Exposed tables are the keys of <code>ns.container</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/odataservice/odata/table/$metadata&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">metadata</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="n">tables</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;ns&quot;</span><span class="p">][</span><span class="s2">&quot;container&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;$&quot;</span><span class="p">)]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span><span class="si">}</span><span class="s2"> tables exposed&quot;</span><span class="p">)</span>           <span class="c1"># e.g. 3394</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;po_hdr exposed?&quot;</span><span class="p">,</span> <span class="s2">&quot;po_hdr&quot;</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
+</code></pre></div>
+
+<p>This is the quickest way to answer "is this table actually exposed to Data Services?" before debugging a 404 — and to find the real name of a table you're guessing at.</p>
+<blockquote>
+<p><strong>Newly created tables need a manual refresh.</strong> A table added after the service started (e.g. a new UDT) is absent from <code>$metadata</code> and 404s on query until <strong>SOA Admin → Refresh OData API service</strong> is run. See <a href="#odata-schema-refresh">Schema Refresh</a>.</p>
 </blockquote>
 <hr />
 <h2 id="authentication">Authentication</h2>
@@ -554,6 +583,9 @@
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$select=supplier_id,supplier_name</span>
 </code></pre></div>
 
+<blockquote>
+<p>⚠️ <strong>An unknown <code>$select</code> column returns 404, not 400.</strong> Naming a column that doesn't exist fails the whole request with an empty-bodied <strong>404</strong> — indistinguishable at a glance from "table not exposed" or "no permission". If a table you know exists suddenly 404s, drop the <code>$select</code> and retry before chasing Data Service permissions; a misremembered column name (e.g. <code>supplier_id</code> on <code>po_hdr</code>, which actually has <code>vendor_id</code>) is the more common cause. Verified on 2026.1.</p>
+</blockquote>
 <h3 id="filter-filter-results">$filter - Filter Results</h3>
 <p>Filter records based on conditions:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/odata/table/supplier?$filter=supplier_id eq 10050</span>

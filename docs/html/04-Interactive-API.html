@@ -774,13 +774,33 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Response:</p>
+<p>Response (<strong>25.2</strong>):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;SessionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123...&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Active&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
+<p>Response (<strong>2026.1</strong> — the identifier is renamed <code>SessionId</code> → <code>Id</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;3c2aca0b-ada7-4dbc-bc82-c5ce31cde2ae&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Telemetry&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;fullversion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;26.1.5894.1&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;shortversion&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;26.1&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;configurationid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;3694&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Read both keys</strong> — <code>data.get("Id") or data.get("SessionId")</code> — so one client works across versions. See <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
+<p><strong>This is also how you find your middleware build.</strong> P21 exposes no version endpoint (<code>/api/version</code>, <code>/api/v2/version</code> and similar all return 404). On 2026.1 the session-create response carries it under <code>Properties[0].Properties.fullversion</code> — the most reliable way to confirm which build you're talking to before relying on any version-specific behavior.</p>
+</blockquote>
 <h4 id="session-parameters-userparameters">Session Parameters (UserParameters)</h4>
 <p>The session creation body accepts these optional parameters:</p>
 <table>
@@ -2996,7 +3016,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <hr />
 <h2 id="v1-vs-v2-api-differences">v1 vs v2 API Differences</h2>
 <blockquote>
-<p><strong>Upgrading P21?</strong> Version-specific middleware changes that break interactive integrations (25.2's required <code>DatawindowName</code>, 2026.1's Accept-header 500 / ghost sessions / <code>SessionId</code>→<code>Id</code> / silent-false-success hazards) are cataloged in <a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a>.</p>
+<p><strong>Upgrading P21?</strong> Version-specific middleware changes that break interactive integrations (25.2's required <code>DatawindowName</code>, 2026.1's Accept-header 500 / ghost sessions / <code>SessionId</code>→<code>Id</code> / nonexistent-record loads / non-atomic batched changes) are cataloged in <a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a>.</p>
 <p><strong>Important:</strong> Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.</p>
 </blockquote>
 <h3 id="summary-table">Summary Table</h3>

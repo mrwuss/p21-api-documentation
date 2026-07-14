@@ -523,7 +523,35 @@
 <li>This document covers the <strong><code>/api/entity/</code> endpoint family</strong> of the REST API. The <a href="11-Inventory-REST-API.html">Inventory REST API</a> (<code>/api/inventory/parts</code>) is <strong>part of the same REST API</strong>, not a separate API — the two docs are split for readability only.</li>
 <li>Epicor briefly subdivided the REST API into "V1 API" / "V2 API" — short-lived naming you may still hear; it has <strong>no relation</strong> to <code>/v2/</code> segments in eCommerce SOAP URLs.</li>
 </ul>
-<p><em>Credit: Felipe Maurer (<a href="https://forums.p21ww.org/UserInfo10045.aspx">P21WWUG profile</a>) — taxonomy correction and 25.1 middleware evidence in <a href="https://forums.p21ww.org/Topic245514-3.aspx">this forum topic</a>; endpoint behavior re-verified live July 2026.</em></p>
+<p><strong>Corroborated by the in-middleware SDK reference</strong> (<code>/docs/p21sdk</code> on a 2026.1 tenant), which is Epicor's own first-party catalog and lists exactly <strong>four</strong> APIs — no more:</p>
+<table>
+<thead>
+<tr>
+<th>SDK name</th>
+<th>Epicor's description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Transaction API</strong></td>
+<td><em>"...previously known as the v2 API — a stateless REST API that works with most of our system using a metadata model."</em></td>
+</tr>
+<tr>
+<td><strong>Entity API</strong></td>
+<td><em>"...a very specific set of stateless, fit for purpose REST endpoints using strongly typed business object models."</em></td>
+</tr>
+<tr>
+<td><strong>Interactive API</strong></td>
+<td><em>"...allowing developers to interact with a stateful Prophet 21 session."</em></td>
+</tr>
+<tr>
+<td><strong>Data Services API</strong></td>
+<td><em>"...secure reads from your Prophet 21 database using OData protocol."</em></td>
+</tr>
+</tbody>
+</table>
+<p>Two things worth noting: Epicor confirms in its own words that the <strong>Transaction API is the artist formerly known as the "v2 API"</strong>, and the SDK's four-way split is by <em>capability</em>, not by URL prefix — reinforcing that URL segments don't define API boundaries. The UDT Service and its 2026.1 <a href="13-UDT-Service-API.html#bulk-data-api-20261">Bulk Data API</a> appear in <strong>none</strong> of the four, despite being documented, supported endpoints — so the SDK catalog is not exhaustive either.</p>
+<p><em>Credit: Felipe Maurer (<a href="https://forums.p21ww.org/UserInfo10045.aspx">P21WWUG profile</a>) — taxonomy correction and 25.1 middleware evidence in <a href="https://forums.p21ww.org/Topic245514-3.aspx">this forum topic</a>; endpoint behavior re-verified live July 2026, SDK catalog cross-checked on 2026.1.</em></p>
 <hr />
 <h2 id="overview">Overview</h2>
 <p>This document covers the <strong>stateless REST</strong> endpoints at <code>/api/entity/</code> for CRUD (Create, Read, Update, Delete) operations on P21 business objects. They use domain object models and support <strong>four entities</strong>: Customer, Vendor, Contact, and Address.</p>

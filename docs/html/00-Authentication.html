@@ -971,7 +971,7 @@
 <hr />
 <h2 id="using-the-token">Using the Token</h2>
 <blockquote>
-<p><strong><code>Accept: application/json</code> is not optional on 2026.1.</strong> Every example in this documentation sends it; on P21 <strong>2026.1</strong> the Interactive API returns an <strong>empty HTTP 500</strong> for requests without it (including the <code>Accept: */*</code> default of httpx and .NET HttpClient), and the failed session create leaves a ghost session behind. See <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
+<p><strong><code>Accept: application/json</code> is not optional on 2026.1.</strong> Every example in this documentation sends it; on P21 <strong>2026.1</strong> the Interactive API returns an <strong>empty HTTP 500</strong> for any request whose <code>Accept</code> header doesn't include <code>application/json</code> — including the <code>Accept: */*</code> default of httpx and .NET HttpClient — and the failed session create leaves a ghost session behind. Set it in one shared header builder rather than per call site. See <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
 </blockquote>
 <p>Include the token in the <code>Authorization</code> header for all API requests:</p>
 <div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/odataservice/odata/table/supplier</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>

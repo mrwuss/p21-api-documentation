@@ -122,13 +122,34 @@ POST /api/ui/interactive/sessions
 }
 ```
 
-Response:
+Response (**25.2**):
 ```json
 {
     "SessionId": "abc123...",
     "Status": "Active"
 }
 ```
+
+Response (**2026.1** — the identifier is renamed `SessionId` → `Id`):
+```json
+{
+    "Id": "3c2aca0b-ada7-4dbc-bc82-c5ce31cde2ae",
+    "Properties": [
+        {
+            "Name": "Telemetry",
+            "Properties": {
+                "fullversion": "26.1.5894.1",
+                "shortversion": "26.1",
+                "configurationid": "3694"
+            }
+        }
+    ]
+}
+```
+
+> **Read both keys** — `data.get("Id") or data.get("SessionId")` — so one client works across versions. See [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+
+> **This is also how you find your middleware build.** P21 exposes no version endpoint (`/api/version`, `/api/v2/version` and similar all return 404). On 2026.1 the session-create response carries it under `Properties[0].Properties.fullversion` — the most reliable way to confirm which build you're talking to before relying on any version-specific behavior.
 
 #### Session Parameters (UserParameters)
 
@@ -1937,7 +1958,7 @@ When setting numeric fields, send whole numbers as integer strings (`"30"`), not
 
 ## v1 vs v2 API Differences
 
-> **Upgrading P21?** Version-specific middleware changes that break interactive integrations (25.2's required `DatawindowName`, 2026.1's Accept-header 500 / ghost sessions / `SessionId`→`Id` / silent-false-success hazards) are cataloged in [P21 Breaking Changes by Version](14-Breaking-Changes.md).
+> **Upgrading P21?** Version-specific middleware changes that break interactive integrations (25.2's required `DatawindowName`, 2026.1's Accept-header 500 / ghost sessions / `SessionId`→`Id` / nonexistent-record loads / non-atomic batched changes) are cataloged in [P21 Breaking Changes by Version](14-Breaking-Changes.md).
 
 
 > **Important:** Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.

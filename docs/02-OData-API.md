@@ -24,6 +24,8 @@ The OData API provides **read-only** access to P21 data using the OData v3 proto
 |----------|---------|
 | `/odataservice/odata/table/{tablename}` | Query a database table |
 | `/odataservice/odata/view/{viewname}` | Query a database view |
+| `/odataservice/odata/table/$metadata` | Schema document — every exposed table and column |
+| `/odataservice/odata/view/$metadata` | Schema document for views |
 
 ### Base URL Example
 
@@ -32,6 +34,30 @@ https://play.p21server.com/odataservice/odata/table/supplier
 ```
 
 > **Base host, not ui_server:** OData runs on the P21 **base host** — unlike the Transaction and Interactive APIs, it does **not** use the UI server URL returned by the router endpoint. Don't prefix OData paths with the ui_server.
+
+### Discovering What's Exposed (`$metadata`)
+
+`$metadata` hangs off the **collection path**, not the service root: `/odataservice/odata/table/$metadata` works, while `/odataservice/odata/$metadata` returns **404**. (The correct path is the one echoed in every response's `@odata.context`.)
+
+The document is **JSON CSDL**, not the XML EDMX you may expect, and it is large — roughly 4 MB and ~3,400 tables on a stock tenant. Exposed tables are the keys of `ns.container`:
+
+```python
+import httpx
+
+response = httpx.get(
+    f"{base_url}/odataservice/odata/table/$metadata",
+    headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    timeout=300,
+)
+metadata = response.json()
+tables = [name for name in metadata["ns"]["container"] if not name.startswith("$")]
+print(f"{len(tables)} tables exposed")           # e.g. 3394
+print("po_hdr exposed?", "po_hdr" in tables)
+```
+
+This is the quickest way to answer "is this table actually exposed to Data Services?" before debugging a 404 — and to find the real name of a table you're guessing at.
+
+> **Newly created tables need a manual refresh.** A table added after the service started (e.g. a new UDT) is absent from `$metadata` and 404s on query until **SOA Admin → Refresh OData API service** is run. See [Schema Refresh](#odata-schema-refresh).
 
 ---
 
@@ -72,6 +98,8 @@ Return only specific fields:
 ```http
 /odata/table/supplier?$select=supplier_id,supplier_name
 ```
+
+> ⚠️ **An unknown `$select` column returns 404, not 400.** Naming a column that doesn't exist fails the whole request with an empty-bodied **404** — indistinguishable at a glance from "table not exposed" or "no permission". If a table you know exists suddenly 404s, drop the `$select` and retry before chasing Data Service permissions; a misremembered column name (e.g. `supplier_id` on `po_hdr`, which actually has `vendor_id`) is the more common cause. Verified on 2026.1.
 
 ### $filter - Filter Results
 

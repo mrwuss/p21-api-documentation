@@ -231,13 +231,25 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 
 ### Empty HTTP 500 on Every Interactive Call (2026.1)
 
-On P21 **2026.1**, any interactive request without an explicit `Accept: application/json` header — including the `Accept: */*` default of httpx and .NET HttpClient — returns an **empty-body HTTP 500**. The same request with the header succeeds; 2025.2 is unaffected.
+On P21 **2026.1**, any interactive request whose `Accept` header does not include `application/json` returns an **empty-body HTTP 500** — including `Accept: */*`, the default of httpx and .NET HttpClient. The same request with `application/json` present succeeds; 2025.2 is unaffected.
+
+The rule is *"`application/json` must be present"*, not *"`*/*` is rejected"* — `Accept: application/json, */*` works. `application/xml` and `text/html` both fail, even though the `/api/v2` Transaction endpoints negotiate XML fine.
 
 **Solution**: send `Accept: application/json` on every request. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
 
 ### Alternating 500 / 409 "Session already exists" (2026.1)
 
-The failed session create above still **half-creates the session** server-side, so retries hit 409 until `SessionCleanupExpiration` (~6 min). If you see this pattern on 2026.1, check the `Accept` header first — it is not a session-pool problem. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+The failed session create above still **half-creates the session** server-side, so retries hit **409 `{"ErrorMessage":"Session already exists."}`**. If you see this pattern on 2026.1, check the `Accept` header first — it is not a session-pool problem.
+
+**Clear the ghost with `DELETE {uiserver}/api/ui/interactive/sessions`** — it returns 200 and a clean create succeeds immediately after. Waiting out `SessionCleanupExpiration` (~6 min) also works but is unnecessary.
+
+> **The ghost masks the diagnosis.** Once a call has poisoned the session, *every* subsequent create returns 409 no matter what headers it sends — so the header experiment you would run to confirm the cause reports the wrong answer. `DELETE` the session before each attempt when testing this. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+
+### Batched `/v2/change` Partially Applied After a 400 (2026.1)
+
+A `PUT /v2/change` carrying multiple fields is **not atomic**. If one field is rejected, the response is an HTTP 400 error envelope with **no `Status` field** — but the other fields in the same batch **have already been applied** to the window buffer. Treating the 400 as "nothing happened" and retrying or saving commits a partially-applied edit.
+
+**Solution**: one field per `/change` call, check every call's status, and read back out-of-band. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
 
 ### Session Errors
 
