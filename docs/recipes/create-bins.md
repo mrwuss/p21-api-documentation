@@ -2,7 +2,7 @@
 
 Bulk-create warehouse bins with the `BinLocation` service — one transaction per bin, tens per POST, verified in production at hundreds of bins per run.
 
-**API:** Transaction · **Service:** `BinLocation` · **Deep dive:** [BinLocation Service — Creating Bins](../03-Transaction-API.md#binlocation-service----creating-bins), [IgnoreDisabled](../03-Transaction-API.md#ignoredisabled) · **Full schema:** [`definitions/BinLocation.json`](../../definitions/BinLocation.json)
+**API:** Transaction · **Service:** `BinLocation` · **Deep dive:** [BinLocation Service — Creating Bins](../03-Transaction-API.md#binlocation-service-creating-bins), [IgnoreDisabled](../03-Transaction-API.md#ignoredisabled) · **Full schema:** [`definitions/BinLocation.json`](../../definitions/BinLocation.json)
 
 The `BinLocation` service *is* the **Bin Location Maintenance** window: its form element `FORM.form` is business object `bin` (datawindow `d_dw_bin_form`), and every field in the payload is a real field on that screen.
 

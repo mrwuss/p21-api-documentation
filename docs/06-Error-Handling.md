@@ -366,6 +366,59 @@ The Address entity does not have a `/new` template endpoint. This is by design �
 
 ---
 
+## UDT Service Errors
+
+### `"Invalid Row Uid!"` on Every Update (2026.1)
+
+```json
+400 {"error": ["Invalid Row Uid!"]}
+```
+
+The update and delete endpoints identify rows by a column named **exactly `row_uid`**. A UDT created by 2026.1's User Defined Table Maintenance has its primary key named `udt_{tablename}_uid` and **no `row_uid`** — so this error comes back for *every* condition you try, including the real PK name.
+
+**Check whether the column exists at all**:
+
+```http
+GET /odataservice/odata/table/{udt}?$select=row_uid
+→ 404 "Could not find a property named 'row_uid' on type 'dbo.{udt}'."
+```
+
+**Solution**: if there's no `row_uid`, these endpoints cannot reach your data — use P21's maintenance UI or direct SQL. Details: [UDT Service API § Update](13-UDT-Service-API.md#update) · [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+
+### `"[0] rows deleted ... successfully!"` — a Delete That Deletes Nothing (2026.1)
+
+```json
+200 {"id": 0, "errorNo": 0,
+     "errorMessage": "[0] rows deleted from [udt_example] table successfully!"}
+```
+
+> ⚠️ **This is a success response that did nothing.** `errorNo: 0` and the word *"successfully"* pass every ordinary status check — only the `[0]` row count betrays it. On a UDT without `row_uid` (see above), **every** delete returns this. A purge or retention job built on it reports success forever while the table grows without bound.
+
+**Solution**: parse the `[N]` count out of `errorMessage` and treat `[0]` as a failure — never trust `errorNo: 0` alone. Confirm with a row-count read-back over OData.
+
+### `"Conditions cannot be blank or none!"` on Delete (2026.1)
+
+```json
+400 {"error": ["Conditions cannot be blank or none!"]}
+```
+
+The delete endpoint reads `conditions` from the payload's **top level**, unlike update which reads them from inside `rows[]`. Sending the nested form produces this error even though `conditions` is clearly populated.
+
+**Solution**: move `conditions` up a level — `{"table": "...", "conditions": [...]}`. Details: [UDT Service API § Delete](13-UDT-Service-API.md#delete).
+
+### `"Invalid UDT table"` / `"Incompatible table for bulk insert"`
+
+```json
+400 {"errorNo": 4001, "errorMessage": "Invalid UDT table", ...}   // udtdata endpoints
+400 "Incompatible table for bulk insert: supplier"                 // bulkupload endpoint
+```
+
+Both mean the target isn't a registered UDT. Pass the **`udt_`-prefixed name** (`udt_custom_orders`) — the bare name from the maintenance window (`custom_orders`) and the `udv_` view name are both rejected. Ordinary P21 tables are rejected too, by design.
+
+**Solution**: confirm the exact name in `master_udt_definition.udt_table_name` over OData.
+
+---
+
 ## Python Error Handling
 
 ### httpx Error Handling

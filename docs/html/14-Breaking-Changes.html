@@ -407,6 +407,7 @@
 <li><a href="#4-put-v2tab-no-longer-accepts-tabname">4. PUT /v2/tab no longer accepts TabName</a></li>
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
 <li><a href="#6-batched-v2change-is-not-atomic-a-rejected-field-does-not-roll-back-its-neighbours">6. Batched /v2/change is not atomic — a rejected field does not roll back its neighbours</a></li>
+<li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
 <li><a href="#related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</a></li>
 </ul>
 </li>
@@ -431,7 +432,7 @@
 </blockquote>
 <hr />
 <h2 id="overview">Overview</h2>
-<p>A version-indexed registry of P21 middleware changes that <strong>break or silently corrupt existing API integrations</strong>. Every entry here was found the hard way during a real upgrade validation and verified against live tenants — including confirming the behavior does <em>not</em> exist on the prior version. Check this page <strong>before</strong> any P21 upgrade, and re-test the listed surfaces on your own test tenant first.</p>
+<p>A version-indexed registry of P21 middleware changes that <strong>break or silently corrupt existing API integrations</strong>. Every entry here was found the hard way during real upgrade validation and verified live. Most were also confirmed <strong>not</strong> to occur on the prior version; where no prior-version tenant was still available to A/B against, the entry <strong>says so explicitly</strong> rather than implying a comparison we didn't make. Check this page <strong>before</strong> any P21 upgrade, and re-test the listed surfaces on your own test tenant first.</p>
 <table>
 <thead>
 <tr>
@@ -443,8 +444,8 @@
 <tbody>
 <tr>
 <td><a href="#p21-20261">2026.1</a></td>
-<td>Empty 500 without <code>Accept: application/json</code> · ghost sessions (500/409) · <code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>non-atomic batched changes</strong></td>
-<td>High — one hard break, two data-integrity hazards</td>
+<td>Empty 500 without <code>Accept: application/json</code> · ghost sessions (500/409) · <code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>non-atomic batched changes</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong></td>
+<td>High — one hard break, three data-integrity hazards</td>
 </tr>
 <tr>
 <td><a href="#p21-252">25.2</a></td>
@@ -550,6 +551,29 @@
 <blockquote>
 <p><strong>Correction (July 2026).</strong> This entry originally reported the mechanism as <em>"a batch containing a field on a </em><em>non-active tab</em><em> returns <code>Status: 1</code> while silently not applying that field."</em> That does <strong>not</strong> reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, <code>DatawindowName</code> supplied and omitted, target tab active and inactive — the non-active-tab field was <strong>applied every time</strong> with <code>Status: 1</code>. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch <strong>is</strong> genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged. If you can reproduce the non-active-tab drop on any 2026.1 build, please <a href="https://github.com/mrwuss/p21-api-documentation/issues/new?template=bug-report.md">open an issue</a> with the window and field names.</p>
 </blockquote>
+<h3 id="7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</h3>
+<p><strong>Data-integrity hazard — silent false success on delete.</strong></p>
+<blockquote>
+<p><strong>Verification scope:</strong> unlike entries 1–6, this one has <strong>no prior-version comparison</strong> — by the time it was found, no pre-2026.1 tenant remained available. What follows is verified on 2026.1; whether it is a <em>regression</em> or has always depended on how the table was created is <strong>unproven</strong>. Treated as a 2026.1 hazard because 2026.1's table-creation UI is what produces the incompatible shape.</p>
+</blockquote>
+<p><code>PUT /udtservice/api/udtdata/updateudtdata</code> and <code>DELETE .../deleteudtdata</code> identify rows by a column named <strong>exactly <code>row_uid</code></strong>. P21's <strong>User Defined Table Maintenance</strong> on 2026.1 names the primary key <strong><code>udt_{tablename}_uid</code></strong> and creates <strong>no</strong> <code>row_uid</code> column — so on any UDT built there, neither endpoint can reach a single row:</p>
+<div class="highlight"><pre><span></span><code>// Update — returns this for EVERY condition: the real PK name, any other
+// column, any casing, value as string or int.
+400 {&quot;error&quot;: [&quot;Invalid Row Uid!&quot;]}
+
+// Delete — HTTP 200, and nothing is deleted.
+200 {&quot;id&quot;: 0, &quot;errorNo&quot;: 0,
+     &quot;errorMessage&quot;: &quot;[0] rows deleted from [udt_bulk_probe] table successfully!&quot;}
+</code></pre></div>
+
+<p>The delete is the dangerous half. <code>errorNo: 0</code> and the word <em>"successfully"</em> read as a clean delete to any client checking status or <code>errorNo</code> — <strong>only the <code>[0]</code> row count reveals it did nothing.</strong> A purge or retention job built on this reports success indefinitely while the table grows without bound.</p>
+<p>Confirm the column is genuinely absent rather than mis-typed:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/{udt}?$select=row_uid</span>
+<span class="err">→ 404 &quot;Could not find a property named &#39;row_uid&#39; on type &#39;dbo.{udt}&#39;.&quot;</span>
+</code></pre></div>
+
+<p><strong>Mitigation:</strong> before relying on UDT update/delete, <strong>check that <code>row_uid</code> exists</strong> (above). If it doesn't, these endpoints cannot reach your data at all — use P21's maintenance UI or direct SQL, and don't build an integration on them. Where they <em>do</em> work, <strong>parse the <code>[N]</code> row count out of <code>errorMessage</code></strong> and treat <code>[0]</code> as a failure; never trust <code>errorNo: 0</code> alone. The <code>row_uid</code> convention is well-attested by the contributors who first documented these endpoints, so tables predating 2026.1 evidently do carry the column. Full detail: <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a>.</p>
+<p>Related payload trap: <strong>delete reads <code>conditions</code> from the payload's top level</strong>, not nested inside <code>rows[]</code> — the nested form returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code> on 2026.1. See <a href="13-UDT-Service-API.html#delete">UDT Service API § Delete</a>.</p>
 <h3 id="related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</h3>
 <p>Found while re-verifying the above on 26.1.5894.1. None of these are regressions, but each will mislead you while debugging one.</p>
 <h4 id="reading-the-middleware-version">Reading the middleware version</h4>

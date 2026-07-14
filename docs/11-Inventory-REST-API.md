@@ -10,7 +10,7 @@
 
 ## Overview
 
-P21 provides inventory item CRUD at `/api/inventory/parts` (backed by `inv_mast`). This is **part of the same REST API** as the [`/api/entity/` endpoints](05-Entity-API.md) — a different **endpoint family** with its own base path and behavior, documented separately for readability only. (In Epicor's naming, "Entity API" is an umbrella term covering the whole REST API plus the eCommerce SOAP API — see [Terminology](05-Entity-API.md#terminology--epicors-naming-july-2026).)
+P21 provides inventory item CRUD at `/api/inventory/parts` (backed by `inv_mast`). This is **part of the same REST API** as the [`/api/entity/` endpoints](05-Entity-API.md) — a different **endpoint family** with its own base path and behavior, documented separately for readability only. (In Epicor's naming, "Entity API" is an umbrella term covering the whole REST API plus the eCommerce SOAP API — see [Terminology](05-Entity-API.md#terminology-epicors-naming-july-2026).)
 
 The Inventory REST API is significant because it provides:
 - **Read access** to `inv_loc` (inventory location) records via extended properties
@@ -60,7 +60,7 @@ Example: `https://play.p21server.com/api/inventory/parts`
 
 ## Comparison with Entity API
 
-Both endpoint families belong to the **same REST API** (see [Terminology — Epicor's Naming](05-Entity-API.md#terminology--epicors-naming-july-2026)); this table contrasts how the two families behave:
+Both endpoint families belong to the **same REST API** (see [Terminology — Epicor's Naming](05-Entity-API.md#terminology-epicors-naming-july-2026)); this table contrasts how the two families behave:
 
 | Feature | `/api/entity/` endpoints | `/api/inventory/parts` |
 |---------|-----------|-------------------|

@@ -415,7 +415,7 @@
         <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
 <h1 id="record-labor-time-on-a-production-order">Record Labor Time on a Production Order</h1>
 <p>Post a technician's labor hours to a production order with the <code>TimeEntry</code> service.</p>
-<p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>TimeEntry</code> · <strong>Deep dive:</strong> <a href="../12-Production-Labor-API.html#recording-labor-hours-timeentry-service">Recording Labor Hours</a>, <a href="../12-Production-Labor-API.html#time-entry-against-a-production-order-quick-time-entry">Quick Time Entry mechanics</a>, <a href="../12-Production-Labor-API.html#labor-timing--log-labor-before-printing">Labor timing</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/TimeEntry.json">definitions/TimeEntry.json</a></p>
+<p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>TimeEntry</code> · <strong>Deep dive:</strong> <a href="../12-Production-Labor-API.html#recording-labor-hours-timeentry-service">Recording Labor Hours</a>, <a href="../12-Production-Labor-API.html#time-entry-against-a-production-order-quick-time-entry">Quick Time Entry mechanics</a>, <a href="../12-Production-Labor-API.html#labor-timing-log-labor-before-printing">Labor timing</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/TimeEntry.json">definitions/TimeEntry.json</a></p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>A production order exists (here <code>1000123</code>) with an assembly line (item <code>ASSY-100</code>) carrying a labor component (here <code>LABOR-SHOP</code>).</li>
@@ -718,7 +718,7 @@
 <li><strong>The accounting period for <code>entry_date</code> must be open</strong> — a closed period fails the save.</li>
 <li><strong>Time accumulates.</strong> Each entry adds to the line's stored hours/minutes; re-posting the same entry doubles the labor (and its cost = minutes × the labor code's rate).</li>
 <li><strong>Log labor before printing the pick ticket</strong> (or reprint after adding it). Labor on no ticket has <code>qty_on_pick_tickets = 0</code> and order completion fails with <em>"components have a quantity used of 0."</em></li>
-<li><strong>Cost timing:</strong> labor posted before completion lands in the <code>PROP</code> receipt cost; labor posted after completion misses it; labor posted after invoicing generates a separate <em>"Post Freight/Labor Prod. Order: NNNN"</em> invoice ($0 price, ± COGS). See <a href="../12-Production-Labor-API.html#cost-model--know-this-before-trusting-cogs">the cost model</a>.</li>
+<li><strong>Cost timing:</strong> labor posted before completion lands in the <code>PROP</code> receipt cost; labor posted after completion misses it; labor posted after invoicing generates a separate <em>"Post Freight/Labor Prod. Order: NNNN"</em> invoice ($0 price, ± COGS). See <a href="../12-Production-Labor-API.html#cost-model-know-this-before-trusting-cogs">the cost model</a>.</li>
 <li><strong><code>labor_type_cd</code> is required</strong> — valid values <code>Rate</code>, <code>OT Rate</code>, <code>Prem Rate</code> (with <code>UseCodeValues: false</code>).</li>
 <li><strong>HTTP 200 is not success</strong> — check <code>Summary.Succeeded</code> / <code>Summary.Failed</code> and print <code>Messages</code>.</li>
 </ul>

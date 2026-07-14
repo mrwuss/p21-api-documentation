@@ -2,7 +2,7 @@
 
 Update prices on existing `JobContractPricing` lines, insert new lines onto an existing contract (upsert), and set commission costs — all through the stateless Transaction API.
 
-**API:** Transaction (`POST {ui_server}/api/v2/transaction`) · **Service:** `JobContractPricing` · **Deep dive:** [JobContractPricing Service](../03-Transaction-API.md#jobcontractpricing-service) · [Updating an Existing Contract](../03-Transaction-API.md#updating-an-existing-contract) · [Upsert Semantics](../03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) · [Commission Costs](../03-Transaction-API.md#commission-costs) · [Field Order Matters](../03-Transaction-API.md#field-order-matters) · [Known Limitations](../03-Transaction-API.md#known-limitations) · **Full schema:** [`definitions/JobContractPricing.json`](../../definitions/JobContractPricing.json)
+**API:** Transaction (`POST {ui_server}/api/v2/transaction`) · **Service:** `JobContractPricing` · **Deep dive:** [JobContractPricing Service](../03-Transaction-API.md#jobcontractpricing-service) · [Updating an Existing Contract](../03-Transaction-API.md#updating-an-existing-contract) · [Upsert Semantics](../03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) · [Commission Costs](../03-Transaction-API.md#commission-costs) · [Field Order Matters](../03-Transaction-API.md#field-order-matters) · [Known Limitations](../03-Transaction-API.md#known-limitations) · **Full schema:** [`definitions/JobContractPricing.json`](../../definitions/JobContractPricing.json)
 
 ## Prerequisites
 

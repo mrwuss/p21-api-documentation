@@ -1985,7 +1985,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </tbody>
 </table>
 <blockquote>
-<p><strong>Pick confirmation MUST be windowed.</strong> A Transaction-API-only confirm produces a shell — the status flips and <code>qty_confirmed</code> is set, but <code>qty_applied</code> stays 0 and no stock moves. See <a href="12-Production-Labor-API.html#confirming-the-pick--use-the-interactive-api">Confirming the Pick</a>.</p>
+<p><strong>Pick confirmation MUST be windowed.</strong> A Transaction-API-only confirm produces a shell — the status flips and <code>qty_confirmed</code> is set, but <code>qty_applied</code> stays 0 and no stock moves. See <a href="12-Production-Labor-API.html#confirming-the-pick-use-the-interactive-api">Confirming the Pick</a>.</p>
 </blockquote>
 <p>See <a href="12-Production-Labor-API.html">Production &amp; Labor API</a> for detailed field definitions.</p>
 <hr />
@@ -3001,7 +3001,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </code></pre></div>
 </div>
 </div>
-<p><strong>Important:</strong> This is different from the <a href="#row-selection-synchronization-bug-list--detail">row selection synchronization bug</a> documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.</p>
+<p><strong>Important:</strong> This is different from the <a href="#row-selection-synchronization-bug-list-detail">row selection synchronization bug</a> documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.</p>
 <h3 id="key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</h3>
 <p>Sending a grid row's <strong>key field</strong> in a <code>change</code> request commits the row cursor — any field in the same <code>List</code> (or a later call) that follows the key field is <strong>silently ignored</strong> (the call still returns a success status). Example: on the JobContractPricing BINS grid, <code>contract_bin_id</code> is the key; if it appears before the quantity fields, the quantities never land.</p>
 <p><strong>Guidance:</strong></p>

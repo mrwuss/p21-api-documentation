@@ -369,7 +369,7 @@ See [Production & Labor API](12-Production-Labor-API.md) for detailed field defi
 }
 ```
 
-> **Transactions pass/fail independently.** In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and `Summary` tallies the outcomes (`Succeeded`/`Failed`/`Other`). Check `Results.Transactions[].Status` (`"Passed"`/`"Failed"`) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see [Upsert Semantics](#upsert-semantics----keyed-rows-insert-when-absent).)
+> **Transactions pass/fail independently.** In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and `Summary` tallies the outcomes (`Succeeded`/`Failed`/`Other`). Check `Results.Transactions[].Status` (`"Passed"`/`"Failed"`) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see [Upsert Semantics](#upsert-semantics-keyed-rows-insert-when-absent).)
 
 ---
 

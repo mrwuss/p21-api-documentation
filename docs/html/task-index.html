@@ -484,7 +484,7 @@
 </tr>
 <tr>
 <td>Traverse relationships (no joins — chain by <code>_uid</code>)</td>
-<td><a href="02-OData-API.html#no-joins--chain-queries-by-uid">02 § No Joins</a></td>
+<td><a href="02-OData-API.html#no-joins-chain-queries-by-uid">02 § No Joins</a></td>
 </tr>
 <tr>
 <td>Page through large result sets (no nextLink)</td>
@@ -515,11 +515,11 @@
 </tr>
 <tr>
 <td>Payload rejected / values not landing (shape &amp; type mistakes)</td>
-<td><a href="03-Transaction-API.html#payload-anatomy----types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
+<td><a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
 <tr>
 <td>Validate a payload offline before posting (JSON or XML)</td>
-<td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/validate_payload.py"><code>scripts/validate_payload.py</code></a> · <a href="03-Transaction-API.html#payload-anatomy----types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
+<td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/scripts/validate_payload.py"><code>scripts/validate_payload.py</code></a> · <a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
 <tr>
 <td>Copy-ready payload files (JSON and XML, validator-verified)</td>
@@ -539,7 +539,7 @@
 </tr>
 <tr>
 <td><strong>Insert new keyed rows (upsert)</strong> + one-tx-per-POST rule</td>
-<td><a href="03-Transaction-API.html#upsert-semantics----keyed-rows-insert-when-absent">03 § Upsert Semantics</a></td>
+<td><a href="03-Transaction-API.html#upsert-semantics-keyed-rows-insert-when-absent">03 § Upsert Semantics</a></td>
 </tr>
 <tr>
 <td>Write through disabled columns/tabs (<code>IgnoreDisabled</code>)</td>
@@ -603,7 +603,7 @@
 <tr>
 <td>Job contract: update / add lines / commission costs</td>
 <td><a href="recipes/update-contract-lines.html">update-contract-lines</a></td>
-<td><a href="03-Transaction-API.html#updating-an-existing-contract">03 § Updating an Existing Contract</a> · <a href="03-Transaction-API.html#upsert-semantics----keyed-rows-insert-when-absent">03 § Upsert Semantics</a> · <a href="03-Transaction-API.html#commission-costs">03 § Commission Costs</a></td>
+<td><a href="03-Transaction-API.html#updating-an-existing-contract">03 § Updating an Existing Contract</a> · <a href="03-Transaction-API.html#upsert-semantics-keyed-rows-insert-when-absent">03 § Upsert Semantics</a> · <a href="03-Transaction-API.html#commission-costs">03 § Commission Costs</a></td>
 </tr>
 <tr>
 <td>Job contract: <strong>bin quantities</strong></td>
@@ -618,12 +618,12 @@
 <tr>
 <td>Item: <strong>primary bin / primary supplier</strong> at a location</td>
 <td><a href="recipes/set-primary-bin-supplier.html">set-primary-bin-supplier</a></td>
-<td><a href="03-Transaction-API.html#item-service----nested-location-edits">03 § Item Service</a></td>
+<td><a href="03-Transaction-API.html#item-service-nested-location-edits">03 § Item Service</a></td>
 </tr>
 <tr>
 <td><strong>Create warehouse bins</strong></td>
 <td><a href="recipes/create-bins.html">create-bins</a></td>
-<td><a href="03-Transaction-API.html#binlocation-service----creating-bins">03 § BinLocation Service</a></td>
+<td><a href="03-Transaction-API.html#binlocation-service-creating-bins">03 § BinLocation Service</a></td>
 </tr>
 <tr>
 <td><strong>Sales price pages</strong> (codes, breaks, field order)</td>
@@ -653,7 +653,12 @@
 <tr>
 <td>User-defined tables (UDT) rows</td>
 <td>—</td>
-<td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a></td>
+<td><a href="13-UDT-Service-API.html#insert">13 § Insert</a> · <a href="13-UDT-Service-API.html#update">13 § Update</a> · <a href="13-UDT-Service-API.html#delete">13 § Delete</a> — <strong>update/delete need a <code>row_uid</code> column; 2026.1-created UDTs don't have one</strong></td>
+</tr>
+<tr>
+<td>UDT delete "succeeds" but nothing is deleted</td>
+<td>—</td>
+<td><a href="06-Error-Handling.html#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">06 § <code>[0] rows deleted</code></a> · <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">14 § entry 7</a></td>
 </tr>
 <tr>
 <td>Bulk-load a UDT from CSV (2026.1+)</td>
@@ -756,7 +761,7 @@
 </tr>
 <tr>
 <td>Confirm a pick (shell-confirm trap — use Interactive)</td>
-<td><a href="12-Production-Labor-API.html#confirming-the-pick--use-the-interactive-api">12 § Confirming the Pick</a></td>
+<td><a href="12-Production-Labor-API.html#confirming-the-pick-use-the-interactive-api">12 § Confirming the Pick</a></td>
 </tr>
 <tr>
 <td>Complete / production receipt (+ per-component cost override)</td>
@@ -776,7 +781,7 @@
 </tr>
 <tr>
 <td>Why COGS doesn't match the receipt</td>
-<td><a href="12-Production-Labor-API.html#cost-model--know-this-before-trusting-cogs">12 § Cost Model</a></td>
+<td><a href="12-Production-Labor-API.html#cost-model-know-this-before-trusting-cogs">12 § Cost Model</a></td>
 </tr>
 </tbody>
 </table>

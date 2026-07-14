@@ -2,7 +2,7 @@
 
 Post a technician's labor hours to a production order with the `TimeEntry` service.
 
-**API:** Transaction · **Service:** `TimeEntry` · **Deep dive:** [Recording Labor Hours](../12-Production-Labor-API.md#recording-labor-hours-timeentry-service), [Quick Time Entry mechanics](../12-Production-Labor-API.md#time-entry-against-a-production-order-quick-time-entry), [Labor timing](../12-Production-Labor-API.md#labor-timing--log-labor-before-printing) · **Full schema:** [definitions/TimeEntry.json](../../definitions/TimeEntry.json)
+**API:** Transaction · **Service:** `TimeEntry` · **Deep dive:** [Recording Labor Hours](../12-Production-Labor-API.md#recording-labor-hours-timeentry-service), [Quick Time Entry mechanics](../12-Production-Labor-API.md#time-entry-against-a-production-order-quick-time-entry), [Labor timing](../12-Production-Labor-API.md#labor-timing-log-labor-before-printing) · **Full schema:** [definitions/TimeEntry.json](../../definitions/TimeEntry.json)
 
 ## Prerequisites
 
@@ -253,7 +253,7 @@ foreach (var row in de["Rows"] as JArray ?? new JArray())
 - **The accounting period for `entry_date` must be open** — a closed period fails the save.
 - **Time accumulates.** Each entry adds to the line's stored hours/minutes; re-posting the same entry doubles the labor (and its cost = minutes × the labor code's rate).
 - **Log labor before printing the pick ticket** (or reprint after adding it). Labor on no ticket has `qty_on_pick_tickets = 0` and order completion fails with *"components have a quantity used of 0."*
-- **Cost timing:** labor posted before completion lands in the `PROP` receipt cost; labor posted after completion misses it; labor posted after invoicing generates a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS). See [the cost model](../12-Production-Labor-API.md#cost-model--know-this-before-trusting-cogs).
+- **Cost timing:** labor posted before completion lands in the `PROP` receipt cost; labor posted after completion misses it; labor posted after invoicing generates a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS). See [the cost model](../12-Production-Labor-API.md#cost-model-know-this-before-trusting-cogs).
 - **`labor_type_cd` is required** — valid values `Rate`, `OT Rate`, `Prem Rate` (with `UseCodeValues: false`).
 - **HTTP 200 is not success** — check `Summary.Succeeded` / `Summary.Failed` and print `Messages`.
 

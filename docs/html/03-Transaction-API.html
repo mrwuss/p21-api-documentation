@@ -1174,7 +1174,7 @@
 </code></pre></div>
 
 <blockquote>
-<p><strong>Transactions pass/fail independently.</strong> In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and <code>Summary</code> tallies the outcomes (<code>Succeeded</code>/<code>Failed</code>/<code>Other</code>). Check <code>Results.Transactions[].Status</code> (<code>"Passed"</code>/<code>"Failed"</code>) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see <a href="#upsert-semantics----keyed-rows-insert-when-absent">Upsert Semantics</a>.)</p>
+<p><strong>Transactions pass/fail independently.</strong> In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and <code>Summary</code> tallies the outcomes (<code>Succeeded</code>/<code>Failed</code>/<code>Other</code>). Check <code>Results.Transactions[].Status</code> (<code>"Passed"</code>/<code>"Failed"</code>) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see <a href="#upsert-semantics-keyed-rows-insert-when-absent">Upsert Semantics</a>.)</p>
 </blockquote>
 <hr />
 <h2 id="field-order-matters">Field Order Matters</h2>

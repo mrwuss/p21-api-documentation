@@ -2,7 +2,7 @@
 
 Update an item's primary bin or primary supplier for one stocking location via the `Item` service's nested Form → List → detail pattern — with a mandatory read-back, because the primary-supplier write can silently no-op.
 
-**API:** Transaction (`Item`), Interactive fallback · **Service:** `Item` · **Deep dive:** [Item Service — Nested Location Edits](../03-Transaction-API.md#item-service----nested-location-edits), [Item Service Gotchas](../03-Transaction-API.md#item-service-gotchas), [Worked Example: "Item Issues Detected"](../04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) · **Full schema:** [`definitions/Item.json`](../../definitions/Item.json)
+**API:** Transaction (`Item`), Interactive fallback · **Service:** `Item` · **Deep dive:** [Item Service — Nested Location Edits](../03-Transaction-API.md#item-service-nested-location-edits), [Item Service Gotchas](../03-Transaction-API.md#item-service-gotchas), [Worked Example: "Item Issues Detected"](../04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) · **Full schema:** [`definitions/Item.json`](../../definitions/Item.json)
 
 The `Item` service (Item Maintenance window) supports **nested DataElement navigation** that mirrors the UI: select the item, select a location row, then edit that location's detail. It works because the Item window's tabs aren't gated behind row selection — a good template for any nested edit.
 

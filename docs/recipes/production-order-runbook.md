@@ -33,7 +33,7 @@ Two paths ([deep dive](../12-Production-Labor-API.md#how-production-orders-get-c
 
 ### Stage 2 — Log labor BEFORE printing
 
-Post labor via the `TimeEntry` service — [record-labor-time recipe](record-labor-time.md), [deep dive](../12-Production-Labor-API.md#labor-timing--log-labor-before-printing). Labor becomes a charge component that **must land on a pick ticket to be consumed at completion**.
+Post labor via the `TimeEntry` service — [record-labor-time recipe](record-labor-time.md), [deep dive](../12-Production-Labor-API.md#labor-timing-log-labor-before-printing). Labor becomes a charge component that **must land on a pick ticket to be consumed at completion**.
 
 **The trap:** print first, add labor after (no reprint) → the labor is allocated but on no ticket (`qty_on_pick_tickets = 0`) and completion fails with *"components have a quantity used of 0."* Fix: reprint (generates a separate labor/intangibles ticket), then confirm the new ticket.
 
@@ -48,7 +48,7 @@ Two ways ([deep dive](../12-Production-Labor-API.md#printing-the-pick-ticket-and
 
 ### Stage 4 — Confirm the pick (Interactive API ONLY)
 
-Open the `ProductionOrderPicking` window, load the ticket on header `TP_PRODPICKTICKETCONF.tp_prodpickticketconf` (key `prod_pick_ticket_number`), set the Confirm Pick field `row_status_flag` to `"Confirm"`, save. Confirm **every** ticket — parts *and* labor/intangibles. [Deep dive](../12-Production-Labor-API.md#confirming-the-pick--use-the-interactive-api).
+Open the `ProductionOrderPicking` window, load the ticket on header `TP_PRODPICKTICKETCONF.tp_prodpickticketconf` (key `prod_pick_ticket_number`), set the Confirm Pick field `row_status_flag` to `"Confirm"`, save. Confirm **every** ticket — parts *and* labor/intangibles. [Deep dive](../12-Production-Labor-API.md#confirming-the-pick-use-the-interactive-api).
 
 **The trap (the star of this page):** posting `row_status_flag = 'Confirm'` through a bare `POST /api/v2/transaction` produces a **shell confirm** — the ticket status flips to `1962` and `qty_confirmed` gets stamped, but **`qty_applied` stays 0 and no stock moves**. The per-bin posted quantities live in a disabled `TP_BIN` grid that only the windowed (Interactive API or desktop) confirm populates. The real confirm applies the pick and moves components to the make location's WIP bin (`inv_loc.primary_bin` at `prod_order_hdr.source_location_id`; bin `0` when no primary is set).
 
@@ -78,7 +78,7 @@ Drive the `ProductionOrderProcessing` window ([deep dive](../12-Production-Labor
 
 If on-hand ends up wrong, post an `InventoryAdjustment` — [inventory-adjustment recipe](inventory-adjustment.md), [deep dive](../12-Production-Labor-API.md#inventory-adjustment-write-offs).
 
-> **Cost model — before trusting COGS** ([deep dive](../12-Production-Labor-API.md#cost-model--know-this-before-trusting-cogs)): the `PROP` receipt cost = components + labor posted **before** completion. Shipment COGS is the **moving average at ship time**, not that order's receipt — while 2+ units sit in stock, a cost added to one smears across all (build-to-stock is exposed by design; make-to-order is largely immune). Labor posted after invoicing spawns a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS); the original invoice is untouched.
+> **Cost model — before trusting COGS** ([deep dive](../12-Production-Labor-API.md#cost-model-know-this-before-trusting-cogs)): the `PROP` receipt cost = components + labor posted **before** completion. Shipment COGS is the **moving average at ship time**, not that order's receipt — while 2+ units sit in stock, a cost added to one smears across all (build-to-stock is exposed by design; make-to-order is largely immune). Labor posted after invoicing spawns a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS); the original invoice is untouched.
 
 ## Complete example — print the pick ticket and read back its status
 

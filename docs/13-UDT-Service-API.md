@@ -19,6 +19,8 @@ The UDT Service API handles **write operations** (insert, update, delete). For *
 On **2026.1 and later** there is a second, differently-shaped endpoint for high-volume loads: the [Bulk Data API](#bulk-data-api-20261) (`/udtservice/api/bulkupload/{table}`), which bulk-inserts from an uploaded CSV file instead of a JSON body.
 
 > **Creating a UDT is a UI-only operation.** There is no API path to define a new UDT — it is not among the Transaction API's services, and no corresponding Interactive API window could be opened. Use P21's **User Defined Table Maintenance** window. A newly created UDT is **not visible to OData until the schema is refreshed** (SOA Admin → *Refresh OData API service*, see [Prerequisites](#prerequisites)); the Bulk Data API, by contrast, sees it immediately.
+>
+> **Dropping one needs a refresh too — in the other direction.** After a UDT is dropped, OData keeps it in the schema and queries fail with `404 "Invalid object name 'dbo.{udt}'."` (a SQL error surfaced as a 404) until the schema is refreshed again. Note the difference from a table that was never exposed, which 404s with an **empty body** — the `Invalid object name` wording specifically means *"OData still expects this table, but the database no longer has it."*
 
 ### Key Characteristics
 

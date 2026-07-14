@@ -26,7 +26,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Query a table or view | [02 § Query Parameters](02-OData-API.md#query-parameters) |
 | Filter syntax, operators, string functions | [02 § Filter Expressions](02-OData-API.md#filter-expressions) |
 | Only active rows (`row_status_flag eq 704`) | [02 § Active Record Filter](02-OData-API.md#active-record-filter) |
-| Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins--chain-queries-by-uid) |
+| Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins-chain-queries-by-uid) |
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
 | New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |
@@ -36,13 +36,13 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Task | Where |
 |------|-------|
 | Payload anatomy (TransactionSet / DataElements / Edits) | [03 § Request Structure](03-Transaction-API.md#request-structure) |
-| Payload rejected / values not landing (shape & type mistakes) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy----types-nesting-and-common-mistakes) |
-| Validate a payload offline before posting (JSON or XML) | [`scripts/validate_payload.py`](../scripts/validate_payload.py) · [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy----types-nesting-and-common-mistakes) |
+| Payload rejected / values not landing (shape & type mistakes) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
+| Validate a payload offline before posting (JSON or XML) | [`scripts/validate_payload.py`](../scripts/validate_payload.py) · [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
 | Copy-ready payload files (JSON and XML, validator-verified) | [`examples/payloads/`](../examples/payloads/README.md) |
 | Send/receive **XML** instead of JSON | [03 § XML Payloads](03-Transaction-API.md#xml-payloads-content-negotiation) |
 | Get a service's schema, template, defaults | [03 § Endpoints](03-Transaction-API.md#endpoints) · committed full-field JSON in [`definitions/`](../definitions/README.md) |
 | **Update an existing record** (Status `"New"` + keys; `"Existing"` is broken) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) |
-| **Insert new keyed rows (upsert)** + one-tx-per-POST rule | [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) |
+| **Insert new keyed rows (upsert)** + one-tx-per-POST rule | [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) |
 | Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) |
 | Field order silently changing values | [03 § Field Order Matters](03-Transaction-API.md#field-order-matters) |
 | Labels vs code_no (`UseCodeValues`, `code_p21`) | [03 § UseCodeValues](03-Transaction-API.md#usecodevalues) |
@@ -59,17 +59,18 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Create a **sales order** + gotchas (source_loc_id, dates, DynaChange) | [create-sales-order](recipes/create-sales-order.md) | [03 § Create Order](03-Transaction-API.md#create-order) · [03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas) |
 | Order with an **assembly line** (explode / spawn prod order) | [order-with-assembly](recipes/order-with-assembly.md) | [04 § Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines) |
 | **Job contract**: create, lines, breaks | — | [03 § JobContractPricing Service](03-Transaction-API.md#jobcontractpricing-service) |
-| Job contract: update / add lines / commission costs | [update-contract-lines](recipes/update-contract-lines.md) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) · [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics----keyed-rows-insert-when-absent) · [03 § Commission Costs](03-Transaction-API.md#commission-costs) |
+| Job contract: update / add lines / commission costs | [update-contract-lines](recipes/update-contract-lines.md) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) · [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) · [03 § Commission Costs](03-Transaction-API.md#commission-costs) |
 | Job contract: **bin quantities** | [edit-contract-bins](recipes/edit-contract-bins.md) | [03 § Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract) (Interactive fallback: [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences)) |
 | **Assembly / BOM** definition | — | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
-| Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service----nested-location-edits) |
-| **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service----creating-bins) |
+| Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service-nested-location-edits) |
+| **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service-creating-bins) |
 | **Sales price pages** (codes, breaks, field order) | — | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) |
 | Customers / vendors / contacts / addresses (simple CRUD) | — | [05 § CRUD Operations](05-Entity-API.md#crud-operations) |
 | Read/create **sales orders via REST** (`/api/sales/orders`) | — | [05 § Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families) |
 | Inventory items: read / create / update locations | — | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
 | Customer-specific **price + availability** lookup | — | [11 § Pricing Endpoints](11-Inventory-REST-API.md#pricing-endpoints) |
-| User-defined tables (UDT) rows | — | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) |
+| User-defined tables (UDT) rows | — | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) — **update/delete need a `row_uid` column; 2026.1-created UDTs don't have one** |
+| UDT delete "succeeds" but nothing is deleted | — | [06 § `[0] rows deleted`](06-Error-Handling.md#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261) · [14 § entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261) |
 | Bulk-load a UDT from CSV (2026.1+) | — | [13 § Bulk Data API](13-UDT-Service-API.md#bulk-data-api-20261) — CSV upload; **headerless file silently inserts nothing** |
 
 ## Drive a window (Interactive API)
@@ -99,12 +100,12 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Assembly behavior flags (prod-order vs kit vs build-to-stock) | [12 § Assembly Behavior Flags](12-Production-Labor-API.md#assembly-behavior-flags) |
 | **Full runbook: create → print → confirm → complete → ship** | [recipe: production-order-runbook](recipes/production-order-runbook.md) · [12 § Production Order Lifecycle](12-Production-Labor-API.md#production-order-lifecycle-end-to-end) |
 | Pick ticket won't generate (make loc vs stock loc) | [12 § Printing the Pick Ticket](12-Production-Labor-API.md#printing-the-pick-ticket-and-form) · [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
-| Confirm a pick (shell-confirm trap — use Interactive) | [12 § Confirming the Pick](12-Production-Labor-API.md#confirming-the-pick--use-the-interactive-api) |
+| Confirm a pick (shell-confirm trap — use Interactive) | [12 § Confirming the Pick](12-Production-Labor-API.md#confirming-the-pick-use-the-interactive-api) |
 | Complete / production receipt (+ per-component cost override) | [12 § Completing the Production Order](12-Production-Labor-API.md#completing-the-production-order-production-receipt) |
 | Record labor hours | [recipe: record-labor-time](recipes/record-labor-time.md) · [12 § Recording Labor Hours](12-Production-Labor-API.md#recording-labor-hours-timeentry-service) · [12 § Time Entry Against a Production Order](12-Production-Labor-API.md#time-entry-against-a-production-order-quick-time-entry) |
 | Ship + invoice | [12 § Shipping and Invoicing](12-Production-Labor-API.md#shipping-and-invoicing-the-linked-sales-order) |
 | Inventory write-off / adjustment | [recipe: inventory-adjustment](recipes/inventory-adjustment.md) · [12 § Inventory Adjustment](12-Production-Labor-API.md#inventory-adjustment-write-offs) |
-| Why COGS doesn't match the receipt | [12 § Cost Model](12-Production-Labor-API.md#cost-model--know-this-before-trusting-cogs) |
+| Why COGS doesn't match the receipt | [12 § Cost Model](12-Production-Labor-API.md#cost-model-know-this-before-trusting-cogs) |
 
 ## Documents & reports (PDF)
 

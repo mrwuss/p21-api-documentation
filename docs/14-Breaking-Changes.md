@@ -6,11 +6,11 @@
 
 ## Overview
 
-A version-indexed registry of P21 middleware changes that **break or silently corrupt existing API integrations**. Every entry here was found the hard way during a real upgrade validation and verified against live tenants — including confirming the behavior does *not* exist on the prior version. Check this page **before** any P21 upgrade, and re-test the listed surfaces on your own test tenant first.
+A version-indexed registry of P21 middleware changes that **break or silently corrupt existing API integrations**. Every entry here was found the hard way during real upgrade validation and verified live. Most were also confirmed **not** to occur on the prior version; where no prior-version tenant was still available to A/B against, the entry **says so explicitly** rather than implying a comparison we didn't make. Check this page **before** any P21 upgrade, and re-test the listed surfaces on your own test tenant first.
 
 | Version | Entries | Severity |
 |---------|---------|----------|
-| [2026.1](#p21-20261) | Empty 500 without `Accept: application/json` · ghost sessions (500/409) · `SessionId` → `Id` · `TabName` no longer accepted on `/v2/tab` · **silent-false-success on nonexistent-record loads** · **non-atomic batched changes** | High — one hard break, two data-integrity hazards |
+| [2026.1](#p21-20261) | Empty 500 without `Accept: application/json` · ghost sessions (500/409) · `SessionId` → `Id` · `TabName` no longer accepted on `/v2/tab` · **silent-false-success on nonexistent-record loads** · **non-atomic batched changes** · **UDT update/delete can't target rows (delete silently no-ops)** | High — one hard break, three data-integrity hazards |
 | [25.2](#p21-252) | `DatawindowName` required in change requests | High — hard break for 3-param change calls |
 
 ---
@@ -118,6 +118,37 @@ A client that treats the 400 as "the change did not happen" is wrong: part of it
 **Mitigation (verified):** write **one field per `/change` call** and check the status of every call, so a failure is unambiguously attributable to one field. Then prove the result with a **read-back** — see [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone). A production run of 81 records using this pattern read back with zero silent drops.
 
 > **Correction (July 2026).** This entry originally reported the mechanism as *"a batch containing a field on a **non-active tab** returns `Status: 1` while silently not applying that field."* That does **not** reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, `DatawindowName` supplied and omitted, target tab active and inactive — the non-active-tab field was **applied every time** with `Status: 1`. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch **is** genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged. If you can reproduce the non-active-tab drop on any 2026.1 build, please [open an issue](https://github.com/mrwuss/p21-api-documentation/issues/new?template=bug-report.md) with the window and field names.
+
+### 7. UDT Service update/delete cannot target rows in a UDT created on 2026.1
+
+**Data-integrity hazard — silent false success on delete.**
+
+> **Verification scope:** unlike entries 1–6, this one has **no prior-version comparison** — by the time it was found, no pre-2026.1 tenant remained available. What follows is verified on 2026.1; whether it is a *regression* or has always depended on how the table was created is **unproven**. Treated as a 2026.1 hazard because 2026.1's table-creation UI is what produces the incompatible shape.
+
+`PUT /udtservice/api/udtdata/updateudtdata` and `DELETE .../deleteudtdata` identify rows by a column named **exactly `row_uid`**. P21's **User Defined Table Maintenance** on 2026.1 names the primary key **`udt_{tablename}_uid`** and creates **no** `row_uid` column — so on any UDT built there, neither endpoint can reach a single row:
+
+```jsonc
+// Update — returns this for EVERY condition: the real PK name, any other
+// column, any casing, value as string or int.
+400 {"error": ["Invalid Row Uid!"]}
+
+// Delete — HTTP 200, and nothing is deleted.
+200 {"id": 0, "errorNo": 0,
+     "errorMessage": "[0] rows deleted from [udt_bulk_probe] table successfully!"}
+```
+
+The delete is the dangerous half. `errorNo: 0` and the word *"successfully"* read as a clean delete to any client checking status or `errorNo` — **only the `[0]` row count reveals it did nothing.** A purge or retention job built on this reports success indefinitely while the table grows without bound.
+
+Confirm the column is genuinely absent rather than mis-typed:
+
+```http
+GET /odataservice/odata/table/{udt}?$select=row_uid
+→ 404 "Could not find a property named 'row_uid' on type 'dbo.{udt}'."
+```
+
+**Mitigation:** before relying on UDT update/delete, **check that `row_uid` exists** (above). If it doesn't, these endpoints cannot reach your data at all — use P21's maintenance UI or direct SQL, and don't build an integration on them. Where they *do* work, **parse the `[N]` row count out of `errorMessage`** and treat `[0]` as a failure; never trust `errorNo: 0` alone. The `row_uid` convention is well-attested by the contributors who first documented these endpoints, so tables predating 2026.1 evidently do carry the column. Full detail: [UDT Service API § Update](13-UDT-Service-API.md#update).
+
+Related payload trap: **delete reads `conditions` from the payload's top level**, not nested inside `rows[]` — the nested form returns `400 {"error":["Conditions cannot be blank or none!"]}` on 2026.1. See [UDT Service API § Delete](13-UDT-Service-API.md#delete).
 
 ### Related 2026.1 observations (not breaking changes)
 

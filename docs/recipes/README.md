@@ -95,7 +95,7 @@ public sealed class P21Session
 ```
 <!-- /tabs -->
 
-**Validate payloads before posting.** Shape mistakes (a string where an array belongs, `IgnoreDisabled` at the wrong level, booleans in quotes) fail in confusing ways. Run [`scripts/validate_payload.py`](../../scripts/validate_payload.py) on your payload file (JSON or XML) — it checks structure and field names against [`definitions/`](../../definitions/README.md) offline. See [Payload Anatomy](../03-Transaction-API.md#payload-anatomy----types-nesting-and-common-mistakes).
+**Validate payloads before posting.** Shape mistakes (a string where an array belongs, `IgnoreDisabled` at the wrong level, booleans in quotes) fail in confusing ways. Run [`scripts/validate_payload.py`](../../scripts/validate_payload.py) on your payload file (JSON or XML) — it checks structure and field names against [`definitions/`](../../definitions/README.md) offline. See [Payload Anatomy](../03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes).
 
 **Check the result, not the HTTP status.** The Transaction API returns HTTP 200 even when everything failed. Every recipe checks `Summary.Succeeded` / `Summary.Failed` and prints `Messages` on failure; transactions in one POST pass/fail independently.
 

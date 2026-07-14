@@ -440,6 +440,13 @@
 <li><a href="#validation-errors">Validation Errors</a></li>
 </ul>
 </li>
+<li><a href="#udt-service-errors">UDT Service Errors</a><ul>
+<li><a href="#invalid-row-uid-on-every-update-20261">"Invalid Row Uid!" on Every Update (2026.1)</a></li>
+<li><a href="#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">"[0] rows deleted ... successfully!" — a Delete That Deletes Nothing (2026.1)</a></li>
+<li><a href="#conditions-cannot-be-blank-or-none-on-delete-20261">"Conditions cannot be blank or none!" on Delete (2026.1)</a></li>
+<li><a href="#invalid-udt-table-incompatible-table-for-bulk-insert">"Invalid UDT table" / "Incompatible table for bulk insert"</a></li>
+</ul>
+</li>
 <li><a href="#python-error-handling">Python Error Handling</a><ul>
 <li><a href="#httpx-error-handling">httpx Error Handling</a></li>
 <li><a href="#transaction-api-error-handling">Transaction API Error Handling</a></li>
@@ -838,6 +845,41 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 </code></pre></div>
 
 <p><strong>Solution</strong>: Check the <code>Errors</code> array for specific issues.</p>
+<hr />
+<h2 id="udt-service-errors">UDT Service Errors</h2>
+<h3 id="invalid-row-uid-on-every-update-20261"><code>"Invalid Row Uid!"</code> on Every Update (2026.1)</h3>
+<div class="highlight"><pre><span></span><code><span class="mi">400</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Invalid Row Uid!&quot;</span><span class="p">]}</span>
+</code></pre></div>
+
+<p>The update and delete endpoints identify rows by a column named <strong>exactly <code>row_uid</code></strong>. A UDT created by 2026.1's User Defined Table Maintenance has its primary key named <code>udt_{tablename}_uid</code> and <strong>no <code>row_uid</code></strong> — so this error comes back for <em>every</em> condition you try, including the real PK name.</p>
+<p><strong>Check whether the column exists at all</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/{udt}?$select=row_uid</span>
+<span class="err">→ 404 &quot;Could not find a property named &#39;row_uid&#39; on type &#39;dbo.{udt}&#39;.&quot;</span>
+</code></pre></div>
+
+<p><strong>Solution</strong>: if there's no <code>row_uid</code>, these endpoints cannot reach your data — use P21's maintenance UI or direct SQL. Details: <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a> · <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
+<h3 id="0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261"><code>"[0] rows deleted ... successfully!"</code> — a Delete That Deletes Nothing (2026.1)</h3>
+<div class="highlight"><pre><span></span><code><span class="mi">200</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;errorNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">&quot;errorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;[0] rows deleted from [udt_example] table successfully!&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p>⚠️ <strong>This is a success response that did nothing.</strong> <code>errorNo: 0</code> and the word <em>"successfully"</em> pass every ordinary status check — only the <code>[0]</code> row count betrays it. On a UDT without <code>row_uid</code> (see above), <strong>every</strong> delete returns this. A purge or retention job built on it reports success forever while the table grows without bound.</p>
+</blockquote>
+<p><strong>Solution</strong>: parse the <code>[N]</code> count out of <code>errorMessage</code> and treat <code>[0]</code> as a failure — never trust <code>errorNo: 0</code> alone. Confirm with a row-count read-back over OData.</p>
+<h3 id="conditions-cannot-be-blank-or-none-on-delete-20261"><code>"Conditions cannot be blank or none!"</code> on Delete (2026.1)</h3>
+<div class="highlight"><pre><span></span><code><span class="mi">400</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Conditions cannot be blank or none!&quot;</span><span class="p">]}</span>
+</code></pre></div>
+
+<p>The delete endpoint reads <code>conditions</code> from the payload's <strong>top level</strong>, unlike update which reads them from inside <code>rows[]</code>. Sending the nested form produces this error even though <code>conditions</code> is clearly populated.</p>
+<p><strong>Solution</strong>: move <code>conditions</code> up a level — <code>{"table": "...", "conditions": [...]}</code>. Details: <a href="13-UDT-Service-API.html#delete">UDT Service API § Delete</a>.</p>
+<h3 id="invalid-udt-table-incompatible-table-for-bulk-insert"><code>"Invalid UDT table"</code> / <code>"Incompatible table for bulk insert"</code></h3>
+<div class="highlight"><pre><span></span><code><span class="mi">400</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;errorNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4001</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;errorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Invalid UDT table&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">}</span><span class="w">   </span><span class="c1">// udtdata endpoints</span>
+<span class="mi">400</span><span class="w"> </span><span class="s2">&quot;Incompatible table for bulk insert: supplier&quot;</span><span class="w">                 </span><span class="c1">// bulkupload endpoint</span>
+</code></pre></div>
+
+<p>Both mean the target isn't a registered UDT. Pass the <strong><code>udt_</code>-prefixed name</strong> (<code>udt_custom_orders</code>) — the bare name from the maintenance window (<code>custom_orders</code>) and the <code>udv_</code> view name are both rejected. Ordinary P21 tables are rejected too, by design.</p>
+<p><strong>Solution</strong>: confirm the exact name in <code>master_udt_definition.udt_table_name</code> over OData.</p>
 <hr />
 <h2 id="python-error-handling">Python Error Handling</h2>
 <h3 id="httpx-error-handling">httpx Error Handling</h3>

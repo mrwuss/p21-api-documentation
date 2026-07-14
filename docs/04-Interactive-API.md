@@ -1165,7 +1165,7 @@ See the `examples/python/interactive/` directory:
 | Shift Maintenance | Shift | Shift definitions |
 | Production Order Processing | ProductionOrderProcessing | Process/complete production orders |
 
-> **Pick confirmation MUST be windowed.** A Transaction-API-only confirm produces a shell — the status flips and `qty_confirmed` is set, but `qty_applied` stays 0 and no stock moves. See [Confirming the Pick](12-Production-Labor-API.md#confirming-the-pick--use-the-interactive-api).
+> **Pick confirmation MUST be windowed.** A Transaction-API-only confirm produces a shell — the status flips and `qty_confirmed` is set, but `qty_applied` stays 0 and no stock moves. See [Confirming the Pick](12-Production-Labor-API.md#confirming-the-pick-use-the-interactive-api).
 
 See [Production & Labor API](12-Production-Labor-API.md) for detailed field definitions.
 
@@ -1936,7 +1936,7 @@ public async Task SelectRowSafeAsync(Window window, int row, string datawindowNa
 
 <!-- /tabs -->
 
-**Important:** This is different from the [row selection synchronization bug](#row-selection-synchronization-bug-list--detail) documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.
+**Important:** This is different from the [row selection synchronization bug](#row-selection-synchronization-bug-list-detail) documented above. That bug is about list-to-detail data sync being one row behind. This quirk is specifically about row 0 being pre-selected after a tab switch.
 
 ### Key Fields Commit the Cursor (Later Fields Silently Ignored)
 
