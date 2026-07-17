@@ -18,6 +18,7 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | [production-order-runbook](production-order-runbook.md) | Full production cycle: create → print → confirm → complete → ship | Transaction + Interactive |
 | [record-labor-time](record-labor-time.md) | Post labor hours to a production order | Transaction (`TimeEntry`) |
 | [inventory-adjustment](inventory-adjustment.md) | Adjust on-hand quantity (write-offs) | Transaction (`InventoryAdjustment`) |
+| [update-supplier-contact](update-supplier-contact.md) | Write a supplier's email / central phone (shared `address` record) | Transaction (`Address`) |
 
 ## Shared conventions (recipes don't repeat these)
 
