@@ -1,6 +1,6 @@
 # P21 Service Definitions (Schema Library)
 
-Raw Transaction API **service definitions** — one JSON per P21 window/service, fetched from a live 25.2 system. This is the authoritative full-field schema for building payloads: every service's tabs, datawindows, key fields, and field definitions (`DbColumnName`, `DataType`, `Required`, `Label`), plus a ready-to-populate `Template` payload skeleton.
+Raw Transaction API **service definitions** — one JSON per P21 window/service, fetched from a live P21 system (most from 25.2; `ConvertPOToVoucher`, `RequisitionPurchaseOrder`, `Salesrep`, and `VoucherByItem` from 26.1.5894.1). This is the authoritative full-field schema for building payloads: every service's tabs, datawindows, key fields, and field definitions (`DbColumnName`, `DataType`, `Required`, `Label`), plus a ready-to-populate `Template` payload skeleton. `_manifest.json` records the per-run fetch date; a partial `--services` refresh updates only the services it touches.
 
 Load **one file for the service you're working on** — don't read the folder.
 
@@ -40,6 +40,6 @@ Set `P21_SCRUB_TERMS` (comma-separated company identifiers) before publishing an
 
 ## Services included
 
-The services documented in [`docs/`](../docs/INDEX.md): Assembly, BinLocation, Customer, InventoryAdjustment, Item, JobContractPricing, Labor, LaborProcess, Order, ProductionOrder, ProductionOrderPicking, ProductionOrderProcessing, PurchaseOrder, SalesPricePage, Shipping, Supplier, TimeEntry, and the report services `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor`.
+The services documented in [`docs/`](../docs/INDEX.md): Assembly, BinLocation, ConvertPOToVoucher, Customer, InventoryAdjustment, Item, JobContractPricing, Labor, LaborProcess, Order, ProductionOrder, ProductionOrderPicking, ProductionOrderProcessing, PurchaseOrder, RequisitionPurchaseOrder, Salesrep, SalesPricePage, Shipping, Supplier, TimeEntry, VoucherByItem, and the report services `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor`.
 
 > **Credit:** the schema-library pattern comes from [Alex Westemeier](https://github.com/AWestemeier)'s process playbook.

@@ -432,6 +432,8 @@
             <ul class="nav-pages">
         <li><a href="recipes/README.html">Recipes Overview</a></li>
         <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+        <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
         <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
         <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
         <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -441,6 +443,7 @@
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+        <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -546,6 +549,10 @@
 <tr>
 <td>New table/column missing from OData</td>
 <td><a href="02-OData-API.html#odata-schema-refresh">02 § OData Schema Refresh</a></td>
+</tr>
+<tr>
+<td>Table reads fine but is empty/inert (undeployed feature, e.g. zip→rep)</td>
+<td><a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">02 § Undeployed / Unlicensed Windows</a></td>
 </tr>
 </tbody>
 </table>
@@ -680,6 +687,21 @@
 <td><a href="08-SalesPricePage-Codes.html">08 SalesPricePage Codes</a></td>
 </tr>
 <tr>
+<td><strong>Create a customer</strong> (salesrep_id + default_branch gotchas, no zip→rep cascade)</td>
+<td><a href="recipes/create-customer.html">create-customer</a></td>
+<td><a href="03-Transaction-API.html#common-services">03 § Common Services</a></td>
+</tr>
+<tr>
+<td><strong>Create a requisition PO</strong> (<code>po_type</code> 'R'; disabled <code>po_hdr_po_type</code>; vendor vs supplier)</td>
+<td><a href="recipes/create-requisition-po.html">create-requisition-po</a></td>
+<td><a href="03-Transaction-API.html#purchase-order-types-and-the-disabled-po_hdr_po_type-column">03 § Purchase Order Types</a></td>
+</tr>
+<tr>
+<td><strong>GL dimensions via API</strong> (voucher services carry them; POs don't)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#gl-dimensions-in-the-api">03 § GL Dimensions in the API</a></td>
+</tr>
+<tr>
 <td>Customers / vendors / contacts / addresses (simple CRUD)</td>
 <td>—</td>
 <td><a href="05-Entity-API.html#crud-operations">05 § CRUD Operations</a></td>
@@ -736,6 +758,10 @@
 <tr>
 <td>Find field / tab / datawindow names</td>
 <td><a href="04-Interactive-API.html#finding-field-names">04 § Finding Field Names</a> · <a href="04-Interactive-API.html#window-discovery-techniques">04 § Window Discovery</a></td>
+</tr>
+<tr>
+<td>Open a window (use <code>ServiceName</code> — Name/Title can 400) · map window→service</td>
+<td><a href="04-Interactive-API.html#2-open-window">04 § Open Window</a> · <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">04 § Window→Service Discovery</a></td>
 </tr>
 <tr>
 <td><strong>Handle popups / response windows</strong> (Status 3, windowopened)</td>

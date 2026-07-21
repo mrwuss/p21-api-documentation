@@ -432,6 +432,8 @@
             <ul class="nav-pages">
         <li><a href="recipes/README.html">Recipes Overview</a></li>
         <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+        <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
         <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
         <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
         <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -441,6 +443,7 @@
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+        <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -495,6 +498,7 @@
 </ul>
 </li>
 <li><a href="#common-tables">Common Tables</a></li>
+<li><a href="#undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed / Unlicensed Windows: Readable Tables, No API Surface</a></li>
 <li><a href="#examples">Examples</a><ul>
 <li><a href="#basic-query">Basic Query</a></li>
 <li><a href="#filtered-query">Filtered Query</a></li>
@@ -1021,6 +1025,53 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed / Unlicensed Windows: Readable Tables, No API Surface</h2>
+<p>OData exposes the <strong>schema</strong>, not the deployment state. A table can be fully readable over OData while the feature that populates it is <strong>undeployed or unlicensed</strong> — its maintenance window is classic-desktop-only and it has no Transaction/Interactive API surface. The rows you read are then <strong>dead storage</strong>: nothing writes them and no business logic consults them.</p>
+<p>The clearest verified example (26.1.5894.1, play, July 2026) is the <strong>native zip → salesrep/territory</strong> family. The schema is present and OData-readable, but on an install where the module is undeployed the tables are empty and inert:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Contents</th>
+<th>OData</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>postal_code_group_hdr</code></td>
+<td>zip-group id/desc per company, <code>primary_salesrep_id</code>, <code>territory_uid</code>, <code>default_sales_location_id</code>, source-location ids</td>
+<td>readable</td>
+</tr>
+<tr>
+<td><code>postal_code_group_detail</code></td>
+<td><code>from_postal_code</code>/<code>to_postal_code</code> ranges per group</td>
+<td>readable</td>
+</tr>
+<tr>
+<td><code>postal_code_group_location_priority</code></td>
+<td>ranked location list per group</td>
+<td>readable</td>
+</tr>
+<tr>
+<td><code>salesrep_postalcode</code></td>
+<td><code>salesrep_id</code> + <code>start_postal_code</code>/<code>end_postal_code</code> (simpler, likely older)</td>
+<td>readable</td>
+</tr>
+<tr>
+<td><code>ideal_locations_by_zip</code></td>
+<td>location-sourcing-by-zip (paired with the "Import Ideal Locations" menu item)</td>
+<td>readable</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why there's no write path:</strong></p>
+<ul>
+<li><strong>Window:</strong> "Postal Code Group Maintenance" (<code>w_postal_code_group_maint</code>), AR › Maintenance — <strong>classic desktop only</strong> (<code>frame_menu</code>: <code>new_ui_enabled='N'</code>, <code>angular_enabled='N'</code>, <code>service_name</code> <strong>NULL</strong>). A NULL <code>service_name</code> is the tell that there is no API surface (see <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">Window→Service Discovery</a>).</li>
+<li><strong>Transaction API:</strong> no service — absent from <code>/api/v2/services</code>; plausible hidden names all 500 on <code>/definition</code>.</li>
+<li><strong>Interactive API:</strong> by-Name open returns 400 <em>"not available or user does not have permission"</em> — the <a href="03-Transaction-API.html#endpoints">undeployed-window signal</a>, not a grantable permission.</li>
+</ul>
+<p><strong>Behavioral consequence — verified:</strong> seeding matching rows in <strong>both</strong> <code>salesrep_postalcode</code> and <code>postal_code_group_hdr</code>+<code>detail</code> (a zip mapped to a deliberately wrong-region rep) and then creating a customer with that zip in the mailing and physical address <strong>does not</strong> default <code>salesrep_id</code>. The create fails <em>"Salesrep ID is required for a new ship to."</em> until the rep is supplied explicitly — <a href="recipes/create-customer.html">Customer create</a> never consults these tables when the module is undeployed. So: <strong>readable ≠ live.</strong> Treat OData-visibility of a feature table as evidence the schema exists, not that the feature is active on your install.</p>
 <hr />
 <h2 id="examples">Examples</h2>
 <h3 id="basic-query">Basic Query</h3>

@@ -432,6 +432,8 @@
             <ul class="nav-pages">
         <li><a href="recipes/README.html">Recipes Overview</a></li>
         <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+        <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
         <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
         <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
         <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -441,6 +443,7 @@
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+        <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -474,6 +477,7 @@
 <li><a href="#common-services">Common Services</a><ul>
 <li><a href="#report-services">Report Services</a></li>
 <li><a href="#production-assembly-labor-services">Production, Assembly &amp; Labor Services</a></li>
+<li><a href="#purchase-order-types-and-the-disabled-po_hdr_po_type-column">Purchase Order Types and the disabled po_hdr_po_type column</a></li>
 </ul>
 </li>
 <li><a href="#response-format">Response Format</a><ul>
@@ -526,6 +530,7 @@
 <li><a href="#pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint (print flags)</a></li>
 </ul>
 </li>
+<li><a href="#gl-dimensions-in-the-api">GL Dimensions in the API</a></li>
 <li><a href="#stored-procedure-executor">Stored Procedure Executor</a><ul>
 <li><a href="#discovery">Discovery</a></li>
 <li><a href="#loading-a-stored-procedure-definition">Loading a Stored Procedure Definition</a></li>
@@ -1063,7 +1068,12 @@
 <tr>
 <td><code>PurchaseOrder</code></td>
 <td>Purchase Order Entry</td>
-<td>Create POs</td>
+<td>Create POs (Regular). Pick a non-Regular PO type via a <strong>type-specific service</strong>, not by setting <code>po_hdr_po_type</code> — see <a href="#purchase-order-types-and-the-disabled-po_hdr_po_type-column">Purchase Order Types</a></td>
+</tr>
+<tr>
+<td><code>RequisitionPurchaseOrder</code></td>
+<td>Purchase Order Entry (type preset to Requisition)</td>
+<td>Create requisition (internal / not-for-resale) POs — <code>po_hdr.po_type = 'R'</code>. Same window as PO Entry; easy to miss in <code>/api/v2/services</code>. See <a href="recipes/create-requisition-po.html">create-requisition-po</a></td>
 </tr>
 <tr>
 <td><code>InventoryMaster</code></td>
@@ -1177,6 +1187,63 @@
 </tbody>
 </table>
 <p>See <a href="12-Production-Labor-API.html">Production &amp; Labor API</a> for detailed field definitions and examples.</p>
+<h3 id="purchase-order-types-and-the-disabled-po_hdr_po_type-column">Purchase Order Types and the disabled <code>po_hdr_po_type</code> column</h3>
+<p>You <strong>cannot</strong> choose a PO type by setting <code>po_hdr_po_type</code> on the <code>PurchaseOrder</code> service — it is a <strong>disabled column</strong> and sending it fails with <code>Column is disabled: po_hdr_po_type</code>. The PO type is selected by choosing the <strong>type-specific service</strong> instead (each maps to the same PO Entry window, <code>w_purchase_order_entry_sheet</code>, with the type preset). <code>RequisitionPurchaseOrder</code> is the verified example; see <a href="recipes/create-requisition-po.html">create-requisition-po</a>.</p>
+<p>The <code>po_hdr_po_type</code> <code>ValidValues</code> in the definition carry <strong>display names only, no code list</strong> — the stored <code>po_hdr.po_type</code> letters are undocumented. Verified/inferred mapping from the definition's display list plus live data:</p>
+<table>
+<thead>
+<tr>
+<th>Letter</th>
+<th>Display name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>B</code></td>
+<td>Regular</td>
+<td>Backorder</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>Regular</td>
+<td>Stock replenishment (both <code>B</code> and <code>S</code> display "Regular")</td>
+</tr>
+<tr>
+<td><code>P</code></td>
+<td>Special</td>
+<td></td>
+</tr>
+<tr>
+<td><code>D</code></td>
+<td>Direct Ship</td>
+<td></td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>Non-Stock</td>
+<td></td>
+</tr>
+<tr>
+<td><code>R</code></td>
+<td><strong>Requisition</strong></td>
+<td><strong>verified</strong> via <code>RequisitionPurchaseOrder</code> create + DB read-back</td>
+</tr>
+<tr>
+<td><code>X</code></td>
+<td>Process PO</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Q</code></td>
+<td>Vendor RFQ</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Only <code>R</code> (Requisition) is verified end-to-end; the rest are inferred from the display-name order and live data — treat them as strong hints, not confirmed. Environment: 26.1.5894.1 (play), July 2026.</p>
+</blockquote>
 <hr />
 <h2 id="response-format">Response Format</h2>
 <h3 id="success-response">Success Response</h3>
@@ -3272,6 +3339,59 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </ul>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
+</blockquote>
+<hr />
+<h2 id="gl-dimensions-in-the-api">GL Dimensions in the API</h2>
+<p>GL dimensions (P21's dimensional-accounting tags) attach to accounting lines, <strong>not to purchase orders</strong>. If you need a PO pre-tagged with a dimension, the PO tables can't carry it — the tag must be applied downstream at vouchering, invoicing, or journal-entry time.</p>
+<p><strong>Where dimensions live in the schema:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gl_dimen_type</code> / <code>gl_dimen_type_x_value</code></td>
+<td>Dimension types (<code>record_type_cd</code> 932 user / 933 system) and their valid values</td>
+</tr>
+<tr>
+<td><code>gl</code> (<code>gl_dimen_type_uid</code>, <code>gl_dimension_id</code>)</td>
+<td>One dimension per GL distribution row</td>
+</tr>
+<tr>
+<td><code>apinv_line</code> (+ <code>recur_apinv_line</code>)</td>
+<td>One dimension per AP voucher line — the manual-tagging-at-voucher-entry surface</td>
+</tr>
+<tr>
+<td><code>invoice_line</code></td>
+<td>One dimension per AR invoice line</td>
+</tr>
+<tr>
+<td><code>oe_hdr.gl_dimension_project_no</code></td>
+<td>Project dimension on an order header (hidden field, added via Field Chooser)</td>
+</tr>
+<tr>
+<td><code>trans_x_gl_dimension</code> / <code>gl_trans_x_dimension</code></td>
+<td>Multi-dimension tags at transaction / journal-entry level</td>
+</tr>
+<tr>
+<td><strong><code>po_hdr</code> / <code>po_line</code></strong></td>
+<td><strong>No dimension columns at all</strong> — POs are outside the dimension model</td>
+</tr>
+</tbody>
+</table>
+<p>Dimensions are labels, not postings: P21 lets you edit them after posting by design, with dedicated audit-trail tables.</p>
+<p><strong>Which services expose the fields:</strong> the voucher-creation services <strong><code>ConvertPOToVoucher</code></strong> and <strong><code>VoucherByItem</code></strong> both carry the dimension fields (<code>gl_dimen_type_id</code>, <code>gl_dimen_type_uid</code>, <code>gl_dimension_id</code>, <code>gl_dimension_desc</code>, <code>gl_dimen_type_desc</code>) <strong>plus a <code>TP_TRANS_X_GL_DIMENSION.tp_trans_x_gl_dimension</code> List</strong> — the transaction-level multi-dimension grid. <code>VoucherByItem</code> additionally exposes the dimension fields on its line grid (<code>TABPAGE_17.tp_17_dw_17</code>). So voucher-creation automation <em>can</em> apply GL dimensions at vouchering time. Full schema: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ConvertPOToVoucher.json">ConvertPOToVoucher.json</a>, <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/VoucherByItem.json">VoucherByItem.json</a>.</p>
+<p><strong>Gotchas:</strong></p>
+<ul>
+<li><strong>Pre-tagging a PO is not possible</strong> through native columns — <code>po_hdr</code>/<code>po_line</code> have no dimension fields. A PO can only carry a dimension via user-defined (UD) fields; the dimension itself attaches from a voucher/invoice/JE surface.</li>
+<li><strong><code>VendorInvoice</code> returns HTTP 500 on <code>/api/v2/definition</code></strong> (the <a href="#endpoints">unavailable-window signal</a>) even though it appears in <code>/api/v2/services</code> — use <code>ConvertPOToVoucher</code> / <code>VoucherByItem</code> for voucher automation.</li>
+<li><code>ConvertPOToVoucher</code> is a <strong>commands-endpoint</strong> service with field-ordering sensitivities (see <a href="#field-order-matters">Field Order Matters</a> and the <a href="14-Breaking-Changes.html">25.2 breaking changes</a>).</li>
+</ul>
+<blockquote>
+<p>Verified on 26.1.5894.1 (play), July 2026.</p>
 </blockquote>
 <hr />
 <h2 id="stored-procedure-executor">Stored Procedure Executor</h2>

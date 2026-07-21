@@ -184,9 +184,9 @@ There are four ways to identify which window to open:
 
 | Method | Field | Example | When to Use |
 |--------|-------|---------|-------------|
-| Service name | `ServiceName` | `"SalesPricePage"` | Most reliable for multi-transaction windows (recommended) |
-| Menu title | `Title` | `"Sales Price Page Entry"` | Matches the menu label text in P21 |
-| Window name | `Name` | `"w_sales_price_page"` | Internal window name (if known) |
+| Service name | `ServiceName` | `"SalesPricePage"` | **Recommended — the only reliable identifier.** Works for every openable window |
+| Menu title | `Title` | `"Sales Price Page Entry"` | Matches the menu label text — but can 400 where `ServiceName` succeeds (see caveat below) |
+| Window name | `Name` | `"w_sales_price_page"` | Internal window name — same unreliability as `Title` |
 | Menu ID | `MenuId` | `12345` | Numeric menu ID from P21 |
 
 ```json
@@ -211,6 +211,16 @@ Response:
     "DataElements": [...]
 }
 ```
+
+> **Use `ServiceName` — the by-Name and by-Title paths are unreliable.** On 26.1 (verified 26.1.5894.1, July 2026), opening by `Name` or `Title` can be **rejected with HTTP 400 even for a window whose `ServiceName` opens fine**:
+>
+> ```text
+> {"ServiceName": "Territory"}                 -> 200, window opens
+> {"Name": "w_territory_maint"}                -> 400 "Cannot open window w_territory_maint because is not available or user <API_USER> does not have permission."
+> {"Title": "Postal Code Group Maintenance"}   -> 400 (the window name resolves to empty in the error text)
+> ```
+>
+> Despite the "not available or user does not have permission" wording, this is the same [undeployed/unavailable-window signal](03-Transaction-API.md#endpoints) seen on the Transaction API — a window is only reliably API-openable through a **registered service name**. Discover the service name for a window via `frame_menu.service_name` (see [Window→Service Discovery](#8-window-to-service-discovery-frame_menu)). Prefer `ServiceName` for every open.
 
 ### 3. Change Data
 
@@ -497,6 +507,27 @@ When using the P21 Web Client, open your browser's Developer Tools (F12) and wat
 For windows that also exist as Transaction API services (Order, PurchaseOrder, Item, etc.), `GET /api/v2/definition/{ServiceName}` returns the full schema: every DataElement with its `DatawindowName`, `Type` (`Form`/`List`), `KeyFields`, and `FieldDefinitions[]` (field `Name`, `DbColumnName`, `DataType`, `Required`). This is the fastest way to enumerate which datawindows exist and which column names a write needs. See [Get Service Definition](03-Transaction-API.md#get-service-definition) in the Transaction API guide.
 
 > **Warning — don't derive `TABPAGE_N` from the visible tab order:** The `TABPAGE_N` names are **not** sequential with the tabs you see in the UI. The PurchaseOrder window, for example, has 37 tab pages — many disabled or hidden, split across the header and detail bands — so the Items grid that *looks* like the second tab is actually `TABPAGE_17` (`tp_17_dw_17`). Counting visible tabs gives you the wrong name. Read the `TabPageList` from the window state (`GET /api/ui/interactive/v2/window?id={windowId}`) or cross-reference on the **datawindow name** (`tp_N_dw_N` / `d_...`). On the servers tested (25.2/26.x), the Interactive window's `TABPAGE_N` names matched the Transaction API definition's 1:1 — the datawindow name remains the safest identifier either way.
+
+### 8. Window-to-Service Discovery (`frame_menu`)
+
+Because [opening by `Name`/`Title` is unreliable](#2-open-window) and only a registered **service name** reliably opens a window, you need a way to map a menu item / `w_*` window to its service name. The `Prophet21.dbo.frame_menu` table is that map:
+
+```sql
+SELECT menu_item_name,      -- the menu label ("Territory Maintenance")
+       stringparm,          -- the w_* window name ("w_territory_maint")
+       service_name,        -- the ServiceName to open it with ("Territory") — NULL = no API surface
+       enabled,             -- menu item enabled
+       new_ui_enabled,      -- available in the new (web) UI
+       angular_enabled      -- available in the Angular client
+FROM   frame_menu
+WHERE  stringparm LIKE 'w[_]%';
+```
+
+- **`service_name`** is the identifier to pass as `ServiceName` — e.g. Territory Maintenance → `Territory`, Territory Group Maintenance → `TerritoryGroup`.
+- **`service_name IS NULL`** marks a window with **no API surface at all** — it 500s on `GET /api/v2/definition/{guess}` and 400s on an Interactive by-Name open. On the tested 26.1 system, Zip Code Maintenance (`w_zip_code_maint`) and Postal Code Group Maintenance (`w_postal_code_group_maint`) are both NULL — classic-desktop-only, undeployed windows (see [Undeployed/unavailable windows](02-OData-API.md#undeployed-unlicensed-windows-readable-tables-no-api-surface)).
+- This complements the [`window_x_menu` discovery path](03-Transaction-API.md#pdf-report-generation) documented for report (`m_*`) services: `window_x_menu` finds callable report names; `frame_menu.service_name` finds the interactive/transaction service name behind a maintenance window.
+
+> Environment: verified on 26.1.5894.1 (play), July 2026. (The "does not have permission" wording names whichever user is calling — it's an availability signal, not a grantable permission.)
 
 ---
 

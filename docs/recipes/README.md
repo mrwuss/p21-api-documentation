@@ -19,6 +19,8 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | [record-labor-time](record-labor-time.md) | Post labor hours to a production order | Transaction (`TimeEntry`) |
 | [inventory-adjustment](inventory-adjustment.md) | Adjust on-hand quantity (write-offs) | Transaction (`InventoryAdjustment`) |
 | [update-supplier-contact](update-supplier-contact.md) | Write a supplier's email / central phone (shared `address` record) | Transaction (`Address`) |
+| [create-customer](create-customer.md) | Create a customer master record (salesrep + default_branch gotchas) | Transaction (`Customer`) |
+| [create-requisition-po](create-requisition-po.md) | Create a requisition PO (`po_type` 'R'; vendor vs supplier) | Transaction (`RequisitionPurchaseOrder`) |
 
 ## Shared conventions (recipes don't repeat these)
 

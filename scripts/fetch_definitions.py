@@ -59,6 +59,7 @@ OUTPUT_DIR = REPO_ROOT / "definitions"
 DOCUMENTED_SERVICES = [
     "Assembly",
     "BinLocation",
+    "ConvertPOToVoucher",
     "Customer",
     "InventoryAdjustment",
     "Item",
@@ -70,10 +71,13 @@ DOCUMENTED_SERVICES = [
     "ProductionOrderPicking",
     "ProductionOrderProcessing",
     "PurchaseOrder",
+    "RequisitionPurchaseOrder",
+    "Salesrep",
     "SalesPricePage",
     "Shipping",
     "Supplier",
     "TimeEntry",
+    "VoucherByItem",
     # Report services (hidden from /api/v2/services but callable)
     "m_picktickets",
     "m_reprintpicktickets",
@@ -230,14 +234,35 @@ def main() -> int:
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    manifest = {"fetched_date": date.today().isoformat(), "sanitized": not args.no_sanitize,
-                "ok": [], "skipped": {}}
+
+    # Merge into the existing manifest so a partial ``--services`` run doesn't
+    # erase the record of definitions fetched in earlier runs. Per-service
+    # results from this run supersede any earlier entry for the same service.
+    manifest_path = out_dir / "_manifest.json"
+    manifest = {"ok": [], "skipped": {}}
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            manifest = {"ok": [], "skipped": {}}
+    manifest["fetched_date"] = date.today().isoformat()
+    manifest["sanitized"] = not args.no_sanitize
+    ok = {s for s in manifest.get("ok", [])}
+    skipped = dict(manifest.get("skipped", {}))
+
+    def record_ok(name: str) -> None:
+        ok.add(name)
+        skipped.pop(name, None)
+
+    def record_skip(name: str, reason: str) -> None:
+        skipped[name] = reason
+        ok.discard(name)
 
     for name in services:
         resp = client.get(f"{ui_server}/api/v2/definition/{name}", headers=headers)
         if resp.status_code != 200:
             reason = resp.text[:200]
-            manifest["skipped"][name] = f"HTTP {resp.status_code}: {reason}"
+            record_skip(name, f"HTTP {resp.status_code}: {reason}")
             print(f"  SKIP {name}: HTTP {resp.status_code}")
             continue
         definition = resp.json()
@@ -246,15 +271,17 @@ def main() -> int:
         text = json.dumps(definition, indent=1, sort_keys=True)
         found = scrub_check(text, scrub_terms)
         if found:
-            manifest["skipped"][name] = f"scrub terms present after sanitize: {found}"
+            record_skip(name, f"scrub terms present after sanitize: {found}")
             print(f"  BLOCKED {name}: scrub terms {found} still present -- not written")
             continue
         safe_name = re.sub(r"[^A-Za-z0-9_]", "_", name)
         (out_dir / f"{safe_name}.json").write_text(text + "\n", encoding="utf-8")
-        manifest["ok"].append(name)
+        record_ok(name)
         print(f"  OK   {name} ({len(text) // 1024} KB)")
 
-    (out_dir / "_manifest.json").write_text(
+    manifest["ok"] = sorted(ok)
+    manifest["skipped"] = dict(sorted(skipped.items()))
+    manifest_path.write_text(
         json.dumps(manifest, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     print(f"\nWrote {len(manifest['ok'])} definitions to {out_dir} "
           f"({len(manifest['skipped'])} skipped). Manifest: _manifest.json")

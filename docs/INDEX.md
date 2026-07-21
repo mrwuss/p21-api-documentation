@@ -30,6 +30,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
 | New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |
+| Table reads fine but is empty/inert (undeployed feature, e.g. zip→rep) | [02 § Undeployed / Unlicensed Windows](02-OData-API.md#undeployed-unlicensed-windows-readable-tables-no-api-surface) |
 
 ## Create / update records (Transaction API)
 
@@ -65,6 +66,9 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service-nested-location-edits) |
 | **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service-creating-bins) |
 | **Sales price pages** (codes, breaks, field order) | — | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) |
+| **Create a customer** (salesrep_id + default_branch gotchas, no zip→rep cascade) | [create-customer](recipes/create-customer.md) | [03 § Common Services](03-Transaction-API.md#common-services) |
+| **Create a requisition PO** (`po_type` 'R'; disabled `po_hdr_po_type`; vendor vs supplier) | [create-requisition-po](recipes/create-requisition-po.md) | [03 § Purchase Order Types](03-Transaction-API.md#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
+| **GL dimensions via API** (voucher services carry them; POs don't) | — | [03 § GL Dimensions in the API](03-Transaction-API.md#gl-dimensions-in-the-api) |
 | Customers / vendors / contacts / addresses (simple CRUD) | — | [05 § CRUD Operations](05-Entity-API.md#crud-operations) |
 | Read/create **sales orders via REST** (`/api/sales/orders`) | — | [05 § Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families) |
 | Inventory items: read / create / update locations | — | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
@@ -80,6 +84,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Session → window → change → save lifecycle | [04 § Session Lifecycle](04-Interactive-API.md#session-lifecycle) |
 | v2 payload shapes (save body is the bare GUID, etc.) | [04 § v1 vs v2 API Differences](04-Interactive-API.md#v1-vs-v2-api-differences) |
 | Find field / tab / datawindow names | [04 § Finding Field Names](04-Interactive-API.md#finding-field-names) · [04 § Window Discovery](04-Interactive-API.md#window-discovery-techniques) |
+| Open a window (use `ServiceName` — Name/Title can 400) · map window→service | [04 § Open Window](04-Interactive-API.md#2-open-window) · [04 § Window→Service Discovery](04-Interactive-API.md#8-window-to-service-discovery-frame_menu) |
 | **Handle popups / response windows** (Status 3, windowopened) | [04 § Response Windows](04-Interactive-API.md#response-windows) · [04 § Response Window Types](04-Interactive-API.md#response-window-types) |
 | Answer a rule-callback dialog ("Item Issues Detected") | [04 § Worked Example](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) |
 | Fill fields in a popup (`TabName: null`) | [04 § Response Window Handling (Tabless)](04-Interactive-API.md#response-window-handling-tabless-windows) |

@@ -432,6 +432,8 @@
             <ul class="nav-pages">
         <li><a href="recipes/README.html">Recipes Overview</a></li>
         <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+        <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
         <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
         <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
         <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -441,6 +443,7 @@
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+        <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -479,6 +482,7 @@
 <li><a href="#5-p21-sql-information">5. P21 SQL Information</a></li>
 <li><a href="#6-browser-devtools">6. Browser DevTools</a></li>
 <li><a href="#7-transaction-api-service-definition">7. Transaction API Service Definition</a></li>
+<li><a href="#8-window-to-service-discovery-frame_menu">8. Window-to-Service Discovery (frame_menu)</a></li>
 </ul>
 </li>
 <li><a href="#response-windows">Response Windows</a><ul>
@@ -924,19 +928,19 @@
 <td>Service name</td>
 <td><code>ServiceName</code></td>
 <td><code>"SalesPricePage"</code></td>
-<td>Most reliable for multi-transaction windows (recommended)</td>
+<td><strong>Recommended — the only reliable identifier.</strong> Works for every openable window</td>
 </tr>
 <tr>
 <td>Menu title</td>
 <td><code>Title</code></td>
 <td><code>"Sales Price Page Entry"</code></td>
-<td>Matches the menu label text in P21</td>
+<td>Matches the menu label text — but can 400 where <code>ServiceName</code> succeeds (see caveat below)</td>
 </tr>
 <tr>
 <td>Window name</td>
 <td><code>Name</code></td>
 <td><code>"w_sales_price_page"</code></td>
-<td>Internal window name (if known)</td>
+<td>Internal window name — same unreliability as <code>Title</code></td>
 </tr>
 <tr>
 <td>Menu ID</td>
@@ -966,6 +970,14 @@
 <span class="p">}</span>
 </code></pre></div>
 
+<blockquote>
+<p><strong>Use <code>ServiceName</code> — the by-Name and by-Title paths are unreliable.</strong> On 26.1 (verified 26.1.5894.1, July 2026), opening by <code>Name</code> or <code>Title</code> can be <strong>rejected with HTTP 400 even for a window whose <code>ServiceName</code> opens fine</strong>:</p>
+<p><code>text
+{"ServiceName": "Territory"}                 -&gt; 200, window opens
+{"Name": "w_territory_maint"}                -&gt; 400 "Cannot open window w_territory_maint because is not available or user &lt;API_USER&gt; does not have permission."
+{"Title": "Postal Code Group Maintenance"}   -&gt; 400 (the window name resolves to empty in the error text)</code></p>
+<p>Despite the "not available or user does not have permission" wording, this is the same <a href="03-Transaction-API.html#endpoints">undeployed/unavailable-window signal</a> seen on the Transaction API — a window is only reliably API-openable through a <strong>registered service name</strong>. Discover the service name for a window via <code>frame_menu.service_name</code> (see <a href="#8-window-to-service-discovery-frame_menu">Window→Service Discovery</a>). Prefer <code>ServiceName</code> for every open.</p>
+</blockquote>
 <h3 id="3-change-data">3. Change Data</h3>
 <p><strong>v2 Format (Recommended):</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/cha</span><span class="kc">n</span><span class="err">ge</span>
@@ -1261,6 +1273,26 @@
 <p>For windows that also exist as Transaction API services (Order, PurchaseOrder, Item, etc.), <code>GET /api/v2/definition/{ServiceName}</code> returns the full schema: every DataElement with its <code>DatawindowName</code>, <code>Type</code> (<code>Form</code>/<code>List</code>), <code>KeyFields</code>, and <code>FieldDefinitions[]</code> (field <code>Name</code>, <code>DbColumnName</code>, <code>DataType</code>, <code>Required</code>). This is the fastest way to enumerate which datawindows exist and which column names a write needs. See <a href="03-Transaction-API.html#get-service-definition">Get Service Definition</a> in the Transaction API guide.</p>
 <blockquote>
 <p><strong>Warning — don't derive <code>TABPAGE_N</code> from the visible tab order:</strong> The <code>TABPAGE_N</code> names are <strong>not</strong> sequential with the tabs you see in the UI. The PurchaseOrder window, for example, has 37 tab pages — many disabled or hidden, split across the header and detail bands — so the Items grid that <em>looks</em> like the second tab is actually <code>TABPAGE_17</code> (<code>tp_17_dw_17</code>). Counting visible tabs gives you the wrong name. Read the <code>TabPageList</code> from the window state (<code>GET /api/ui/interactive/v2/window?id={windowId}</code>) or cross-reference on the <strong>datawindow name</strong> (<code>tp_N_dw_N</code> / <code>d_...</code>). On the servers tested (25.2/26.x), the Interactive window's <code>TABPAGE_N</code> names matched the Transaction API definition's 1:1 — the datawindow name remains the safest identifier either way.</p>
+</blockquote>
+<h3 id="8-window-to-service-discovery-frame_menu">8. Window-to-Service Discovery (<code>frame_menu</code>)</h3>
+<p>Because <a href="#2-open-window">opening by <code>Name</code>/<code>Title</code> is unreliable</a> and only a registered <strong>service name</strong> reliably opens a window, you need a way to map a menu item / <code>w_*</code> window to its service name. The <code>Prophet21.dbo.frame_menu</code> table is that map:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">menu_item_name</span><span class="p">,</span><span class="w">      </span><span class="c1">-- the menu label (&quot;Territory Maintenance&quot;)</span>
+<span class="w">       </span><span class="n">stringparm</span><span class="p">,</span><span class="w">          </span><span class="c1">-- the w_* window name (&quot;w_territory_maint&quot;)</span>
+<span class="w">       </span><span class="n">service_name</span><span class="p">,</span><span class="w">        </span><span class="c1">-- the ServiceName to open it with (&quot;Territory&quot;) — NULL = no API surface</span>
+<span class="w">       </span><span class="n">enabled</span><span class="p">,</span><span class="w">             </span><span class="c1">-- menu item enabled</span>
+<span class="w">       </span><span class="n">new_ui_enabled</span><span class="p">,</span><span class="w">      </span><span class="c1">-- available in the new (web) UI</span>
+<span class="w">       </span><span class="n">angular_enabled</span><span class="w">      </span><span class="c1">-- available in the Angular client</span>
+<span class="k">FROM</span><span class="w">   </span><span class="n">frame_menu</span>
+<span class="k">WHERE</span><span class="w">  </span><span class="n">stringparm</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;w[_]%&#39;</span><span class="p">;</span>
+</code></pre></div>
+
+<ul>
+<li><strong><code>service_name</code></strong> is the identifier to pass as <code>ServiceName</code> — e.g. Territory Maintenance → <code>Territory</code>, Territory Group Maintenance → <code>TerritoryGroup</code>.</li>
+<li><strong><code>service_name IS NULL</code></strong> marks a window with <strong>no API surface at all</strong> — it 500s on <code>GET /api/v2/definition/{guess}</code> and 400s on an Interactive by-Name open. On the tested 26.1 system, Zip Code Maintenance (<code>w_zip_code_maint</code>) and Postal Code Group Maintenance (<code>w_postal_code_group_maint</code>) are both NULL — classic-desktop-only, undeployed windows (see <a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed/unavailable windows</a>).</li>
+<li>This complements the <a href="03-Transaction-API.html#pdf-report-generation"><code>window_x_menu</code> discovery path</a> documented for report (<code>m_*</code>) services: <code>window_x_menu</code> finds callable report names; <code>frame_menu.service_name</code> finds the interactive/transaction service name behind a maintenance window.</li>
+</ul>
+<blockquote>
+<p>Environment: verified on 26.1.5894.1 (play), July 2026. (The "does not have permission" wording names whichever user is calling — it's an availability signal, not a grantable permission.)</p>
 </blockquote>
 <hr />
 <h2 id="response-windows">Response Windows</h2>

@@ -14,6 +14,8 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | `production_order_runbook.py` | [production-order-runbook.md](../../../docs/recipes/production-order-runbook.md) |
 | `record_labor_time.py` | [record-labor-time.md](../../../docs/recipes/record-labor-time.md) |
 | `inventory_adjustment.py` | [inventory-adjustment.md](../../../docs/recipes/inventory-adjustment.md) |
+| `create_customer.py` | [create-customer.md](../../../docs/recipes/create-customer.md) |
+| `create_requisition_po.py` | [create-requisition-po.md](../../../docs/recipes/create-requisition-po.md) |
 
 ## Setup
 

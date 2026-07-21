@@ -38,6 +38,8 @@ while (true)
     Console.WriteLine("   8. Production Order Runbook   - Checklist + pick-ticket stage");
     Console.WriteLine("   9. Record Labor Time          - TimeEntry labor hours");
     Console.WriteLine("  10. Inventory Adjustment       - Signed on-hand delta write-off");
+    Console.WriteLine("  11. Create Customer            - Customer header + ship-to in one POST");
+    Console.WriteLine("  12. Create Requisition PO      - RequisitionPurchaseOrder (po_type 'R')");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -88,6 +90,14 @@ while (true)
 
             case "10":
                 await InventoryAdjustment.RunAsync();
+                break;
+
+            case "11":
+                await CreateCustomer.RunAsync();
+                break;
+
+            case "12":
+                await CreateRequisitionPo.RunAsync();
                 break;
 
             case "Q":

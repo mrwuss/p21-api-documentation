@@ -287,7 +287,8 @@ Other verified XML specifics:
 | `Customer` | Customer Maintenance | Customer records |
 | `Supplier` | Supplier Maintenance | Supplier records |
 | `SalesPricePage` | Sales Price Page | Price page management |
-| `PurchaseOrder` | Purchase Order Entry | Create POs |
+| `PurchaseOrder` | Purchase Order Entry | Create POs (Regular). Pick a non-Regular PO type via a **type-specific service**, not by setting `po_hdr_po_type` — see [Purchase Order Types](#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
+| `RequisitionPurchaseOrder` | Purchase Order Entry (type preset to Requisition) | Create requisition (internal / not-for-resale) POs — `po_hdr.po_type = 'R'`. Same window as PO Entry; easy to miss in `/api/v2/services`. See [create-requisition-po](recipes/create-requisition-po.md) |
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
 | `m_storedprocedureexecutor` | Stored Procedure Executor | Load and execute stored procedure definitions (see [Stored Procedure Executor](#stored-procedure-executor)) (hidden from `/api/v2/services` — see the [PDF Report Generation](#pdf-report-generation) discovery note) |
@@ -317,6 +318,25 @@ Other verified XML specifics:
 | `ProductionOrderProcessing` | Production Order Processing | Process/complete production orders |
 
 See [Production & Labor API](12-Production-Labor-API.md) for detailed field definitions and examples.
+
+### Purchase Order Types and the disabled `po_hdr_po_type` column
+
+You **cannot** choose a PO type by setting `po_hdr_po_type` on the `PurchaseOrder` service — it is a **disabled column** and sending it fails with `Column is disabled: po_hdr_po_type`. The PO type is selected by choosing the **type-specific service** instead (each maps to the same PO Entry window, `w_purchase_order_entry_sheet`, with the type preset). `RequisitionPurchaseOrder` is the verified example; see [create-requisition-po](recipes/create-requisition-po.md).
+
+The `po_hdr_po_type` `ValidValues` in the definition carry **display names only, no code list** — the stored `po_hdr.po_type` letters are undocumented. Verified/inferred mapping from the definition's display list plus live data:
+
+| Letter | Display name | Notes |
+|--------|-------------|-------|
+| `B` | Regular | Backorder |
+| `S` | Regular | Stock replenishment (both `B` and `S` display "Regular") |
+| `P` | Special | |
+| `D` | Direct Ship | |
+| `N` | Non-Stock | |
+| `R` | **Requisition** | **verified** via `RequisitionPurchaseOrder` create + DB read-back |
+| `X` | Process PO | |
+| `Q` | Vendor RFQ | |
+
+> Only `R` (Requisition) is verified end-to-end; the rest are inferred from the display-name order and live data — treat them as strong hints, not confirmed. Environment: 26.1.5894.1 (play), July 2026.
 
 ---
 
@@ -2089,6 +2109,36 @@ Caveats (verified on `ProductionOrder`):
 - `print_pick_ticket` emits only at the order's **make location**. If components stock elsewhere, the pick ticket comes back empty or missing — generate it with `m_picktickets` at the stock `location_id` instead (previous section).
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier).
+
+---
+
+## GL Dimensions in the API
+
+GL dimensions (P21's dimensional-accounting tags) attach to accounting lines, **not to purchase orders**. If you need a PO pre-tagged with a dimension, the PO tables can't carry it — the tag must be applied downstream at vouchering, invoicing, or journal-entry time.
+
+**Where dimensions live in the schema:**
+
+| Table | Role |
+|-------|------|
+| `gl_dimen_type` / `gl_dimen_type_x_value` | Dimension types (`record_type_cd` 932 user / 933 system) and their valid values |
+| `gl` (`gl_dimen_type_uid`, `gl_dimension_id`) | One dimension per GL distribution row |
+| `apinv_line` (+ `recur_apinv_line`) | One dimension per AP voucher line — the manual-tagging-at-voucher-entry surface |
+| `invoice_line` | One dimension per AR invoice line |
+| `oe_hdr.gl_dimension_project_no` | Project dimension on an order header (hidden field, added via Field Chooser) |
+| `trans_x_gl_dimension` / `gl_trans_x_dimension` | Multi-dimension tags at transaction / journal-entry level |
+| **`po_hdr` / `po_line`** | **No dimension columns at all** — POs are outside the dimension model |
+
+Dimensions are labels, not postings: P21 lets you edit them after posting by design, with dedicated audit-trail tables.
+
+**Which services expose the fields:** the voucher-creation services **`ConvertPOToVoucher`** and **`VoucherByItem`** both carry the dimension fields (`gl_dimen_type_id`, `gl_dimen_type_uid`, `gl_dimension_id`, `gl_dimension_desc`, `gl_dimen_type_desc`) **plus a `TP_TRANS_X_GL_DIMENSION.tp_trans_x_gl_dimension` List** — the transaction-level multi-dimension grid. `VoucherByItem` additionally exposes the dimension fields on its line grid (`TABPAGE_17.tp_17_dw_17`). So voucher-creation automation *can* apply GL dimensions at vouchering time. Full schema: [ConvertPOToVoucher.json](../definitions/ConvertPOToVoucher.json), [VoucherByItem.json](../definitions/VoucherByItem.json).
+
+**Gotchas:**
+
+- **Pre-tagging a PO is not possible** through native columns — `po_hdr`/`po_line` have no dimension fields. A PO can only carry a dimension via user-defined (UD) fields; the dimension itself attaches from a voucher/invoice/JE surface.
+- **`VendorInvoice` returns HTTP 500 on `/api/v2/definition`** (the [unavailable-window signal](#endpoints)) even though it appears in `/api/v2/services` — use `ConvertPOToVoucher` / `VoucherByItem` for voucher automation.
+- `ConvertPOToVoucher` is a **commands-endpoint** service with field-ordering sensitivities (see [Field Order Matters](#field-order-matters) and the [25.2 breaking changes](14-Breaking-Changes.md)).
+
+> Verified on 26.1.5894.1 (play), July 2026.
 
 ---
 

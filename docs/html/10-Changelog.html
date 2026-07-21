@@ -432,6 +432,8 @@
             <ul class="nav-pages">
         <li><a href="recipes/README.html">Recipes Overview</a></li>
         <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+        <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
         <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
         <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
         <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -441,6 +443,7 @@
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+        <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </div>
         <div class="sidebar-section page-toc-section">
@@ -449,6 +452,7 @@
                 <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-07-21-v140">2026-07-21 — v1.4.0</a></li>
 <li><a href="#2026-07-14-v130">2026-07-14 — v1.3.0</a></li>
 <li><a href="#2026-07-10-v120">2026-07-10 — v1.2.0</a></li>
 <li><a href="#2026-07-10-v111">2026-07-10 — v1.1.1</a></li>
@@ -501,6 +505,16 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-07-21-v140">2026-07-21 — v1.4.0</h2>
+<p>Cleared the open findings backlog (issues #98–#102): five live-verified 26.1 discoveries written into the docs, with four new service definitions fetched from the 26.1 play tenant (build <strong>26.1.5894.1</strong>). All new cross-links validated against the generator's heading ids.</p>
+<ul>
+<li><strong>feat:</strong> New recipe <strong><a href="recipes/create-customer.html">create-customer</a></strong> (Transaction <code>Customer</code>) — minimal working create, plus the two non-obvious required fields: <code>salesrep_id</code> is hard-required and its failure surfaces as the misleading <em>"Salesrep ID is required for a new ship to."</em>, and <code>default_branch</code> is required but <strong>not</strong> supplied by the defaults template. End-to-end scripts in Python and C#. Closes #99 — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> New recipe <strong><a href="recipes/create-requisition-po.html">create-requisition-po</a></strong> (Transaction <code>RequisitionPurchaseOrder</code>) — requisition POs are created via a <strong>type-specific service</strong>, not by setting <code>po_hdr_po_type</code> (a disabled column on <code>PurchaseOrder</code>). Documents the vendor-vs-supplier id distinction, the misleading line-level supplier error whose fix is on the header, the requisition-item precondition (<code>inv_loc.requisition='Y'</code>), and the verified result letter <code>po_hdr.po_type = 'R'</code>. Added to the <a href="03-Transaction-API.html#common-services">Common Services</a> table and a new <a href="03-Transaction-API.html#purchase-order-types-and-the-disabled-po_hdr_po_type-column">Purchase Order Types</a> section with the po_type letter table. End-to-end scripts in Python and C#. Closes #101 — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> New Transaction-API section <strong><a href="03-Transaction-API.html#gl-dimensions-in-the-api">GL Dimensions in the API</a></strong> — GL dimensions attach at voucher/invoice/JE time, not on POs: <code>ConvertPOToVoucher</code> and <code>VoucherByItem</code> carry the dimension fields and the <code>TP_TRANS_X_GL_DIMENSION</code> grid, while <code>po_hdr</code>/<code>po_line</code> have no dimension columns (pre-tagging a PO needs UD fields). Notes <code>VendorInvoice</code> 500s on <code>/definition</code>. Closes #102 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>Interactive <a href="04-Interactive-API.html#2-open-window">Open Window</a></strong> now warns that opening by <code>Name</code>/<code>Title</code> can return HTTP 400 <em>"not available or user does not have permission"</em> even where the same window opens by <code>ServiceName</code> — <code>ServiceName</code> is the only reliable identifier. Added <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">Window-to-Service Discovery</a> documenting <code>frame_menu.service_name</code> as the window→service map (NULL = no API surface). Closes #98 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> New OData section <strong><a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed / Unlicensed Windows</a></strong> — the postal-code-group family (<code>postal_code_group_hdr</code>/<code>_detail</code>, <code>salesrep_postalcode</code>, <code>ideal_locations_by_zip</code>) is OData-readable but <strong>dead storage</strong> when the module is undeployed: no Transaction/Interactive surface, and Customer-create never consults it (no zip→salesrep cascade — verified by seeding then creating). Readable ≠ live. Closes #100 — <em>@mrwuss</em></li>
+<li><strong>chore:</strong> Fetched and committed four service definitions from 26.1 (<code>Salesrep</code>, <code>RequisitionPurchaseOrder</code>, <code>ConvertPOToVoucher</code>, <code>VoucherByItem</code>); added them to the fetch script's documented set and the definitions README. Fixed <code>fetch_definitions.py</code> to <strong>merge</strong> <code>_manifest.json</code> on a partial <code>--services</code> run instead of overwriting it (a targeted fetch previously erased the record of every other definition), and documented <code>P21_SCRUB_TERMS</code> in <code>.env.example</code> — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-07-14-v130">2026-07-14 — v1.3.0</h2>
 <p>Production moved to <strong>2026.1</strong>, so every 2026.1 claim in these docs was re-tested against a live 2026.1 tenant (build <strong>26.1.5894.1</strong>) rather than the 5873.1 test build they were written from. Epicor's <em>Prophet 21 Release 2026.1 Release Guide</em> was also mined for API-relevant content — it yielded exactly one new API surface, which is now documented.</p>
 <ul>

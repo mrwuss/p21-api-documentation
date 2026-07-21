@@ -419,6 +419,30 @@ var response = await client.GetAsync(url);
 
 ---
 
+## Undeployed / Unlicensed Windows: Readable Tables, No API Surface
+
+OData exposes the **schema**, not the deployment state. A table can be fully readable over OData while the feature that populates it is **undeployed or unlicensed** — its maintenance window is classic-desktop-only and it has no Transaction/Interactive API surface. The rows you read are then **dead storage**: nothing writes them and no business logic consults them.
+
+The clearest verified example (26.1.5894.1, play, July 2026) is the **native zip → salesrep/territory** family. The schema is present and OData-readable, but on an install where the module is undeployed the tables are empty and inert:
+
+| Table | Contents | OData |
+|-------|----------|-------|
+| `postal_code_group_hdr` | zip-group id/desc per company, `primary_salesrep_id`, `territory_uid`, `default_sales_location_id`, source-location ids | readable |
+| `postal_code_group_detail` | `from_postal_code`/`to_postal_code` ranges per group | readable |
+| `postal_code_group_location_priority` | ranked location list per group | readable |
+| `salesrep_postalcode` | `salesrep_id` + `start_postal_code`/`end_postal_code` (simpler, likely older) | readable |
+| `ideal_locations_by_zip` | location-sourcing-by-zip (paired with the "Import Ideal Locations" menu item) | readable |
+
+**Why there's no write path:**
+
+- **Window:** "Postal Code Group Maintenance" (`w_postal_code_group_maint`), AR › Maintenance — **classic desktop only** (`frame_menu`: `new_ui_enabled='N'`, `angular_enabled='N'`, `service_name` **NULL**). A NULL `service_name` is the tell that there is no API surface (see [Window→Service Discovery](04-Interactive-API.md#8-window-to-service-discovery-frame_menu)).
+- **Transaction API:** no service — absent from `/api/v2/services`; plausible hidden names all 500 on `/definition`.
+- **Interactive API:** by-Name open returns 400 *"not available or user does not have permission"* — the [undeployed-window signal](03-Transaction-API.md#endpoints), not a grantable permission.
+
+**Behavioral consequence — verified:** seeding matching rows in **both** `salesrep_postalcode` and `postal_code_group_hdr`+`detail` (a zip mapped to a deliberately wrong-region rep) and then creating a customer with that zip in the mailing and physical address **does not** default `salesrep_id`. The create fails *"Salesrep ID is required for a new ship to."* until the rep is supplied explicitly — [Customer create](recipes/create-customer.md) never consults these tables when the module is undeployed. So: **readable ≠ live.** Treat OData-visibility of a feature table as evidence the schema exists, not that the feature is active on your install.
+
+---
+
 ## Examples
 
 ### Basic Query
