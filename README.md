@@ -4,6 +4,8 @@
 
 Comprehensive documentation and working examples — **Python, C#, JSON, and XML** — for all Prophet 21 integration APIs.
 
+Every code example that calls P21 is a **complete program**: paste it into a file, edit the constants in its `EDIT THESE` block, and run it. Python needs only `httpx`; C# targets `net9.0` with System.Text.Json and **no NuGet packages**, so `dotnet new console` + paste + `dotnet run` works. Writes end with a read-back that prints what actually landed, because in this API a 200 routinely lies.
+
 **[View Online Documentation](https://mrwuss.github.io/p21-api-documentation/html/)**
 
 ## How This Repo Is Organized (start here)

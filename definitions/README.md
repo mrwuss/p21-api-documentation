@@ -1,6 +1,6 @@
 # P21 Service Definitions (Schema Library)
 
-Raw Transaction API **service definitions** — one JSON per P21 window/service, fetched from a live P21 system (most from 25.2; `ConvertPOToVoucher`, `RequisitionPurchaseOrder`, `Salesrep`, and `VoucherByItem` from 26.1.5894.1). This is the authoritative full-field schema for building payloads: every service's tabs, datawindows, key fields, and field definitions (`DbColumnName`, `DataType`, `Required`, `Label`), plus a ready-to-populate `Template` payload skeleton. `_manifest.json` records the per-run fetch date; a partial `--services` refresh updates only the services it touches.
+Raw Transaction API **service definitions** — one JSON per P21 window/service, fetched from a live P21 system (most from 25.2; `ConvertPOToVoucher`, `RequisitionPurchaseOrder`, `Salesrep`, and `VoucherByItem` from 26.1.5894.1; the three `PurchasePricingPageSupplier*` variants, `SalesPriceBook` and `ShipTo` from 26.1.5910.3). This is the authoritative full-field schema for building payloads: every service's tabs, datawindows, key fields, and field definitions (`DbColumnName`, `DataType`, `Required`, `Label`), plus a ready-to-populate `Template` payload skeleton. `_manifest.json` records the per-run fetch date; a partial `--services` refresh updates only the services it touches.
 
 Load **one file for the service you're working on** — don't read the folder.
 
@@ -40,6 +40,8 @@ Set `P21_SCRUB_TERMS` (comma-separated company identifiers) before publishing an
 
 ## Services included
 
-The services documented in [`docs/`](../docs/INDEX.md): Assembly, BinLocation, ConvertPOToVoucher, Customer, InventoryAdjustment, Item, JobContractPricing, Labor, LaborProcess, Order, ProductionOrder, ProductionOrderPicking, ProductionOrderProcessing, PurchaseOrder, RequisitionPurchaseOrder, Salesrep, SalesPricePage, Shipping, Supplier, TimeEntry, VoucherByItem, and the report services `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor`.
+The services documented in [`docs/`](../docs/INDEX.md): Assembly, BinLocation, ConvertPOToVoucher, Customer, InventoryAdjustment, Item, JobContractPricing, Labor, LaborProcess, Order, ProductionOrder, ProductionOrderPicking, ProductionOrderProcessing, PurchaseOrder, PurchasePricingPageSupplier, PurchasePricingPageSupplierDiscGrp, PurchasePricingPageSupplierItem, RequisitionPurchaseOrder, Salesrep, SalesPriceBook, SalesPricePage, Shipping, ShipTo, Supplier, TimeEntry, VoucherByItem, and the report services `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor`.
+
+The pricing set is worth knowing as a group: sales price pages (`SalesPricePage`), the book that collects them (`SalesPriceBook`), job contracts (`JobContractPricing`), and the three purchase-side page variants — each with its own key set and, unhelpfully, its own name for the break fields. See [08 § Cross-Service Break-Field Names](../docs/08-SalesPricePage-Codes.md#cross-service-break-field-names).
 
 > **Credit:** the schema-library pattern comes from [Alex Westemeier](https://github.com/AWestemeier)'s process playbook.

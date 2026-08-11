@@ -454,9 +454,10 @@
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
 <li><a href="#2026-08-11-v150">2026-08-11 — v1.5.0</a><ul>
-<li><a href="#verified-against-a-live-tenant-and-previously-wrong-or-unproven">Verified against a live tenant, and previously wrong or unproven</a></li>
+<li><a href="#first-pass-claims-checked-while-resolving-the-issues">First pass — claims checked while resolving the issues</a></li>
 <li><a href="#second-verification-pass-every-remaining-unproven-claim-chased">Second verification pass — every remaining unproven claim chased</a></li>
 <li><a href="#audited-against-two-production-integrations">Audited against two production integrations</a></li>
+<li><a href="#repo-conventions-and-indexes">Repo conventions and indexes</a></li>
 <li><a href="#runnable-examples">Runnable examples</a></li>
 <li><a href="#issue-work">Issue work</a></li>
 </ul>
@@ -516,7 +517,7 @@
 <hr />
 <h2 id="2026-08-11-v150">2026-08-11 — v1.5.0</h2>
 <p>Cleared issues #103 and #105–#107, converted every API-calling code example in the docs into a complete runnable program, and re-verified a batch of long-standing claims against a live tenant. Verification build: <strong>26.1.5910.3</strong>. The checks turned up several errors in our own documentation; those are listed first.</p>
-<h3 id="verified-against-a-live-tenant-and-previously-wrong-or-unproven">Verified against a live tenant, and previously wrong or unproven</h3>
+<h3 id="first-pass-claims-checked-while-resolving-the-issues">First pass — claims checked while resolving the issues</h3>
 <ul>
 <li><strong>fix:</strong> <strong>The OData <code>in</code> operator is accepted and silently ignored.</strong> <code>$filter=id in (2,3,4)</code> returns HTTP 200 and <strong>every row in the table</strong> — verified against a 50,077-row view, which returned all 50,077. A genuine syntax error 404s loudly, so this fails in the one way you cannot notice. The <a href="02-OData-API.html#avoiding-n1-query-patterns">Avoiding N+1</a> section previously <em>recommended</em> IN clauses while its example still issued one query per id; it now uses an <code>or</code> chain, batched, and the operator tables carry the warning — <em>@mrwuss</em></li>
 <li><strong>fix:</strong> <strong>An Interactive session can only be deleted by the token that created it.</strong> Same-token <code>DELETE /api/ui/interactive/sessions</code> returns 200 and clears it. A session belonging to a <em>previous</em> token — a crashed process, a worker that re-authenticated, a retry path that fetched a fresh token first — cannot be deleted at all: no body, <code>?id=</code>, <code>?sessionId=</code>, <code>{"Id"}</code> and <code>{"SessionId"}</code> are all refused with <code>400 {"ErrorMessage":"Invalid session"}</code>, and only <code>SessionCleanupExpiration</code> reaps it. Doc 14 previously promised <code>DELETE</code> "clears it instantly" without qualification. Full attempt matrix in <a href="04-Interactive-API.html#6-end-session">End Session</a> — <em>@mrwuss</em></li>
@@ -546,6 +547,11 @@
 <li><strong>fix:</strong> <strong>A blocked save's popup id is only in <code>Events</code>.</strong> The top-level <code>ResponseWindowId</code> exists in the response and is <strong>empty</strong> on real 26.1 responses; a production integration had every blocked save fail before switching to the <code>windowopened</code> event. Documented as a negative so nobody reaches for the obvious field — <em>@mrwuss</em></li>
 <li><strong>fix:</strong> Doc 04's rule-callback example still told readers that which items trip "Item Issues Detected" "differs between environments" — the framing this release replaced with a deterministic root cause. It now points at the <a href="03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">root cause and data fix</a> and keeps the interactive path for cases that cannot be data-fixed — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Entry 6's non-active-tab silent drop <strong>re-tested a second time and still does not reproduce</strong> — on 26.1.5910.3, the exact field from the original 5873.1 report (<code>supplier_ship_date</code> on a non-active tab) applied normally with <code>Status: 1</code>. The client that filed the original report nonetheless still writes tab-by-tab, and the entry now recommends that shape as cheap insurance rather than as a workaround for a demonstrable bug — <em>@mrwuss</em></li>
+</ul>
+<h3 id="repo-conventions-and-indexes">Repo conventions and indexes</h3>
+<ul>
+<li><strong>docs:</strong> <strong>The runnable-example convention is now written down where contributors will find it</strong> — <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/CONTRIBUTING.md">CONTRIBUTING § Code Examples</a>. It states the rule (paste, edit the <code>EDIT THESE</code> block, run), the zero-install constraint (<code>httpx</code>; <code>net9.0</code> + System.Text.Json, <strong>no NuGet</strong>, no <code>Microsoft.Extensions.*</code>), that the HTML generator takes tab labels from the <strong>fence language</strong> so the fence follows the marker directly, that the UI-server helper belongs only in Transaction/Interactive examples, that every write ends in a read-back, and that illustrative fragments stay fragments with a pointer. Previously this lived only in the working notes for the conversion, so nobody could follow it — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Root <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/README.md">README</a> now leads with what the examples actually are, rather than "working examples"; <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md">definitions README</a> lists the five services added this release and their 26.1.5910.3 fetch build, and groups the five pricing services so the break-field naming split is discoverable from the schema library — <em>@mrwuss</em></li>
 </ul>
 <h3 id="runnable-examples">Runnable examples</h3>
 <ul>

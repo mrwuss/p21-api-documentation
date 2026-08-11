@@ -37,13 +37,22 @@ Thank you for your interest in improving P21 API documentation! This project aim
 - **Keep the routing layer in sync** - new task-worthy sections get a row in [docs/INDEX.md](docs/INDEX.md); renaming a heading must update its index anchors
 
 ### Code Examples
-- **Both languages**: documentation code blocks come in Python (`httpx`) *and* C# (`HttpClient` + Newtonsoft) tabs — see any recipe page for the format
-- **V2 auth only** for username/password (credentials in the request body); the V1 header form leaks credentials into proxy/server logs
+
+Every example that calls P21 is a **complete program**: paste it into a file, edit the constants at the top, run it. No repo clone, no `.env`, no helper imported from another page. A reader should never have to assemble an example from two places.
+
+- **Both languages, adjacent**: Python (`httpx`) *and* C#, inside `<!-- tabs -->` / `<!-- /tabs -->` markers. `scripts/generate_html.py` builds the tab labels from the **fence language**, so the fence goes directly after the opening marker; it discards other text inside the region. Match whatever label style the file you are editing already uses.
+- **Zero install beyond the language**: Python needs only `httpx`. C# targets `net9.0` with `ImplicitUsings` + `Nullable` and **System.Text.Json** — no NuGet packages, so `dotnet new console` + paste + `dotnet run` works. Do not introduce Newtonsoft or `Microsoft.Extensions.*` into a docs example.
+- **An `EDIT THESE` block at the top** holding `BASE_URL`, credentials, `VERIFY_SSL` and the task's own variables — one per line with a trailing comment. Copy the auth preamble verbatim from an existing converted example (e.g. [reassign-salesrep](docs/recipes/reassign-salesrep.md)) rather than writing your own; it handles the v2 token, the router 307, and the XML fallback.
+- **Only where it is used**: include the UI-server helper for Transaction/Interactive examples; omit it for OData, Entity, Inventory REST and UDT, which call `BASE_URL` directly.
+- **Every write ends in a read-back** that prints what actually landed. In this API HTTP 200 routinely lies — a save can report success and write nothing.
+- **Illustrative fragments stay fragments.** A payload shape, a two-line field-order demonstration or an error sample should not be inflated into a full program; add a `Full runnable version:` callout linking to the nearest one.
+- **V2 auth only** for username/password (credentials in the request body); the V1 header form leaks credentials into proxy/server logs. A 26.1 session failure is *not* a reason to fall back to V1 — see [Breaking Changes entry 1](docs/14-Breaking-Changes.md#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header).
 - Include error handling — check `Summary.Succeeded`/`Failed`, never the HTTP status alone
-- Verify writes with a read-back (OData or `POST /api/v2/transaction/get`)
 - Validate example payloads with `python scripts/validate_payload.py <file>` (works for JSON and XML)
 - Add comments explaining P21-specific behavior
 - Test against a P21 environment before submitting
+
+Before opening the PR, check the examples mechanically: every Python block should parse (`ast.parse`), and every complete C# block should build in a scratch `net9.0` console project.
 
 ### What We're Looking For
 - Additional API endpoints not yet documented
