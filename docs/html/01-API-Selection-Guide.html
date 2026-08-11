@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -538,7 +547,7 @@
 - <code>c_tracking_no</code> on the <code>Order</code> / <code>FrontCounter</code> / <code>RMA</code> / <code>ServiceOrder</code> shipment grids is a computed, disabled display column (<code>Column is disabled: c_tracking_no</code>) — not a write path, in either API.</p>
 <p><strong>The genuine exception is response-window dialogs.</strong> The Interactive API can answer some dialogs the Transaction API cannot — see the <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">"Item Issues Detected" rule-callback worked example</a>. That is a real capability difference about <em>handling a dialog</em>, not about bypassing a disabled column or a window gate. Interactive answers dialogs; it does not unlock what the window has locked.</p>
 <h2 id="quick-decision-table">Quick Decision Table</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Need</th>
@@ -608,10 +617,10 @@
 <td>Stateful workflow with validation</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="api-comparison">API Comparison</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Feature</th>
@@ -706,7 +715,7 @@
 <td>N/A</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><em>Transaction API updates use <code>Status: "New"</code> with keyed rows (there is no working "Existing" status — it returns HTTP 500). Keyed rows behave as an </em><em>upsert</em>*: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See <a href="03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>. Flows that pop validation dialogs still need the Interactive API.</p>
 <hr />
 <h2 id="odata-api">OData API</h2>
@@ -1034,7 +1043,7 @@ three-API hybrid pattern.</p>
 <hr />
 <h2 id="performance-benchmarks">Performance Benchmarks</h2>
 <p>Measured against production P21 instance:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operation</th>
@@ -1069,7 +1078,7 @@ three-API hybrid pattern.</p>
 <td>2.0s</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>*Transaction API keyed update via <code>Status: "New"</code> (verified on JobContractPricing; per-line latency ~0.8s). Flows that trip prompts or disabled tabs still need the Interactive API.</p>
 <hr />
 <h2 id="related">Related</h2>

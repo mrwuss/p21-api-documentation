@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -534,7 +543,7 @@ Email Purchase Order(s). Window class: w_email_response
 
 <h3 id="12-observed-behavior">1.2 Observed Behavior</h3>
 <p>The error exhibits <strong>no predictable pattern</strong>:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Attempt</th>
@@ -569,7 +578,7 @@ Email Purchase Order(s). Window class: w_email_response
 <td>PASS</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>This randomness initially suggested a configuration issue, but the inconsistency pointed to something more systemic.</p>
 <h3 id="13-sample-payload-that-triggered-error">1.3 Sample Payload That Triggered Error</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -855,7 +864,7 @@ CONCLUSIONS:
 
 <p><strong>Key Insight:</strong> The SalesPricePage window does not trigger email dialogs, so session pool contamination is not observed. The intermittent failures are <strong>window-specific</strong> - Purchase Order Entry triggers email workflows that leave dialogs open, contaminating the session.</p>
 <h3 id="53-interpreting-results">5.3 Interpreting Results</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Pattern</th>
@@ -880,7 +889,7 @@ CONCLUSIONS:
 <td>Likely configuration issue, not pool</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Important:</strong> A healthy result for one window (SalesPricePage) does not guarantee other windows (PurchaseOrder) are safe. Each window type can have different behaviors that affect session state.</p>
 <hr />
 <h2 id="appendix">Appendix</h2>
@@ -901,7 +910,7 @@ at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
 </code></pre></div>
 
 <h3 id="b-transaction-api-endpoints-reference">B. Transaction API Endpoints Reference</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -936,7 +945,7 @@ at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
 <td>Bulk retrieve</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="c-related-documentation">C. Related Documentation</h3>
 <ul>
 <li><a href="03-Transaction-API.html">Transaction API</a> - Service discovery, bulk operations</li>
@@ -945,7 +954,7 @@ at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
 </ul>
 <hr />
 <h2 id="document-history">Document History</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Version</th>
@@ -962,7 +971,7 @@ at P21.UI.BulkEditor.DataProcessing.StandardDataProcessor.Process()
 <td>Initial version</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <p><em>This document was created as part of API performance research for the P21 Price Page Manager project. The investigation methodology demonstrates how systematic analysis of error patterns and user-provided context can lead to accurate root cause identification.</em></p>
     </main>

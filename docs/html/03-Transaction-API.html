@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -595,7 +604,7 @@
 
 <p>Note that the no-trailing-slash form can return a 307 redirect and the response may be XML on some middleware — use the trailing-slash form (<code>/api/ui/router/v1/</code>) and follow redirects; see <a href="00-Authentication.html#ui-server-url">00-Authentication § UI Server URL</a>.</p>
 <p>Then use the returned URL as base:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -655,7 +664,7 @@
 <td>Generate PDF reports (see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Service Explorer:</strong> The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.</p>
 <p><strong>Definition endpoint 500s for unavailable windows:</strong> <code>GET /api/v2/definition/{name}</code> can return HTTP 500 with <em>"Window &lt;&lt;X&gt;&gt; is not available or user does not have permission to open it"</em> for a service that <code>/api/v2/services</code> lists. Despite the wording, this is usually <strong>not a grantable permission problem</strong> — the same window fails for fully-privileged users in the Service Explorer. It means the window isn't available in that environment (unlicensed or undeployed module), and which services fail differs per environment. On one 25.2 test system, 238 of the 299 listed services had fetchable definitions. <em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>)</em></p>
@@ -706,7 +715,7 @@
 </code></pre></div>
 
 <h3 id="transactionset-fields">TransactionSet Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -756,9 +765,9 @@
 <td>Additional service-specific parameters</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="transaction-fields">Transaction Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -779,9 +788,9 @@
 <td>Optional array of file attachments</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="dataelement-fields">DataElement Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -806,9 +815,9 @@
 <td>Array of Row objects</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="row-edit-fields">Row / Edit Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -825,9 +834,9 @@
 <td>Array of date edits using relative offsets (e.g., "today + 30 days") instead of absolute dates</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Each <strong>Edit</strong> object supports:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -852,7 +861,7 @@
 <td>If <code>true</code>, skip this edit when Value is empty instead of sending a blank</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="payload-anatomy-types-nesting-and-common-mistakes">Payload Anatomy -- Types, Nesting, and Common Mistakes</h2>
 <p>Most first-integration failures are payload <strong>shape</strong> mistakes, not wrong endpoints: a string where an array is expected, a field at the wrong nesting level, or a boolean in quotes. JSON indentation is cosmetic -- what matters is the <strong>nesting</strong> and the <strong>type at every level</strong>. This skeleton annotates both:</p>
@@ -884,7 +893,7 @@
 </code></pre></div>
 
 <h3 id="common-mistakes-and-their-symptoms">Common mistakes and their symptoms</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Mistake</th>
@@ -949,7 +958,7 @@
 <td>Value silently cleared while reporting Succeeded (<a href="#field-order-matters">details</a>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Two tools take the guesswork out:</p>
 <ul>
 <li><strong>Start from the service's <code>Template</code></strong> — <code>GET /api/v2/definition/{Service}</code> (or the committed <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/{Service}.json</code></a>) contains a <code>Template.TransactionSet</code> skeleton with every element and field already correctly shaped. Copy it, fill the <code>Edits</code> you need, delete the rest.</li>
@@ -961,7 +970,7 @@
 <hr />
 <h2 id="xml-payloads-content-negotiation">XML Payloads (Content Negotiation)</h2>
 <p>The Transaction API endpoints speak <strong>XML as well as JSON</strong>, in both directions, negotiated per-request with standard headers (verified live on 25.2, July 2026):</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>You want</th>
@@ -986,7 +995,7 @@
 <td><code>Content-Type: application/json</code>, <code>Accept: application/xml</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>All four combinations are verified working on <code>GET /definition</code>, <code>GET /services</code>, <code>POST /transaction</code>, and <code>POST /transaction/get</code>. Error responses follow the Accept header too (RFC-7807 <code>application/problem+xml</code> / <code>+json</code>).</p>
 <h3 id="the-xml-request-shape-datacontract">The XML request shape (DataContract)</h3>
 <p>The same TransactionSet as above, as a working XML body:</p>
@@ -1037,7 +1046,7 @@
 </ul>
 <hr />
 <h2 id="common-services">Common Services</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -1102,9 +1111,9 @@
 <td>Load and execute stored procedure definitions (see <a href="#stored-procedure-executor">Stored Procedure Executor</a>) (hidden from <code>/api/v2/services</code> — see the <a href="#pdf-report-generation">PDF Report Generation</a> discovery note)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="report-services">Report Services</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -1129,9 +1138,9 @@
 <td>Creates the pick ticket and returns its PDF (see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="production-assembly-labor-services">Production, Assembly &amp; Labor Services</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -1196,12 +1205,12 @@
 <td>Process/complete production orders</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>See <a href="12-Production-Labor-API.html">Production &amp; Labor API</a> for detailed field definitions and examples.</p>
 <h3 id="purchase-order-types-and-the-disabled-po_hdr_po_type-column">Purchase Order Types and the disabled <code>po_hdr_po_type</code> column</h3>
 <p>You <strong>cannot</strong> choose a PO type by setting <code>po_hdr_po_type</code> on the <code>PurchaseOrder</code> service — it is a <strong>disabled column</strong> and sending it fails with <code>Column is disabled: po_hdr_po_type</code>. The PO type is selected by choosing the <strong>type-specific service</strong> instead (each maps to the same PO Entry window, <code>w_purchase_order_entry_sheet</code>, with the type preset). <code>RequisitionPurchaseOrder</code> is the verified example; see <a href="recipes/create-requisition-po.html">create-requisition-po</a>.</p>
 <p>The <code>po_hdr_po_type</code> <code>ValidValues</code> in the definition carry <strong>display names only, no code list</strong> — the stored <code>po_hdr.po_type</code> letters are undocumented. Verified/inferred mapping from the definition's display list plus live data:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Letter</th>
@@ -1251,7 +1260,7 @@
 <td></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p>Only <code>R</code> (Requisition) is verified end-to-end; the rest are inferred from the display-name order and live data — treat them as strong hints, not confirmed. Environment: 26.1.5894.1 (play), July 2026.</p>
 </blockquote>
@@ -1347,7 +1356,7 @@
 <hr />
 <h2 id="usecodevalues">UseCodeValues</h2>
 <p>This setting controls how dropdown/checkbox values are interpreted:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>UseCodeValues</th>
@@ -1367,7 +1376,7 @@
 <td><code>"Cancelled": "Y"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Recommendation</strong>: Use <code>false</code> (display values) for better readability. (Exception: some report services require code values — see <a href="#pdf-report-generation">PDF Report Generation</a>.)</p>
 <h3 id="labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores (code_p21)</h3>
 <p>For enum-style columns, the API's display labels come from the <strong><code>code_p21</code></strong> table (<code>language_id = 9</code>), but the database stores the integer <strong><code>code_no</code></strong> — which is what OData reads return. When you verify a write via OData, map the numbers back to labels with:</p>
@@ -1377,7 +1386,7 @@
 </code></pre></div>
 
 <p>Verified examples (JobContractPricing cost/pricing enums):</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Enum</th>
@@ -1398,7 +1407,7 @@
 <td><code>Multiplier</code>=211, <code>Percentage</code>=230, <code>Difference</code>=228, <code>Mark up</code>=229</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a> — maps verified against <code>code_p21</code>.)</em></p>
 <hr />
 <h2 id="async-operations">Async Operations</h2>
@@ -1459,7 +1468,7 @@
 </code></pre></div>
 
 <h3 id="services-requiring-commands-endpoint">Services Requiring Commands Endpoint</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -1512,7 +1521,7 @@
 <td>Container building</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Important:</strong> If you send these services to the standard <code>/transaction</code> endpoint, they will fail. Always check the service documentation or test with the Service Explorer to determine which endpoint to use.</p>
 </blockquote>
@@ -1732,7 +1741,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </div>
 </div>
 <p>The definition is the <strong>authoritative schema map</strong> for a service. The response shape is <code>{"Name": ..., "TransactionDefinition": {"KeyDefinitions": [...], "DataElementDefinitions": [...]}, "Template": {...}}</code> — the elements live under <code>TransactionDefinition.DataElementDefinitions</code>. Each element carries:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1765,7 +1774,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Display/back-end context for the element</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Use it to discover which tab/datawindow a given table lives on and exactly which column names and required fields a write needs. The API field <code>Name</code> is frequently <strong>not</strong> what you'd guess from the underlying table column — check <code>DbColumnName</code> in <code>FieldDefinitions</code> to map between the two.</p>
 <blockquote>
 <p><strong>Warning — don't derive <code>TABPAGE_N</code> from the visible tab order:</strong> <code>TABPAGE_N</code> names are <strong>not</strong> sequential with the tabs visible in the P21 UI — windows carry many disabled/hidden tab pages (PurchaseOrder has 37), so the grid that <em>looks</em> like the second tab can be <code>TABPAGE_17</code> (<code>tp_17_dw_17</code>). When cross-referencing the definition against live Interactive calls, match on the <strong>datawindow name</strong> (<code>tp_N_dw_N</code> / <code>d_...</code>) or read the Interactive window's <code>TabPageList</code> (<code>GET /api/ui/interactive/v2/window?id={windowId}</code>) — never count tabs on screen. On the servers tested (25.2/26.x), the Interactive window's <code>TABPAGE_N</code> names matched the definition's 1:1.</p>
@@ -2125,7 +2134,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </code></pre></div>
 
 <h4 id="header-formd_dw_job_price_hdr-form">Header -- <code>FORM.d_dw_job_price_hdr</code> (Form)</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -2202,12 +2211,12 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Consignment contract flag</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Important:</strong> <code>corp_address_id</code> must be set during initial creation — it is read-only once the contract is saved. Verified on 26.1.5910.3 (2026-08-11): changing it on a saved contract fails with <code>General Exception: Column is disabled: corp_address_id</code>, and adding <code>IgnoreDisabled: true</code> does <strong>not</strong> unlock it — the transaction then reports <code>Succeeded: 1</code> while leaving the value untouched (see <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">entry 8</a>).</p>
 </blockquote>
 <h4 id="customership-to-customer_ship_tocustomer_ship_to-list">Customer/Ship To -- <code>CUSTOMER_SHIP_TO.customer_ship_to</code> (List)</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -2242,9 +2251,9 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Ship-to address name</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="line-items-jobpricelinejobpriceline-list-29-fields">Line Items -- <code>JOBPRICELINE.jobpriceline</code> (List, 29 fields)</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -2297,9 +2306,9 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Customer's part number</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong><code>pricing_method</code> valid values:</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Value</th>
@@ -2324,7 +2333,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>No pricing</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Non-break vs break lines:</strong></p>
 <ul>
 <li><strong>Non-break (fixed price):</strong> Set <code>pricing_method</code> to <code>"Price"</code> and <code>price</code> to the value. Do NOT send <code>source_price</code> or <code>multiplier</code>.</li>
@@ -2335,7 +2344,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <blockquote>
 <p><strong>Stop before you build a payload around this element.</strong> On P21 26.1 every attempt to write <code>VALUES.values</code> through the Transaction API is refused, and <code>IgnoreDisabled: true</code> turns that refusal into a silent no-op. Read <a href="#values-writes-are-refused-on-261">VALUES Writes Are Refused on 26.1</a> first — the field reference below is accurate, but the write path is not currently usable.</p>
 </blockquote>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -2365,7 +2374,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Other cost at each tier</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong><code>calculation_method_cd</code> valid values:</strong> <code>Difference</code>, <code>Multiplier</code>, <code>Mark up</code>, <code>Percentage</code>, <code>Fixed Price</code></p>
 <blockquote>
 <p><strong>Every tier field is numbered from 1.</strong> There is no unsuffixed <code>calculation_value</code> or <code>other_cost</code> — the first tier is <code>calculation_value1</code> / <code>other_cost1</code>. Verified against <code>definitions/JobContractPricing.json</code> (both <code>FieldDefinitions</code> and the payload <code>Template</code>) and the live <code>GET /api/v2/definition/JobContractPricing</code>. The element also has <strong>no per-tier <code>uom</code> field</strong> — that is <code>SalesPricePage</code>, not this service.</p>
@@ -2377,7 +2386,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 - The last active tier has its break set to <code>0</code>, signaling no further advance
 - <code>calculation_value1</code> is the first tier; <code>calculation_value2</code> through <code>calculation_value14</code> are tiers 2-14; <code>calculation_value15</code> is the 15th tier, which has no break threshold (there is no <code>break15</code>)</p>
 <p><strong>Example -- 3 tiers with Fixed Price method:</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Tier</th>
@@ -2414,7 +2423,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td><code>0</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Tier 1 applies for quantities 1-9 (below <code>break1</code>=10). Tier 2 applies for 10-49 (below <code>break2</code>=50). Tier 3 applies for 50+ (<code>break3</code>=0 means no further advance).</p>
 <h5 id="multi-line-break-interleaving">Multi-Line Break Interleaving</h5>
 <p>VALUES is <code>Type: Form</code> (single row), so it applies to the <strong>current JOBPRICELINE cursor position</strong>. For contracts with multiple break lines, you must send a SEPARATE <code>JOBPRICELINE</code> DataElement (1 row) followed by its own <code>VALUES</code> DataElement for each line. Putting all lines in a single multi-row <code>JOBPRICELINE</code> causes only the last line to receive breaks.</p>
@@ -2446,7 +2455,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <div class="highlight"><pre><span></span><code>VALUES.values: Error processing data element: values : Tab page is disabled and cannot be selected
 </code></pre></div>
 
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Path attempted</th>
@@ -2467,7 +2476,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Refused — <strong>atomically</strong>; the contract is not created either</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>The control, so you can size the damage.</strong> The identical create transaction with the <code>VALUES.values</code> DataElement <strong>removed</strong> succeeds: <code>Summary: {"Succeeded": 1}</code>, the contract is created, the <code>Source</code>-priced line is created, both confirmed by read-back. Contract and line creation through the Transaction API work fine. It is specifically the <code>VALUES.values</code> DataElement that is refused.</p>
 <p>Other things checked, all on the same tenant:</p>
 <ul>
@@ -3431,7 +3440,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 
 <h4 id="header-tabpage_1assemblyhdr-form-36-fields">Header -- <code>TABPAGE_1.assemblyhdr</code> (Form, 36 fields)</h4>
 <p>Key: <code>inv_mast_item_id</code></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -3490,13 +3499,13 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Hose assembly indicator</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Important:</strong> <code>inv_mast_item_id</code> must reference an existing inventory item. Non-existent items return "This item ID is not valid". Items that already have assembly definitions are blocked from re-creation.</p>
 </blockquote>
 <h4 id="componentsbom-tabpage_17tp_17_dw_17-list-20-fields">Components/BOM -- <code>TABPAGE_17.tp_17_dw_17</code> (List, 20 fields)</h4>
 <p>Key: <code>item_id_service_labor_id</code></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -3543,12 +3552,12 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Backflush flag</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong><code>component_type</code> valid values:</strong> <code>Hose fitting/adaptor</code>, <code>Hose sleeve</code>, <code>Hose/cable</code>, <code>None</code></p>
 <p>These values are hose-assembly-specific. For non-hose assemblies, omit <code>component_type</code> entirely -- it defaults to empty (<code>IgnoreIfEmpty: true</code>).</p>
 <p><strong><code>unit_of_measure</code>:</strong> Not required (<code>IgnoreIfEmpty: true</code>). When omitted, P21 auto-populates from the item master -- standard P21 behavior.</p>
 <h4 id="routing-routing_tabpageprocess-form-routing_tabpagestage_x_process-list-22-fields">Routing -- <code>ROUTING_TABPAGE.process</code> (Form) + <code>ROUTING_TABPAGE.stage_x_process</code> (List, 22 fields)</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -3583,7 +3592,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Estimated hours for this step</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="part-assembly-creation-workflow">Part + Assembly Creation Workflow</h4>
 <p>Assembly definitions are metadata attached to existing inventory items. Creating a new assembly-item from scratch requires two steps:</p>
 <ol>
@@ -4071,7 +4080,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <h3 id="shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</h3>
 <p><strong><code>Shipping</code> is the only service that writes <code>oe_pick_ticket.tracking_no</code>.</strong> A scan of all <strong>299</strong> services returned by <code>GET /api/v2/services</code> (240 returned a definition; the rest answer with the unavailable-window HTTP 500) found the column in exactly one writable place. <em>Verified on a P21 26.1 tenant, 2026-08-11.</em></p>
 <h4 id="the-element">The element</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Property</th>
@@ -4096,8 +4105,8 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td><code>['pick_ticket_no']</code></td>
 </tr>
 </tbody>
-</table>
-<table>
+</table></div>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -4126,7 +4135,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td><code>ValidValues</code>: <code>ON</code> / <code>OFF</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="the-limitation-invoiced-pick-tickets-refuse-the-write">The limitation: invoiced pick tickets refuse the write</h4>
 <p>Once the pick ticket has been <strong>invoiced</strong>, the write is refused:</p>
 <div class="highlight"><pre><span></span><code>Summary: {&quot;Failed&quot;: 1, &quot;Succeeded&quot;: 0}
@@ -4135,7 +4144,7 @@ General Exception: This pick ticket has already been invoiced.
 
 <p>The error is attributed to <code>DataElement: tp_1_dw_1, Column: pick_ticket_no</code> — <strong>not</strong> to <code>tracking_no</code>. That attribution is the tell: the gate fires at <strong>record selection</strong>, before any field-level validation, so <strong>there is no edit you can drop from the payload to get past it.</strong> Sending <code>tracking_no</code> alone fails exactly the same way.</p>
 <h4 id="other-services-expose-a-tracking-column-but-none-writes-this-one">Other services expose a tracking column, but none writes this one</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -4176,7 +4185,7 @@ General Exception: This pick ticket has already been invoiced.
 <td><code>process_po_shipment_hdr.tracking_number</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="the-order-shipment-grids-are-not-a-post-invoice-back-door">The Order shipment grids are not a post-invoice back door</h4>
 <p>They look like one — both are keyed grids on the <code>Order</code> service that survive invoicing:</p>
 <ul>
@@ -4492,7 +4501,7 @@ General Exception: This pick ticket has already been invoiced.
 <p><strong>Wrong-endpoint trap:</strong> <code>POST /api/v2/transaction</code> <em>accepts</em> an <code>m_*</code> report payload and returns <code>Succeeded</code> — but <strong>emits nothing</strong>. A report is a process, not a record edit; it must go to <code>POST /api/v2/process/pdfreport</code>. (Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a> — "this was the single biggest gotcha.")</p>
 </blockquote>
 <h3 id="verified-report-services">Verified Report Services</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service Name</th>
@@ -4513,7 +4522,7 @@ General Exception: This pick ticket has already been invoiced.
 <td>Pick ticket generation — <strong>creates</strong> the pick ticket record and returns its PDF (see <a href="#example-generate-a-production-order-pick-ticket-m_picktickets">worked example below</a>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Discovery:</strong> The <code>m_*</code> report services are <strong>hidden from <code>GET /api/v2/services</code></strong> — that endpoint lists only the transaction business objects (299 on a 25.2 test system), and <code>?type=report</code> returns an empty list (verified live; <code>?type=window</code> returns the same transaction list, other <code>?type=</code> values return HTTP 400 <code>"Service Type is invalid."</code>). The report services are still fully callable: <code>GET /api/v2/definition/{service_name}</code> and <code>GET /api/v2/defaults/{service_name}</code> both work for them. To discover callable report names, probe the definition endpoint directly, or pull candidate names from the <code>window_x_menu</code> table — the callable service name is the last <code>/</code>-segment of <code>menu_name</code>:</p>
 <p><code>sql
@@ -4557,7 +4566,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <h4 id="an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes — and is usually transient</h4>
 <p>This endpoint runs at production volume: one integration generates PO PDFs for supplier emails all day, logging <strong>154 successes against 3 empty 500s and 1 dropped connection in a single afternoon</strong> — and every affected PO succeeded moments later on retry.</p>
 <p>So an empty-bodied 5xx here is <strong>not</strong> a signal that your payload is wrong. It has at least three unrelated causes, and the response body cannot tell them apart:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Cause</th>
@@ -4578,7 +4587,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td>Deterministic. On the Play tenant at 26.1.5910.3 <strong>every</strong> report returned an empty 500 — <code>m_reprintpurchaseorders</code> and <code>m_reprintpicktickets</code>, criteria straight from each service's own <code>/defaults</code>, both <code>UseCodeValues</code> settings, and six <code>Accept</code> variants — while <code>/definition</code> and <code>/defaults</code> for those same services returned 200. The same payload shape works in production, so treat a blanket failure like that as an environment property, not a payload bug.</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Retry idempotent report calls.</strong> Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses <strong>3 attempts with a 0.5 s × attempt backoff</strong>, which covers the observed fault rate without masking a real outage.</p>
 <p><strong>Do the existence check yourself, first.</strong> A missing record and a transient fault both surface as an unhelpful 5xx, so read the record over OData before calling the report. That turns "not found" into a clear error of your own and leaves the 5xx meaning only "the report engine faulted".</p>
 <p><strong>Classify the error envelope <em>before</em> the status code.</strong> Unlike <code>/transaction</code>, which reports failure through <code>Summary</code>/<code>Messages</code>, this endpoint returns P21's <code>ErrorType</code>/<code>ErrorMessage</code> envelope — and it can arrive on a <strong>200 as well as a 4xx/5xx</strong>. Parse the body and check for <code>ErrorMessage</code> first; if you branch on <code>response.status_code</code> alone you will mask the one message that explains the failure (for example <code>No records to print for this range.</code>).</p>
@@ -4944,7 +4953,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <h2 id="gl-dimensions-in-the-api">GL Dimensions in the API</h2>
 <p>GL dimensions (P21's dimensional-accounting tags) attach to accounting lines, <strong>not to purchase orders</strong>. If you need a PO pre-tagged with a dimension, the PO tables can't carry it — the tag must be applied downstream at vouchering, invoicing, or journal-entry time.</p>
 <p><strong>Where dimensions live in the schema:</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Table</th>
@@ -4981,7 +4990,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td><strong>No dimension columns at all</strong> — POs are outside the dimension model</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Dimensions are labels, not postings: P21 lets you edit them after posting by design, with dedicated audit-trail tables.</p>
 <p><strong>Which services expose the fields:</strong> the voucher-creation services <strong><code>ConvertPOToVoucher</code></strong> and <strong><code>VoucherByItem</code></strong> both carry the dimension fields (<code>gl_dimen_type_id</code>, <code>gl_dimen_type_uid</code>, <code>gl_dimension_id</code>, <code>gl_dimension_desc</code>, <code>gl_dimen_type_desc</code>) <strong>plus a <code>TP_TRANS_X_GL_DIMENSION.tp_trans_x_gl_dimension</code> List</strong> — the transaction-level multi-dimension grid. <code>VoucherByItem</code> additionally exposes the dimension fields on its line grid (<code>TABPAGE_17.tp_17_dw_17</code>). So voucher-creation automation <em>can</em> apply GL dimensions at vouchering time. Full schema: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ConvertPOToVoucher.json">ConvertPOToVoucher.json</a>, <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/VoucherByItem.json">VoucherByItem.json</a>.</p>
 <p><strong>Gotchas:</strong></p>
@@ -5204,7 +5213,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </div>
 <h3 id="verified-service-definition">Verified Service Definition</h3>
 <p>The definition endpoint returns the following structure for the <code>DEFINITION.stored_procedure_def</code> DataElement:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -5245,7 +5254,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td>The stored procedure name to execute</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> The key field is <code>stored_procedure_def_uid</code>, which is a Long (not a string). The <code>stored_procedure</code> field is the only required field besides the key.</p>
 </blockquote>
@@ -5278,7 +5287,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 - Suppression rules are configured in P21's DynaChange module (not via the API itself)
 - This approach avoids the complexity of opening an Interactive API session just to dismiss a dialog</p>
 <h3 id="limitations">Limitations</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Scenario</th>
@@ -5299,7 +5308,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td>(Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. <em>(Credit: Justin Cassidy)</em></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</h3>
 <p><em>Verified on production P21, 2026-08-10.</em></p>
 <p>The <code>Unexpected response window: Item Issues Detected</code> abort that kills <code>Item</code>-service transactions (see <a href="#item-service-gotchas">Item Service Gotchas</a>) is not random and not environment luck. It is a <strong>DynaChange business rule with <code>apply_during_save_flag = 'Y'</code></strong>, which fires on <strong>every save of the Item window</strong> — including the save the Transaction API performs internally. The rule raises a <code>w_rule_callback_response</code> modal, the Transaction API has no way to answer it, and the transaction aborts with the edit discarded.</p>
@@ -5310,7 +5319,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </ul>
 <h4 id="step-1-identify-the-responsible-rule">Step 1 -- Identify the responsible rule</h4>
 <p>Join <code>business_rule</code> to <code>business_rule_data_element</code> for the window you are writing to. On the system under test the rule was:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Attribute</th>
@@ -5339,7 +5348,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td><code>Y</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p>The rule uid on that system was <code>25</code>. <strong>That is environment-specific</strong> — rule uids are assigned per site and are not a universal identifier. Look the rule up by <code>window_name</code> on your own system; the name, uid, and field list will all differ.</p>
 </blockquote>
@@ -5440,7 +5449,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <hr />
 <h2 id="code-examples">Code Examples</h2>
 <p>See the <code>examples/python/transaction/</code> (Python) and <code>examples/csharp/Transaction/</code> (C#) directories for working examples:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Script</th>
@@ -5477,7 +5486,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td>Session pool diagnostic</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="known-issues">Known Issues</h2>
 <h3 id="session-pool-contamination">Session Pool Contamination</h3>
@@ -5508,7 +5517,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </ol>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Error</th>
@@ -5553,7 +5562,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td>Use <code>/api/v2/commands</code> instead (see <a href="#commands-endpoint">Commands Endpoint</a>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

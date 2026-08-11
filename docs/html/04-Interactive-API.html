@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -598,7 +607,7 @@
 
 <p>Then use the returned URL as base:</p>
 <h3 id="session-management">Session Management</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -623,9 +632,9 @@
 <td>End session</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="window-operations-v2">Window Operations (v2)</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -650,12 +659,12 @@
 <td>Close window</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="data-operations-v2-recommended">Data Operations (v2, Recommended)</h3>
 <blockquote>
 <p><strong>Important:</strong> Some P21 servers only support v2 endpoints. If you receive 404 errors on v1 endpoints, use v2 instead.</p>
 </blockquote>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -720,10 +729,10 @@
 <td>Run a tool</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Query Parameter Inconsistency:</strong> Most v2 endpoints use <code>?id=</code> for the window identifier, but the <strong>tools endpoint uses <code>?windowId=</code></strong>. Verified by live testing:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -748,11 +757,11 @@
 <td style="text-align: center;"><strong>Yes</strong></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Using the wrong parameter returns an error — there is no fallback. <code>GET /v2/tools?id=</code> fails with HTTP 400 and a validation body (<code>"The windowId field is required."</code>).</p>
 </blockquote>
 <h3 id="data-operations-v1-legacy">Data Operations (v1 - Legacy)</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -807,7 +816,7 @@
 <td>Run a tool</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
@@ -857,7 +866,7 @@
 </blockquote>
 <h4 id="session-parameters-userparameters">Session Parameters (UserParameters)</h4>
 <p>The session creation body accepts these optional parameters:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Parameter</th>
@@ -898,7 +907,7 @@
 <td>User-defined value to identify the PC or device initiating the session</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Example with multiple parameters:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/sessio</span><span class="kc">ns</span>
 <span class="p">{</span>
@@ -915,7 +924,7 @@
 </blockquote>
 <h3 id="2-open-window">2. Open Window</h3>
 <p>There are four ways to identify which window to open:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Method</th>
@@ -950,7 +959,7 @@
 <td>Numeric menu ID from P21</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/wi</span><span class="kc">n</span><span class="err">dow</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;ServiceName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SalesPricePage&quot;</span>
@@ -999,7 +1008,7 @@
 <p><strong>Note:</strong> v2 uses <code>List</code> with <code>TabName</code>, while v1 uses <code>ChangeRequests</code> with <code>DataWindowName</code>. The <code>DatawindowName</code> field in v2 uses lowercase 'w'.</p>
 <p><strong>P21 25.2+ Breaking Change:</strong> <code>DatawindowName</code> is now effectively <strong>required</strong> for v2 change requests. The 3-parameter form (TabName + FieldName + Value) stopped working after the 25.2 upgrade — you must include <code>DatawindowName</code> as the 4th field. Window data structures changed in 25.2 so the server can no longer auto-resolve the target datawindow from TabName alone. <strong>Always include <code>DatawindowName</code> in change requests.</strong></p>
 <p><strong>Affected windows (confirmed):</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Window</th>
@@ -1049,7 +1058,7 @@
 <td>Jaime Nelson</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The bug persists through at least version <strong>25.2.5776.1</strong>. Epicor has acknowledged this as a development bug.</p>
 </blockquote>
 <p><strong>Fix example (C# SDK)</strong> — the P21 C# SDK's <code>ChangeData</code>, not the REST call. For the REST equivalent see the change payloads in <a href="#example-linking-price-page-to-price-book">Linking Price Page to Price Book</a>.</p>
@@ -1065,7 +1074,7 @@
 </blockquote>
 <h4 id="valuetype">ValueType</h4>
 <p>Each change request supports an optional <code>ValueType</code> field:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>ValueType</th>
@@ -1082,7 +1091,7 @@
 <td>The raw data value (e.g., internal key instead of display text)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;TabName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;form&quot;</span><span class="p">,</span>
@@ -1134,7 +1143,7 @@
 <p>No body, no query parameter. The endpoint deletes <strong>the session belonging to the bearer token you send</strong> — which is why it needs neither.</p>
 <blockquote>
 <p><strong>A session can only be deleted by the token that created it.</strong> Verified on 26.1.5910.3 (2026-08-11): create a session and <code>DELETE</code> it on the same token and you get <code>200</code> and the session is gone. Present a <strong>different</strong> token — a fresh login after your process restarted, another worker, a retry that re-authenticated — and <em>every</em> form is refused with <code>400 {"ErrorMessage":"Invalid session"}</code>:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Attempt (different token)</th>
@@ -1167,7 +1176,7 @@
 <td><code>404</code> (no such endpoint)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The orphan stays visible in <code>GET /api/ui/interactive/sessions</code> and there is no documented way to reap it early — you wait out <code>SessionCleanupExpiration</code>. The practical rule: <strong>delete the session on the token that opened it, in a <code>finally</code>, before that token goes out of scope.</strong> Once the token is gone, so is your ability to clean up.</p>
 </blockquote>
 <hr />
@@ -1211,7 +1220,7 @@
 <li><strong><code>Datawindows</code> and <code>Fields</code> are maps, not arrays.</strong> Iterating them positionally yields keys (strings), not objects. <code>TabPageList</code> <em>is</em> an array — the two shapes sit side by side.</li>
 <li><strong>You get the ACTIVE tab page's datawindows, not the whole window.</strong> This is the part that misleads people into thinking a field doesn't exist. Verified on <code>SalesPricePage</code> (26.1.5910.3) by selecting each tab and re-reading:</li>
 </ul>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>After selecting tab</th>
@@ -1236,7 +1245,7 @@
 <td><code>price_page_po_cost_calc</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Each selection <strong>replaces</strong> the previous one. So a datawindow's absence proves only that its tab isn't active — switch tabs with <code>PUT /v2/tab</code> (<code>PageName</code>) and read again, or use <code>definitions/{Service}.json</code> for the whole picture at once. The same caveat applies to <code>GET /v2/data</code>.</p>
 <ul>
 <li>
@@ -1770,7 +1779,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <span class="err">GET /api/ui/interactive/v2/tools?windowId=w_sales_price_page&amp;dwName=form&amp;fieldName=description&amp;row=0</span>
 </code></pre></div>
 
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Parameter</th>
@@ -1800,7 +1809,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Row number — for grid-specific tools</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="run-a-tool">Run a Tool</h3>
 <div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">t</span><span class="err">ools</span>
 <span class="p">{</span>
@@ -2287,7 +2296,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <hr />
 <h2 id="working-example-scripts">Working Example Scripts</h2>
 <p>See the <code>examples/python/interactive/</code> directory:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Script</th>
@@ -2320,10 +2329,10 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Multi-step example</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="common-windows">Common Windows</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Window Title</th>
@@ -2373,9 +2382,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Inventory items</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="production-labor-windows">Production &amp; Labor Windows</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Window Title</th>
@@ -2450,7 +2459,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Process/complete production orders</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Pick confirmation MUST be windowed.</strong> A Transaction-API-only confirm produces a shell — the status flips and <code>qty_confirmed</code> is set, but <code>qty_applied</code> stays 0 and no stock moves. See <a href="12-Production-Labor-API.html#confirming-the-pick-use-the-interactive-api">Confirming the Pick</a>.</p>
 </blockquote>
@@ -3126,7 +3135,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <hr />
 <h2 id="purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes (Header vs Line)</h2>
 <p>The PurchaseOrder window exposes <strong>two separate notepad surfaces</strong>, and they use <strong>different tabs and different tools</strong>. Conflating them silently writes to the wrong place with no error.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
@@ -3161,7 +3170,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td><code>cb_add_line</code> / <code>cb_edit_line</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Warning — silent misfile:</strong> Both tools are labelled <strong>"Add Note"</strong>, but they are distinct. Using <code>cb_add_line</code> (the line tool) when you intend a header note <strong>files the note against the currently-selected line</strong> (line 1 after a fresh load) — a perfectly valid <em>line</em> note. Every call returns HTTP 200 / <code>Status: 1</code> including the save (<code>savesucceeded</code>), and the row simply never appears in <code>po_hdr_notepad</code>. Symptom: "header note write succeeds but the note is never there." Verified against P21 25.2; reproduced end-to-end July 2026 (misfiled note landed in <code>tp_21_dw_21</code> / <code>po_line_notepad</code> bound to line 1).</p>
 <p><strong>Requirement — <code>ResponseWindowHandlingEnabled: true</code>:</strong> Both add tools open the <strong>Notepad Entry</strong> popup (<code>w_notepad_response_lite</code>), which is a response window. The session must be created with <code>"ResponseWindowHandlingEnabled": true</code>. With <code>false</code>, the tool call fails with HTTP 400: <code>"Unexpected response window: Notepad Entry Window. Window class: w_notepad_response_lite"</code>.</p>
@@ -3178,7 +3187,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </code></pre></div>
 
 <p>The popup (<code>w_notepad_response_lite</code>, title "Notepad Entry Window") is tabless and has three datawindows:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Datawindow</th>
@@ -3199,7 +3208,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Areas currently selected</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Popup tools: <code>cb_select</code>, <code>cb_select_all</code>, <code>cb_deselect</code>, <code>cb_deselect_all</code>, <code>cb_ok</code>, <code>cb_cancel</code>.</p>
 <p>Changes to the popup use the <strong>popup's</strong> window ID with <code>TabName: null</code> (it is tabless). <code>cb_ok</code> closes the popup (a <code>close</code> event with <code>is_response: true</code>) and stages the new row into the parent grid — the new <code>note_id</code> is already assigned and visible in the parent window's data at this point, <strong>before</strong> saving.</p>
 <h3 id="recipe-add-a-header-note">Recipe: Add a Header Note</h3>
@@ -3718,7 +3727,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <h2 id="data-structures-reference">Data Structures Reference</h2>
 <h3 id="result-object">Result Object</h3>
 <p>Every action returns a <code>Result</code> with these properties:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Property</th>
@@ -3743,9 +3752,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>List of events that occurred (fields enabled/disabled, windows opened, keys generated, etc.)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Status values</strong> (from <code>ResultStatus</code> enum):</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Status</th>
@@ -3780,10 +3789,10 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Check <code>Events</code> for <code>windowopened</code>, handle the response window</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="messages">Messages</h3>
 <p>Each message has a <code>Text</code> and a <code>Type</code>:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>MessageType</th>
@@ -3804,10 +3813,10 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Error (action failed)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="events">Events</h3>
 <p>Events describe every discrete action the application took. Key event names:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Event Name</th>
@@ -3824,13 +3833,13 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>A new key was generated (e.g., new record ID on save)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Tip:</strong> For less granular information, query the full window state with <code>GET /api/ui/interactive/v2/window?id={windowId}</code> after an action instead of parsing individual events.</p>
 </blockquote>
 <h3 id="window-definition">Window Definition</h3>
 <p>When you open or GET a window, the response includes structural information:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Property</th>
@@ -3855,9 +3864,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Map of datawindow definitions</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Each <strong>datawindow definition</strong> contains:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Property</th>
@@ -3882,9 +3891,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Map of field definitions</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Each <strong>field definition</strong> contains:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Property</th>
@@ -3909,10 +3918,10 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td><code>Char</code>, <code>Long</code>, <code>Datetime</code>, <code>Decimal</code>, <code>Number</code>, or <code>Time</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="window-data">Window Data</h3>
 <p><code>GET /api/ui/interactive/v2/data?id={windowId}</code> returns data for each datawindow on the active surface:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Property</th>
@@ -3945,7 +3954,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Array of arrays — each inner array is a row of values</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="self-documenting-help-endpoints">Self-Documenting Help Endpoints</h2>
 <p>The API server exposes built-in help pages that list all available endpoints and their parameters:</p>
@@ -3959,7 +3968,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <hr />
 <h2 id="v1-rest-endpoint-reference-sdk-internal">V1 REST Endpoint Reference (SDK Internal)</h2>
 <p>The C# SDK (<code>P21.UI.Service.Client</code>) calls these V1 REST endpoints internally. They are listed here for reference — the V2 endpoints documented <a href="#window-operations-v2">above</a> are recommended for direct REST access. Understanding the V1 paths is useful when debugging SDK behavior or reading network traces.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Method</th>
@@ -4039,7 +4048,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Change row</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> The <code>uiserver0</code> prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check <code>GET /api/ui/router/v1?urlType=external</code> to obtain the correct base URL.</p>
 </blockquote>
@@ -4069,7 +4078,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </ol>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Error</th>
@@ -4104,10 +4113,10 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Re-open the window</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="session-vs-transaction-api">Session vs Transaction API</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Feature</th>
@@ -4147,7 +4156,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <td>Bulk operations</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="known-issues-and-workarounds">Known Issues and Workarounds</h2>
 <h3 id="row-selection-synchronization-bug-list-detail">Row Selection Synchronization Bug (List → Detail)</h3>
@@ -4292,7 +4301,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <p><strong>Important:</strong> Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.</p>
 </blockquote>
 <h3 id="summary-table">Summary Table</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operation</th>
@@ -4332,7 +4341,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <td><code>DatawindowName</code> (lowercase w)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="change-request-format">Change Request Format</h3>
 <p><strong>v1:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -4382,7 +4391,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 
 <hr />
 <h2 id="troubleshooting-v2-issues">Troubleshooting v2 Issues</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Error</th>
@@ -4412,7 +4421,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <td>Include TabName in change request</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="operational-patterns">Operational Patterns</h2>
 <p>Patterns discovered through production use of the Interactive API. These cover behaviors that are not documented in the official SDK but are consistent and reproducible.</p>
@@ -4639,7 +4648,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </div>
 <h3 id="response-window-types">Response Window Types</h3>
 <p>Response windows fall into distinct categories based on what interactions they support. Tool-capable dialogs can be dismissed via <code>POST /tools</code>, but message boxes (<code>w_message</code>) are auto-answered based on <code>ResponseWindowHandlingEnabled</code> configuration.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Type</th>
@@ -4679,7 +4688,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <td>Auto-answered when <code>ResponseWindowHandlingEnabled: false</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Editability (reconciled July 2026):</strong> earlier testing (April 2026) concluded form-type response windows could only be dismissed — <code>GET /data</code> returned 400 and <code>PUT /change</code> returned 500 with <em>"Tab with name FORM does not exist"</em>. Those change attempts addressed the popup's fields with <code>TabName: "FORM"</code>. Later work showed form-style response windows <strong>are editable</strong> when the change request uses <strong><code>TabName: null</code></strong> with the popup's window ID — verified end-to-end on <code>w_notepad_response_lite</code> (see <a href="#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes</a>). If a popup's fields reject edits, retry with <code>TabName: null</code> before concluding the window is dismiss-only. <code>w_message</code> boxes remain uneditable and are auto-answered.</p>
 <p><strong>Inspecting and dismissing response windows</strong> — takes the <code>response_window_id</code> from a <code>windowopened</code> event, so it only runs once something has opened a popup:</p>
 <blockquote>
@@ -4781,7 +4790,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <p><strong>Best practice:</strong> Do <strong>not</strong> set <code>uom</code> explicitly — let P21 auto-populate it from the item master data. The API fills in the item's default selling or purchasing UOM automatically after <code>item_id</code> is set. Only override <code>uom</code> if you have confirmed the target value exists in the item's UOM list.</p>
 <h3 id="timeout-recommendations">Timeout Recommendations</h3>
 <p>Recommended HTTP timeouts based on production experience with large payloads:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operation</th>
@@ -4811,7 +4820,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <td>P21 server processing varies by load</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p>These are guidelines from production use. Adjust based on data volume and server performance. The default <code>httpx</code> timeout of 5 seconds is almost always too low for P21 operations.</p>
 </blockquote>

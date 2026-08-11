@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -540,7 +549,7 @@
 <hr />
 <h2 id="http-status-codes">HTTP Status Codes</h2>
 <h3 id="success-codes">Success Codes</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -565,9 +574,9 @@
 <td>Request succeeded, no body (DELETE)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="client-error-codes">Client Error Codes</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -617,9 +626,9 @@
 <td>Validation failed</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="server-error-codes">Server Error Codes</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -649,7 +658,7 @@
 <td>Backend service timeout</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="authentication-errors">Authentication Errors</h2>
 <h3 id="token-endpoint-errors">Token Endpoint Errors</h3>
@@ -681,7 +690,7 @@
 
 <p><strong>Solution</strong>: Use a dual-format parser that tries JSON first, then falls back to XML regex parsing. See <a href="00-Authentication.html#xml-token-responses">Authentication - XML Token Responses</a>.</p>
 <h3 id="token-troubleshooting">Token Troubleshooting</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Issue</th>
@@ -710,7 +719,7 @@
 <td>Middleware may return XML — use dual-format parser</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="odata-api-errors">OData API Errors</h2>
 <h3 id="400-invalid-filter-expression">400 - Invalid Filter Expression</h3>
@@ -958,7 +967,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 
 <h3 id="measured-limits">Measured limits</h3>
 <p>Established end to end — written through the real API, saved, and read back at each length — rather than inferred from the schema:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -983,7 +992,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td><code>varchar(30)</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="measuring-one-yourself-two-traps-that-produce-a-confident-wrong-answer">Measuring one yourself — two traps that produce a confident wrong answer</h3>
 <p>Both of these make a length sweep lie, and both have bitten this codebase:</p>
 <ol>
@@ -1721,7 +1730,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 </blockquote>
 <hr />
 <h2 id="common-issues-quick-reference">Common Issues Quick Reference</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Issue</th>
@@ -1811,7 +1820,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Check required fields</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

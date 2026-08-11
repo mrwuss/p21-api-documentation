@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -553,7 +562,7 @@
 <p>Example: <code>https://play.p21server.com/api/inventory/parts</code></p>
 <hr />
 <h2 id="endpoints">Endpoints</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Method</th>
@@ -618,11 +627,11 @@
 <td>Not tested</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="comparison-with-entity-api">Comparison with Entity API</h2>
 <p>Both endpoint families belong to the <strong>same REST API</strong> (see <a href="05-Entity-API.html#terminology-epicors-naming-july-2026">Terminology — Epicor's Naming</a>); this table contrasts how the two families behave:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Feature</th>
@@ -662,7 +671,7 @@
 <td>PUT for updates, POST for creates</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="reading-items">Reading Items</h2>
 <h3 id="basic-get">Basic GET</h3>
@@ -1011,7 +1020,7 @@
 <p><strong>Significant:</strong> The <code>Locations</code> extended property returns full <code>inv_loc</code> records including GL accounts, product groups, costs, and all inventory location fields. This provides read access to <code>inv_loc</code> data that is difficult to obtain through other APIs.</p>
 </blockquote>
 <h3 id="extended-properties-reference">Extended Properties Reference</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Property</th>
@@ -1081,10 +1090,10 @@
 <td>Alternate item codes</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="data-fields-partial">Data Fields (Partial)</h3>
 <p>Key fields from <code>GET /api/inventory/parts/{ItemId}</code> (maps to <code>inv_mast</code> table):</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1184,10 +1193,10 @@
 <td>Always <code>"inv_mast"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="location-level-fields-inv_loc">Location-Level Fields (inv_loc)</h3>
 <p>Key fields on <code>inv_loc</code> records within <code>Locations.list</code> (requires <code>extendedproperties=Locations</code>):</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1277,7 +1286,7 @@
 <td>Always <code>"inv_loc"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> <code>PurchaseDiscountGroup</code> and <code>SalesDiscountGroup</code> on <code>inv_loc</code> are <strong>separate</strong> from the item-level <code>DefaultPurchaseDiscGroup</code> and <code>DefaultSalesDiscountGroup</code> on <code>inv_mast</code>. Values can differ between levels — the location-level fields override the item-level defaults for that specific location.</p>
 </blockquote>
@@ -2610,7 +2619,7 @@
 <p><strong>Note:</strong> The response includes both pricing AND availability data for the requested location. <code>QuantityAvailable</code> = <code>QuantityOnHand</code> - <code>QuantityAllocated</code> (minus non-pickable, quarantined, and frozen). <code>CompanyId</code> may be <code>null</code> in the response even when specified in the request.</p>
 </blockquote>
 <p><strong>Key fields:</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -2651,7 +2660,7 @@
 <td>Location type (e.g., <code>"Standard"</code>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="pricing-error-response">Pricing Error Response</h3>
 <p>When the item is not valid or not defined at the requested location, the API returns the standard P21 error envelope:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -2668,7 +2677,7 @@
 </blockquote>
 <h3 id="url-encoding-for-special-characters">URL Encoding for Special Characters</h3>
 <p>When item IDs contain special characters, URL encoding is required:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Character</th>
@@ -2698,7 +2707,7 @@
 <td>Use standard URL encoding</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Known Issue</strong>: Forward slash (<code>/</code>) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets <code>%2F</code> as a literal path separator, returning 404. There is no known workaround for items containing <code>/</code> in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)</p>
 </blockquote>

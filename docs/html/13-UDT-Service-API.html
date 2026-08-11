@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -580,7 +589,7 @@
 </blockquote>
 <hr />
 <h2 id="endpoints">Endpoints</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Method</th>
@@ -610,7 +619,7 @@
 <td><strong>2026.1+</strong> — bulk-insert rows from a CSV file (<a href="#bulk-data-api-20261">details</a>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>The UDT Service API uses the same Bearer token authentication as all other P21 APIs. Both <strong>consumer key</strong> and <strong>user/password</strong> authentication work. API scope does not affect access.</p>
@@ -639,7 +648,7 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -669,9 +678,9 @@
 <td>Column name/value pairs for WHERE clause (update/delete)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="insert-vs-update-vs-delete">Insert vs Update vs Delete</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operation</th>
@@ -696,7 +705,7 @@
 <td>Required (identifies target rows, typically <code>row_uid</code>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="insert">Insert</h2>
 <p>Insert one or more rows into a UDT table. All non-nullable columns must be included in the payload. Columns not included will be set to NULL.</p>
@@ -1409,7 +1418,7 @@ A1,First order,1.5,2026-01-15
 </code></pre></div>
 
 <h3 id="contract">Contract</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Aspect</th>
@@ -1478,7 +1487,7 @@ A1,First order,1.5,2026-01-15
 <td>Must be a registered UDT. Ordinary P21 tables (<code>supplier</code>, <code>inv_mast</code>, <code>po_hdr</code>) return <code>"Incompatible table for bulk insert: {table}"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="gotchas">Gotchas</h3>
 <blockquote>
 <p>⚠️ <strong>A CSV without a header row reports success and inserts nothing.</strong> The service treats the first line as the header, finds no data rows beneath it, and returns HTTP 200 <code>{"isSuccessful": true}</code> having written <strong>zero rows</strong>. A migration or nightly job that omits the header logs a clean success for every run while loading nothing. <strong>Always verify the row count with an OData read-back</strong> — the response body cannot tell you how many rows landed (it reports no count at all).</p>
@@ -1867,7 +1876,7 @@ A1,First order,1.5,2026-01-15
 </code></pre></div>
 
 <h3 id="response-fields">Response Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1927,7 +1936,7 @@ A1,First order,1.5,2026-01-15
 <td>Raw SQL error message</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="checking-for-success">Checking for Success</h3>
 <p>Always check <code>errorNo</code>, not <code>errorMessage</code>. Success messages are returned in the <code>errorMessage</code> field, which is counterintuitive.</p>
 <div class="code-tabs">
@@ -2109,7 +2118,7 @@ A1,First order,1.5,2026-01-15
 <p><strong>Source</strong>: Community-reported issues, verified via actual API testing (April 2026). Tested on P21 version 25.2. Applies to all <code>/udtservice/api/udtdata/</code> endpoints.</p>
 </blockquote>
 <h3 id="1-success-messages-in-errormessage-field">1. Success Messages in errorMessage Field</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
@@ -2134,10 +2143,10 @@ A1,First order,1.5,2026-01-15
 <td>Check <code>errorNo == 0</code> for success, not the field name</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The API returns success messages in the <code>errorMessage</code> field (e.g., <code>"[1] row inserted in [udt_custom_orders] table successfully..!"</code>). Always check <code>errorNo == 0</code> for success, not the field name. Credit: Jon Christie.</p>
 <h3 id="2-sql-keyword-false-positives">2. SQL Keyword False Positives</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
@@ -2162,10 +2171,10 @@ A1,First order,1.5,2026-01-15
 <td>No known workaround — abbreviate or encode values</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Values containing SQL keywords like <code>"drop"</code>, <code>"insert"</code>, <code>"delete"</code>, <code>"update"</code>, or <code>"select"</code> may be blocked by the API's SQL injection filter, even when they appear in legitimate data. For example, a product description containing <code>"drop tube"</code> or <code>"insert fitting"</code> could be rejected. Credit: John Kennedy.</p>
 <h3 id="3-updatedelete-only-accept-uids-as-conditions">3. Update/Delete Only Accept UIDs as Conditions</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
@@ -2190,10 +2199,10 @@ A1,First order,1.5,2026-01-15
 <td>Query via OData first to obtain <code>row_uid</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The <code>conditions</code> array for update and delete operations only reliably works with <code>row_uid</code>. Attempting to use other column values as conditions may produce unexpected results or errors. Always query via OData first to obtain the <code>row_uid</code> of the target row.</p>
 <h3 id="4-all-non-nullable-columns-required-on-insert">4. All Non-Nullable Columns Required on Insert</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
@@ -2218,10 +2227,10 @@ A1,First order,1.5,2026-01-15
 <td>Include all non-nullable columns in the payload</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>When inserting, every column that is defined as non-nullable in the UDT must be included in the <code>columns</code> array. Columns that are omitted from the payload will be set to NULL, which will fail if the column has a NOT NULL constraint.</p>
 <h3 id="5-epicor-documentation-json-typos">5. Epicor Documentation JSON Typos</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
@@ -2242,10 +2251,10 @@ A1,First order,1.5,2026-01-15
 <td>Validate JSON before sending</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The official Epicor documentation examples for this API contain JSON syntax errors (extra trailing commas, mismatched brackets). If copying from the official docs, validate your JSON before sending. Credit: Felipe Maurer.</p>
 <h3 id="6-saas-hostname-difference">6. SaaS Hostname Difference</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th></th>
@@ -2270,7 +2279,7 @@ A1,First order,1.5,2026-01-15
 <td>Add <code>-api</code> to the FQDN hostname</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>SaaS-hosted P21 environments may require <code>-api</code> in the FQDN hostname for the UDT Service endpoint. For example:</p>
 <ul>
 <li><strong>On-premise:</strong> <code>https://play.p21server.com/udtservice/api/udtdata/</code></li>

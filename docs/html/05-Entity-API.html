@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -577,7 +586,7 @@
 <li>Epicor briefly subdivided the REST API into "V1 API" / "V2 API" — short-lived naming you may still hear; it has <strong>no relation</strong> to <code>/v2/</code> segments in eCommerce SOAP URLs.</li>
 </ul>
 <p><strong>Corroborated by the in-middleware SDK reference</strong> (<code>/docs/p21sdk</code> on a 2026.1 tenant), which is Epicor's own first-party catalog and lists exactly <strong>four</strong> APIs — no more:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>SDK name</th>
@@ -602,7 +611,7 @@
 <td><em>"...secure reads from your Prophet 21 database using OData protocol."</em></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Two things worth noting: Epicor confirms in its own words that the <strong>Transaction API is the artist formerly known as the "v2 API"</strong>, and the SDK's four-way split is by <em>capability</em>, not by URL prefix — reinforcing that URL segments don't define API boundaries. The UDT Service and its 2026.1 <a href="13-UDT-Service-API.html#bulk-data-api-20261">Bulk Data API</a> appear in <strong>none</strong> of the four, despite being documented, supported endpoints — so the SDK catalog is not exhaustive either.</p>
 <p><em>Credit: Felipe Maurer (<a href="https://forums.p21ww.org/UserInfo10045.aspx">P21WWUG profile</a>) — taxonomy correction and 25.1 middleware evidence in <a href="https://forums.p21ww.org/Topic245514-3.aspx">this forum topic</a>; endpoint behavior re-verified live July 2026, SDK catalog cross-checked on 2026.1.</em></p>
 <hr />
@@ -648,7 +657,7 @@
 <hr />
 <h2 id="available-entities">Available Entities</h2>
 <p>Only four entities are available via the Entity API:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Entity</th>
@@ -683,7 +692,7 @@
 <td>27</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Additionally, the same REST API provides inventory items at <code>/api/inventory/parts</code> (<strong><a href="11-Inventory-REST-API.html">Inventory REST API</a></strong>) and sales orders at <code>/api/sales/orders</code> (<a href="#other-rest-endpoint-families">below</a>).</p>
 <h3 id="composite-keys">Composite Keys</h3>
 <p>Customers and Vendors require a <strong>composite key</strong> combining <code>CompanyId</code> and the entity ID, separated by an underscore:</p>
@@ -706,7 +715,7 @@
 <hr />
 <h2 id="endpoints-per-entity">Endpoints Per Entity</h2>
 <h3 id="customers-vendors-contacts">Customers, Vendors, Contacts</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Method</th>
@@ -751,10 +760,10 @@
 <td>Update (key in URL)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="addresses-limited">Addresses (Limited)</h3>
 <p>Addresses have a <strong>reduced</strong> set of operations — no <code>/new</code> template and no update:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Method</th>
@@ -789,7 +798,7 @@
 <td>Create new address</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>No <code>/new</code> or PUT:</strong> The address resource does not define a template endpoint or an update method in the SDK interface. The <code>/new</code> endpoint returns 500 because it doesn't exist (not a bug). To update an address, use the Interactive API or direct SQL.</p>
 </blockquote>
@@ -826,7 +835,7 @@
 <p>See <a href="00-Authentication.html">Authentication</a> for token generation. Per the SDK, <strong>user-credential tokens</strong> expire after <strong>24 hours</strong>; consumer-key tokens last far longer (years).</p>
 <h3 id="consumer-key-behavior">Consumer Key Behavior</h3>
 <p>When using Consumer Key authentication with the Entity API:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Scenario</th>
@@ -847,7 +856,7 @@
 <td>Use plain username (e.g., <code>admin</code>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="crud-operations">CRUD Operations</h2>
 <h3 id="key-rule-presence-update-absence-insert">Key Rule: Presence = Update, Absence = Insert</h3>
@@ -962,7 +971,7 @@
 <p><strong>Remember:</strong> List endpoints redirect (307), so use a trailing slash or enable redirect following.</p>
 </blockquote>
 <h3 id="comparison-operators">Comparison Operators</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operator</th>
@@ -1002,9 +1011,9 @@
 <td><code>CreditLimit le 1000</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="logical-operators">Logical Operators</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operator</th>
@@ -1029,9 +1038,9 @@
 <td><code>not (CustomerId eq 0)</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="string-functions">String Functions</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Function</th>
@@ -1056,7 +1065,7 @@
 <td><code>substringof('Supply', VendorName)</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="verified-query-examples">Verified Query Examples</h3>
 <div class="highlight"><pre><span></span><code><span class="err"># Find customers by name prefix (returned 7 results)</span>
 <span class="err">GET /api/entity/customers/?$query=startswith(CustomerName, &#39;ABC&#39;)</span>
@@ -2224,7 +2233,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <h3 id="customer-template-102-fields">Customer Template (102 fields)</h3>
 <p>Complete field list from <code>GET /api/entity/customers/new</code>:</p>
 <p><strong>Extended Properties (null by default, populate via <code>extendedproperties</code> parameter):</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
@@ -2289,9 +2298,9 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>null</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Data Fields:</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
@@ -2860,11 +2869,11 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td><code>"customer"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="vendor-template-50-fields">Vendor Template (50 fields)</h3>
 <p>Complete field list from <code>GET /api/entity/vendors/new</code>:</p>
 <p><strong>Extended Properties (null by default, populate via <code>extendedproperties</code> parameter):</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
@@ -2899,9 +2908,9 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>null</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Data Fields:</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
@@ -3188,11 +3197,11 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td><code>"vendor"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="contact-template-40-fields">Contact Template (40 fields)</h3>
 <p>Complete field list from <code>GET /api/entity/contacts/new</code>:</p>
 <p><strong>Extended Properties (null by default, populate via <code>extendedproperties</code> parameter):</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
@@ -3233,9 +3242,9 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>null</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Data Fields:</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
@@ -3456,13 +3465,13 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td><code>"contacts"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="address-fields-27-fields">Address Fields (27 fields)</h3>
 <blockquote>
 <p><strong>Note:</strong> The Address resource does not have a <code>/new</code> template endpoint (this is by design, not a bug). The field list below is from an existing address record (<code>GET /api/entity/addresses/10</code>).</p>
 </blockquote>
 <p>Complete field list:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>#</th>
@@ -3635,12 +3644,12 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>Always <code>"address"</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="additional-endpoints">Additional Endpoints</h2>
 <h3 id="soap-endpoints">SOAP Endpoints</h3>
 <p>In addition to the REST endpoints documented above, the Entity API also exposes SOAP web services:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Version</th>
@@ -3660,11 +3669,11 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td><code>/api/entity/v2/CustomerService</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Available for: Customer, Vendor, Contact, Address. Use these if your integration platform prefers SOAP over REST.</p>
 <h3 id="mobile-endpoints">Mobile Endpoints</h3>
 <p>The P21 middleware also exposes mobile-specific entity endpoints with <strong>additional entities</strong> not available via the standard REST API:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -3697,7 +3706,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>Companies (not in REST API)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> The mobile endpoints are designed for the P21 mobile application. Their request/response format may differ from the REST API. Use with caution for custom integrations.</p>
 </blockquote>
@@ -3709,7 +3718,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <p>This lists every registered endpoint including REST, SOAP, and mobile resources.</p>
 <hr />
 <h2 id="error-codes">Error Codes</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -3759,10 +3768,10 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>Server-side error — check <code>p21soa.log</code> and <code>p21api.log</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="log-file-locations">Log File Locations</h3>
 <p>When troubleshooting 400/500 errors, check the server-side log files:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Log</th>
@@ -3779,12 +3788,12 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>P21 Core Business Logic (validation, data operations)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="other-rest-endpoint-families">Other REST Endpoint Families</h2>
 <p>The REST API exposes more than <code>/api/entity/</code> and <code>/api/inventory/parts</code>. Verified against a 25.2 tenant (July 2026):</p>
 <h3 id="apisalesorders-exists-and-responds"><code>/api/sales/orders</code> — exists and responds</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Call</th>
@@ -3813,14 +3822,14 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>500 with an unrecognized field name — list query syntax not yet discovered</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Writes and the approve action are <strong>untested</strong> — treat this family as read-verified only until documented further.</p>
 <h3 id="families-that-404-on-the-tested-tenant">Families that 404 on the tested tenant</h3>
 <p><code>sales/customers</code>, <code>sales/quotes</code>, <code>sales/invoices</code>, <code>sales/shipments</code>, <code>sales/payments</code>, <code>purchasing/*</code>, <code>ar/*</code>, <code>inventory/items</code>, <code>inventory/lots</code> — all returned 404 on ping. Availability may vary by version; the SOA middleware admin site lists the endpoint families your server actually exposes.</p>
 <p><em>Credit: Felipe Maurer (<a href="https://forums.p21ww.org/UserInfo10045.aspx">P21WWUG profile</a>) — surfaced <code>/api/sales/orders</code> and the middleware endpoint listing in <a href="https://forums.p21ww.org/Topic245514-3.aspx">this forum topic</a>.</em></p>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Error</th>
@@ -3855,7 +3864,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>Try a different approach or entity</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="common-mistakes">Common Mistakes</h3>
 <ol>
 <li><strong>Wrong URL pattern for the 4 entities</strong> - Use <code>/api/entity/customers</code>, NOT <code>/api/sales/customers</code></li>
@@ -3866,7 +3875,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 </ol>
 <hr />
 <h2 id="entity-api-vs-other-apis">Entity API vs Other APIs</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Feature</th>
@@ -3927,7 +3936,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td>Complex workflows</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -551,7 +560,7 @@
 <h2 id="available-services">Available Services</h2>
 <p>All services below are accessed through the Transaction API. Use <code>GET /api/v2/services</code> to confirm availability on your P21 instance. Use <code>GET /api/v2/definition/{ServiceName}</code> to retrieve the full schema and template for any service.</p>
 <h3 id="core-production-services">Core Production Services</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -580,12 +589,12 @@
 <td>Adjust completed production orders</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> The service name <code>CompletedProducitonOrderAdjustment</code> contains a typo ("Produciton" instead of "Production"). This is P21's actual service name -- you must use the misspelled version in API calls.</p>
 </blockquote>
 <h3 id="labor-time-services">Labor &amp; Time Services</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -610,9 +619,9 @@
 <td>Labor process templates with operation sequences</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="supporting-services">Supporting Services</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -661,7 +670,7 @@
 <td>Shift definitions</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="recording-labor-hours-timeentry-service">Recording Labor Hours (TimeEntry Service)</h2>
 <p>The <code>TimeEntry</code> service is the primary service for posting labor hours to production orders. It uses a header/detail pattern with a technician header and one or more labor line items.</p>
@@ -671,7 +680,7 @@
 </code></pre></div>
 
 <h4 id="header-tp_techniciantp_technician-form">Header -- <code>TP_TECHNICIAN.tp_technician</code> (Form)</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -700,9 +709,9 @@
 <td>Date of time entry</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="labor-lines-tp_laborrecordingprod_order_line_comp_labor-list">Labor Lines -- <code>TP_LABORRECORDING.prod_order_line_comp_labor</code> (List)</h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -773,7 +782,7 @@
 <td>Complete production order flag</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Field order matters.</strong> On the labor grid, fields must be entered in a strict order or the downstream fields stay disabled: <code>prod_order_number</code> → <code>item_id</code> → <code>component_labor_id</code> → <code>start_time</code> → <code>end_time</code>. See <a href="#time-entry-against-a-production-order-quick-time-entry">Time Entry Against a Production Order (Quick Time Entry)</a> for the verified mechanics.</p>
 </blockquote>
@@ -943,7 +952,7 @@
 <h4 id="1-tabpage_1tp_1_dw_1-form-production-order-header">1. <code>TABPAGE_1.tp_1_dw_1</code> (Form) -- Production Order Header</h4>
 <p>Key: <code>prod_order_number</code></p>
 <p>Contains 54+ fields for the production order header:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1013,10 +1022,10 @@
 <td>Order notes</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="2-tabpage_17tp_17_dw_17-list-assembly-lines">2. <code>TABPAGE_17.tp_17_dw_17</code> (List) -- Assembly Lines</h4>
 <p>Assembly items to be manufactured on this production order:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1051,10 +1060,10 @@
 <td>Route/process code</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="3-tabpage_18components-list-component-materials">3. <code>TABPAGE_18.components</code> (List) -- Component Materials</h4>
 <p>Bill of materials for the production order:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1104,10 +1113,10 @@
 <td>Operation sequence order</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="4-tp_labortp_labor-list-labor-entries">4. <code>TP_LABOR.tp_labor</code> (List) -- Labor Entries</h4>
 <p>Labor lines recorded against the production order:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1142,10 +1151,10 @@
 <td>Rate type: <code>Rate</code>, <code>OT Rate</code>, or <code>Prem Rate</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="5-tp_labordetailtp_labordetail-form-labor-entry-detail">5. <code>TP_LABORDETAIL.tp_labordetail</code> (Form) -- Labor Entry Detail</h4>
 <p>Detail view for a selected labor entry:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1185,10 +1194,10 @@
 <td>Location ID</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="6-tp_laborscheduledisplaytp_laborscheduledisplay-list-labor-schedulehistory">6. <code>TP_LABORSCHEDULEDISPLAY.tp_laborscheduledisplay</code> (List) -- Labor Schedule/History</h4>
 <p>Read-only display of labor recorded against the production order:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1253,10 +1262,10 @@
 <td>Total cost</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="7-completioncompletion-list-completion-records">7. <code>COMPLETION.completion</code> (List) -- Completion Records</h4>
 <p>Tracks completion milestones with cost breakdowns:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1336,10 +1345,10 @@
 <td>Additional process cost</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="8-routing_tabpageprocess_x_transaction-form-routingprocess-info">8. <code>ROUTING_TABPAGE.process_x_transaction</code> (Form) -- Routing/Process Info</h4>
 <p>Routing and process details for the production order:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1374,10 +1383,10 @@
 <td>Quantity completed</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h4 id="9-tp_assemblycoststp_assemblycosts-form-assembly-cost-summary">9. <code>TP_ASSEMBLYCOSTS.tp_assemblycosts</code> (Form) -- Assembly Cost Summary</h4>
 <p>Estimated vs. actual cost comparison:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1437,7 +1446,7 @@
 <td>Actual process cost</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="additional-dataelements">Additional DataElements</h3>
 <p>The <code>ProductionOrder</code> service also includes DataElements for:</p>
 <ul>
@@ -1461,7 +1470,7 @@
 3. Create production orders via Transaction API (<code>ProductionOrder</code> service) referencing the assembled item</p>
 <h3 id="assembly-behavior-flags">Assembly Behavior Flags</h3>
 <p>Three ON/OFF flags on the assembly header (<code>assembly_hdr</code>, header datawindow <code>assemblyhdr</code>, key <code>inv_mast_item_id</code>) control how the item behaves at order entry and in production:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Flag</th>
@@ -1486,7 +1495,7 @@
 <td>Make-to-order</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>On a saved sales order, <code>oe_line.assembly</code> reflects the outcome: <code>B</code> = kit parent, <code>N</code> = kit component, <code>P</code> = production-order line, <code>S</code> = build-to-stock line allocated from on-hand.</p>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — flag semantics verified end-to-end.</p>
@@ -1565,7 +1574,7 @@
 <h3 id="key-field">Key Field</h3>
 <p><code>service_labor_id</code> -- Unique identifier for the labor code.</p>
 <h3 id="header-fields">Header Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1615,10 +1624,10 @@
 <td>Record status</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="rate-tables">Rate Tables</h3>
 <p>Each labor code can have multiple rate levels:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1653,10 +1662,10 @@
 <td>Rate amount per level</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="cost-data">Cost Data</h3>
 <p>Cost fields exist at both global and per-location levels:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1696,7 +1705,7 @@
 <td>Commission cost</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="laborprocess-service-process-templates">LaborProcess Service -- Process Templates</h2>
 <p>The <code>LaborProcess</code> service defines labor process templates with ordered operation sequences. These templates can be applied to production orders to pre-populate labor steps.</p>
@@ -1707,7 +1716,7 @@
 <h3 id="key-field_1">Key Field</h3>
 <p><code>service_labor_process_id</code> -- Unique identifier for the labor process template.</p>
 <h3 id="header-fields_1">Header Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1737,9 +1746,9 @@
 <td>Operation sequencing flag</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="labor-process-list-operations">Labor Process List (Operations)</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1774,11 +1783,11 @@
 <td>Next operation in sequence</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="interactive-api-windows">Interactive API Windows</h2>
 <p>All of the following windows can be opened via the Interactive API for stateful, step-by-step interaction with full business logic validation. See <a href="04-Interactive-API.html">Interactive API</a> for session management and window operation details.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>ServiceName</th>
@@ -1853,7 +1862,7 @@
 <td>Process and complete production orders</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> <code>WorkCenter</code> returns HTTP 500 when opened via the Interactive API. This may require specific licensing or server-side configuration. Use the Transaction API for work center operations instead.</p>
 </blockquote>
@@ -2099,7 +2108,7 @@
 <li>Click <strong>Refresh OData API service</strong></li>
 </ol>
 <h3 id="common-tables-to-expose">Common Tables to Expose</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Table Name</th>
@@ -2128,7 +2137,7 @@
 <td>Labor code definitions</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Once exposed, query them via the OData API:</p>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -2271,7 +2280,7 @@
 </ol>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Error</th>
@@ -2316,7 +2325,7 @@
 <td>Add <code>DatawindowName</code> to change payload</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="code-examples">Code Examples</h2>
 <p>See the <code>examples/python/production/</code> (Python) and <code>examples/csharp/Production/</code> (C#) directories for working examples.</p>

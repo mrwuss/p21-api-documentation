@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -551,6 +560,7 @@
 <h3 id="repo-conventions-and-indexes">Repo conventions and indexes</h3>
 <ul>
 <li><strong>docs:</strong> <strong>The runnable-example convention is now written down where contributors will find it</strong> — <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/CONTRIBUTING.md">CONTRIBUTING § Code Examples</a>. It states the rule (paste, edit the <code>EDIT THESE</code> block, run), the zero-install constraint (<code>httpx</code>; <code>net9.0</code> + System.Text.Json, <strong>no NuGet</strong>, no <code>Microsoft.Extensions.*</code>), that the HTML generator takes tab labels from the <strong>fence language</strong> so the fence follows the marker directly, that the UI-server helper belongs only in Transaction/Interactive examples, that every write ends in a read-back, and that illustrative fragments stay fragments with a pointer. Previously this lived only in the working notes for the conversion, so nobody could follow it — <em>@mrwuss</em></li>
+<li><strong>fix(site):</strong> <strong>Wide tables no longer break out of their section.</strong> Tables carry long unbreakable identifiers (<code>d_dw_price_page_po_cost_calc_dataentry</code>), so a table like the one under <a href="08-SalesPricePage-Codes.html#transaction-api-alternative">Transaction API Alternative</a> laid out at 1101px inside a 722px content column and painted over everything to its right. <code>generate_html.py</code> now wraps every table in a <code>.table-wrap</code> container that scrolls horizontally, so the overflow stays inside the section. Verified in a browser across all 209 tables: only genuinely-wide ones scroll, the rest still fill the column exactly, and vertical spacing is unchanged — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Root <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/README.md">README</a> now leads with what the examples actually are, rather than "working examples"; <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md">definitions README</a> lists the five services added this release and their 26.1.5910.3 fetch build, and groups the five pricing services so the break-field naming split is discoverable from the schema library — <em>@mrwuss</em></li>
 </ul>
 <h3 id="runnable-examples">Runnable examples</h3>
@@ -789,7 +799,7 @@
 </ul>
 <hr />
 <h2 id="contributors">Contributors</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Contributor</th>
@@ -874,7 +884,7 @@
 <td>Confirmed the 25.2 DatawindowName fix, PO Receiving Group and ConvertPOToVoucher reports</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

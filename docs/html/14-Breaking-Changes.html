@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -487,7 +496,7 @@
 <hr />
 <h2 id="overview">Overview</h2>
 <p>A version-indexed registry of P21 middleware changes that <strong>break or silently corrupt existing API integrations</strong>. Every entry here was found the hard way during real upgrade validation and verified live. Most were also confirmed <strong>not</strong> to occur on the prior version; where no prior-version tenant was still available to A/B against, the entry <strong>says so explicitly</strong> rather than implying a comparison we didn't make. Check this page <strong>before</strong> any P21 upgrade, and re-test the listed surfaces on your own test tenant first.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Version</th>
@@ -507,7 +516,7 @@
 <td>High — hard break for 3-param change calls</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="p21-20261">P21 2026.1</h2>
 <p>Originally found on <strong>2026.1.5873.1</strong> during upgrade validation (June 2026), where none of it reproduced on 2025.2.5855.0 with identical requests. <strong>Re-verified July 2026 against a production tenant on 26.1.5894.1</strong>, a later build: entries 1–5 all still reproduce, with the refinements noted below. Entry 6 has been rewritten — the originally reported mechanism did not reproduce on 5894.1 (see that entry). The empty-500 defect has been reported to Epicor; the contract changes are awaiting written confirmation of intent.</p>
@@ -518,7 +527,7 @@
 <p><strong>Hard break — every interactive endpoint.</strong></p>
 <p>On 2026.1, any request to <code>/uiserver0/api/ui/interactive/...</code> whose <code>Accept</code> header does not include <code>application/json</code> fails with an <strong>empty-body HTTP 500</strong>. That includes <code>Accept: */*</code> — the <strong>default for most HTTP libraries, including Python <code>httpx</code> and .NET <code>HttpClient</code></strong>. 2025.2 falls back to a default representation instead of failing.</p>
 <p>The rule is <em>"<code>application/json</code> must be present"</em>, not <em>"<code>*/*</code> is rejected"</em> — a list containing both works. Verified on 26.1.5894.1, each variant tested from a clean slate:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><code>Accept</code></th>
@@ -551,7 +560,7 @@
 <td>200</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">{uiserver}/api/ui/interactive/sessions/</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer {token}</span>
 <span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
@@ -588,7 +597,7 @@
 
 <p><strong>Mitigation:</strong> none needed if you follow the documented v2 shape — this repo has always documented <code>PageName</code> (<a href="04-Interactive-API.html#changing-tabs">Interactive API § Changing Tabs</a>). Audit any legacy client for <code>TabName</code> in tab-change bodies.</p>
 <p><strong><code>TabName</code> is ignored, not rejected — which matters for the error message you get.</strong> Verified on 26.1.5910.3 against <code>SalesPricePage</code>, switching tabs and reading back which datawindow the window exposes:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Body</th>
@@ -613,7 +622,7 @@
 <td>200 — switched to <strong>COSTS</strong></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The last row is the proof: when the two disagree, <code>PageName</code> wins and <code>TabName</code> contributes nothing. So a client that sends <strong>both</strong> — as some cross-version clients do to support 25.2 and 26.1 from one code path — is safe here; only <code>TabName</code> <em>alone</em> fails.</p>
 <p>Note the error text when it does fail: <strong>the tab name in the message is blank</strong>, because the server is reporting on the <code>PageName</code> it never received rather than on the <code>TabName</code> you sent. It reads as "your tab name is wrong" when the real problem is the field name. If you see <code>Tab with name or display text of  does not exist.</code> with that empty slot, check the <em>key</em> you used before you check the tab.</p>
 <h3 id="5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns <code>Status: 2</code> with an <strong>empty window</strong></h3>

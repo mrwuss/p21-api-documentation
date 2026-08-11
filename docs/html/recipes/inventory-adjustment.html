@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -478,7 +487,7 @@
 <h2 id="payload">Payload</h2>
 <p><code>POST {ui_server}/api/v2/transaction</code>, <code>Status: "New"</code>, <code>UseCodeValues: false</code>. Two DataElements:</p>
 <p><strong>Header — <code>TABPAGE_1.tp_1_dw_1</code> (Form, business object <code>inv_adj_hdr</code>, key <code>adjustment_number</code>)</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -531,10 +540,10 @@
 <td><code>ON</code> / <code>OFF</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The verified minimal header from the manual is <code>location_id</code> + <code>reason_id</code>; the definition additionally marks <code>company_id</code>, <code>period</code>, and <code>year_for_period</code> as <code>Required</code>.</p>
 <p><strong>Lines — <code>TABPAGE_17.tp_17_dw_17</code> (List, business object <code>inv_adj_line</code>)</strong></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -575,7 +584,7 @@
 <td>Resulting quantity on hand (display)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The verified minimal line from the manual is <code>item_id</code> + <code>unit_quantity</code>.</p>
 <h2 id="complete-example">Complete example</h2>
 <p>Writes off 5 units of <code>WIDGET-001</code> at location <code>10</code>, then reads the adjustment back by its server-generated <code>adjustment_number</code>.</p>

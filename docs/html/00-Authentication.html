@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -673,7 +682,7 @@
 <li>Click <strong>Register Consumer Key</strong></li>
 <li>Configure:</li>
 </ol>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -708,7 +717,7 @@
 <td><code>/api</code> for full access</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="basic-request-no-username">Basic Request (No Username)</h3>
 <p>Returns a token tied to the consumer key with no P21 user context. Sufficient for read-only operations (OData, Entity API, Inventory REST API).</p>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token/v2</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
@@ -769,7 +778,7 @@
 
 <h3 id="jwt-token-claims">JWT Token Claims</h3>
 <p>Consumer key tokens contain these claims:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Claim</th>
@@ -809,12 +818,12 @@
 <td><code>2147483647</code> (Never Expire)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> The <code>Scope</code> in the token response (and the <code>aud</code> JWT claim) is determined by the consumer key's configuration in SOA Admin — not by any <code>Scope</code> field in the request. Requesting a different scope is silently ignored.</p>
 </blockquote>
 <h3 id="api-specific-behavior-verified">API-Specific Behavior (Verified)</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>API</th>
@@ -849,7 +858,7 @@
 <td><strong>Works</strong> — user must be a real P21 account</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="important-caveats">Important Caveats</h3>
 <ol>
 <li><strong>Token endpoint creates a middleware session</strong> — each call to <code>/api/security/token/v2</code> creates a new middleware session, which may invalidate tokens from previous calls. Get one token and reuse it.</li>
@@ -974,7 +983,7 @@
 <h2 id="api-scopes">API Scopes</h2>
 <p>Consumer keys restrict access to specific endpoints. Scopes are configured in SOA Admin as semicolon-delimited paths with a leading slash.</p>
 <h3 id="url-scopes">URL Scopes</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Scope</th>
@@ -1007,7 +1016,7 @@
 <td>Configuration endpoints only</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> When SDK Access is enabled in SOA Admin, <code>/p21sdk</code> is automatically appended to the scope. The <code>/api</code> scope alone is sufficient for all API operations including Interactive API sessions — the <code>/ui</code> scope is not required.</p>
 </blockquote>
@@ -1049,7 +1058,7 @@
 <li>The list includes all 6000+ tables and views in the P21 database</li>
 </ul>
 <h3 id="permission-requirements-by-auth-method">Permission Requirements by Auth Method</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Auth Method</th>
@@ -1078,7 +1087,7 @@
 <td>User must exist in P21 but doesn't need OData/Dataservice permissions; required for Interactive API</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="troubleshooting">Troubleshooting</h3>
 <p>If you receive a <code>401</code> or <code>403</code> "not authorized" error with a valid token:</p>
 <ol>
@@ -1205,7 +1214,7 @@
 <h2 id="token-lifetime-and-reuse">Token Lifetime and Reuse</h2>
 <h3 id="token-ttl">Token TTL</h3>
 <p>The token response includes an expiry field indicating how long the token remains valid, in seconds. The field name varies by auth flow and middleware format: user credential JSON responses use <code>ExpiresInSeconds</code>, consumer key JSON responses use <code>ExpiresIn</code>, and XML responses also use <code>ExpiresIn</code>. Always check for both field names when parsing (see the <code>TokenManager</code> examples below).</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Auth Method</th>
@@ -1225,7 +1234,7 @@
 <td>When set to "Never Expire" in SOA Admin</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Important:</strong> Always read the expiry field (<code>ExpiresInSeconds</code> or <code>ExpiresIn</code>) from the response rather than hardcoding a TTL value. The default varies by server configuration and P21 version.</p>
 </blockquote>
@@ -1238,7 +1247,7 @@
 </ul>
 <h3 id="multi-api-reuse">Multi-API Reuse</h3>
 <p>A single token works across <strong>all</strong> P21 APIs. You do not need separate tokens per API.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>API</th>
@@ -1267,7 +1276,7 @@
 <td>Yes</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="token-refresh">Token Refresh</h3>
 <p>When a token expires or is about to expire, re-authenticate to get a new one. The token response may include a <code>RefreshToken</code> field, but most P21 integrations simply re-authenticate with credentials since the token endpoint is lightweight.</p>
 <p><strong>Recommended approach:</strong> Check the token's remaining lifetime before each request and re-authenticate when the token is within 5 minutes of expiry. This avoids mid-request failures from an expired token.</p>
@@ -1783,7 +1792,7 @@
 </div>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>HTTP Code</th>
@@ -1823,7 +1832,7 @@
 <td>Use dual-format parser (see <a href="#xml-token-responses">XML Token Responses</a>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="best-practices">Best Practices</h2>
 <ol>

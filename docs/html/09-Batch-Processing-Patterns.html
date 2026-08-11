@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -1028,7 +1037,7 @@
 </div>
 <h3 id="verified-timing-data">Verified Timing Data</h3>
 <p>From production measurements creating price pages with book linking:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Metric</th>
@@ -1053,7 +1062,7 @@
 <td>~30 min</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="window-reuse-within-a-batch">Window Reuse Within a Batch</h2>
 <p>Opening a P21 window is expensive (~500ms). Within a batch, open the window once and reuse it for multiple operations by clearing the window data (<code>DELETE /api/ui/interactive/v2/data?id={windowId}</code> — <code>clear_window()</code> below, <code>clear_data()</code> on the client class) between records.</p>
@@ -2032,7 +2041,7 @@
 </div>
 </div>
 <h3 id="why-not-recover-in-place">Why Not Recover In-Place?</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Recovery Strategy</th>
@@ -2053,7 +2062,7 @@
 <td>Reliable - guaranteed clean state</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The close-and-reopen strategy costs ~500ms but guarantees a clean state. For bulk operations, this reliability far outweighs the small performance cost.</p>
 <hr />
 <h2 id="page-expiration-workflow">Page Expiration Workflow</h2>
@@ -5864,7 +5873,7 @@ class above:</p>
 <hr />
 <h2 id="performance-summary">Performance Summary</h2>
 <p>Measured from production use creating and managing 700+ price pages:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operation</th>
@@ -5924,7 +5933,7 @@ class above:</p>
 <td>Including session overhead</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

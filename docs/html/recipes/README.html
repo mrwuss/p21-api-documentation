@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -469,7 +478,7 @@
 <p>If you're an AI assistant: read this file, then <strong>only</strong> the recipe for your task. The recipe is the source of truth for that process; the manual sections it links to are the deep dive.</p>
 </blockquote>
 <h2 id="index">Index</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Recipe</th>
@@ -544,7 +553,7 @@
 <td>Transaction (<code>RequisitionPurchaseOrder</code>)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h2 id="shared-conventions-recipes-dont-repeat-these">Shared conventions (recipes don't repeat these)</h2>
 <p><strong>Environment.</strong> Examples use <code>https://play.p21server.com</code> with user <code>apiuser</code> and generic data (<code>ACME</code>, <code>WIDGET-001</code>, customer <code>100198</code>). Substitute your own. Always run against a <strong>test/play environment first</strong>.</p>
 <p><strong>Auth preamble.</strong> Every recipe's complete example is a <strong>standalone program</strong> — it carries its own copy of the preamble below, so you never have to come back to this page to make a recipe run. It is reproduced here once for reference (and because it is handy on its own: paste it, edit the constants, run it, and it prints the token and the UI server URL). Recipes that only talk to OData, the Entity API, the Inventory REST API or the UDT service drop <code>get_ui_server</code> / <code>GetUiServerAsync</code> — those endpoints live on <code>BASE_URL</code> directly.</p>

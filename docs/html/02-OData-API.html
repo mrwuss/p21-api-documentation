@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -558,7 +567,7 @@
 </ul>
 <hr />
 <h2 id="endpoints">Endpoints</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Endpoint</th>
@@ -583,7 +592,7 @@
 <td>Schema document for views</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="base-url-example">Base URL Example</h3>
 <div class="highlight"><pre><span></span><code><span class="err">https://play.p21server.com/odataservice/odata/table/supplier</span>
 </code></pre></div>
@@ -710,7 +719,7 @@
 <hr />
 <h2 id="filter-expressions">Filter Expressions</h2>
 <h3 id="comparison-operators">Comparison Operators</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operator</th>
@@ -750,9 +759,9 @@
 <td><code>$filter=price le 99.99</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="logical-operators">Logical Operators</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Operator</th>
@@ -769,13 +778,13 @@
 <td><code>$filter=status eq 'A' or status eq 'B'</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p>⚠️ <strong><code>in</code> is accepted and silently ignored.</strong> <code>$filter=id in (2,3,4)</code> returns HTTP 200 with <strong>every row in the table</strong> — the filter is discarded without a warning, unlike a genuine syntax error, which 404s. Match multiple values with an <code>or</code> chain instead. Verified on 26.1.5910.3 — see <a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a>.
 | <code>not</code> | <code>$filter=not endswith(name,'Inc')</code> |</p>
 </blockquote>
 <h3 id="string-functions">String Functions</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Function</th>
@@ -796,7 +805,7 @@
 <td><code>$filter=contains(description,'filter')</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="null-checks">Null Checks</h3>
 <div class="highlight"><pre><span></span><code><span class="err">$filter=expiration_date eq null</span>
 <span class="err">$filter=notes ne null</span>
@@ -807,7 +816,7 @@
 <h3 id="active-record-filter">Active Record Filter</h3>
 <p>P21 tracks record status two different ways, and <strong>using the wrong one 404s the whole request</strong>. Check which column the table actually has before filtering.</p>
 <p><strong>Tables with <code>row_status_flag</code></strong> (e.g. <code>price_page</code>). The values are <code>code_p21</code> codes — confirmed against that table on 26.1.5910.3:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><code>row_status_flag</code></th>
@@ -828,7 +837,7 @@
 <td>Delete (soft-deleted)</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <div class="highlight"><pre><span></span><code><span class="err">$filter=row_status_flag eq 704</span>
 </code></pre></div>
 
@@ -842,7 +851,7 @@
 </blockquote>
 <h3 id="company-scoping-company_id-vs-company_no">Company Scoping — <code>company_id</code> vs <code>company_no</code></h3>
 <p>The company code is the same value everywhere (<code>"ACME"</code>), but <strong>the column that holds it has two different names</strong>, and a third group of tables doesn't carry it at all. Verified on 26.1.5910.3:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Column</th>
@@ -863,7 +872,7 @@
 <td><code>supplier</code>, <code>inv_mast</code>, <code>address</code> — these records are not company-scoped</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>Purchasing and invoicing use <code>company_no</code>; order entry, customers and inventory locations use <code>company_id</code>. There is no way to infer which from the table's subject matter, and guessing wrong produces the <strong>404</strong> described above rather than an empty result — <code>po_hdr?$select=po_no,company_id</code> fails outright.</p>
 <blockquote>
 <p><strong>The API's field names are not the column names.</strong> The <code>m_reprintpurchaseorders</code> report takes its criteria field as <strong><code>company_id</code></strong>, even though the underlying <code>po_hdr</code> column is <code>company_no</code>. Window/service field names and database column names are separate namespaces throughout P21 — take criteria names from <code>GET /api/v2/definition/{service}</code> and column names from the table itself, and don't translate between them.</p>
@@ -918,7 +927,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </ul>
 <hr />
 <h2 id="data-type-formatting">Data Type Formatting</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Type</th>
@@ -963,7 +972,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td><code>5BC2E4CE-0C0A-4394-A066-29B5835424DA</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="string-escaping">String Escaping</h3>
 <p>Single quotes in values must be escaped by doubling:</p>
 <div class="highlight"><pre><span></span><code><span class="err">$filter=supplier_name eq &#39;O&#39;&#39;Brien Supply&#39;</span>
@@ -1193,7 +1202,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 
 <hr />
 <h2 id="common-tables">Common Tables</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Table</th>
@@ -1230,12 +1239,12 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td>Product groups</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed / Unlicensed Windows: Readable Tables, No API Surface</h2>
 <p>OData exposes the <strong>schema</strong>, not the deployment state. A table can be fully readable over OData while the feature that populates it is <strong>undeployed or unlicensed</strong> — its maintenance window is classic-desktop-only and it has no Transaction/Interactive API surface. The rows you read are then <strong>dead storage</strong>: nothing writes them and no business logic consults them.</p>
 <p>The clearest verified example (26.1.5894.1, play, July 2026) is the <strong>native zip → salesrep/territory</strong> family. The schema is present and OData-readable, but on an install where the module is undeployed the tables are empty and inert:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Table</th>
@@ -1270,7 +1279,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td>readable</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Why there's no write path:</strong></p>
 <ul>
 <li><strong>Window:</strong> "Postal Code Group Maintenance" (<code>w_postal_code_group_maint</code>), AR › Maintenance — <strong>classic desktop only</strong> (<code>frame_menu</code>: <code>new_ui_enabled='N'</code>, <code>angular_enabled='N'</code>, <code>service_name</code> <strong>NULL</strong>). A NULL <code>service_name</code> is the tell that there is no API surface (see <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">Window→Service Discovery</a>).</li>
@@ -1799,7 +1808,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </ol>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Error</th>
@@ -1834,7 +1843,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td>Simplify query</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="now-function-not-supported">now() Function Not Supported</h3>
 <p>The standard OData <code>now()</code> function returns 404 in P21. Use explicit date values instead:</p>
 <blockquote>
@@ -1868,7 +1877,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <h2 id="page-size-guidance">Page Size Guidance</h2>
 <p>Each HTTP request carries overhead: TCP connection, authentication, query planning, and serialization. For large result sets, <strong>the number of round-trips is usually the biggest performance factor</strong>, not the response payload size.</p>
 <h3 id="choosing-a-page-size">Choosing a Page Size</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Scenario</th>
@@ -1893,13 +1902,13 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td>Balance round-trips vs memory</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>No documented server-side cap.</strong> The P21 SDK does not specify a maximum page size. The Web.config allows up to 100 MB responses. A <code>$top=25000</code> request has been verified working in production. Test with your dataset, but don't assume 100 is the right default.</p>
 </blockquote>
 <h3 id="real-world-impact">Real-World Impact</h3>
 <p>Fetching ~2,500 records with <code>$select</code> on a few columns:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Page Size</th>
@@ -1919,7 +1928,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td>~1.7s</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The 10x improvement comes entirely from eliminating round-trip overhead.</p>
 <hr />
 <h2 id="performance-tips">Performance Tips</h2>
@@ -1931,7 +1940,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li>For UI-driven pagination, match page size to display needs (50-200 rows)</li>
 </ul>
 <h3 id="measured-performance">Measured Performance</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Query Type</th>
@@ -1961,7 +1970,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td>~1.7s</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</h3>
 <p>When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:</p>
 <blockquote>
@@ -1994,7 +2003,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <blockquote>
 <h3 id="the-in-operator-is-silently-ignored-do-not-use-it">The <code>in</code> operator is silently ignored — do not use it</h3>
 <p>The obvious way to batch is <code>$filter=price_page_uid in (2,3,4)</code>. <strong>It returns HTTP 200 and the entire table.</strong> Verified on 26.1.5910.3 (2026-08-11) against a view holding 50,077 rows:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Filter</th>
@@ -2019,7 +2028,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td>404 — <code>Syntax error at position 17</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The service <em>does</em> validate filter syntax — garbage is rejected loudly. <code>in</code> parses and is then discarded, so you get a successful-looking response, no warning, and every row in the table. On a large view that is a silent full-table scan feeding whatever you do next. <strong>Use an <code>or</code> chain.</strong></p>
 <p>Keep the chain to a sane length — URLs have limits. Batch ids in groups of ~50 and issue one request per group; that is still an enormous improvement over one request per id.</p>
 </blockquote>

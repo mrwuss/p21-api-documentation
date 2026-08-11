@@ -184,10 +184,19 @@
             color: inherit;
         }
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }
 
@@ -906,7 +915,7 @@ available from <code>GET /api/v2/services</code>, and the service exposes these 
 <blockquote>
 <p><strong>Two naming systems, both correct — don't mix them.</strong> The <code>DatawindowName</code> column below (<code>d_dw_price_page_main</code>, <code>d_dw_price_page_values</code>, <code>d_dw_price_page_cost</code>) is what the <strong>Transaction</strong> definition reports. The <strong>Interactive</strong> API names the same datawindows <code>form</code>, <code>values</code> and <code>costs</code> — those short names are what the Interactive examples above send as <code>DatawindowName</code>, and they are what <code>GET /v2/window</code> returns. Verified live on 26.1.5910.3 by selecting each tab and reading the window state. The tab page names (<code>FORM</code>, <code>VALUES</code>, <code>COSTS</code>, <code>PO COST MULTIPLIERS</code>, <code>USED BY</code>, <code>TP_PRICE_PAGE_X_LOCATION</code>, <code>TIMESTAMPPRICE_PAGE</code>) are shared by both APIs. See <a href="04-Interactive-API.html#1-get-window-state">Get Window State</a>.</p>
 </blockquote>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>DataElement</th>
@@ -960,7 +969,7 @@ available from <code>GET /api/v2/services</code>, and the service exposes these 
 <td><code>price_page_location</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>For <strong>updating an existing page</strong>, the Transaction API is much simpler than the Interactive
 field-order sequence: <code>FORM.form</code> keys on <code>price_page_uid</code>, so it supports a keyed upsert via
 <code>POST /api/v2/transaction</code>. Interactive remains the better choice for <strong>creating</strong> a page,
@@ -969,7 +978,7 @@ Interactive for create workflows and the Transaction API for keyed updates.</p>
 <hr />
 <h2 id="calculation-method-values-tab">Calculation Method (VALUES Tab)</h2>
 <p>The <code>calculation_method_cd</code> field on the VALUES tab controls how pricing calculations are applied.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -1004,7 +1013,7 @@ Interactive for create workflows and the Transaction API for keyed updates.</p>
 <td>Use fixed price value</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Usage Example:</strong></p>
 <blockquote>
 <p>Fragment -- it exists to contrast a display value with a code, not to run.
@@ -1035,7 +1044,7 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <hr />
 <h2 id="price-page-type-form-tab">Price Page Type (FORM Tab)</h2>
 <p>The <code>price_page_type_cd</code> field determines the page type.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -1070,14 +1079,14 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td><code>discount_group_id</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Note:</strong> Type 213 ("Supplier / Discount Group") uses <code>discount_group_id</code> instead of <code>product_group_id</code>. The field order changes slightly for this type - see <a href="#discount-group-pages-type-213">Discount Group Pages</a> below.</p>
 </blockquote>
 <hr />
 <h2 id="pricing-method-form-tab">Pricing Method (FORM Tab)</h2>
 <p>The <code>pricing_method_cd</code> field controls how the source price is used.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -1102,12 +1111,12 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td>None</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Note:</strong> Corrected against live <code>code_p21</code> reads (July 2026); earlier published values were misassigned. Code mappings may still vary between P21 versions — always verify in your environment.</p>
 <hr />
 <h2 id="source-price-form-tab">Source Price (FORM Tab)</h2>
 <p>The <code>source_price_cd</code> field determines the base price source.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -1132,10 +1141,10 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="source-price-and-calculation-method-pairing">Source Price and Calculation Method Pairing</h3>
 <p>Using the wrong combination of source price and calculation method produces incorrect pricing. Follow these pairings:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Calculation Method</th>
@@ -1155,13 +1164,13 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td>Mark up adds margin above cost</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Important:</strong> Source Price code 201 is labeled "Replacement Cost" in the dropdown but represents the <strong>Primary Supplier Cost</strong> in P21's pricing engine. This distinction matters when building pricing logic.</p>
 </blockquote>
 <hr />
 <h2 id="cost-type-costs-tab">Cost Type (COSTS Tab)</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -1186,12 +1195,12 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td>None</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Note:</strong> Corrected against live <code>code_p21</code> reads (July 2026); earlier published values were misassigned.</p>
 <hr />
 <h2 id="commission-cost-calculation-method-costs-tab">Commission Cost Calculation Method (COSTS Tab)</h2>
 <p>The <code>commission_cost_calc_method_cd</code> on the COSTS tab (different from VALUES tab).</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Code</th>
@@ -1216,13 +1225,13 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td>Percentage</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><strong>Note:</strong> These codes differ from the VALUES tab <code>calculation_method_cd</code> codes.</p>
 <hr />
 <h2 id="discovery-method">Discovery Method</h2>
 <blockquote>
 <p><strong>The fastest source is the Transaction definition, not the window.</strong> <code>GET /api/v2/definition/SalesPricePage</code> returns each code field's accepted <strong>display labels</strong> in <code>ValidValues</code> — exactly the strings you send under <code>UseCodeValues: false</code> — even if you intend to drive the window interactively. The Interactive window state does <strong>not</strong> carry them: its field metadata is only <code>Name</code>, <code>Label</code>, <code>DataType</code> and <code>Enabled</code> (verified 26.1.5910.3). Confirmed live from the definition:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1247,7 +1256,7 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td>Difference · Multiplier · Mark up · Percentage · Fixed Price</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>All four are typed <code>Long</code> — you send the label, not the number, when <code>UseCodeValues</code> is <code>false</code>. Your environment's list may differ; re-run the definition call against your own tenant rather than trusting this table.</p>
 </blockquote>
 <p>The numeric codes below were discovered by:</p>
@@ -1524,7 +1533,7 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <h2 id="price-breaks-quantity-based-pricing">Price Breaks (Quantity-Based Pricing)</h2>
 <p>Price pages support up to 15 calculation values and 14 break quantities for quantity-based pricing.</p>
 <h3 id="fields">Fields</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -1571,14 +1580,14 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <td>Calculation currency</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>The VALUES tab repeats <code>calculation_value{n}</code>, <code>break{n}</code>, <code>uom{n}</code>, and
 <code>other_cost{n}</code> for each tier. Tier 15 has <code>calculation_value15</code> and <code>other_cost15</code>, but
 does not have <code>break15</code> or <code>uom15</code>.</p>
 <h3 id="cross-service-break-field-names">Cross-Service Break-Field Names</h3>
 <p>The same tiered-price concept uses different field names across services. Sending the wrong
 spelling does not necessarily error; the tier can silently fail to land.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -1618,7 +1627,7 @@ spelling does not necessarily error; the tier can silently fail to land.</p>
 <td><code>uom1</code>-<code>uom14</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p>On the purchase-side services, the API field is <code>value{n}</code>, while the underlying database
 column is <code>purchase_pricing_page.Calculation_Value{n}</code>. The database column name and API
 field name therefore disagree, and neither matches the field names used by the other three
@@ -1934,7 +1943,7 @@ services above.</p>
 </div>
 </div>
 <h3 id="mapping">Mapping</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Quantity Range</th>
@@ -1959,7 +1968,7 @@ services above.</p>
 <td>...</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="notes">Notes</h3>
 <ul>
 <li><code>calculation_value1</code> is always the base price (qty 1+)</li>
@@ -2487,7 +2496,7 @@ services above.</p>
 <p>In addition to quantity-based breaks (documented above), price pages support <strong>dollar-based breaks</strong> where break values represent total order value rather than unit quantities.</p>
 <h3 id="configuration-fields">Configuration Fields</h3>
 <p>Dollar-based breaks require additional fields on the VALUES tab:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -2510,7 +2519,7 @@ services above.</p>
 <td>Use supplier list price as the dollar total basis</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="example-dollar-based-breaks">Example: Dollar-Based Breaks</h3>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -2848,7 +2857,7 @@ services above.</p>
 </div>
 </div>
 <h3 id="quantity-vs-dollar-breaks-comparison">Quantity vs Dollar Breaks Comparison</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Aspect</th>
@@ -2883,7 +2892,7 @@ services above.</p>
 <td>$5K, $10K, $15K, $20K</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <hr />
 <h2 id="costs-tab-configuration">COSTS Tab Configuration</h2>
 <p>The COSTS tab is a separate tab on the SalesPricePage window that controls <strong>commission cost calculation</strong>. This determines how cost is calculated for commission purposes, separate from the selling price configured on the VALUES tab.</p>
@@ -3207,7 +3216,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 </div>
 <h3 id="commission-cost-codes-different-from-values-tab">Commission Cost Codes (Different from VALUES Tab)</h3>
 <p>The COSTS tab uses <strong>different code numbers</strong> than the VALUES tab for calculation methods:</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Tab</th>
@@ -3257,7 +3266,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <td>Percentage</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <blockquote>
 <p><strong>Warning:</strong> Do not assume codes are the same across tabs. "Difference" is 228 on VALUES but 212 on COSTS.</p>
 </blockquote>
@@ -3267,7 +3276,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <p>All three page variants share one shape: a header Form on <code>TABPAGE_1.tp_1_dw_1</code> carrying the keys, and an unkeyed values Form on <code>TABPAGE_2.tp_2_dw_2</code> carrying <code>calculation_type</code> plus <code>value1</code>-<code>value15</code>, <code>break1</code>-<code>break14</code>, and <code>uom1</code>-<code>uom14</code>. They differ only in which field the key set adds, and in the values datawindow name.</p>
 <p>The tier structure is identical to a sales price page — 15 value slots, 14 break thresholds, and a 15th catch-all tier with no break. Only the field <em>names</em> differ (<code>value{n}</code> here, <code>calculation_value{n}</code> there). The DB columns disagree with both: <code>value1</code> maps to <code>purchase_pricing_page.Calculation_Value1</code>, <code>uom1</code> to <code>purchase_pricing_page.UOM1</code>.</p>
 <p>Where to find them in the desktop client (from <code>frame_menu.service_name</code>, verified 2026-08-11):</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -3292,9 +3301,9 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <td><code>m_bysupplieriddiscountgroup</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>frame_menu</code> is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A <code>NULL</code> <code>service_name</code> means the window has no API surface.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -3323,9 +3332,9 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <td>...the same five, plus <code>discount_group_id</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="header-fields-tabpage_1tp_1_dw_1">Header Fields (<code>TABPAGE_1.tp_1_dw_1</code>)</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Field</th>
@@ -3374,10 +3383,10 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <td></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <h3 id="header-and-link-services">Header and Link Services</h3>
 <p>These carry no break fields — they exist to name a book or tie pages to it.</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
@@ -3418,7 +3427,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <td><code>price_page_uid</code></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>SalesPriceBook</code>'s <code>LIST.list_detail</code> exposes <code>calculation_value1</code>, <code>calculation_value2</code>, <code>break1</code>, and <code>other_cost_value</code> as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.</p>
 <blockquote>
 <p><strong>The purchase-side write path is untested.</strong> Everything above is read from the service definitions and confirmed by a live read. No write to a purchase pricing page has been verified, so treat creating or updating one as unproven until you have tested it in your own environment.</p>

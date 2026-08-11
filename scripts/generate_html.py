@@ -386,6 +386,21 @@ def _build_tab_html(tabs: list[tuple[str, str]]) -> str:
     )
 
 
+def wrap_tables(html_content: str) -> str:
+    """Wrap each ``<table>`` in a horizontally scrollable container.
+
+    Markdown tables carry long unbreakable identifiers, so a wide one renders
+    past the edge of the content column. ``.table-wrap`` keeps the overflow
+    inside the section instead of over the page.
+    """
+    return re.sub(
+        r"<table>(.*?)</table>",
+        lambda m: '<div class="table-wrap"><table>' + m.group(1) + "</table></div>",
+        html_content,
+        flags=re.S,
+    )
+
+
 def postprocess_tabs(html_content: str) -> str:
     """Convert sentinel-wrapped code blocks into tabbed containers."""
     start_re = re.compile(
@@ -749,10 +764,19 @@ def get_html_template(
             color: inherit;
         }}
 
+        /* Wide tables scroll inside their column instead of overflowing it.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
+           push the table past the content width on narrow viewports. */
+        .table-wrap {{
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }}
+
         table {{
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 0;
             font-size: 0.95em;
         }}
 
@@ -1143,6 +1167,9 @@ def convert_md_to_html(md_file: Path) -> Path:
 
     # Convert tab sentinels into tabbed code block containers
     html_content = postprocess_tabs(html_content)
+
+    # Wrap tables so a wide one scrolls within the content column
+    html_content = wrap_tables(html_content)
 
     # Get the generated ToC and add CSS classes for h3 indentation
     toc_html = getattr(md, "toc", "")
