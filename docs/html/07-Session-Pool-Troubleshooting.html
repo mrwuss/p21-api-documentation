@@ -126,7 +126,16 @@
 
         /* ===== Main Content ===== */
         .content {
-            flex: 1;
+            /* Long unbreakable tokens appear in plain prose too, not just in
+               code spans (e.g. PurchaseDiscountGroup/SalesDiscountGroup). Let
+               any word break rather than push the page sideways; `break-word`
+               only acts when the word genuinely cannot fit. */
+            overflow-wrap: break-word;
+            flex: 1 1 0;
+            /* Without min-width: 0 a flex item refuses to shrink below its
+               content, so the sidebar + content overflow the viewport and the
+               whole PAGE scrolls sideways. */
+            min-width: 0;
             max-width: 920px;
             margin: 0 auto;
             padding: 40px 48px;
@@ -184,9 +193,27 @@
             color: inherit;
         }
 
-        /* Wide tables scroll inside their column instead of overflowing it.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
-           push the table past the content width on narrow viewports. */
+        /* Inline code carries long identifiers (d_dw_price_page_x_location_maint).
+           Break them rather than let them widen the line -- `break-word` only
+           breaks when the token genuinely cannot fit. Code BLOCKS are exempt:
+           they scroll inside their own box, where wrapping would corrupt the
+           code's meaning. */
+        :not(pre) > code {
+            /* `anywhere`, not `break-word`: only `anywhere` reduces the
+               element's min-content width, which is what lets a narrow
+               container actually shrink instead of being forced wide by an
+               unbreakable identifier. Code BLOCKS are exempt -- they scroll in
+               their own box, where wrapping would corrupt the code. */
+            overflow-wrap: anywhere;
+        }
+
+        /* Tables FIT their column -- they never scroll sideways.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
+           would otherwise force the table past the content width, so cells are
+           allowed to break inside a token when, and only when, the token
+           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
+           cell's min-content width, which is what lets the table shrink.
+           .table-wrap stays as a last-resort guard for anything pathological. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -195,9 +222,22 @@
 
         table {
             width: 100%;
+            max-width: 100%;
+            table-layout: auto;
             border-collapse: collapse;
             margin: 0;
             font-size: 0.95em;
+        }
+
+        th, td {
+            overflow-wrap: anywhere;
+            word-break: normal;
+        }
+
+        /* Inline code in a cell must break with the cell, not push past it. */
+        td code, th code {
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
 
         th {
@@ -271,7 +311,7 @@
         }
 
         /* ===== Mobile ===== */
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
             body {
                 display: block;
             }
@@ -304,6 +344,20 @@
 
         .print-btn:hover {
             background: #1a5276;
+        }
+
+        /* On a narrow screen a floating button pinned to the right edge is both
+           the wrong pattern and a source of horizontal overflow -- it is sized
+           from the layout viewport, so it widens the very box it is measured
+           against. Let it flow with the content instead. */
+        @media (max-width: 600px) {
+            .print-btn {
+                position: static;
+                display: block;
+                width: 100%;
+                margin: 0 0 20px;
+                box-shadow: none;
+            }
         }
 
         /* ===== Copy-section button ===== */

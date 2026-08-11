@@ -126,7 +126,16 @@
 
         /* ===== Main Content ===== */
         .content {
-            flex: 1;
+            /* Long unbreakable tokens appear in plain prose too, not just in
+               code spans (e.g. PurchaseDiscountGroup/SalesDiscountGroup). Let
+               any word break rather than push the page sideways; `break-word`
+               only acts when the word genuinely cannot fit. */
+            overflow-wrap: break-word;
+            flex: 1 1 0;
+            /* Without min-width: 0 a flex item refuses to shrink below its
+               content, so the sidebar + content overflow the viewport and the
+               whole PAGE scrolls sideways. */
+            min-width: 0;
             max-width: 920px;
             margin: 0 auto;
             padding: 40px 48px;
@@ -184,9 +193,27 @@
             color: inherit;
         }
 
-        /* Wide tables scroll inside their column instead of overflowing it.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry), which
-           push the table past the content width on narrow viewports. */
+        /* Inline code carries long identifiers (d_dw_price_page_x_location_maint).
+           Break them rather than let them widen the line -- `break-word` only
+           breaks when the token genuinely cannot fit. Code BLOCKS are exempt:
+           they scroll inside their own box, where wrapping would corrupt the
+           code's meaning. */
+        :not(pre) > code {
+            /* `anywhere`, not `break-word`: only `anywhere` reduces the
+               element's min-content width, which is what lets a narrow
+               container actually shrink instead of being forced wide by an
+               unbreakable identifier. Code BLOCKS are exempt -- they scroll in
+               their own box, where wrapping would corrupt the code. */
+            overflow-wrap: anywhere;
+        }
+
+        /* Tables FIT their column -- they never scroll sideways.
+           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
+           would otherwise force the table past the content width, so cells are
+           allowed to break inside a token when, and only when, the token
+           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
+           cell's min-content width, which is what lets the table shrink.
+           .table-wrap stays as a last-resort guard for anything pathological. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -195,9 +222,22 @@
 
         table {
             width: 100%;
+            max-width: 100%;
+            table-layout: auto;
             border-collapse: collapse;
             margin: 0;
             font-size: 0.95em;
+        }
+
+        th, td {
+            overflow-wrap: anywhere;
+            word-break: normal;
+        }
+
+        /* Inline code in a cell must break with the cell, not push past it. */
+        td code, th code {
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
 
         th {
@@ -271,7 +311,7 @@
         }
 
         /* ===== Mobile ===== */
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
             body {
                 display: block;
             }
@@ -304,6 +344,20 @@
 
         .print-btn:hover {
             background: #1a5276;
+        }
+
+        /* On a narrow screen a floating button pinned to the right edge is both
+           the wrong pattern and a source of horizontal overflow -- it is sized
+           from the layout viewport, so it widens the very box it is measured
+           against. Let it flow with the content instead. */
+        @media (max-width: 600px) {
+            .print-btn {
+                position: static;
+                display: block;
+                width: 100%;
+                margin: 0 0 20px;
+                box-shadow: none;
+            }
         }
 
         /* ===== Copy-section button ===== */
@@ -560,7 +614,7 @@
 <h3 id="repo-conventions-and-indexes">Repo conventions and indexes</h3>
 <ul>
 <li><strong>docs:</strong> <strong>The runnable-example convention is now written down where contributors will find it</strong> — <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/CONTRIBUTING.md">CONTRIBUTING § Code Examples</a>. It states the rule (paste, edit the <code>EDIT THESE</code> block, run), the zero-install constraint (<code>httpx</code>; <code>net9.0</code> + System.Text.Json, <strong>no NuGet</strong>, no <code>Microsoft.Extensions.*</code>), that the HTML generator takes tab labels from the <strong>fence language</strong> so the fence follows the marker directly, that the UI-server helper belongs only in Transaction/Interactive examples, that every write ends in a read-back, and that illustrative fragments stay fragments with a pointer. Previously this lived only in the working notes for the conversion, so nobody could follow it — <em>@mrwuss</em></li>
-<li><strong>fix(site):</strong> <strong>Wide tables no longer break out of their section.</strong> Tables carry long unbreakable identifiers (<code>d_dw_price_page_po_cost_calc_dataentry</code>), so a table like the one under <a href="08-SalesPricePage-Codes.html#transaction-api-alternative">Transaction API Alternative</a> laid out at 1101px inside a 722px content column and painted over everything to its right. <code>generate_html.py</code> now wraps every table in a <code>.table-wrap</code> container that scrolls horizontally, so the overflow stays inside the section. Verified in a browser: only genuinely-wide tables scroll, the rest still fill the column exactly, and vertical spacing is unchanged. The four widest tables — all added in this release — were then narrowed at the source rather than left to scroll: the <code>Shipping</code> tracking-column comparison became a list (one cell held six service names, which is what forced the width), and three pricing tables dropped a redundant column each. The reported one went from <strong>1101px (34% hidden) to 837px (14%)</strong>, and the purchase-side table no longer overflows at all — <em>@mrwuss</em></li>
+<li><strong>fix(site):</strong> <strong>The site no longer scrolls sideways — anywhere, at any width.</strong> Wide tables used to break out of their section; the first attempt put them in a horizontal scroll container, which only made the overflow tidy. This replaces that with tables that actually <strong>fit</strong>: a cell breaks inside a long identifier only when the token genuinely cannot fit (<code>overflow-wrap: anywhere</code>, which — unlike <code>break-word</code> — lowers a cell's min-content width, and that is what lets the table shrink). The same sweep turned up three further causes of page-level horizontal scroll, none of them tables: <code>.content</code> is a flex item that lacked <code>min-width: 0</code>, so it refused to shrink and sidebar-plus-content overflowed every viewport between roughly 900px and 1200px; the mobile breakpoint fired at 900px, too late to rescue that band, and now fires at 1100px; and the fixed <em>Print / Save as PDF</em> button, pinned to the right edge, widened the very layout it was measured against on phones — it now flows inline below 600px. Long tokens in <strong>plain prose</strong> break too, not just those in code spans. Verified across <strong>320 combinations</strong> — all 32 generated pages at ten viewport widths from 320px to 1440px — with <strong>zero</strong> page scroll and <strong>zero</strong> table overflow. The four widest tables were also narrowed at the source: the <code>Shipping</code> tracking-column comparison became a list (one cell held six service names, which is what forced the width), and three pricing tables each shed a redundant column into prose — <em>@mrwuss</em></li>
 <li><strong>docs:</strong> Root <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/README.md">README</a> now leads with what the examples actually are, rather than "working examples"; <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md">definitions README</a> lists the five services added this release and their 26.1.5910.3 fetch build, and groups the five pricing services so the break-field naming split is discoverable from the schema library — <em>@mrwuss</em></li>
 </ul>
 <h3 id="runnable-examples">Runnable examples</h3>
