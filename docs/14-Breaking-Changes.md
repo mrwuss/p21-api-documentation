@@ -51,6 +51,14 @@ Note that `application/xml` also fails here, even though the `/api/v2` Transacti
 
 **Mitigation:** send `Accept: application/json` on **every** P21 request, ideally forced in one shared header builder rather than per call site. Every example in this repo already does this — the consequence of omitting it is what changed.
 
+> **It will look like an authentication problem. It isn't — don't downgrade your auth.** The empty 500 lands on session-create, so the natural reading is *"our v2 tokens can no longer open sessions on 26.1"*. A production integration reached exactly that conclusion and shipped a fallback to the legacy `/api/security/token` endpoint before a controlled test — same token, one request with `Accept`, one without — isolated the header as the real cause. Their write-up records the correction: it "masqueraded as a 'v2 tokens can't open sessions' regression until a controlled same-token test isolated the header."
+>
+> **v2 tokens open sessions normally on 26.1**, confirmed independently here on 26.1.5910.3: a v2 token created a session, opened a window, and read its state with no trouble — the only requirement was the `Accept` header.
+>
+> This matters because the "fix" is a real security regression for no benefit. The v1 endpoint takes **credentials in HTTP headers**, where proxies and log pipelines capture them (see [Authentication § V1 Endpoint](00-Authentication.md#v1-endpoint-deprecated-security-risk)), and it also **forfeits per-operator attribution** — the legacy endpoint has no consumer key, so every write is attributed to the service account instead of the person who triggered it. Fix the header; keep v2.
+>
+> Diagnostic that settles it in two requests: send the **same** token twice to session-create, once with `Accept: application/json` and once without. A 200 and an empty 500 mean the header, not the token. If both fail, look at the token.
+
 ### 2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)
 
 **Diagnosis trap that amplifies #1.**

@@ -26,7 +26,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 |------|-------|
 | Query a table or view | [02 § Query Parameters](02-OData-API.md#query-parameters) |
 | Filter syntax, operators, string functions | [02 § Filter Expressions](02-OData-API.md#filter-expressions) |
-| Only active rows (`row_status_flag eq 704`) | [02 § Active Record Filter](02-OData-API.md#active-record-filter) |
+| Only active rows — `row_status_flag` **or** `delete_flag`, depending on the table | [02 § Active Record Filter](02-OData-API.md#active-record-filter) |
+| Company column is `company_id` on some tables, `company_no` on others | [02 § Company Scoping](02-OData-API.md#company-scoping-company_id-vs-company_no) |
 | Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins-chain-queries-by-uid) |
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |

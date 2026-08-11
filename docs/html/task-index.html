@@ -536,8 +536,12 @@
 <td><a href="02-OData-API.html#filter-expressions">02 § Filter Expressions</a></td>
 </tr>
 <tr>
-<td>Only active rows (<code>row_status_flag eq 704</code>)</td>
+<td>Only active rows — <code>row_status_flag</code> <strong>or</strong> <code>delete_flag</code>, depending on the table</td>
 <td><a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a></td>
+</tr>
+<tr>
+<td>Company column is <code>company_id</code> on some tables, <code>company_no</code> on others</td>
+<td><a href="02-OData-API.html#company-scoping-company_id-vs-company_no">02 § Company Scoping</a></td>
 </tr>
 <tr>
 <td>Traverse relationships (no joins — chain by <code>_uid</code>)</td>

@@ -250,6 +250,20 @@ $filter=delete_flag eq 'N'
 
 > ⚠️ **Filtering on the wrong column fails loudly — and misleadingly.** `supplier?$filter=row_status_flag eq 704` returns **404** with `Could not find a property named 'row_status_flag' on type 'dbo.supplier'`. A bare 404 from this API is easy to misread as "table not exposed" or "no permission", so check the column first: `GET /odataservice/odata/table/{name}?$top=1` and look at the keys.
 
+### Company Scoping — `company_id` vs `company_no`
+
+The company code is the same value everywhere (`"ACME"`), but **the column that holds it has two different names**, and a third group of tables doesn't carry it at all. Verified on 26.1.5910.3:
+
+| Column | Tables (verified) |
+|---|---|
+| `company_id` | `oe_hdr`, `customer`, `inv_loc`, `contacts` |
+| **`company_no`** | `po_hdr`, `po_line`, `invoice_hdr` |
+| *(neither)* | `supplier`, `inv_mast`, `address` — these records are not company-scoped |
+
+Purchasing and invoicing use `company_no`; order entry, customers and inventory locations use `company_id`. There is no way to infer which from the table's subject matter, and guessing wrong produces the **404** described above rather than an empty result — `po_hdr?$select=po_no,company_id` fails outright.
+
+> **The API's field names are not the column names.** The `m_reprintpurchaseorders` report takes its criteria field as **`company_id`**, even though the underlying `po_hdr` column is `company_no`. Window/service field names and database column names are separate namespaces throughout P21 — take criteria names from `GET /api/v2/definition/{service}` and column names from the table itself, and don't translate between them.
+
 ### Non-Expired Records
 
 To filter out expired records, compare `expiration_date` against a date value:
