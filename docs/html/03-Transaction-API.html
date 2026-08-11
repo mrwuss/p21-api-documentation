@@ -4553,10 +4553,35 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <p>Constants that apply to every report payload: <code>Status</code> and <code>Type</code> are <strong>numeric <code>0</code></strong> (not the <code>"New"</code> record-edit shape) and the DataElement carries <code>Keys: []</code>. Get the criteria field names from <code>GET /api/v2/definition/{service_name}</code> and default values from <code>GET /api/v2/defaults/{service_name}</code>.</p>
 <blockquote>
 <p><strong><code>UseCodeValues</code> requirements vary per report service.</strong> <code>m_reprintpurchaseorders</code> works with <code>UseCodeValues: false</code> (as above), but <code>m_picktickets</code> <strong>requires <code>UseCodeValues: true</code> with code values</strong> — e.g. <code>create_pick_ticket_type</code> must be the code <code>"P"</code>; the display label <code>"Production Order"</code> is rejected, and <code>UseCodeValues: false</code> returns HTTP 500. When a report errors on seemingly-correct criteria, retry with <code>UseCodeValues: true</code> and the code values from the service's definition (<code>ValidValues</code>).</p>
-<p><strong>Before you debug your payload: check whether the endpoint works at all in your environment.</strong> On the test tenant at <strong>26.1.5910.3</strong> (2026-08-11), <code>POST /api/v2/process/pdfreport</code> returned an <strong>empty HTTP 500 for every attempt</strong> — <code>m_reprintpurchaseorders</code> and <code>m_reprintpicktickets</code>, criteria taken verbatim from each service's own <code>GET /api/v2/defaults/{service}</code>, with <code>UseCodeValues</code> both <code>true</code> and <code>false</code>, and with <code>Accept</code> set to <code>application/json</code>, <code>application/json, */*</code>, <code>*/*</code>, <code>application/pdf</code>, <code>application/octet-stream</code>, and omitted entirely. Zero-length body in all twelve combinations.</p>
-<p>The services themselves are fine on that tenant — <code>GET /api/v2/definition/{service}</code> and <code>GET /api/v2/defaults/{service}</code> both return 200 with full criteria. It is the <strong>process endpoint specifically</strong> that fails.</p>
-<p><strong>Cause undetermined.</strong> This could be environment-specific (report generation not deployed or licensed on that tenant) or a build regression; distinguishing them needs a second environment at the same build, which was not available. Recorded here so that an empty 500 from this endpoint doesn't send you hunting a payload bug that isn't there — <strong>reproduce it against a known-good report in a second environment before rewriting your criteria.</strong></p>
 </blockquote>
+<h4 id="an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes — and is usually transient</h4>
+<p>This endpoint runs at production volume: one integration generates PO PDFs for supplier emails all day, logging <strong>154 successes against 3 empty 500s and 1 dropped connection in a single afternoon</strong> — and every affected PO succeeded moments later on retry.</p>
+<p>So an empty-bodied 5xx here is <strong>not</strong> a signal that your payload is wrong. It has at least three unrelated causes, and the response body cannot tell them apart:</p>
+<table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>How to tell</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Transient report-engine fault</strong> (most common)</td>
+<td>The identical request succeeds seconds later. Retry before investigating anything else.</td>
+</tr>
+<tr>
+<td><strong>Bad criteria</strong> — e.g. a <code>company_id</code> that doesn't exist</td>
+<td>Deterministic: every attempt fails. Verified on Play 26.1 — a wrong <code>company_id</code> returns an empty 500, not a useful message.</td>
+</tr>
+<tr>
+<td><strong>The record isn't printable</strong>, or report generation isn't available in that environment</td>
+<td>Deterministic. On the Play tenant at 26.1.5910.3 <strong>every</strong> report returned an empty 500 — <code>m_reprintpurchaseorders</code> and <code>m_reprintpicktickets</code>, criteria straight from each service's own <code>/defaults</code>, both <code>UseCodeValues</code> settings, and six <code>Accept</code> variants — while <code>/definition</code> and <code>/defaults</code> for those same services returned 200. The same payload shape works in production, so treat a blanket failure like that as an environment property, not a payload bug.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Retry idempotent report calls.</strong> Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses <strong>3 attempts with a 0.5 s × attempt backoff</strong>, which covers the observed fault rate without masking a real outage.</p>
+<p><strong>Do the existence check yourself, first.</strong> A missing record and a transient fault both surface as an unhelpful 5xx, so read the record over OData before calling the report. That turns "not found" into a clear error of your own and leaves the 5xx meaning only "the report engine faulted".</p>
+<p><strong>Classify the error envelope <em>before</em> the status code.</strong> Unlike <code>/transaction</code>, which reports failure through <code>Summary</code>/<code>Messages</code>, this endpoint returns P21's <code>ErrorType</code>/<code>ErrorMessage</code> envelope — and it can arrive on a <strong>200 as well as a 4xx/5xx</strong>. Parse the body and check for <code>ErrorMessage</code> first; if you branch on <code>response.status_code</code> alone you will mask the one message that explains the failure (for example <code>No records to print for this range.</code>).</p>
 <h3 id="response">Response</h3>
 <p>The response is a <strong>JSON array</strong> (even for a single document). Each element contains document metadata and the base64-encoded PDF content. Decode the <code>DocumentData</code> field and write the bytes to a <code>.pdf</code> file.</p>
 <p><strong>Verified success response</strong> (generalized from live PO reprint):</p>
@@ -4587,9 +4612,9 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li>Response is a <strong>JSON array</strong>, not a single object -- even when generating one document</li>
 <li><code>DocumentData</code> contains the base64-encoded PDF bytes (~150KB for a typical PO)</li>
 <li><code>FileName</code> includes the <code>.pdf</code> extension (e.g., <code>"PO500100 PURCHASE_ORDER.pdf"</code>)</li>
-<li><code>ResponseStatus.StatusCode</code> is <code>"Success"</code> on success</li>
 <li><code>DocumentFormat</code> value <code>5</code> corresponds to PDF format</li>
 <li><code>DocumentContentType</code> is <code>"application/pdf"</code></li>
+<li><strong>Success is per document, and HTTP 200 does not imply it.</strong> Each element carries its own <code>ResponseStatus.StatusCode</code> — a <strong>string</strong> (<code>"Success"</code> / <code>"Failure"</code>), not an HTTP code. Treat a document as good only when <code>StatusCode == "Success"</code> <strong>and</strong> <code>DocumentData</code> is non-empty; otherwise read <code>ResponseStatus.Message</code> for the reason. A 200 can carry a failed document, and a multi-document request can mix both, so check every element rather than the first.</li>
 </ul>
 <p><strong>Error response</strong> (e.g., PO not found):</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>

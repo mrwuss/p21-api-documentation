@@ -3221,11 +3221,23 @@ Constants that apply to every report payload: `Status` and `Type` are **numeric 
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
-> **Before you debug your payload: check whether the endpoint works at all in your environment.** On the test tenant at **26.1.5910.3** (2026-08-11), `POST /api/v2/process/pdfreport` returned an **empty HTTP 500 for every attempt** — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria taken verbatim from each service's own `GET /api/v2/defaults/{service}`, with `UseCodeValues` both `true` and `false`, and with `Accept` set to `application/json`, `application/json, */*`, `*/*`, `application/pdf`, `application/octet-stream`, and omitted entirely. Zero-length body in all twelve combinations.
->
-> The services themselves are fine on that tenant — `GET /api/v2/definition/{service}` and `GET /api/v2/defaults/{service}` both return 200 with full criteria. It is the **process endpoint specifically** that fails.
->
-> **Cause undetermined.** This could be environment-specific (report generation not deployed or licensed on that tenant) or a build regression; distinguishing them needs a second environment at the same build, which was not available. Recorded here so that an empty 500 from this endpoint doesn't send you hunting a payload bug that isn't there — **reproduce it against a known-good report in a second environment before rewriting your criteria.**
+#### An empty 5xx has several causes — and is usually transient
+
+This endpoint runs at production volume: one integration generates PO PDFs for supplier emails all day, logging **154 successes against 3 empty 500s and 1 dropped connection in a single afternoon** — and every affected PO succeeded moments later on retry.
+
+So an empty-bodied 5xx here is **not** a signal that your payload is wrong. It has at least three unrelated causes, and the response body cannot tell them apart:
+
+| Cause | How to tell |
+|---|---|
+| **Transient report-engine fault** (most common) | The identical request succeeds seconds later. Retry before investigating anything else. |
+| **Bad criteria** — e.g. a `company_id` that doesn't exist | Deterministic: every attempt fails. Verified on Play 26.1 — a wrong `company_id` returns an empty 500, not a useful message. |
+| **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, so treat a blanket failure like that as an environment property, not a payload bug. |
+
+**Retry idempotent report calls.** Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses **3 attempts with a 0.5 s × attempt backoff**, which covers the observed fault rate without masking a real outage.
+
+**Do the existence check yourself, first.** A missing record and a transient fault both surface as an unhelpful 5xx, so read the record over OData before calling the report. That turns "not found" into a clear error of your own and leaves the 5xx meaning only "the report engine faulted".
+
+**Classify the error envelope *before* the status code.** Unlike `/transaction`, which reports failure through `Summary`/`Messages`, this endpoint returns P21's `ErrorType`/`ErrorMessage` envelope — and it can arrive on a **200 as well as a 4xx/5xx**. Parse the body and check for `ErrorMessage` first; if you branch on `response.status_code` alone you will mask the one message that explains the failure (for example `No records to print for this range.`).
 
 ### Response
 
@@ -3261,9 +3273,9 @@ The response is a **JSON array** (even for a single document). Each element cont
 - Response is a **JSON array**, not a single object -- even when generating one document
 - `DocumentData` contains the base64-encoded PDF bytes (~150KB for a typical PO)
 - `FileName` includes the `.pdf` extension (e.g., `"PO500100 PURCHASE_ORDER.pdf"`)
-- `ResponseStatus.StatusCode` is `"Success"` on success
 - `DocumentFormat` value `5` corresponds to PDF format
 - `DocumentContentType` is `"application/pdf"`
+- **Success is per document, and HTTP 200 does not imply it.** Each element carries its own `ResponseStatus.StatusCode` — a **string** (`"Success"` / `"Failure"`), not an HTTP code. Treat a document as good only when `StatusCode == "Success"` **and** `DocumentData` is non-empty; otherwise read `ResponseStatus.Message` for the reason. A 200 can carry a failed document, and a multi-document request can mix both, so check every element rather than the first.
 
 **Error response** (e.g., PO not found):
 

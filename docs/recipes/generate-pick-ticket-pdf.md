@@ -52,7 +52,7 @@ POST {ui_server}/api/v2/process/pdfreport
 
 **`m_reprintpicktickets`** — pick-ticket reprint. DataElement name is `TABPAGE_1.tp_1_dw_1` (datawindow `d_reprint_pick_ticket_criteria`); the [definition](../../definitions/m_reprintpicktickets.json) marks `company_id`, `location_id`, and `print_qty` required, with ranges `beg_pick_ticket_no`/`end_pick_ticket_no` (sales-order tickets) and `beg_prod_pick_ticket_no`/`end_prod_pick_ticket_no` (production tickets). Its `pick_ticket_type` takes the display values `Sales Order`, `Production Order` or `Both`, and `print_dea_pick_tickets` takes `Yes`, `No` or `Only` (from the live definition, 2026-08-11).
 
-> **`UseCodeValues` for this service is still unconfirmed.** An attempt to settle it on 26.1.5910.3 could not run: `POST /api/v2/process/pdfreport` returned an empty HTTP 500 on that tenant for *every* report — including `m_reprintpurchaseorders`, which is otherwise verified working — across both `UseCodeValues` settings and six `Accept` variants, while `/definition` and `/defaults` for the same services returned 200. See [PDF Report Generation](../03-Transaction-API.md#pdf-report-generation). If you hit an error here, try `UseCodeValues: true` with code values, but first confirm the endpoint itself responds in your environment.
+> **`UseCodeValues` for this service is unconfirmed.** It could not be settled on the Play tenant, where *every* report returns an empty HTTP 500 — including `m_reprintpurchaseorders`, which runs at production volume elsewhere. If you hit an error here, try `UseCodeValues: true` with code values from the definition; and read [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient) first, because a 5xx here is most often a transient report-engine fault that a retry clears, not a payload problem.
 
 For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
@@ -66,6 +66,7 @@ Generates a production-order pick ticket with `m_picktickets`, decodes the base6
 import base64
 import os
 import re
+import time
 
 import httpx
 
@@ -136,17 +137,47 @@ def save_documents(result: list, prefix: str) -> list[str]:
 
 
 def run_report(client: httpx.Client, ui_server: str, headers: dict,
-               payload: dict) -> list:
-    """POST a report payload and return its document array."""
-    response = client.post(f"{ui_server}/api/v2/process/pdfreport",
-                           headers=headers, json=payload)
-    # Errors come back as the standard P21 error envelope (ErrorType/ErrorMessage),
-    # NOT the Summary/Messages format used by /transaction.
-    if response.status_code >= 400:
-        raise SystemExit(f"HTTP {response.status_code}: {response.text}")
-    result = response.json()
-    if isinstance(result, dict) and "ErrorMessage" in result:
-        raise SystemExit(f"{result.get('ErrorType')}: {result['ErrorMessage']}")
+               payload: dict, attempts: int = 3) -> list:
+    """POST a report payload and return its document array.
+
+    Retries transient faults: the report engine emits occasional empty 5xx
+    responses that clear on the next try (in production, 3 empty 500s and one
+    dropped connection against 154 successes in an afternoon). Generating a
+    document is an idempotent read, so a retry costs latency, not correctness.
+    """
+    for attempt in range(1, attempts + 1):
+        response = client.post(f"{ui_server}/api/v2/process/pdfreport",
+                               headers=headers, json=payload)
+
+        # Parse the body BEFORE looking at the status code. This endpoint
+        # returns P21's ErrorType/ErrorMessage envelope -- not the
+        # Summary/Messages shape of /transaction -- and that envelope can
+        # arrive on a 200 as well as a 4xx/5xx. Branching on the status first
+        # throws away the only message that explains the failure.
+        try:
+            result = response.json()
+        except ValueError:
+            result = None
+        if isinstance(result, dict) and result.get("ErrorMessage"):
+            # A real, explained rejection (e.g. "No records to print for this
+            # range.") -- retrying will not change it.
+            raise SystemExit(f"{result.get('ErrorType')}: {result['ErrorMessage']}")
+
+        if response.status_code < 400:
+            break
+        if attempt < attempts:
+            time.sleep(0.5 * attempt)
+    else:
+        response = None
+
+    if response is None or response.status_code >= 400:
+        # An empty 5xx has several unrelated causes: a transient engine fault
+        # (retried above), criteria that match nothing (e.g. a wrong
+        # company_id), or a record that is not printable.
+        raise SystemExit(
+            f"HTTP {response.status_code} after {attempts} attempts. "
+            f"Body: {(response.text or '(empty)')[:300]}")
+
     # Success is a JSON ARRAY -- even for a single document
     if not (isinstance(result, list) and result):
         raise SystemExit(f"No documents returned: {result}")
@@ -334,29 +365,62 @@ foreach (var filename in saved)
 // --- helpers ---------------------------------------------------------------
 
 // POST a report payload and return its document array.
+//
+// Retries transient faults: the report engine emits occasional empty 5xx
+// responses that clear on the next try (in production, 3 empty 500s and one
+// dropped connection against 154 successes in an afternoon). Generating a
+// document is an idempotent read, so a retry costs latency, not correctness.
 static async Task<List<JsonElement>> RunReportAsync(
-    HttpClient client, string uiServer, object payload)
+    HttpClient client, string uiServer, object payload, int attempts = 3)
 {
-    using var response = await client.PostAsync(
-        $"{uiServer}/api/v2/process/pdfreport",
-        new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
-    var bodyText = await response.Content.ReadAsStringAsync();
+    var body = JsonSerializer.Serialize(payload);
+    for (var attempt = 1; ; attempt++)
+    {
+        using var response = await client.PostAsync(
+            $"{uiServer}/api/v2/process/pdfreport",
+            new StringContent(body, Encoding.UTF8, "application/json"));
+        var bodyText = await response.Content.ReadAsStringAsync();
 
-    // Errors come back as the standard P21 error envelope (ErrorType/ErrorMessage),
-    // NOT the Summary/Messages format used by /transaction.
-    if (!response.IsSuccessStatusCode)
-        throw new InvalidOperationException($"HTTP {(int)response.StatusCode}: {bodyText}");
+        // Parse the body BEFORE looking at the status code. This endpoint
+        // returns P21's ErrorType/ErrorMessage envelope -- not the
+        // Summary/Messages shape of /transaction -- and that envelope can
+        // arrive on a 200 as well as a 4xx/5xx. Branching on the status first
+        // throws away the only message that explains the failure.
+        JsonDocument? parsed = null;
+        try { parsed = JsonDocument.Parse(bodyText); }
+        catch (JsonException) { /* empty or non-JSON body */ }
 
-    using var parsed = JsonDocument.Parse(bodyText);
-    var root = parsed.RootElement;
-    if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("ErrorMessage", out var err))
-        throw new InvalidOperationException($"{root.GetProperty("ErrorType")}: {err}");
+        using (parsed)
+        {
+            var root = parsed?.RootElement;
+            if (root is { ValueKind: JsonValueKind.Object } obj &&
+                obj.TryGetProperty("ErrorMessage", out var err))
+            {
+                // A real, explained rejection ("No records to print for this
+                // range.") -- retrying will not change it.
+                throw new InvalidOperationException($"{obj.GetProperty("ErrorType")}: {err}");
+            }
 
-    // Success is a JSON ARRAY -- even for a single document
-    if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0)
-        throw new InvalidOperationException($"No documents returned: {bodyText}");
+            if (response.IsSuccessStatusCode)
+            {
+                // Success is a JSON ARRAY -- even for a single document
+                if (root is not { ValueKind: JsonValueKind.Array } arr || arr.GetArrayLength() == 0)
+                    throw new InvalidOperationException($"No documents returned: {bodyText}");
+                return arr.EnumerateArray().Select(x => x.Clone()).ToList();
+            }
 
-    return root.EnumerateArray().Select(x => x.Clone()).ToList();
+            if (attempt >= attempts)
+            {
+                // An empty 5xx has several unrelated causes: a transient engine
+                // fault (retried above), criteria that match nothing (e.g. a
+                // wrong company_id), or a record that is not printable.
+                throw new InvalidOperationException(
+                    $"HTTP {(int)response.StatusCode} after {attempts} attempts. " +
+                    $"Body: {(string.IsNullOrEmpty(bodyText) ? "(empty)" : bodyText)}");
+            }
+        }
+        await Task.Delay(TimeSpan.FromSeconds(0.5 * attempt));
+    }
 }
 
 // Write every returned base64 document to OutputDir; return the file names.
@@ -439,6 +503,9 @@ static string ReadField(string payload, string field)
 All verified live — details in [PDF Report Generation](../03-Transaction-API.md#pdf-report-generation):
 
 - **Wrong-endpoint trap** — `POST /api/v2/transaction` *accepts* an `m_*` payload and returns `Succeeded`, but **emits nothing**. Reports must go to `POST /api/v2/process/pdfreport`. ("This was the single biggest gotcha.")
+- **Retry an empty 5xx before believing it.** The report engine faults intermittently — a production integration generating PO PDFs all day logged **3 empty 500s and one dropped connection against 154 successes in a single afternoon**, and every affected PO succeeded moments later. Generating a document is an idempotent read, so retry (3 attempts, 0.5 s × attempt) as the examples above do. A *deterministic* empty 5xx is a different animal: criteria that match nothing (a wrong `company_id`), a record that isn't printable, or an environment where report generation isn't available. See [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient).
+- **Read the error envelope before the status code.** This endpoint returns P21's `ErrorType`/`ErrorMessage` envelope, and it can arrive on a **200** as well as a 4xx/5xx. Checking `response.status_code` first discards the one message that explains the failure — the examples above parse the body first for that reason.
+- **Check the record exists first.** A missing record and a transient engine fault both surface as an unhelpful 5xx. A cheap OData read before the report call turns "not found" into your own clear error and leaves the 5xx meaning only "the engine faulted".
 - **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false`, but `m_picktickets` **requires `UseCodeValues: true` with code values** — `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the definition's `ValidValues`.
 - **`Status` and `Type` are numeric `0`** with `Keys: []` — not the `"New"` record-edit shape.
 - **`m_picktickets` prerequisite**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first. No date range is needed; `location_id` is the location the components pick from.
