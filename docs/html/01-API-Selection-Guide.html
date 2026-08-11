@@ -1014,7 +1014,7 @@ three-API hybrid pattern.</p>
 </div>
   <div class="tab-panel" data-lang="csharp">
 <div class="highlight"><pre><span></span><code><span class="c1">// Read existing pages - OData (fast)</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">pages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">OData</span><span class="p">.</span><span class="n">QueryAsync</span><span class="p">(</span><span class="s">&quot;sales_price_page&quot;</span><span class="p">,</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">pages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">OData</span><span class="p">.</span><span class="n">QueryAsync</span><span class="p">(</span><span class="s">&quot;price_page&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="n">filter</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;supplier_id eq 10050&quot;</span><span class="p">);</span>
 
 <span class="c1">// Create new pages - Transaction API (bulk, fast)</span>

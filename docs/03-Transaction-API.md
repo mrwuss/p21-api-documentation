@@ -3221,6 +3221,12 @@ Constants that apply to every report payload: `Status` and `Type` are **numeric 
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
+> **Before you debug your payload: check whether the endpoint works at all in your environment.** On the test tenant at **26.1.5910.3** (2026-08-11), `POST /api/v2/process/pdfreport` returned an **empty HTTP 500 for every attempt** — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria taken verbatim from each service's own `GET /api/v2/defaults/{service}`, with `UseCodeValues` both `true` and `false`, and with `Accept` set to `application/json`, `application/json, */*`, `*/*`, `application/pdf`, `application/octet-stream`, and omitted entirely. Zero-length body in all twelve combinations.
+>
+> The services themselves are fine on that tenant — `GET /api/v2/definition/{service}` and `GET /api/v2/defaults/{service}` both return 200 with full criteria. It is the **process endpoint specifically** that fails.
+>
+> **Cause undetermined.** This could be environment-specific (report generation not deployed or licensed on that tenant) or a build regression; distinguishing them needs a second environment at the same build, which was not available. Recorded here so that an empty 500 from this endpoint doesn't send you hunting a payload bug that isn't there — **reproduce it against a known-good report in a second environment before rewriting your criteria.**
+
 ### Response
 
 The response is a **JSON array** (even for a single document). Each element contains document metadata and the base64-encoded PDF content. Decode the `DocumentData` field and write the bytes to a `.pdf` file.

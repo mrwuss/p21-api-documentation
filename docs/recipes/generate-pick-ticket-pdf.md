@@ -50,7 +50,9 @@ POST {ui_server}/api/v2/process/pdfreport
 { "Name": "reprint_flag", "Value": "Y" }
 ```
 
-**`m_reprintpicktickets`** — pick-ticket reprint. DataElement name is `TABPAGE_1.tp_1_dw_1` (datawindow `d_reprint_pick_ticket_criteria`); the [definition](../../definitions/m_reprintpicktickets.json) marks `company_id`, `location_id`, and `print_qty` required, with ranges `beg_pick_ticket_no`/`end_pick_ticket_no` (sales-order tickets) and `beg_prod_pick_ticket_no`/`end_prod_pick_ticket_no` (production tickets).
+**`m_reprintpicktickets`** — pick-ticket reprint. DataElement name is `TABPAGE_1.tp_1_dw_1` (datawindow `d_reprint_pick_ticket_criteria`); the [definition](../../definitions/m_reprintpicktickets.json) marks `company_id`, `location_id`, and `print_qty` required, with ranges `beg_pick_ticket_no`/`end_pick_ticket_no` (sales-order tickets) and `beg_prod_pick_ticket_no`/`end_prod_pick_ticket_no` (production tickets). Its `pick_ticket_type` takes the display values `Sales Order`, `Production Order` or `Both`, and `print_dea_pick_tickets` takes `Yes`, `No` or `Only` (from the live definition, 2026-08-11).
+
+> **`UseCodeValues` for this service is still unconfirmed.** An attempt to settle it on 26.1.5910.3 could not run: `POST /api/v2/process/pdfreport` returned an empty HTTP 500 on that tenant for *every* report — including `m_reprintpurchaseorders`, which is otherwise verified working — across both `UseCodeValues` settings and six `Accept` variants, while `/definition` and `/defaults` for the same services returned 200. See [PDF Report Generation](../03-Transaction-API.md#pdf-report-generation). If you hit an error here, try `UseCodeValues: true` with code values, but first confirm the endpoint itself responds in your environment.
 
 For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
 

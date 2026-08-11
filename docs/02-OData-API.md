@@ -226,17 +226,29 @@ $filter=notes ne null
 
 ### Active Record Filter
 
-P21 uses `row_status_flag` to track record status. Active records have `row_status_flag = 704`:
+P21 tracks record status two different ways, and **using the wrong one 404s the whole request**. Check which column the table actually has before filtering.
+
+**Tables with `row_status_flag`** (e.g. `price_page`). The values are `code_p21` codes — confirmed against that table on 26.1.5910.3:
+
+| `row_status_flag` | Meaning |
+|---|---|
+| `704` | Active |
+| `705` | Inactive |
+| `700` | Delete (soft-deleted) |
 
 ```http
 $filter=row_status_flag eq 704
 ```
 
-Always include this filter when querying for active data:
+This filter matters more than it looks: soft-deleted rows are not removed, so they accumulate. On the tenant tested, **297 of 300 sampled `price_page` rows were `700` (deleted)** — an unfiltered query returns overwhelmingly dead data.
+
+**Tables with `delete_flag`** — `customer`, `supplier`, `inv_mast` and many others have **no `row_status_flag` at all**. They use a `'Y'`/`'N'` char column:
 
 ```http
-$filter=supplier_id eq 10050 and row_status_flag eq 704
+$filter=delete_flag eq 'N'
 ```
+
+> ⚠️ **Filtering on the wrong column fails loudly — and misleadingly.** `supplier?$filter=row_status_flag eq 704` returns **404** with `Could not find a property named 'row_status_flag' on type 'dbo.supplier'`. A bare 404 from this API is easy to misread as "table not exposed" or "no permission", so check the column first: `GET /odataservice/odata/table/{name}?$top=1` and look at the keys.
 
 ### Non-Expired Records
 

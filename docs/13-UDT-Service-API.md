@@ -625,6 +625,8 @@ Delete rows from a UDT table. Use `conditions` to identify which rows to remove 
 
 > **Payload note — `conditions` placement differs from Update.** Delete reads `conditions` from the **top level** of the payload; nesting it inside `rows[]` (the shape Update uses, and the shape shown below) returns `400 {"error":["Conditions cannot be blank or none!"]}` on 2026.1. Both forms are documented here because the nested form is what the endpoint's original contributors used successfully — if the documented payload below returns that error, move `conditions` up a level:
 >
+> **Re-verification status (2026-08-11):** this one could **not** be re-tested. The test tenant has no user-defined tables at all, and creating a UDT is UI-only — there is no API path to make one (a UI-only operation — see the note under [Overview](#overview)). Both shapes therefore stand on the original reports rather than a fresh run; if you have a UDT to hand, try the top-level form first and treat the nested form as the fallback.
+>
 > ```json
 > {"table": "udt_custom_orders", "conditions": [{"name": "row_uid", "value": "12345"}]}
 > ```

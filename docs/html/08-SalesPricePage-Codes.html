@@ -903,6 +903,9 @@
 <h2 id="transaction-api-alternative">Transaction API Alternative</h2>
 <p><code>SalesPricePage</code> is also available as a Transaction API service. Its full definition is
 available from <code>GET /api/v2/services</code>, and the service exposes these data elements:</p>
+<blockquote>
+<p><strong>Two naming systems, both correct — don't mix them.</strong> The <code>DatawindowName</code> column below (<code>d_dw_price_page_main</code>, <code>d_dw_price_page_values</code>, <code>d_dw_price_page_cost</code>) is what the <strong>Transaction</strong> definition reports. The <strong>Interactive</strong> API names the same datawindows <code>form</code>, <code>values</code> and <code>costs</code> — those short names are what the Interactive examples above send as <code>DatawindowName</code>, and they are what <code>GET /v2/window</code> returns. Verified live on 26.1.5910.3 by selecting each tab and reading the window state. The tab page names (<code>FORM</code>, <code>VALUES</code>, <code>COSTS</code>, <code>PO COST MULTIPLIERS</code>, <code>USED BY</code>, <code>TP_PRICE_PAGE_X_LOCATION</code>, <code>TIMESTAMPPRICE_PAGE</code>) are shared by both APIs. See <a href="04-Interactive-API.html#1-get-window-state">Get Window State</a>.</p>
+</blockquote>
 <table>
 <thead>
 <tr>
@@ -1217,7 +1220,37 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <p><strong>Note:</strong> These codes differ from the VALUES tab <code>calculation_method_cd</code> codes.</p>
 <hr />
 <h2 id="discovery-method">Discovery Method</h2>
-<p>These codes were discovered by:</p>
+<blockquote>
+<p><strong>The fastest source is the Transaction definition, not the window.</strong> <code>GET /api/v2/definition/SalesPricePage</code> returns each code field's accepted <strong>display labels</strong> in <code>ValidValues</code> — exactly the strings you send under <code>UseCodeValues: false</code> — even if you intend to drive the window interactively. The Interactive window state does <strong>not</strong> carry them: its field metadata is only <code>Name</code>, <code>Label</code>, <code>DataType</code> and <code>Enabled</code> (verified 26.1.5910.3). Confirmed live from the definition:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Accepted display values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>price_page_type_cd</code></td>
+<td>Item · Supplier / Discount Group · Supplier / Product Group · Supplier / Manufacturing Class · Supplier · Discount Group · Product Group · Customer Part Number · Price Family · Supplier/Price Family</td>
+</tr>
+<tr>
+<td><code>pricing_method_cd</code></td>
+<td>Source · Price · None</td>
+</tr>
+<tr>
+<td><code>source_price_cd</code></td>
+<td>Price 1–10 · Supplier List Price · Primary Supplier Cost · Standard Cost · Average Cost · Last Received PO Cost · Next Due in PO Cost · Other Cost · Strategic List Price · Strategic Cost</td>
+</tr>
+<tr>
+<td><code>calculation_method_cd</code></td>
+<td>Difference · Multiplier · Mark up · Percentage · Fixed Price</td>
+</tr>
+</tbody>
+</table>
+<p>All four are typed <code>Long</code> — you send the label, not the number, when <code>UseCodeValues</code> is <code>false</code>. Your environment's list may differ; re-run the definition call against your own tenant rather than trusting this table.</p>
+</blockquote>
+<p>The numeric codes below were discovered by:</p>
 <ol>
 <li>Opening the SalesPricePage window via Interactive API</li>
 <li>Setting each dropdown to different display values</li>
@@ -2348,7 +2381,7 @@ services above.</p>
 
     <span class="c1"># OData goes to BASE_URL directly -- no UI-server routing</span>
     <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/sales_price_page&quot;</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/price_page&quot;</span><span class="p">,</span>
         <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>          <span class="c1"># httpx URL-encodes the query string</span>
         <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="p">)</span>
@@ -2396,7 +2429,7 @@ services above.</p>
 <span class="w">    </span><span class="s">&quot;product_group_id,discount_group_id,supplier_id&quot;</span><span class="p">;</span>
 
 <span class="c1">// OData goes to BaseUrl directly -- no UI-server routing</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">queryUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/sales_price_page&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">queryUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/price_page&quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">    </span><span class="s">$&quot;?$filter={Uri.EscapeDataString(filter)}&amp;$select={Uri.EscapeDataString(select)}&quot;</span><span class="p">;</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="n">queryUrl</span><span class="p">);</span>
 <span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>

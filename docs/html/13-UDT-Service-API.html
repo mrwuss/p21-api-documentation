@@ -1179,6 +1179,7 @@
 <blockquote>
 <p>⚠️ <strong>Delete reports success even when it deletes nothing</strong> — and on a 2026.1-created UDT (no <code>row_uid</code> column) it deletes nothing at all. See the <a href="#update">warning under Update</a>; check the <code>[N]</code> row count in <code>errorMessage</code>, never <code>errorNo</code> alone.</p>
 <p><strong>Payload note — <code>conditions</code> placement differs from Update.</strong> Delete reads <code>conditions</code> from the <strong>top level</strong> of the payload; nesting it inside <code>rows[]</code> (the shape Update uses, and the shape shown below) returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code> on 2026.1. Both forms are documented here because the nested form is what the endpoint's original contributors used successfully — if the documented payload below returns that error, move <code>conditions</code> up a level:</p>
+<p><strong>Re-verification status (2026-08-11):</strong> this one could <strong>not</strong> be re-tested. The test tenant has no user-defined tables at all, and creating a UDT is UI-only — there is no API path to make one (a UI-only operation — see the note under <a href="#overview">Overview</a>). Both shapes therefore stand on the original reports rather than a fresh run; if you have a UDT to hand, try the top-level form first and treat the nested form as the fallback.</p>
 <p><code>json
 {"table": "udt_custom_orders", "conditions": [{"name": "row_uid", "value": "12345"}]}</code></p>
 </blockquote>

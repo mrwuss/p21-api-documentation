@@ -804,14 +804,41 @@
 <hr />
 <h2 id="common-patterns">Common Patterns</h2>
 <h3 id="active-record-filter">Active Record Filter</h3>
-<p>P21 uses <code>row_status_flag</code> to track record status. Active records have <code>row_status_flag = 704</code>:</p>
+<p>P21 tracks record status two different ways, and <strong>using the wrong one 404s the whole request</strong>. Check which column the table actually has before filtering.</p>
+<p><strong>Tables with <code>row_status_flag</code></strong> (e.g. <code>price_page</code>). The values are <code>code_p21</code> codes — confirmed against that table on 26.1.5910.3:</p>
+<table>
+<thead>
+<tr>
+<th><code>row_status_flag</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>704</code></td>
+<td>Active</td>
+</tr>
+<tr>
+<td><code>705</code></td>
+<td>Inactive</td>
+</tr>
+<tr>
+<td><code>700</code></td>
+<td>Delete (soft-deleted)</td>
+</tr>
+</tbody>
+</table>
 <div class="highlight"><pre><span></span><code><span class="err">$filter=row_status_flag eq 704</span>
 </code></pre></div>
 
-<p>Always include this filter when querying for active data:</p>
-<div class="highlight"><pre><span></span><code><span class="err">$filter=supplier_id eq 10050 and row_status_flag eq 704</span>
+<p>This filter matters more than it looks: soft-deleted rows are not removed, so they accumulate. On the tenant tested, <strong>297 of 300 sampled <code>price_page</code> rows were <code>700</code> (deleted)</strong> — an unfiltered query returns overwhelmingly dead data.</p>
+<p><strong>Tables with <code>delete_flag</code></strong> — <code>customer</code>, <code>supplier</code>, <code>inv_mast</code> and many others have <strong>no <code>row_status_flag</code> at all</strong>. They use a <code>'Y'</code>/<code>'N'</code> char column:</p>
+<div class="highlight"><pre><span></span><code><span class="err">$filter=delete_flag eq &#39;N&#39;</span>
 </code></pre></div>
 
+<blockquote>
+<p>⚠️ <strong>Filtering on the wrong column fails loudly — and misleadingly.</strong> <code>supplier?$filter=row_status_flag eq 704</code> returns <strong>404</strong> with <code>Could not find a property named 'row_status_flag' on type 'dbo.supplier'</code>. A bare 404 from this API is easy to misread as "table not exposed" or "no permission", so check the column first: <code>GET /odataservice/odata/table/{name}?$top=1</code> and look at the keys.</p>
+</blockquote>
 <h3 id="non-expired-records">Non-Expired Records</h3>
 <p>To filter out expired records, compare <code>expiration_date</code> against a date value:</p>
 <div class="highlight"><pre><span></span><code><span class="err">$filter=expiration_date ge 2025-01-01</span>

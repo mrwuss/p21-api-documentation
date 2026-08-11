@@ -348,7 +348,7 @@ with interactive.open_window("SalesPricePage") as window:
 
 ```csharp
 // Read existing pages - OData (fast)
-var pages = await client.OData.QueryAsync("sales_price_page",
+var pages = await client.OData.QueryAsync("price_page",
     filter: "supplier_id eq 10050");
 
 // Create new pages - Transaction API (bulk, fast)

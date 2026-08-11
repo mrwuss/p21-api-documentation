@@ -403,7 +403,20 @@ Three things that catch people out:
 
 - **Everything is under `Definition`.** The datawindows are not at the top level; `Data` is a sibling, not a parent.
 - **`Datawindows` and `Fields` are maps, not arrays.** Iterating them positionally yields keys (strings), not objects. `TabPageList` *is* an array — the two shapes sit side by side.
-- **You get a subset, not the whole window.** Opening `PurchaseOrder` returned exactly two datawindows (`tp_1_dw_1`, `tp_17_dw_17`) out of the dozens the service defines. A datawindow's **absence here proves nothing** — use `definitions/{Service}.json` for the full picture and treat this endpoint as "what the window currently has bound". The same caveat applies to `GET /v2/data`.
+- **You get the ACTIVE tab page's datawindows, not the whole window.** This is the part that misleads people into thinking a field doesn't exist. Verified on `SalesPricePage` (26.1.5910.3) by selecting each tab and re-reading:
+
+  | After selecting tab | `Datawindows` contains |
+  |---|---|
+  | *(on open)* | `form` |
+  | `VALUES` | `values` |
+  | `COSTS` | `costs` |
+  | `PO COST MULTIPLIERS` | `price_page_po_cost_calc` |
+
+  Each selection **replaces** the previous one. So a datawindow's absence proves only that its tab isn't active — switch tabs with `PUT /v2/tab` (`PageName`) and read again, or use `definitions/{Service}.json` for the whole picture at once. The same caveat applies to `GET /v2/data`.
+
+- **Interactive datawindow names are not the Transaction API's names.** The same tab is `form` here and `d_dw_price_page_main` in `definitions/SalesPricePage.json`; `values` vs `d_dw_price_page_values`; `costs` vs `d_dw_price_page_cost`. Both are correct — for their own API. Sending a `d_dw_*` name in an Interactive `DatawindowName`, or a short name in a Transaction `DataElement`, will not find the datawindow. The tab page names (`FORM`, `VALUES`, `COSTS`, `PO COST MULTIPLIERS`, `USED BY`, `TP_PRICE_PAGE_X_LOCATION`, `TIMESTAMPPRICE_PAGE`) are shared, and come back in `Definition.TabPageList` with their display text and `Enabled` state.
+
+- **Field metadata here carries no dropdown values.** Each field exposes only `Name`, `Label`, `DataType` and `Enabled` — there is no `ValidValues`. To learn what a code field accepts, read the **Transaction** definition (`GET /api/v2/definition/{Service}`) even when you intend to drive the window interactively; it lists the display labels you send under `UseCodeValues: false`. See [SalesPricePage Codes](08-SalesPricePage-Codes.md).
 
 Complete program — authenticates, opens a window by `ServiceName`, prints every tab and datawindow it exposes, then closes the window and the session. Run it against any window whose structure you need before automating it.
 

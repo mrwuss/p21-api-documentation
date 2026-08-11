@@ -1209,7 +1209,42 @@
 <ul>
 <li><strong>Everything is under <code>Definition</code>.</strong> The datawindows are not at the top level; <code>Data</code> is a sibling, not a parent.</li>
 <li><strong><code>Datawindows</code> and <code>Fields</code> are maps, not arrays.</strong> Iterating them positionally yields keys (strings), not objects. <code>TabPageList</code> <em>is</em> an array — the two shapes sit side by side.</li>
-<li><strong>You get a subset, not the whole window.</strong> Opening <code>PurchaseOrder</code> returned exactly two datawindows (<code>tp_1_dw_1</code>, <code>tp_17_dw_17</code>) out of the dozens the service defines. A datawindow's <strong>absence here proves nothing</strong> — use <code>definitions/{Service}.json</code> for the full picture and treat this endpoint as "what the window currently has bound". The same caveat applies to <code>GET /v2/data</code>.</li>
+<li><strong>You get the ACTIVE tab page's datawindows, not the whole window.</strong> This is the part that misleads people into thinking a field doesn't exist. Verified on <code>SalesPricePage</code> (26.1.5910.3) by selecting each tab and re-reading:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>After selecting tab</th>
+<th><code>Datawindows</code> contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(on open)</em></td>
+<td><code>form</code></td>
+</tr>
+<tr>
+<td><code>VALUES</code></td>
+<td><code>values</code></td>
+</tr>
+<tr>
+<td><code>COSTS</code></td>
+<td><code>costs</code></td>
+</tr>
+<tr>
+<td><code>PO COST MULTIPLIERS</code></td>
+<td><code>price_page_po_cost_calc</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each selection <strong>replaces</strong> the previous one. So a datawindow's absence proves only that its tab isn't active — switch tabs with <code>PUT /v2/tab</code> (<code>PageName</code>) and read again, or use <code>definitions/{Service}.json</code> for the whole picture at once. The same caveat applies to <code>GET /v2/data</code>.</p>
+<ul>
+<li>
+<p><strong>Interactive datawindow names are not the Transaction API's names.</strong> The same tab is <code>form</code> here and <code>d_dw_price_page_main</code> in <code>definitions/SalesPricePage.json</code>; <code>values</code> vs <code>d_dw_price_page_values</code>; <code>costs</code> vs <code>d_dw_price_page_cost</code>. Both are correct — for their own API. Sending a <code>d_dw_*</code> name in an Interactive <code>DatawindowName</code>, or a short name in a Transaction <code>DataElement</code>, will not find the datawindow. The tab page names (<code>FORM</code>, <code>VALUES</code>, <code>COSTS</code>, <code>PO COST MULTIPLIERS</code>, <code>USED BY</code>, <code>TP_PRICE_PAGE_X_LOCATION</code>, <code>TIMESTAMPPRICE_PAGE</code>) are shared, and come back in <code>Definition.TabPageList</code> with their display text and <code>Enabled</code> state.</p>
+</li>
+<li>
+<p><strong>Field metadata here carries no dropdown values.</strong> Each field exposes only <code>Name</code>, <code>Label</code>, <code>DataType</code> and <code>Enabled</code> — there is no <code>ValidValues</code>. To learn what a code field accepts, read the <strong>Transaction</strong> definition (<code>GET /api/v2/definition/{Service}</code>) even when you intend to drive the window interactively; it lists the display labels you send under <code>UseCodeValues: false</code>. See <a href="08-SalesPricePage-Codes.html">SalesPricePage Codes</a>.</p>
+</li>
 </ul>
 <p>Complete program — authenticates, opens a window by <code>ServiceName</code>, prints every tab and datawindow it exposes, then closes the window and the session. Run it against any window whose structure you need before automating it.</p>
 <div class="code-tabs">

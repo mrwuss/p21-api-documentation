@@ -403,6 +403,8 @@ static string ReadField(string payload, string field)
 `SalesPricePage` is also available as a Transaction API service. Its full definition is
 available from `GET /api/v2/services`, and the service exposes these data elements:
 
+> **Two naming systems, both correct — don't mix them.** The `DatawindowName` column below (`d_dw_price_page_main`, `d_dw_price_page_values`, `d_dw_price_page_cost`) is what the **Transaction** definition reports. The **Interactive** API names the same datawindows `form`, `values` and `costs` — those short names are what the Interactive examples above send as `DatawindowName`, and they are what `GET /v2/window` returns. Verified live on 26.1.5910.3 by selecting each tab and reading the window state. The tab page names (`FORM`, `VALUES`, `COSTS`, `PO COST MULTIPLIERS`, `USED BY`, `TP_PRICE_PAGE_X_LOCATION`, `TIMESTAMPPRICE_PAGE`) are shared by both APIs. See [Get Window State](04-Interactive-API.md#1-get-window-state).
+
 | DataElement | Type | KeyFields | DatawindowName | BusinessObjectName |
 |-------------|------|-----------|----------------|--------------------|
 | `FORM.form` | Form | `price_page_uid` | `d_dw_price_page_main` | `price_page` |
@@ -547,7 +549,18 @@ The `commission_cost_calc_method_cd` on the COSTS tab (different from VALUES tab
 
 ## Discovery Method
 
-These codes were discovered by:
+> **The fastest source is the Transaction definition, not the window.** `GET /api/v2/definition/SalesPricePage` returns each code field's accepted **display labels** in `ValidValues` — exactly the strings you send under `UseCodeValues: false` — even if you intend to drive the window interactively. The Interactive window state does **not** carry them: its field metadata is only `Name`, `Label`, `DataType` and `Enabled` (verified 26.1.5910.3). Confirmed live from the definition:
+>
+> | Field | Accepted display values |
+> |---|---|
+> | `price_page_type_cd` | Item · Supplier / Discount Group · Supplier / Product Group · Supplier / Manufacturing Class · Supplier · Discount Group · Product Group · Customer Part Number · Price Family · Supplier/Price Family |
+> | `pricing_method_cd` | Source · Price · None |
+> | `source_price_cd` | Price 1–10 · Supplier List Price · Primary Supplier Cost · Standard Cost · Average Cost · Last Received PO Cost · Next Due in PO Cost · Other Cost · Strategic List Price · Strategic Cost |
+> | `calculation_method_cd` | Difference · Multiplier · Mark up · Percentage · Fixed Price |
+>
+> All four are typed `Long` — you send the label, not the number, when `UseCodeValues` is `false`. Your environment's list may differ; re-run the definition call against your own tenant rather than trusting this table.
+
+The numeric codes below were discovered by:
 
 1. Opening the SalesPricePage window via Interactive API
 2. Setting each dropdown to different display values
@@ -1607,7 +1620,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 
     # OData goes to BASE_URL directly -- no UI-server routing
     response = client.get(
-        f"{BASE_URL}/odataservice/odata/table/sales_price_page",
+        f"{BASE_URL}/odataservice/odata/table/price_page",
         params=params,          # httpx URL-encodes the query string
         headers=headers,
     )
@@ -1657,7 +1670,7 @@ var select = "price_page_uid,description,price_page_type_cd," +
     "product_group_id,discount_group_id,supplier_id";
 
 // OData goes to BaseUrl directly -- no UI-server routing
-var queryUrl = $"{BaseUrl}/odataservice/odata/table/sales_price_page" +
+var queryUrl = $"{BaseUrl}/odataservice/odata/table/price_page" +
     $"?$filter={Uri.EscapeDataString(filter)}&$select={Uri.EscapeDataString(select)}";
 var response = await client.GetAsync(queryUrl);
 response.EnsureSuccessStatusCode();
