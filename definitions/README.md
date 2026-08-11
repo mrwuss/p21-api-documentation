@@ -35,7 +35,7 @@ Set `P21_SCRUB_TERMS` (comma-separated company identifiers) before publishing an
 
 ## Related tools
 
-- **Validate a payload against these schemas** (offline, JSON or XML): `python scripts/validate_payload.py my_payload.json` — checks structure, types, element/field names, and known ordering rules. See [Payload Anatomy](../docs/03-Transaction-API.md#payload-anatomy----types-nesting-and-common-mistakes).
+- **Validate a payload against these schemas** (offline, JSON or XML): `python scripts/validate_payload.py my_payload.json` — checks structure, types, element/field names, and known ordering rules. See [Payload Anatomy](../docs/03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes).
 - **XML users:** fetch a definition with `Accept: application/xml` and the `Template` subtree is the correctly-ordered XML skeleton — see [XML Payloads](../docs/03-Transaction-API.md#xml-payloads-content-negotiation).
 
 ## Services included

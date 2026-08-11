@@ -1,0 +1,649 @@
+{
+ "Name": "SalesPriceBook",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "SalesPriceBook",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "price_book_id"
+       ],
+       "Name": "FORM.form",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_book_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_book_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_page_effective_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_page_expiration_date",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "USED BY.price_library_x_book",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_library_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_library_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_library_row_status_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "price_page_uid"
+       ],
+       "Name": "LIST.list_detail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_page_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_page_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "effective_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "expiration_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_page_type_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "discount_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mfg_class_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "product_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "customer_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "customer_part_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_family_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pricing_method_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_price_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "totaling_method_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "totaling_basis_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "major_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "calculation_value1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "break1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "calculation_value2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "other_cost_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "commission_cost_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_page_row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_book_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_library_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rowfocusindicatorcol",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "price_book",
+    "DatawindowName": "d_dw_price_book_form",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_book.price_book_id",
+      "Label": "Price Book ID",
+      "Name": "price_book_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_book.description",
+      "Label": "Description",
+      "Name": "price_book_description",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_book.row_status_flag",
+      "Label": "Row Status",
+      "Name": "row_status_flag",
+      "Required": true,
+      "ValidValues": [
+       "Delete",
+       "Active"
+      ]
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "price_page_effective_date",
+      "Label": "Effective Date",
+      "Name": "price_page_effective_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "price_page_expiration_date",
+      "Label": "Expiration Date",
+      "Name": "price_page_expiration_date",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "price_book_id"
+    ],
+    "Name": "FORM.form",
+    "ParentText": "Price Book",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "price_book_x_library",
+    "DatawindowName": "d_ds_price_library_x_book",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_library.price_library_id",
+      "Label": "Library ID",
+      "Name": "price_library_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_library.description",
+      "Label": "Library Description",
+      "Name": "price_library_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_library.row_status_flag",
+      "Label": "Status",
+      "Name": "price_library_row_status_flag",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "USED BY.price_library_x_book",
+    "ParentText": "Used By",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "price_page_x_book",
+    "DatawindowName": "d_dw_price_page_x_book_grid",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page_x_book.price_page_uid",
+      "Label": "Price Page ID",
+      "Name": "price_page_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_page.description",
+      "Label": "Price Page Description",
+      "Name": "price_page_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "price_page.effective_date",
+      "Label": "Effective Date",
+      "Name": "effective_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "price_page.expiration_date",
+      "Label": "Expiration Date",
+      "Name": "expiration_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page.price_page_type_cd",
+      "Label": "Price Page Type",
+      "Name": "price_page_type_cd",
+      "Required": false,
+      "ValidValues": [
+       "Item",
+       "Supplier / Discount Group",
+       "Supplier / Product Group",
+       "Supplier / Manufacturing Class",
+       "Supplier",
+       "Discount Group",
+       "Product Group",
+       "Customer Part Number",
+       "Price Family",
+       "Supplier/Price Family"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_page.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.supplier_id",
+      "Label": "Supplier ID",
+      "Name": "supplier_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_page.discount_group_id",
+      "Label": "Discount Group",
+      "Name": "discount_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_page.mfg_class_id",
+      "Label": "Mfg Class",
+      "Name": "mfg_class_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_page.product_group_id",
+      "Label": "Product Group",
+      "Name": "product_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.customer_id",
+      "Label": "Customer ID",
+      "Name": "customer_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_page.customer_part_no",
+      "Label": "Customer Part No",
+      "Name": "customer_part_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_family.price_family_id",
+      "Label": "Price Family ID",
+      "Name": "price_family_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page.pricing_method_cd",
+      "Label": "Pricing Method",
+      "Name": "pricing_method_cd",
+      "Required": false,
+      "ValidValues": [
+       "Source",
+       "Price",
+       "None"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page.source_price_cd",
+      "Label": "Source Price",
+      "Name": "source_price_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.price",
+      "Label": "Price",
+      "Name": "price",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page.totaling_method_cd",
+      "Label": "Totaling Method",
+      "Name": "totaling_method_cd",
+      "Required": false,
+      "ValidValues": [
+       "Item",
+       "Supplier",
+       "Discount Group",
+       "Product Group",
+       "Order",
+       "Major Group"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page.totaling_basis_cd",
+      "Label": "Totaling Basis",
+      "Name": "totaling_basis_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_page.major_group_id",
+      "Label": "Major Group ID",
+      "Name": "major_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.calculation_value1",
+      "Label": "Calc Value1",
+      "Name": "calculation_value1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.break1",
+      "Label": "Break1",
+      "Name": "break1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.calculation_value2",
+      "Label": "Calc Value2",
+      "Name": "calculation_value2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.other_cost_value",
+      "Label": "Other Cost Value",
+      "Name": "other_cost_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "price_page.commission_cost_value",
+      "Label": "Comm Cost Value",
+      "Name": "commission_cost_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page.row_status_flag",
+      "Label": "Page Status",
+      "Name": "price_page_row_status_flag",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "price_page_x_book.row_status_flag",
+      "Label": "Link Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Delete",
+       "Active"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_book.price_book_id",
+      "Label": null,
+      "Name": "price_book_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_library.price_library_id",
+      "Label": null,
+      "Name": "price_library_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "rowfocusindicatorcol",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "price_page_uid"
+    ],
+    "Name": "LIST.list_detail",
+    "ParentText": "Price Page",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "form",
+    "Name": "price_book_id"
+   }
+  ]
+ }
+}

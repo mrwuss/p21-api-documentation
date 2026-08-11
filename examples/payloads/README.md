@@ -27,7 +27,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 
 ## JSON notes
 
-Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Transactions`, `DataElements`, `Rows`, and `Edits` are always arrays (even with one entry); `UseCodeValues`/`IgnoreDisabled` are booleans, not quoted strings; `Value` is always a string; `IgnoreDisabled` is only honored at the payload top level. Full rules: [Payload Anatomy](../../docs/03-Transaction-API.md#payload-anatomy----types-nesting-and-common-mistakes).
+Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Transactions`, `DataElements`, `Rows`, and `Edits` are always arrays (even with one entry); `UseCodeValues`/`IgnoreDisabled` are booleans, not quoted strings; `Value` is always a string; `IgnoreDisabled` is only honored at the payload top level. Full rules: [Payload Anatomy](../../docs/03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes).
 
 ## XML notes
 

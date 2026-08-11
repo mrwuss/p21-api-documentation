@@ -1,5 +1,5 @@
 {
- "fetched_date": "2026-07-21",
+ "fetched_date": "2026-08-11",
  "ok": [
   "Assembly",
   "BinLocation",
@@ -15,9 +15,14 @@
   "ProductionOrderPicking",
   "ProductionOrderProcessing",
   "PurchaseOrder",
+  "PurchasePricingPageSupplier",
+  "PurchasePricingPageSupplierDiscGrp",
+  "PurchasePricingPageSupplierItem",
   "RequisitionPurchaseOrder",
+  "SalesPriceBook",
   "SalesPricePage",
   "Salesrep",
+  "ShipTo",
   "Shipping",
   "Supplier",
   "TimeEntry",

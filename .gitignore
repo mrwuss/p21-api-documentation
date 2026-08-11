@@ -26,5 +26,9 @@ scraped/
 # Local reference clones (third-party repos, never commit)
 reference/
 
+# Agent scratch: subagent worktrees and task transcripts
+.claude/worktrees/
+.claude/tasks/
+
 # Misc local files (repo root only)
 /*.png
