@@ -405,14 +405,16 @@ available from `GET /api/v2/services`, and the service exposes these data elemen
 
 > **Two naming systems, both correct — don't mix them.** The `DatawindowName` column below (`d_dw_price_page_main`, `d_dw_price_page_values`, `d_dw_price_page_cost`) is what the **Transaction** definition reports. The **Interactive** API names the same datawindows `form`, `values` and `costs` — those short names are what the Interactive examples above send as `DatawindowName`, and they are what `GET /v2/window` returns. Verified live on 26.1.5910.3 by selecting each tab and reading the window state. The tab page names (`FORM`, `VALUES`, `COSTS`, `PO COST MULTIPLIERS`, `USED BY`, `TP_PRICE_PAGE_X_LOCATION`, `TIMESTAMPPRICE_PAGE`) are shared by both APIs. See [Get Window State](04-Interactive-API.md#1-get-window-state).
 
-| DataElement | Type | KeyFields | DatawindowName | BusinessObjectName |
-|-------------|------|-----------|----------------|--------------------|
-| `FORM.form` | Form | `price_page_uid` | `d_dw_price_page_main` | `price_page` |
-| `VALUES.values` | Form | none | `d_dw_price_page_values` | `price_page` |
-| `COSTS.costs` | Form | none | `d_dw_price_page_cost` | `price_page` |
-| `PO COST MULTIPLIERS.price_page_po_cost_calc` | List | `customer_id` | `d_dw_price_page_po_cost_calc_dataentry` | `price_page_po_cost_calc` |
-| `USED BY.price_book_x_page` | List | none | `d_ds_price_book_x_page` | `price_book` |
-| `TP_PRICE_PAGE_X_LOCATION.price_page_x_location` | List | none | `d_dw_price_page_x_location_maint` | `price_page_location` |
+| DataElement | Keys | DatawindowName |
+|-------------|------|----------------|
+| `FORM.form` *(Form)* | `price_page_uid` | `d_dw_price_page_main` |
+| `VALUES.values` *(Form)* | — | `d_dw_price_page_values` |
+| `COSTS.costs` *(Form)* | — | `d_dw_price_page_cost` |
+| `PO COST MULTIPLIERS.price_page_po_cost_calc` *(List)* | `customer_id` | `d_dw_price_page_po_cost_calc_dataentry` |
+| `USED BY.price_book_x_page` *(List)* | — | `d_ds_price_book_x_page` |
+| `TP_PRICE_PAGE_X_LOCATION.price_page_x_location` *(List)* | — | `d_dw_price_page_x_location_maint` |
+
+`BusinessObjectName` is `price_page` for the first three, and matches the element's own subject for the rest — `price_page_po_cost_calc`, `price_book`, `price_page_location`.
 
 For **updating an existing page**, the Transaction API is much simpler than the Interactive
 field-order sequence: `FORM.form` keys on `price_page_uid`, so it supports a keyed upsert via
@@ -2455,11 +2457,15 @@ Where to find them in the desktop client (from `frame_menu.service_name`, verifi
 
 `frame_menu` is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A `NULL` `service_name` means the window has no API surface.
 
-| Service | Header datawindow | Values datawindow | KeyFields |
-|---------|-------------------|-------------------|-----------|
-| `PurchasePricingPageSupplier` | `d_pur_source_price_supplier` | `d_pur_source_price_supplier_values` | `company_id`, `purchase_pricing_book_id`, `supplier_id`, `effective_date`, `expiration_date` |
-| `PurchasePricingPageSupplierItem` | `d_pur_source_price_supplier_item` | `d_pur_source_price_supplier_item_values` | ...the same five, plus `inv_mast_item_id` |
-| `PurchasePricingPageSupplierDiscGrp` | `d_pur_source_price_supplier_disc` | `d_pur_source_price_supplier_disc_values` | ...the same five, plus `discount_group_id` |
+All three key on the same five fields — `company_id`, `purchase_pricing_book_id`, `supplier_id`, `effective_date`, `expiration_date` — and the item and discount-group variants add one more:
+
+| Service | Datawindows (header / values) | Extra key |
+|---------|-------------------------------|-----------|
+| `PurchasePricingPageSupplier` | `d_pur_source_price_supplier`<br>`…_values` | — |
+| `PurchasePricingPageSupplierItem` | `d_pur_source_price_supplier_item`<br>`…_item_values` | `inv_mast_item_id` |
+| `PurchasePricingPageSupplierDiscGrp` | `d_pur_source_price_supplier_disc`<br>`…_disc_values` | `discount_group_id` |
+
+The values datawindow is always the header's name with `_values` appended.
 
 ### Header Fields (`TABPAGE_1.tp_1_dw_1`)
 
@@ -2480,13 +2486,13 @@ Where to find them in the desktop client (from `frame_menu.service_name`, verifi
 
 These carry no break fields — they exist to name a book or tie pages to it.
 
-| Service | DataElement | Datawindow | KeyFields |
-|---------|-------------|------------|-----------|
-| `PurchasePricingBook` | `FORM.form` | `d_dw_purchase_pricing_book_form` | `company_id`, `purchase_pricing_book_id` |
-| `SupplierPricing` | `TABPAGE_1.tp_1_dw_1` | `d_supplier_pricing_hdr` | `company_id`, `supplier_id` |
-| `SupplierPricing` | `TABPAGE_17.tp_17_dw_17` (List) | `d_supplier_pricing_detail` | `purchase_price_library_id` |
-| `SalesPriceBook` | `FORM.form` | `d_dw_price_book_form` | `price_book_id` |
-| `SalesPriceBook` | `LIST.list_detail` (List) | `d_dw_price_page_x_book_grid` | `price_page_uid` |
+| Service · DataElement | Datawindow | Keys |
+|-----------------------|------------|------|
+| `PurchasePricingBook`<br>`FORM.form` | `d_dw_purchase_pricing_book_form` | `company_id`, `purchase_pricing_book_id` |
+| `SupplierPricing`<br>`TABPAGE_1.tp_1_dw_1` | `d_supplier_pricing_hdr` | `company_id`, `supplier_id` |
+| `SupplierPricing`<br>`TABPAGE_17.tp_17_dw_17` *(List)* | `d_supplier_pricing_detail` | `purchase_price_library_id` |
+| `SalesPriceBook`<br>`FORM.form` | `d_dw_price_book_form` | `price_book_id` |
+| `SalesPriceBook`<br>`LIST.list_detail` *(List)* | `d_dw_price_page_x_book_grid` | `price_page_uid` |
 
 `SalesPriceBook`'s `LIST.list_detail` exposes `calculation_value1`, `calculation_value2`, `break1`, and `other_cost_value` as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.
 

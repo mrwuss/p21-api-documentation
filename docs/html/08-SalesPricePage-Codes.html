@@ -919,57 +919,44 @@ available from <code>GET /api/v2/services</code>, and the service exposes these 
 <thead>
 <tr>
 <th>DataElement</th>
-<th>Type</th>
-<th>KeyFields</th>
+<th>Keys</th>
 <th>DatawindowName</th>
-<th>BusinessObjectName</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>FORM.form</code></td>
-<td>Form</td>
+<td><code>FORM.form</code> <em>(Form)</em></td>
 <td><code>price_page_uid</code></td>
 <td><code>d_dw_price_page_main</code></td>
-<td><code>price_page</code></td>
 </tr>
 <tr>
-<td><code>VALUES.values</code></td>
-<td>Form</td>
-<td>none</td>
+<td><code>VALUES.values</code> <em>(Form)</em></td>
+<td>—</td>
 <td><code>d_dw_price_page_values</code></td>
-<td><code>price_page</code></td>
 </tr>
 <tr>
-<td><code>COSTS.costs</code></td>
-<td>Form</td>
-<td>none</td>
+<td><code>COSTS.costs</code> <em>(Form)</em></td>
+<td>—</td>
 <td><code>d_dw_price_page_cost</code></td>
-<td><code>price_page</code></td>
 </tr>
 <tr>
-<td><code>PO COST MULTIPLIERS.price_page_po_cost_calc</code></td>
-<td>List</td>
+<td><code>PO COST MULTIPLIERS.price_page_po_cost_calc</code> <em>(List)</em></td>
 <td><code>customer_id</code></td>
 <td><code>d_dw_price_page_po_cost_calc_dataentry</code></td>
-<td><code>price_page_po_cost_calc</code></td>
 </tr>
 <tr>
-<td><code>USED BY.price_book_x_page</code></td>
-<td>List</td>
-<td>none</td>
+<td><code>USED BY.price_book_x_page</code> <em>(List)</em></td>
+<td>—</td>
 <td><code>d_ds_price_book_x_page</code></td>
-<td><code>price_book</code></td>
 </tr>
 <tr>
-<td><code>TP_PRICE_PAGE_X_LOCATION.price_page_x_location</code></td>
-<td>List</td>
-<td>none</td>
+<td><code>TP_PRICE_PAGE_X_LOCATION.price_page_x_location</code> <em>(List)</em></td>
+<td>—</td>
 <td><code>d_dw_price_page_x_location_maint</code></td>
-<td><code>price_page_location</code></td>
 </tr>
 </tbody>
 </table></div>
+<p><code>BusinessObjectName</code> is <code>price_page</code> for the first three, and matches the element's own subject for the rest — <code>price_page_po_cost_calc</code>, <code>price_book</code>, <code>price_page_location</code>.</p>
 <p>For <strong>updating an existing page</strong>, the Transaction API is much simpler than the Interactive
 field-order sequence: <code>FORM.form</code> keys on <code>price_page_uid</code>, so it supports a keyed upsert via
 <code>POST /api/v2/transaction</code>. Interactive remains the better choice for <strong>creating</strong> a page,
@@ -3303,36 +3290,34 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 </tbody>
 </table></div>
 <p><code>frame_menu</code> is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A <code>NULL</code> <code>service_name</code> means the window has no API surface.</p>
+<p>All three key on the same five fields — <code>company_id</code>, <code>purchase_pricing_book_id</code>, <code>supplier_id</code>, <code>effective_date</code>, <code>expiration_date</code> — and the item and discount-group variants add one more:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Service</th>
-<th>Header datawindow</th>
-<th>Values datawindow</th>
-<th>KeyFields</th>
+<th>Datawindows (header / values)</th>
+<th>Extra key</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>PurchasePricingPageSupplier</code></td>
-<td><code>d_pur_source_price_supplier</code></td>
-<td><code>d_pur_source_price_supplier_values</code></td>
-<td><code>company_id</code>, <code>purchase_pricing_book_id</code>, <code>supplier_id</code>, <code>effective_date</code>, <code>expiration_date</code></td>
+<td><code>d_pur_source_price_supplier</code><br><code>…_values</code></td>
+<td>—</td>
 </tr>
 <tr>
 <td><code>PurchasePricingPageSupplierItem</code></td>
-<td><code>d_pur_source_price_supplier_item</code></td>
-<td><code>d_pur_source_price_supplier_item_values</code></td>
-<td>...the same five, plus <code>inv_mast_item_id</code></td>
+<td><code>d_pur_source_price_supplier_item</code><br><code>…_item_values</code></td>
+<td><code>inv_mast_item_id</code></td>
 </tr>
 <tr>
 <td><code>PurchasePricingPageSupplierDiscGrp</code></td>
-<td><code>d_pur_source_price_supplier_disc</code></td>
-<td><code>d_pur_source_price_supplier_disc_values</code></td>
-<td>...the same five, plus <code>discount_group_id</code></td>
+<td><code>d_pur_source_price_supplier_disc</code><br><code>…_disc_values</code></td>
+<td><code>discount_group_id</code></td>
 </tr>
 </tbody>
 </table></div>
+<p>The values datawindow is always the header's name with <code>_values</code> appended.</p>
 <h3 id="header-fields-tabpage_1tp_1_dw_1">Header Fields (<code>TABPAGE_1.tp_1_dw_1</code>)</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -3389,40 +3374,34 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Service</th>
-<th>DataElement</th>
+<th>Service · DataElement</th>
 <th>Datawindow</th>
-<th>KeyFields</th>
+<th>Keys</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>PurchasePricingBook</code></td>
-<td><code>FORM.form</code></td>
+<td><code>PurchasePricingBook</code><br><code>FORM.form</code></td>
 <td><code>d_dw_purchase_pricing_book_form</code></td>
 <td><code>company_id</code>, <code>purchase_pricing_book_id</code></td>
 </tr>
 <tr>
-<td><code>SupplierPricing</code></td>
-<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+<td><code>SupplierPricing</code><br><code>TABPAGE_1.tp_1_dw_1</code></td>
 <td><code>d_supplier_pricing_hdr</code></td>
 <td><code>company_id</code>, <code>supplier_id</code></td>
 </tr>
 <tr>
-<td><code>SupplierPricing</code></td>
-<td><code>TABPAGE_17.tp_17_dw_17</code> (List)</td>
+<td><code>SupplierPricing</code><br><code>TABPAGE_17.tp_17_dw_17</code> <em>(List)</em></td>
 <td><code>d_supplier_pricing_detail</code></td>
 <td><code>purchase_price_library_id</code></td>
 </tr>
 <tr>
-<td><code>SalesPriceBook</code></td>
-<td><code>FORM.form</code></td>
+<td><code>SalesPriceBook</code><br><code>FORM.form</code></td>
 <td><code>d_dw_price_book_form</code></td>
 <td><code>price_book_id</code></td>
 </tr>
 <tr>
-<td><code>SalesPriceBook</code></td>
-<td><code>LIST.list_detail</code> (List)</td>
+<td><code>SalesPriceBook</code><br><code>LIST.list_detail</code> <em>(List)</em></td>
 <td><code>d_dw_price_page_x_book_grid</code></td>
 <td><code>price_page_uid</code></td>
 </tr>

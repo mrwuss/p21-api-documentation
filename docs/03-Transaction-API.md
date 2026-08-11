@@ -2842,13 +2842,13 @@ The error is attributed to `DataElement: tp_1_dw_1, Column: pick_ticket_no` — 
 
 #### Other services expose a tracking column, but none writes this one
 
-| Service | DataElement | Field | DbColumnName |
-|---------|-------------|-------|--------------|
-| `Shipping` | `TP_SCANPACK.scan_pack_container_hdr` | `tracking_no` | `scan_pack_container_hdr.tracking_no` |
-| `Order`, `FrontCounter`, `RMA`, `ServiceOrder`, `ServiceOrderRMA`, `ConsignmentReplenishmentOrder` | `TP_SHIPMENTS.tp_shipments`, `TABPAGE_LINESHIPMENT.tabpage_lineshipment` | `c_tracking_no` | `c_tracking_no` (computed) |
-| `DirectShipConfirmation` | `TABPAGE_1.tp_1_dw_po` | `tracking_no` | `c_tracking_no` (computed) |
-| `Transfer`, `TransferShipping` | `ITEM_SHIPMENTS.item_shipments`, `SHIPMENTS.shipments`, `TABPAGE_1.tp_1_dw_1` | `carrier_tracking_no` | `transfer_shipment_hdr.carrier_tracking_no` |
-| `ProcessPOShipping` | `FORM.form` | `tracking_number` | `process_po_shipment_hdr.tracking_number` |
+Each of these writes a *different* column — none of them reaches `oe_pick_ticket.tracking_no`:
+
+- **`Shipping`** — `tracking_no` on `TP_SCANPACK.scan_pack_container_hdr`, which is the scan-pack container's own number (`scan_pack_container_hdr.tracking_no`), not the pick ticket's.
+- **`Order`, `FrontCounter`, `RMA`, `ServiceOrder`, `ServiceOrderRMA`, `ConsignmentReplenishmentOrder`** — `c_tracking_no` on `TP_SHIPMENTS.tp_shipments` and `TABPAGE_LINESHIPMENT.tabpage_lineshipment`. **Computed and disabled** — a display of the pick ticket's value, not a write path.
+- **`DirectShipConfirmation`** — `tracking_no` on `TABPAGE_1.tp_1_dw_po`, also backed by the computed `c_tracking_no`.
+- **`Transfer`, `TransferShipping`** — `carrier_tracking_no` on `ITEM_SHIPMENTS.item_shipments`, `SHIPMENTS.shipments` and `TABPAGE_1.tp_1_dw_1`, writing `transfer_shipment_hdr.carrier_tracking_no` — the *transfer's* tracking number.
+- **`ProcessPOShipping`** — `tracking_number` on `FORM.form`, writing `process_po_shipment_hdr.tracking_number`.
 
 #### The Order shipment grids are not a post-invoice back door
 

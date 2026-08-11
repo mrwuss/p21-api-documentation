@@ -4144,48 +4144,14 @@ General Exception: This pick ticket has already been invoiced.
 
 <p>The error is attributed to <code>DataElement: tp_1_dw_1, Column: pick_ticket_no</code> — <strong>not</strong> to <code>tracking_no</code>. That attribution is the tell: the gate fires at <strong>record selection</strong>, before any field-level validation, so <strong>there is no edit you can drop from the payload to get past it.</strong> Sending <code>tracking_no</code> alone fails exactly the same way.</p>
 <h4 id="other-services-expose-a-tracking-column-but-none-writes-this-one">Other services expose a tracking column, but none writes this one</h4>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>Service</th>
-<th>DataElement</th>
-<th>Field</th>
-<th>DbColumnName</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Shipping</code></td>
-<td><code>TP_SCANPACK.scan_pack_container_hdr</code></td>
-<td><code>tracking_no</code></td>
-<td><code>scan_pack_container_hdr.tracking_no</code></td>
-</tr>
-<tr>
-<td><code>Order</code>, <code>FrontCounter</code>, <code>RMA</code>, <code>ServiceOrder</code>, <code>ServiceOrderRMA</code>, <code>ConsignmentReplenishmentOrder</code></td>
-<td><code>TP_SHIPMENTS.tp_shipments</code>, <code>TABPAGE_LINESHIPMENT.tabpage_lineshipment</code></td>
-<td><code>c_tracking_no</code></td>
-<td><code>c_tracking_no</code> (computed)</td>
-</tr>
-<tr>
-<td><code>DirectShipConfirmation</code></td>
-<td><code>TABPAGE_1.tp_1_dw_po</code></td>
-<td><code>tracking_no</code></td>
-<td><code>c_tracking_no</code> (computed)</td>
-</tr>
-<tr>
-<td><code>Transfer</code>, <code>TransferShipping</code></td>
-<td><code>ITEM_SHIPMENTS.item_shipments</code>, <code>SHIPMENTS.shipments</code>, <code>TABPAGE_1.tp_1_dw_1</code></td>
-<td><code>carrier_tracking_no</code></td>
-<td><code>transfer_shipment_hdr.carrier_tracking_no</code></td>
-</tr>
-<tr>
-<td><code>ProcessPOShipping</code></td>
-<td><code>FORM.form</code></td>
-<td><code>tracking_number</code></td>
-<td><code>process_po_shipment_hdr.tracking_number</code></td>
-</tr>
-</tbody>
-</table></div>
+<p>Each of these writes a <em>different</em> column — none of them reaches <code>oe_pick_ticket.tracking_no</code>:</p>
+<ul>
+<li><strong><code>Shipping</code></strong> — <code>tracking_no</code> on <code>TP_SCANPACK.scan_pack_container_hdr</code>, which is the scan-pack container's own number (<code>scan_pack_container_hdr.tracking_no</code>), not the pick ticket's.</li>
+<li><strong><code>Order</code>, <code>FrontCounter</code>, <code>RMA</code>, <code>ServiceOrder</code>, <code>ServiceOrderRMA</code>, <code>ConsignmentReplenishmentOrder</code></strong> — <code>c_tracking_no</code> on <code>TP_SHIPMENTS.tp_shipments</code> and <code>TABPAGE_LINESHIPMENT.tabpage_lineshipment</code>. <strong>Computed and disabled</strong> — a display of the pick ticket's value, not a write path.</li>
+<li><strong><code>DirectShipConfirmation</code></strong> — <code>tracking_no</code> on <code>TABPAGE_1.tp_1_dw_po</code>, also backed by the computed <code>c_tracking_no</code>.</li>
+<li><strong><code>Transfer</code>, <code>TransferShipping</code></strong> — <code>carrier_tracking_no</code> on <code>ITEM_SHIPMENTS.item_shipments</code>, <code>SHIPMENTS.shipments</code> and <code>TABPAGE_1.tp_1_dw_1</code>, writing <code>transfer_shipment_hdr.carrier_tracking_no</code> — the <em>transfer's</em> tracking number.</li>
+<li><strong><code>ProcessPOShipping</code></strong> — <code>tracking_number</code> on <code>FORM.form</code>, writing <code>process_po_shipment_hdr.tracking_number</code>.</li>
+</ul>
 <h4 id="the-order-shipment-grids-are-not-a-post-invoice-back-door">The Order shipment grids are not a post-invoice back door</h4>
 <p>They look like one — both are keyed grids on the <code>Order</code> service that survive invoicing:</p>
 <ul>
