@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reassign a Customer and Ship-To Salesrep - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px;
+        }
+
+        .sidebar-section-title {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* Page ToC in sidebar */
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #8a9bb5;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid transparent;
+            transition: color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #e8eef4;
+        }
+
+        .page-toc a.active {
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+        .page-toc-section {
+            border-top: 1px solid #2c3e50;
+        }
+
+        /* ===== Main Content ===== */
+        .content {
+            flex: 1;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            .copy-section-btn { display: none; }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* ===== Copy-section button ===== */
+        .copy-section-btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            vertical-align: middle;
+            margin-left: 12px;
+            padding: 4px 9px;
+            color: #2874a6;
+            background: #eaf2f8;
+            border: 1px solid #aed6f1;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity .15s ease, background .15s ease;
+        }
+
+        h2:hover > .copy-section-btn,
+        h3:hover > .copy-section-btn,
+        h4:hover > .copy-section-btn,
+        .copy-section-btn:focus {
+            opacity: 1;
+        }
+
+        .copy-section-btn:hover {
+            background: #d4e6f1;
+        }
+
+        .copy-section-btn.copied {
+            opacity: 1;
+            color: #1e8449;
+            background: #eafaf1;
+            border-color: #a9dfbf;
+        }
+
+        .copy-section-btn.failed {
+            opacity: 1;
+            color: #a93226;
+            background: #fdedec;
+            border-color: #f5b7b1;
+        }
+
+        /* Touch devices never hover -- keep the buttons visible there. */
+        @media (hover: none) {
+            .copy-section-btn { opacity: 1; }
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Pages</div>
+            <ul class="nav-pages">
+        <li><a href="../00-Authentication.html">P21 API Authentication</a></li>
+        <li><a href="../01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
+        <li><a href="../02-OData-API.html">OData API</a></li>
+        <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+        <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+        <li><a href="../05-Entity-API.html">Entity API</a></li>
+        <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+        <li><a href="../07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
+        <li><a href="../08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
+        <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
+        <li><a href="../10-Changelog.html">Changelog</a></li>
+        <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+        <li><a href="../12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
+        <li><a href="../13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
+        <li><a href="../14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
+        <li><a href="../task-index.html">Task Index — Find the Right Section Fast</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Recipes</div>
+            <ul class="nav-pages">
+        <li><a href="../recipes/README.html">Recipes Overview</a></li>
+        <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+        <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
+        <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+        <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+        <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+        <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+        <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+        <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+        <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li class="active"><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+        <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+        <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+        <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+        <li><a href="../recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-section page-toc-section">
+            <div class="sidebar-section-title">On This Page</div>
+            <div class="page-toc" id="page-toc">
+                <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#where-the-salesrep-lives">Where the salesrep lives</a></li>
+<li><a href="#payload">Payload</a><ul>
+<li><a href="#customer">Customer</a></li>
+<li><a href="#shipto">ShipTo</a></li>
+</ul>
+</li>
+<li><a href="#complete-example">Complete example</a></li>
+<li><a href="#gotchas-verified-live-on-p21-26158941-2026-07-28">Gotchas (verified live on P21 26.1.5894.1, 2026-07-28)</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+            </div>
+        </div>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<h1 id="reassign-a-customer-and-ship-to-salesrep">Reassign a Customer and Ship-To Salesrep</h1>
+<p>Reassign a customer's and its default ship-to's salesrep through the Transaction API.</p>
+<p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>Customer</code>, <code>ShipTo</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html">Transaction API</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/Customer.json"><code>Customer.json</code></a>, <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ShipTo.json"><code>ShipTo.json</code></a></p>
+<p>Verified on P21 26.1 (build 26.1.5894.1), production + play, 2026-07-28, while driving a ~150-customer sales-rep territory realignment (148 customers, 216 ship-to rows) entirely through the Transaction API so the changes land in P21's audit log.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>The customer and ship-to already exist, and the old and new salesreps exist.</li>
+<li>Token + UI server URL. The complete examples below authenticate without a shared helper.</li>
+</ul>
+<h2 id="where-the-salesrep-lives">Where the salesrep lives</h2>
+<p>Customer salesrep data must be written in two places together: the <code>salesrep_id</code> header field on <code>customer</code> (<code>TABPAGE_1.tp_1_dw_1</code>, Form), and the <code>CUSTOMERSALESREP.customersalesrep</code> grid (List, key <code>salesrep_id</code>, <code>BusinessObjectName</code> <code>customer_salesrep</code>). In that grid, <code>primary_salesrep_flag</code> marks the primary rep. <code>primary_salesrep_flag</code> is unused/empty at the item level elsewhere in P21, but it is the operative flag here.</p>
+<p>Ship-to salesrep data lives only in the <code>TABPAGE_SALESREP.tabpage_salesrep</code> grid (List, key <code>salesrep_id</code>, <code>BusinessObjectName</code> <code>ship_to_salesrep</code>); there is no salesrep field on <code>ship_to</code> itself. Its columns are <code>salesrep_id</code>, <code>primary_salesrep</code>, <code>commission_percentage</code>, <code>delete_flag</code>, and <code>primary_service_rep</code>.</p>
+<blockquote>
+<p><strong>HTTP 200 is not success.</strong> Check <code>Summary.Succeeded</code> / <code>Summary.Failed</code> and <code>Results.Transactions[0].Status == "Passed"</code>. HTTP 200 alone does not mean the write landed.</p>
+</blockquote>
+<p>Both <code>primary_salesrep_flag</code> and <code>primary_salesrep</code> / <code>delete_flag</code> are Char fields with valid values <code>"ON"</code> and <code>"OFF"</code>. The Form DataElement's own <code>Keys</code> array stays empty; identifying key values go into that row's <code>Edits</code>. The List/grid DataElement's <code>Keys</code> array names the grid key column: <code>["salesrep_id"]</code>.</p>
+<h2 id="payload">Payload</h2>
+<h3 id="customer">Customer</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Customer&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">                    </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">}</span>
+<span class="w">                    </span><span class="p">],</span>
+<span class="w">                    </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                </span><span class="p">}]</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUSTOMERSALESREP.customersalesrep&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w">          </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;primary_salesrep_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OFF&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commission_percentage&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0&quot;</span><span class="p">}</span>
+<span class="w">                        </span><span class="p">],</span>
+<span class="w">                        </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w">          </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;primary_salesrep_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commission_percentage&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="p">}</span>
+<span class="w">                        </span><span class="p">],</span>
+<span class="w">                        </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="shipto">ShipTo</h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ShipTo&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.shiptomain&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">                    </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+<span class="w">                        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;address_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">}</span>
+<span class="w">                    </span><span class="p">],</span>
+<span class="w">                    </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                </span><span class="p">}]</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_SALESREP.tabpage_salesrep&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">],</span>
+<span class="w">                </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;primary_salesrep&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span>
+<span class="w">                        </span><span class="p">],</span>
+<span class="w">                        </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="p">},</span>
+<span class="w">                            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;delete_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span>
+<span class="w">                        </span><span class="p">],</span>
+<span class="w">                        </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>For full field lists, load <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/Customer.json"><code>definitions/Customer.json</code></a> and <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ShipTo.json"><code>definitions/ShipTo.json</code></a>.</p>
+<h2 id="complete-example">Complete example</h2>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Reassign a customer&#39;s and default ship-to&#39;s salesrep, then read them back.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;api_user&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;api_pass&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">COMPANY_ID</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>
+<span class="n">CUSTOMER_ID</span> <span class="o">=</span> <span class="s2">&quot;100198&quot;</span>
+<span class="n">SHIP_TO_ID</span> <span class="o">=</span> <span class="s2">&quot;100198&quot;</span>
+<span class="n">OLD_SALESREP_ID</span> <span class="o">=</span> <span class="s2">&quot;100&quot;</span>
+<span class="n">NEW_SALESREP_ID</span> <span class="o">=</span> <span class="s2">&quot;200&quot;</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction and Interactive calls go to the UI server, not BASE_URL.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No Url in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">post_transaction</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">payload</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Summary&quot;</span><span class="p">]</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;Results&quot;</span><span class="p">][</span><span class="s2">&quot;Transactions&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Failed&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;Succeeded&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">status</span> <span class="o">!=</span> <span class="s2">&quot;Passed&quot;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transaction failed: </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">; status=</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">odata</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">filter_expr</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/</span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="n">filter_expr</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">customer</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;Customer&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                    <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                        <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">},</span>
+                            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;customer_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">CUSTOMER_ID</span><span class="p">},</span>
+                            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">NEW_SALESREP_ID</span><span class="p">},</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                    <span class="p">}],</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;CUSTOMERSALESREP.customersalesrep&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">OLD_SALESREP_ID</span><span class="p">},</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;primary_salesrep_flag&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;OFF&quot;</span><span class="p">},</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;commission_percentage&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">},</span>
+                            <span class="p">],</span>
+                            <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                        <span class="p">},</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">NEW_SALESREP_ID</span><span class="p">},</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;primary_salesrep_flag&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;commission_percentage&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;100&quot;</span><span class="p">},</span>
+                            <span class="p">],</span>
+                            <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                        <span class="p">},</span>
+                    <span class="p">],</span>
+                <span class="p">},</span>
+            <span class="p">],</span>
+        <span class="p">}],</span>
+    <span class="p">}</span>
+    <span class="n">shipto</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;ShipTo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.shiptomain&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                    <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                        <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">},</span>
+                            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;address_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">SHIP_TO_ID</span><span class="p">},</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                    <span class="p">}],</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_SALESREP.tabpage_salesrep&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">NEW_SALESREP_ID</span><span class="p">},</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;primary_salesrep&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+                            <span class="p">],</span>
+                            <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                        <span class="p">},</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">OLD_SALESREP_ID</span><span class="p">},</span>
+                                <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;delete_flag&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+                            <span class="p">],</span>
+                            <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                        <span class="p">},</span>
+                    <span class="p">],</span>
+                <span class="p">},</span>
+            <span class="p">],</span>
+        <span class="p">}],</span>
+    <span class="p">}</span>
+    <span class="n">post_transaction</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">customer</span><span class="p">)</span>
+    <span class="n">post_transaction</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">shipto</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">odata</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;customer_salesrep&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;customer_id eq &#39;</span><span class="si">{</span><span class="n">CUSTOMER_ID</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">({</span>
+            <span class="s2">&quot;salesrep_id&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;primary_salesrep_flag&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;primary_salesrep_flag&quot;</span><span class="p">),</span>
+        <span class="p">})</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">odata</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="s2">&quot;ship_to_salesrep&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ship_to_id eq &#39;</span><span class="si">{</span><span class="n">SHIP_TO_ID</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">({</span>
+            <span class="s2">&quot;salesrep_id&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;primary_salesrep&quot;</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;primary_salesrep&quot;</span><span class="p">),</span>
+        <span class="p">})</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_user&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;api_pass&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ShipToId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">OldSalesrepId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">NewSalesrepId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;200&quot;</span><span class="p">;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">customer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Customer&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">UseCodeValues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Transactions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">DataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NewSalesrepId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;CUSTOMERSALESREP.customersalesrep&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;salesrep_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">OldSalesrepId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;primary_salesrep_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;OFF&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;commission_percentage&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NewSalesrepId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;primary_salesrep_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;commission_percentage&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">shipto</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ShipTo&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">UseCodeValues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Transactions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">DataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.shiptomain&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;address_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ShipToId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_SALESREP.tabpage_salesrep&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;salesrep_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">NewSalesrepId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;primary_salesrep&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">OldSalesrepId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;delete_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">},</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="k">await</span><span class="w"> </span><span class="nf">PostTransactionAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">uiServer</span><span class="p">,</span><span class="w"> </span><span class="n">customer</span><span class="p">);</span>
+<span class="k">await</span><span class="w"> </span><span class="nf">PostTransactionAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">uiServer</span><span class="p">,</span><span class="w"> </span><span class="n">shipto</span><span class="p">);</span>
+
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ODataAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;customer_salesrep&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;customer_id eq &#39;{CustomerId}&#39;&quot;</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;customer: salesrep_id={row.GetProperty(&quot;</span><span class="n">salesrep_id</span><span class="s">&quot;)} &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">$&quot;primary_salesrep_flag={row.GetProperty(&quot;</span><span class="n">primary_salesrep_flag</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ODataAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ship_to_salesrep&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;ship_to_id eq &#39;{ShipToId}&#39;&quot;</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;ship-to: salesrep_id={row.GetProperty(&quot;</span><span class="n">salesrep_id</span><span class="s">&quot;)} &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">$&quot;primary_salesrep={row.GetProperty(&quot;</span><span class="n">primary_salesrep</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">PostTransactionAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ui</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="w"> </span><span class="n">p</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{ui}/api/v2/transaction&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">p</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Summary&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">st</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Results&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Transactions&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="w">        </span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Status&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Failed&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span><span class="n">s</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Succeeded&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span>
+<span class="w">        </span><span class="n">st</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">&quot;Passed&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">Error</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Messages&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Transaction failed; status={st}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">ODataAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">filter</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/{table}?$filter=&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="n">filter</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">x</span><span class="p">.</span><span class="n">Clone</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="n">ToList</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="c1">// v2 token endpoint — credentials go in the body, never in headers.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Transaction and Interactive calls go to the UI server, not BaseUrl.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">        </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">q</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
+<span class="w">    </span><span class="n">r</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">p</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span>
+<span class="w">        </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{f}&gt;([^&lt;]+)&lt;/{f}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">m</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {f} in response: {p[..Math.Min(200, p.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<h2 id="gotchas-verified-live-on-p21-26158941-2026-07-28">Gotchas (verified live on P21 26.1.5894.1, 2026-07-28)</h2>
+<ul>
+<li><strong><code>Keys</code> must be an array of key-column-name strings, not objects.</strong> Passing <code>[{"Name": "...", "Value": "..."}]</code> inside a DataElement's <code>Keys</code> array returns HTTP 400: <code>Unexpected character encountered while parsing value: { ... Path 'Transactions[0].DataElements[0].Keys'</code>. This is a general Transaction API parsing rule; key values belong in row <code>Edits</code>.</li>
+<li><strong>The two grids are not symmetric — this is the trap.</strong> <code>CUSTOMERSALESREP.customersalesrep</code> has no <code>delete_flag</code>; sending one returns <code>General Exception: Invalid column name: delete_flag</code>. Demote the old customer row (<code>primary_salesrep_flag: "OFF"</code>, <code>commission_percentage: "0"</code>) and promote the new row (<code>primary_salesrep_flag: "ON"</code>, <code>commission_percentage: "100"</code>); both rows stay. ShipTo has <code>delete_flag</code>: add the new row (<code>primary_salesrep: "ON"</code>) and mark the old row <code>delete_flag: "ON"</code>. Do not assume the same remove/replace pattern works on both grids because their columns differ.</li>
+<li><strong><code>customer_id</code> is disabled for a DEFAULT ship-to.</strong> When <code>address_id</code> equals <code>customer_id</code>, including <code>customer_id</code> in <code>TABPAGE_1.shiptomain</code> Edits returns <code>Column is disabled: customer_id</code>; only that one ship-to's transaction fails while others in the batch succeed. Omit it; <code>company_id</code> + <code>address_id</code> in Edits is sufficient. This was confirmed for DEFAULT ship-tos only; non-default ship-tos were not tested.</li>
+<li><strong>HTTP 200 is not success.</strong> Check <code>Summary.Succeeded</code> / <code>Summary.Failed</code> and <code>Results.Transactions[0].Status == "Passed"</code>; HTTP 200 alone does not mean the write landed.</li>
+<li><strong>Observed ShipTo read-path quirk.</strong> <code>POST {ui_server}/api/v2/transaction/get</code> against ShipTo returned an empty-body HTTP 500 in the test environment. The UPDATE (<code>POST .../transaction</code>) worked regardless. This was observed only for ShipTo, not Customer, so the read-back uses OData.</li>
+<li><strong>You write <code>ON</code>/<code>OFF</code> but you read back <code>Y</code>/<code>N</code>.</strong> The service definition's <code>ValidValues</code> for these flags are <code>ON</code>/<code>OFF</code>, and that is what a <code>UseCodeValues: false</code> payload sends. The underlying column stores <code>Y</code>/<code>N</code>, which is what OData returns. Do not "fix" a read-back that shows <code>Y</code> — that is the success case. Both spellings are in fact accepted on write (verified 2026-08-11: <code>ON</code> and <code>Y</code> both returned <code>Passed</code>; <code>OFF</code> and <code>N</code> both reached the same business-rule validation), so a payload built from either convention will land. Prefer <code>ON</code>/<code>OFF</code> to match the definition.</li>
+<li><strong>You cannot demote the only primary.</strong> Sending <code>primary_salesrep_flag: "OFF"</code> (or <code>"N"</code>) for a customer's sole salesrep row fails the whole transaction with <code>Primary salesrep is required.</code> — the value parsed fine; the window refuses to leave the customer with no primary. Demote and promote must therefore travel together: put both grid rows in the same transaction, or promote the incoming rep before demoting the outgoing one. A demote-only call is never valid.</li>
+</ul>
+<h2 id="verify">Verify</h2>
+<div class="highlight"><pre><span></span><code>GET {base_url}/odataservice/odata/table/customer_salesrep?$filter=customer_id eq &#39;100198&#39;
+GET {base_url}/odataservice/odata/table/ship_to_salesrep?$filter=ship_to_id eq &#39;100198&#39;
+</code></pre></div>
+
+<p>Confirm the returned rows show <code>salesrep_id</code> <code>200</code> as the primary. The flags read back as <strong><code>Y</code></strong>, not the <code>ON</code> you wrote — the definition exposes <code>ON</code>/<code>OFF</code> while the column stores <code>Y</code>/<code>N</code>. A row showing <code>primary_salesrep_flag</code> <code>Y</code> for the customer and <code>primary_salesrep</code> <code>Y</code> for the ship-to is the success case.</p>
+    </main>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+
+
+    </script>
+</body>
+</html>

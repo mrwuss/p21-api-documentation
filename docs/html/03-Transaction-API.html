@@ -440,6 +440,7 @@
         <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
         <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
         <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
@@ -519,6 +520,7 @@
 <li><a href="#assembly-service">Assembly Service</a></li>
 <li><a href="#item-service-nested-location-edits">Item Service -- Nested Location Edits</a></li>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
+<li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>
@@ -542,6 +544,7 @@
 <li><a href="#dynachange-and-popup-handling">DynaChange and Popup Handling</a><ul>
 <li><a href="#popup-suppression-pattern">Popup Suppression Pattern</a></li>
 <li><a href="#limitations">Limitations</a></li>
+<li><a href="#item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</a></li>
 <li><a href="#response-validation">Response Validation</a></li>
 </ul>
 </li>
@@ -1331,6 +1334,7 @@
 <blockquote>
 <p><strong>Caution:</strong> the flag lets edits through columns P21 normally protects. Only send fields you intend to change, and verify results after the first run.</p>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> for mapping the placement failure mode and the disabled-tab unlock behavior.</p>
+<p><strong>It is not a universal unlock — and it can hide the failure.</strong> On P21 26.1, writes to the JobContractPricing <code>VALUES.values</code> element are refused with <code>General Exception: Tab page is disabled and cannot be selected</code>. Adding <code>IgnoreDisabled: true</code> flips the response to <code>Summary: {"Failed": 0, "Succeeded": 1}</code> / <code>Status: "Passed"</code> and <strong>writes nothing</strong> — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. <strong>Always read back after a write that used this flag.</strong> Detail: <a href="#values-writes-are-refused-on-261">VALUES Writes Are Refused on 26.1</a>.</p>
 </blockquote>
 <hr />
 <h2 id="usecodevalues">UseCodeValues</h2>
@@ -1758,8 +1762,8 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <tr>
 <td><code>contract_no</code></td>
 <td>Char</td>
-<td>No</td>
-<td>Contract number (auto-assigned if blank)</td>
+<td><strong>Yes</strong></td>
+<td>Contract number. The definition marks it optional, but a create without it fails: <code>Required value missing for Contract No (for Job/Contract Hdr) on row 1.</code> P21 does not assign one on this path — see <a href="#example-create-a-job-contract-with-break-and-non-break-lines">Example: Create a Job Contract</a></td>
 </tr>
 <tr>
 <td><code>customer_id</code></td>
@@ -1946,6 +1950,9 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 </ul>
 <h4 id="valuesbreaks-valuesvalues-form-46-fields">Values/Breaks -- <code>VALUES.values</code> (Form, 46 fields)</h4>
 <p>The VALUES DataElement defines quantity break tiers for a line item.</p>
+<blockquote>
+<p><strong>Stop before you build a payload around this element.</strong> On P21 26.1 every attempt to write <code>VALUES.values</code> through the Transaction API is refused, and <code>IgnoreDisabled: true</code> turns that refusal into a silent no-op. Read <a href="#values-writes-are-refused-on-261">VALUES Writes Are Refused on 26.1</a> first — the field reference below is accurate, but the write path is not currently usable.</p>
+</blockquote>
 <table>
 <thead>
 <tr>
@@ -1966,24 +1973,27 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <td>Break threshold quantities</td>
 </tr>
 <tr>
-<td><code>calculation_value</code> through <code>calculation_value14</code></td>
+<td><code>calculation_value1</code> through <code>calculation_value15</code></td>
 <td>Decimal</td>
 <td>Price/value at each tier</td>
 </tr>
 <tr>
-<td><code>other_cost</code> through <code>other_cost14</code></td>
+<td><code>other_cost1</code> through <code>other_cost15</code></td>
 <td>Decimal</td>
 <td>Other cost at each tier</td>
 </tr>
 </tbody>
 </table>
 <p><strong><code>calculation_method_cd</code> valid values:</strong> <code>Difference</code>, <code>Multiplier</code>, <code>Mark up</code>, <code>Percentage</code>, <code>Fixed Price</code></p>
+<blockquote>
+<p><strong>Every tier field is numbered from 1.</strong> There is no unsuffixed <code>calculation_value</code> or <code>other_cost</code> — the first tier is <code>calculation_value1</code> / <code>other_cost1</code>. Verified against <code>definitions/JobContractPricing.json</code> (both <code>FieldDefinitions</code> and the payload <code>Template</code>) and the live <code>GET /api/v2/definition/JobContractPricing</code>. The element also has <strong>no per-tier <code>uom</code> field</strong> — that is <code>SalesPricePage</code>, not this service.</p>
+</blockquote>
 <h5 id="break-tier-structure">Break Tier Structure</h5>
 <p>The service supports 15 price levels: 14 break thresholds (<code>break1</code>-<code>break14</code>) plus one catch-all tier. Break values represent the <strong>starting quantity of the next tier</strong> (advance thresholds).</p>
 <p>Rules:
 - <code>break1</code> should NOT be 0 -- it defines where the second tier starts
 - The last active tier has its break set to <code>0</code>, signaling no further advance
-- <code>calculation_value</code> (no suffix) is the first tier; <code>calculation_value2</code> through <code>calculation_value14</code> are tiers 2-14; the 15th tier has no break threshold</p>
+- <code>calculation_value1</code> is the first tier; <code>calculation_value2</code> through <code>calculation_value14</code> are tiers 2-14; <code>calculation_value15</code> is the 15th tier, which has no break threshold (there is no <code>break15</code>)</p>
 <p><strong>Example -- 3 tiers with Fixed Price method:</strong></p>
 <table>
 <thead>
@@ -2000,7 +2010,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <tr>
 <td>1</td>
 <td>1-9</td>
-<td><code>calculation_value</code></td>
+<td><code>calculation_value1</code></td>
 <td><code>10.00</code></td>
 <td><code>break1</code></td>
 <td><code>10</code></td>
@@ -2042,6 +2052,49 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
   3. VALUES.values (breaks -- applies only to last row)
 </code></pre></div>
 
+<h5 id="values-writes-are-refused-on-261">VALUES Writes Are Refused on 26.1</h5>
+<blockquote>
+<p><strong>Warning -- verified live on a P21 26.1 tenant, 2026-08-11.</strong> Every write path to <code>VALUES.values</code> is refused by the server, and <code>IgnoreDisabled: true</code> converts the refusal into a <strong>silent no-op that reports success</strong>. The break-tier documentation above describes the element's real schema; it does not currently describe a working write.</p>
+</blockquote>
+<p>All three paths fail with the same error:</p>
+<div class="highlight"><pre><span></span><code>General Exception: Tab page is disabled and cannot be selected
+</code></pre></div>
+
+<p>which also surfaces per-element as:</p>
+<div class="highlight"><pre><span></span><code>VALUES.values: Error processing data element: values : Tab page is disabled and cannot be selected
+</code></pre></div>
+
+<table>
+<thead>
+<tr>
+<th>Path attempted</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Update <code>VALUES</code> on a line of an <strong>existing</strong> contract</td>
+<td>Refused</td>
+</tr>
+<tr>
+<td>Insert a new line (keyed upsert on <code>item_id</code>) onto an existing contract, with <code>VALUES</code> in the same transaction</td>
+<td>Refused — <strong>atomically</strong>; the line is not created either</td>
+</tr>
+<tr>
+<td>Create a brand-new contract (header + fully specified <code>Source</code> line + <code>VALUES</code>) in one transaction</td>
+<td>Refused — <strong>atomically</strong>; the contract is not created either</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The control, so you can size the damage.</strong> The identical create transaction with the <code>VALUES.values</code> DataElement <strong>removed</strong> succeeds: <code>Summary: {"Succeeded": 1}</code>, the contract is created, the <code>Source</code>-priced line is created, both confirmed by read-back. Contract and line creation through the Transaction API work fine. It is specifically the <code>VALUES.values</code> DataElement that is refused.</p>
+<p>Other things checked, all on the same tenant:</p>
+<ul>
+<li><strong>Resending the line's <code>pricing_method</code> / <code>source_price</code> / <code>multiplier</code></strong> in the same transaction — an attempt to make the window "select" the tab the way a user would — does <strong>not</strong> help. Identical failure.</li>
+<li><strong>Both <code>calculation_value</code> and <code>calculation_value1</code> fail identically</strong>, so this is not a field-naming problem. (<code>calculation_value1</code> is nonetheless the correct name — see <a href="#break-tier-structure">above</a>.)</li>
+<li><strong><code>IgnoreDisabled: true</code> at payload top level makes it worse.</strong> The response flips to <code>Summary: {"Failed": 0, "Succeeded": 1}</code> with <code>Status: "Passed"</code> — and <strong>nothing is written</strong>. Read-back shows the row unchanged (an existing tier value of <code>519.81</code> survived a <code>"Passed"</code> response) or still absent. The echoed response also <strong>silently drops the <code>JOBPRICELINE</code> and <code>VALUES</code> DataElements</strong>, echoing only the header, so even the echo does not reveal the omission.</li>
+</ul>
+<p><strong>Whether this is a 26.1 regression or long-standing behavior is unknown</strong> — no earlier build was available to compare against. Do not read it as a regression; read it as the behavior of the build in front of you, and re-test on yours.</p>
+<p><strong>Takeaway beyond this element:</strong> <code>IgnoreDisabled: true</code> is not a universal unlock. It genuinely unlocks some disabled columns and tabs (see <a href="#ignoredisabled">IgnoreDisabled</a>), but on this path it only converts a loud failure into a quiet one. <strong>Always read back after a write that used it</strong> — via <code>POST /api/v2/transaction/get</code> or OData — rather than trusting <code>Succeeded</code>.</p>
 <h4 id="commission-costs">Commission Costs</h4>
 <p>The <code>JOBPRICECOST</code> DataElement includes <code>commission_cost_value</code> and related commission fields. These columns are <strong>disabled by default</strong> -- without special handling the API returns "Column is disabled: commission_cost_value".</p>
 <p><strong>They are writable with <code>IgnoreDisabled: true</code></strong> at the payload top level (see <a href="#ignoredisabled">IgnoreDisabled</a>). Key the element by <code>item_id</code> and set the cost type before the value -- verified live, including in the same transaction as a line insert:</p>
@@ -2059,7 +2112,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="p">}</span>
 </code></pre></div>
 
-<p><code>commission_cost_type_cd</code> accepts the display labels <code>Order</code>, <code>Source</code>, <code>Value</code>, <code>None</code> (with <code>UseCodeValues: false</code>). Setting only the commission cost leaves <code>other_cost</code> untouched.</p>
+<p><code>commission_cost_type_cd</code> accepts the display labels <code>Order</code>, <code>Source</code>, <code>Value</code>, <code>None</code> (with <code>UseCodeValues: false</code>). Setting only the commission cost leaves the element's <code>other_cost_*</code> fields (<code>other_cost_type_cd</code>, <code>other_cost_value</code>, <code>other_cost_source_cd</code>, <code>other_cost_calc_method_cd</code>, <code>other_cost_calc_value</code>) untouched.</p>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> verified the <code>IgnoreDisabled</code> commission-cost write path. The Interactive API (JobContractPricing window) remains an alternative.</p>
 </blockquote>
@@ -2201,6 +2254,14 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <li><strong>Status <code>"Existing"</code> is not a valid Transaction status:</strong> Setting <code>Transactions[0].Status = "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) returns HTTP 500 (<code>NullReferenceException</code> at <code>ToInternalBeSpecification</code>). Use <code>"New"</code> for both create and update -- see <a href="#updating-an-existing-contract">Updating an Existing Contract</a>.</li>
 </ul>
 <h4 id="example-create-a-job-contract-with-break-and-non-break-lines">Example: Create a Job Contract with Break and Non-Break Lines</h4>
+<blockquote>
+<p><strong>This example cannot succeed on P21 26.1.</strong> It sends a <code>VALUES.values</code> DataElement, and every write to that element is refused — atomically, so the transaction creates <strong>no contract and no lines</strong>. See <a href="#values-writes-are-refused-on-261">VALUES Writes Are Refused on 26.1</a>. The example is kept because it is the correct payload <em>shape</em> (header → line → its VALUES, interleaved per break line) and because the same transaction <strong>with the <code>VALUES.values</code> element deleted</strong> does succeed. Delete DataElement 4 to get a runnable version.</p>
+</blockquote>
+<p>Separately -- and unrelated to that hazard -- two ordinary validation requirements that this example originally got wrong, both verified on 26.1:</p>
+<ul>
+<li><strong><code>contract_no</code> is required on the header.</strong> A header submitted without it fails with <code>Required value missing for Contract No (for Job/Contract Hdr) on row 1.</code> P21 does not assign the number for you on this path, so it is included in the payload below. Reading <code>contract_no</code> back out of the response (as the code at the end of each tab does) is only meaningful as a confirmation of the number <strong>you</strong> supplied.</li>
+<li><strong>A contract cannot be created as a bare header.</strong> The transaction must include a fully specified line, <code>uom</code> included; a header sent with no line element at all fails with <code>Required value missing for Uom (for Job/Contract Line) on row 1.</code> You cannot create the header first and add lines in a later call.</li>
+</ul>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -2249,6 +2310,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
                 <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
                     <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;contract_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;JOB-1001&quot;</span><span class="p">},</span>   <span class="c1"># required -- P21 does not assign it here</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;customer_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;100198&quot;</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;corp_address_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;end_date&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;2027-12-31&quot;</span><span class="p">},</span>
@@ -2297,7 +2359,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
                     <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;calculation_method_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;Fixed Price&quot;</span><span class="p">},</span>
                         <span class="c1"># Tier 1: qty 1-9 @ $10.00</span>
-                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;calculation_value&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;10.00&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;calculation_value1&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;10.00&quot;</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;break1&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">},</span>
                         <span class="c1"># Tier 2: qty 10-49 @ $8.50</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;calculation_value2&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;8.50&quot;</span><span class="p">},</span>
@@ -2386,6 +2448,8 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="w">                            </span><span class="na">[&quot;Edits&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JArray</span>
 <span class="w">                            </span><span class="p">{</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="c1">// required -- P21 does not assign the contract number here</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;contract_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;JOB-1001&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;corp_address_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;end_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2027-12-31&quot;</span><span class="w"> </span><span class="p">},</span>
@@ -2452,7 +2516,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <span class="w">                            </span><span class="p">{</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;calculation_method_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Fixed Price&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="c1">// Tier 1: qty 1-9 @ $10.00</span>
-<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;calculation_value&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10.00&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;calculation_value1&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10.00&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;break1&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="c1">// Tier 2: qty 10-49 @ $8.50</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Name&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;calculation_value2&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Value&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;8.50&quot;</span><span class="w"> </span><span class="p">},</span>
@@ -2936,7 +3000,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <h4 id="item-service-gotchas">Item Service Gotchas</h4>
 <ul>
 <li><strong>Silent no-op — the big one.</strong> The target supplier must already have a <em>location-level</em> row (<code>inventory_supplier_x_loc</code>) at that location. If it doesn't, the transaction still returns <code>Succeeded = 1</code> but <strong>nothing flips</strong> — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) <strong>Always verify <code>inv_loc.primary_supplier_id</code> after writing</strong> — do not trust <code>Succeeded</code>. Fix: add the location supplier row first, then set the flag.</li>
-<li><strong>"Item Issues Detected" popup.</strong> Items with data problems return an <code>Unexpected response window: Item Issues Detected</code> (<code>w_rule_callback_response</code>) in the response <code>Messages</code>. The Transaction API cannot get past this popup — it effectively answers "No" and discards the change. Use the Interactive API for those items and answer the popup with <code>cb_1</code> ("Yes, Proceed Anyway") — see <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Item window popups</a>. Which items trip the rule differs per environment (it fires on each item's data state) — run transaction-first, verify, and fall back to the Interactive API for whatever didn't stick.</li>
+<li><strong>"Item Issues Detected" popup — a data defect you can fix, not an API limitation.</strong> Affected items return an <code>Unexpected response window: Item Issues Detected</code> (<code>w_rule_callback_response</code>) in the response <code>Messages</code>. The Transaction API cannot answer the popup, so the transaction aborts and the edit is discarded. The popup comes from a <strong>site-configured DynaChange business rule with <code>apply_during_save_flag = 'Y'</code></strong>, which fires on <em>every</em> save of the Item window — so it blocks <strong>all</strong> Item-service writes, not just <code>product_group_id</code> changes. The behavior is <strong>deterministic, not per-run session state</strong>: retries fail every time until the underlying data is corrected, and once it is corrected the identical transaction succeeds. Identify the rule and its trigger, fix the data, re-run — see <a href="#item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</a>. For items you cannot data-fix, fall back to the Interactive API and answer the popup with <code>cb_1</code> ("Yes, Proceed Anyway") — see <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Item window popups</a>.</li>
 <li><code>SUPPLIER_X_LOCATION</code> is keyed by <code>supplier_id</code> scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent <em>interactive</em> flow must match rows on both <code>location_id</code> and <code>supplier_id</code> — the grid holds every location's rows.)</li>
 </ul>
 <blockquote>
@@ -2989,6 +3053,422 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — pattern verified in production (July 2026), including the <code>IgnoreDisabled</code> placement failure mode.</p>
 </blockquote>
+<h3 id="shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</h3>
+<p><strong><code>Shipping</code> is the only service that writes <code>oe_pick_ticket.tracking_no</code>.</strong> A scan of all <strong>299</strong> services returned by <code>GET /api/v2/services</code> (240 returned a definition; the rest answer with the unavailable-window HTTP 500) found the column in exactly one writable place. <em>Verified on a P21 26.1 tenant, 2026-08-11.</em></p>
+<h4 id="the-element">The element</h4>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DataElement</td>
+<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+</tr>
+<tr>
+<td>BusinessObjectName</td>
+<td><code>oe_pick_ticket</code></td>
+</tr>
+<tr>
+<td>DatawindowName</td>
+<td><code>d_ship</code></td>
+</tr>
+<tr>
+<td>KeyFields</td>
+<td><code>['pick_ticket_no']</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>DataType</th>
+<th>Label</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tracking_no</code></td>
+<td>Char</td>
+<td>Carrier Tracking Number</td>
+<td>Writes <code>oe_pick_ticket.tracking_no</code></td>
+</tr>
+<tr>
+<td><code>carrier_id</code></td>
+<td>Decimal</td>
+<td>Carrier</td>
+<td>Carries <code>ValidValues</code> — with <code>UseCodeValues: false</code> you send the carrier's <strong>display name</strong>, not the id</td>
+</tr>
+<tr>
+<td><code>create_invoice</code></td>
+<td>Char</td>
+<td>Confirm Shipment</td>
+<td><code>ValidValues</code>: <code>ON</code> / <code>OFF</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="the-limitation-invoiced-pick-tickets-refuse-the-write">The limitation: invoiced pick tickets refuse the write</h4>
+<p>Once the pick ticket has been <strong>invoiced</strong>, the write is refused:</p>
+<div class="highlight"><pre><span></span><code>Summary: {&quot;Failed&quot;: 1, &quot;Succeeded&quot;: 0}
+General Exception: This pick ticket has already been invoiced.
+</code></pre></div>
+
+<p>The error is attributed to <code>DataElement: tp_1_dw_1, Column: pick_ticket_no</code> — <strong>not</strong> to <code>tracking_no</code>. That attribution is the tell: the gate fires at <strong>record selection</strong>, before any field-level validation, so <strong>there is no edit you can drop from the payload to get past it.</strong> Sending <code>tracking_no</code> alone fails exactly the same way.</p>
+<h4 id="other-services-expose-a-tracking-column-but-none-writes-this-one">Other services expose a tracking column, but none writes this one</h4>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>DataElement</th>
+<th>Field</th>
+<th>DbColumnName</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Shipping</code></td>
+<td><code>TP_SCANPACK.scan_pack_container_hdr</code></td>
+<td><code>tracking_no</code></td>
+<td><code>scan_pack_container_hdr.tracking_no</code></td>
+</tr>
+<tr>
+<td><code>Order</code>, <code>FrontCounter</code>, <code>RMA</code>, <code>ServiceOrder</code>, <code>ServiceOrderRMA</code>, <code>ConsignmentReplenishmentOrder</code></td>
+<td><code>TP_SHIPMENTS.tp_shipments</code>, <code>TABPAGE_LINESHIPMENT.tabpage_lineshipment</code></td>
+<td><code>c_tracking_no</code></td>
+<td><code>c_tracking_no</code> (computed)</td>
+</tr>
+<tr>
+<td><code>DirectShipConfirmation</code></td>
+<td><code>TABPAGE_1.tp_1_dw_po</code></td>
+<td><code>tracking_no</code></td>
+<td><code>c_tracking_no</code> (computed)</td>
+</tr>
+<tr>
+<td><code>Transfer</code>, <code>TransferShipping</code></td>
+<td><code>ITEM_SHIPMENTS.item_shipments</code>, <code>SHIPMENTS.shipments</code>, <code>TABPAGE_1.tp_1_dw_1</code></td>
+<td><code>carrier_tracking_no</code></td>
+<td><code>transfer_shipment_hdr.carrier_tracking_no</code></td>
+</tr>
+<tr>
+<td><code>ProcessPOShipping</code></td>
+<td><code>FORM.form</code></td>
+<td><code>tracking_number</code></td>
+<td><code>process_po_shipment_hdr.tracking_number</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="the-order-shipment-grids-are-not-a-post-invoice-back-door">The Order shipment grids are not a post-invoice back door</h4>
+<p>They look like one — both are keyed grids on the <code>Order</code> service that survive invoicing:</p>
+<ul>
+<li><code>TABPAGE_LINESHIPMENT.tabpage_lineshipment</code> — List, <code>d_oe_line_pick_tickets</code>, KeyFields <code>['invoice_no']</code></li>
+<li><code>TP_SHIPMENTS.tp_shipments</code> — List, <code>d_dw_pick_ticket_oe</code>, KeyFields <code>[]</code></li>
+</ul>
+<p>Editing <code>c_tracking_no</code> on either returns <code>General Exception: Column is disabled: c_tracking_no</code>. It is a <strong>computed display column</strong>, not storage. Keying on <code>invoice_no</code> does not help.</p>
+<h4 id="workarounds">Workarounds</h4>
+<ol>
+<li><strong>Set <code>tracking_no</code> in the same transaction that sets <code>create_invoice</code></strong> ("Confirm Shipment"). This is the normal path and it works — but only when the tracking number already exists at confirm time. The example below does exactly this.</li>
+<li><strong>A user-defined field on <code>oe_pick_ticket_ud</code>,</strong> writable through the <a href="13-UDT-Service-API.html">UDT Service API</a>. <strong>Caveat:</strong> it does <strong>not</strong> populate the native <code>oe_pick_ticket.tracking_no</code>, so customer portals, EDI, and third-party shipping integrations that read the native column will not see it.</li>
+</ol>
+<h4 id="open-question-companyedit_tracking_number_flag">Open question: <code>company.edit_tracking_number_flag</code></h4>
+<p><code>company.edit_tracking_number_flag</code> (<code>varchar(1)</code>) is P21's own switch for tracking-number editing. <strong>Treat this as unproven, not as a finding.</strong> On the system under test it was <code>'N'</code>; flipping it to <code>'Y'</code> and retrying produced identical errors. That is <strong>not</strong> a disproof — the SOA middleware pools PowerBuilder sessions and reads company settings at session creation, so the change plausibly requires a middleware restart, which the test environment could not perform. If you can restart middleware, this is the first thing to re-test.</p>
+<h4 id="example-set-the-tracking-number-while-confirming-a-shipment">Example: set the tracking number while confirming a shipment</h4>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Set carrier + tracking number on a pick ticket while confirming its shipment.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">PICK_TICKET_NO</span> <span class="o">=</span> <span class="s2">&quot;123456&quot;</span>                 <span class="c1"># must NOT be invoiced yet</span>
+<span class="n">CARRIER</span> <span class="o">=</span> <span class="s2">&quot;ACME FREIGHT&quot;</span>                  <span class="c1"># carrier DISPLAY name (UseCodeValues: false)</span>
+<span class="n">TRACKING_NO</span> <span class="o">=</span> <span class="s2">&quot;TRACK-0000000000001&quot;</span>       <span class="c1"># the carrier&#39;s tracking number</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>  <span class="c1"># some middleware answers in XML</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction and Interactive calls go to the UI server, not BASE_URL.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>  <span class="c1"># trailing slash avoids a 307</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No Url in router response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">walk</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Yield every {&quot;Name&quot;: ..., &quot;Value&quot;: ...} pair anywhere in a response.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s2">&quot;Name&quot;</span> <span class="ow">in</span> <span class="n">node</span> <span class="ow">and</span> <span class="s2">&quot;Value&quot;</span> <span class="ow">in</span> <span class="n">node</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">node</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">],</span> <span class="n">node</span><span class="p">[</span><span class="s2">&quot;Value&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">yield from</span> <span class="n">walk</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">node</span><span class="p">:</span>
+            <span class="k">yield from</span> <span class="n">walk</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Status &quot;New&quot; with a populated Keys array updates the keyed pick ticket.</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;Shipping&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
+            <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;pick_ticket_no&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                    <span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;pick_ticket_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">PICK_TICKET_NO</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;carrier_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">CARRIER</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;tracking_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">TRACKING_NO</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;create_invoice&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;ON&quot;</span><span class="p">},</span>   <span class="c1"># Confirm Shipment</span>
+                    <span class="p">],</span>
+                    <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="p">}],</span>
+            <span class="p">}],</span>
+        <span class="p">}],</span>
+    <span class="p">}</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>          <span class="c1"># HTTP 200 does NOT mean the write succeeded</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Summary:&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Summary&quot;</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Messages&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  Message:&quot;</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+
+    <span class="c1"># ---- read-back: the only proof the value landed -------------------------</span>
+    <span class="n">read_back</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction/get&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;Shipping&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;TransactionStates&quot;</span><span class="p">:</span> <span class="p">[{</span>
+                <span class="s2">&quot;DataElementName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;pick_ticket_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">PICK_TICKET_NO</span><span class="p">}],</span>
+            <span class="p">}],</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">read_back</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+    <span class="n">wanted</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;pick_ticket_no&quot;</span><span class="p">,</span> <span class="s2">&quot;carrier_id&quot;</span><span class="p">,</span> <span class="s2">&quot;tracking_no&quot;</span><span class="p">,</span> <span class="s2">&quot;invoice_no&quot;</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">walk</span><span class="p">(</span><span class="n">read_back</span><span class="o">.</span><span class="n">json</span><span class="p">()):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PickTicketNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;123456&quot;</span><span class="p">;</span><span class="w">                  </span><span class="c1">// must NOT be invoiced yet</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Carrier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME FREIGHT&quot;</span><span class="p">;</span><span class="w">                 </span><span class="c1">// carrier DISPLAY name</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">TrackingNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TRACK-0000000000001&quot;</span><span class="p">;</span><span class="w">       </span><span class="c1">// the carrier&#39;s tracking number</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Test tenants often present a self-signed cert. Delete this line in production.</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="c1">// Status &quot;New&quot; with a populated Keys array updates the keyed pick ticket.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Shipping&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">UseCodeValues</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Transactions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">DataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;pick_ticket_no&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                    </span><span class="p">{</span>
+<span class="w">                        </span><span class="k">new</span>
+<span class="w">                        </span><span class="p">{</span>
+<span class="w">                            </span><span class="n">Edits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">                            </span><span class="p">{</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;pick_ticket_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PickTicketNo</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;carrier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Carrier</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;tracking_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TrackingNo</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;create_invoice&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="w"> </span><span class="p">},</span><span class="w">   </span><span class="c1">// Confirm Shipment</span>
+<span class="w">                            </span><span class="p">},</span>
+<span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="w">                        </span><span class="p">}</span>
+<span class="w">                    </span><span class="p">}</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServer}/api/v2/transaction&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span><span class="w">     </span><span class="c1">// HTTP 200 does NOT mean the write succeeded</span>
+
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Summary: {result.RootElement.GetProperty(&quot;</span><span class="n">Summary</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Messages&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">messages</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">message</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">messages</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  Message: {message}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// ---- read-back: the only proof the value landed ---------------------------</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">getPayload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServiceName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Shipping&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">TransactionStates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">DataElementName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;pick_ticket_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PickTicketNo</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">readBackResponse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServer}/api/v2/transaction/get&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">getPayload</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">readBackResponse</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">readBack</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">readBackResponse</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">wanted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashSet</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;pick_ticket_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;carrier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tracking_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;invoice_no&quot;</span><span class="w"> </span><span class="p">};</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">Walk</span><span class="p">(</span><span class="n">readBack</span><span class="p">.</span><span class="n">RootElement</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wanted</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  {name} = {value}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// --- helpers ---------------------------------------------------------------</span>
+
+<span class="c1">// Yield every {&quot;Name&quot;: ..., &quot;Value&quot;: ...} pair anywhere in a response.</span>
+<span class="k">static</span><span class="w"> </span><span class="n">IEnumerable</span><span class="o">&lt;</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Value</span><span class="p">)</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Walk</span><span class="p">(</span><span class="n">JsonElement</span><span class="w"> </span><span class="n">node</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">node</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Object</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">node</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Name&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Value&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="p">))</span>
+<span class="w">            </span><span class="k">yield</span><span class="w"> </span><span class="nf">return</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="p">.</span><span class="n">ToString</span><span class="p">(),</span><span class="w"> </span><span class="k">value</span><span class="p">.</span><span class="n">ToString</span><span class="p">());</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">property</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">EnumerateObject</span><span class="p">())</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">pair</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">Walk</span><span class="p">(</span><span class="n">property</span><span class="p">.</span><span class="n">Value</span><span class="p">))</span>
+<span class="w">                </span><span class="k">yield</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">pair</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="nf">if</span><span class="w"> </span><span class="p">(</span><span class="n">node</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Array</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">pair</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">Walk</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+<span class="w">                </span><span class="k">yield</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">pair</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// v2 token endpoint — credentials go in the body, never in headers.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Transaction and Interactive calls go to the UI server, not BaseUrl.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">request</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">        </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">payload</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">field</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="k">value</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="k">value</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{field}&gt;([^&lt;]+)&lt;/{field}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">match</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {field} in response: {payload[..Math.Min(200, payload.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">match</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="pdf-report-generation">PDF Report Generation</h2>
 <p>The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.</p>
@@ -3648,6 +4128,81 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </tr>
 </tbody>
 </table>
+<h3 id="item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</h3>
+<p><em>Verified on production P21, 2026-08-10.</em></p>
+<p>The <code>Unexpected response window: Item Issues Detected</code> abort that kills <code>Item</code>-service transactions (see <a href="#item-service-gotchas">Item Service Gotchas</a>) is not random and not environment luck. It is a <strong>DynaChange business rule with <code>apply_during_save_flag = 'Y'</code></strong>, which fires on <strong>every save of the Item window</strong> — including the save the Transaction API performs internally. The rule raises a <code>w_rule_callback_response</code> modal, the Transaction API has no way to answer it, and the transaction aborts with the edit discarded.</p>
+<p>Two consequences worth stating plainly:</p>
+<ul>
+<li>It blocks <strong>all</strong> <code>Item</code>-service writes on an affected item, not only <code>product_group_id</code> changes.</li>
+<li>It is <strong>deterministic</strong>. Retrying the same transaction fails every time. Once the underlying data is corrected, the identical transaction succeeds with no other change.</li>
+</ul>
+<h4 id="step-1-identify-the-responsible-rule">Step 1 -- Identify the responsible rule</h4>
+<p>Join <code>business_rule</code> to <code>business_rule_data_element</code> for the window you are writing to. On the system under test the rule was:</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Value on the system under test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rule_name</code></td>
+<td><code>ItemDefaults</code></td>
+</tr>
+<tr>
+<td><code>window_name</code></td>
+<td><code>w_inventory_sheet</code></td>
+</tr>
+<tr>
+<td><code>window_title</code></td>
+<td><code>Item Maintenance</code></td>
+</tr>
+<tr>
+<td><code>class_name</code></td>
+<td><code>d_inventory2</code></td>
+</tr>
+<tr>
+<td><code>apply_during_save_flag</code></td>
+<td><code>Y</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>The rule uid on that system was <code>25</code>. <strong>That is environment-specific</strong> — rule uids are assigned per site and are not a universal identifier. Look the rule up by <code>window_name</code> on your own system; the name, uid, and field list will all differ.</p>
+</blockquote>
+<p>Its <code>business_rule_data_element</code> rows covered:</p>
+<ul>
+<li><code>d_inventory2</code>: <code>delete_flag</code>, <code>item_desc</code>, <code>item_id</code>, <code>purchase_discount_group_id</code>, <code>sales_discount_group_id</code></li>
+<li><code>d_item_suppliers</code>: <code>cost</code>, <code>list_price</code>, <code>supplier_part_no</code></li>
+</ul>
+<h4 id="step-2-find-the-rows-that-trip-it">Step 2 -- Find the rows that trip it</h4>
+<p>On that system the specific trigger was an <code>inventory_supplier</code> row with <strong><code>cost = 0</code> AND <code>list_price = 0</code></strong>. Either value being non-zero satisfies the rule (confirmed in both directions).</p>
+<p><strong>It is the zero rows that matter, not the primary supplier row.</strong> An item can have one supplier row carrying a real cost and still be blocked by a <em>different</em> supplier row on the same item with both values at zero. Find them all:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SET</span><span class="w"> </span><span class="k">TRANSACTION</span><span class="w"> </span><span class="k">ISOLATION</span><span class="w"> </span><span class="k">LEVEL</span><span class="w"> </span><span class="k">READ</span><span class="w"> </span><span class="k">UNCOMMITTED</span><span class="p">;</span>
+<span class="k">SET</span><span class="w"> </span><span class="n">LOCK_TIMEOUT</span><span class="w"> </span><span class="mi">10000</span><span class="p">;</span>
+
+<span class="k">SELECT</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">item_id</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">inventory_supplier_uid</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">supplier_id</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">cost</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">list_price</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">inventory_supplier</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">inv_mast</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">m</span><span class="p">.</span><span class="n">inv_mast_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">inv_mast_uid</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">delete_flag</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;N&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="k">ISNULL</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">cost</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="k">ISNULL</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">list_price</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+</code></pre></div>
+
+<h4 id="step-3-populate-a-cost-then-re-run">Step 3 -- Populate a cost, then re-run</h4>
+<p>Set <code>cost</code> on the offending rows <strong>before</strong> the API call. The most defensible source is the item's own purchase history with that supplier — the most recent non-zero PO line unit price:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">TOP</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="n">pl</span><span class="p">.</span><span class="n">unit_price</span><span class="p">,</span><span class="w"> </span><span class="n">ph</span><span class="p">.</span><span class="n">order_date</span><span class="p">,</span><span class="w"> </span><span class="n">ph</span><span class="p">.</span><span class="n">po_no</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">po_hdr</span><span class="w"> </span><span class="n">ph</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">po_line</span><span class="w"> </span><span class="n">pl</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">NOLOCK</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">pl</span><span class="p">.</span><span class="n">po_no</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ph</span><span class="p">.</span><span class="n">po_no</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">pl</span><span class="p">.</span><span class="n">inv_mast_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">ph</span><span class="p">.</span><span class="n">supplier_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">pl</span><span class="p">.</span><span class="n">unit_price</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">ph</span><span class="p">.</span><span class="n">order_date</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+</code></pre></div>
+
+<p>Items with <strong>no PO history</strong> have no value to derive and need an operator-chosen fallback — that decision belongs to whoever owns the item data, not to the integration.</p>
+<p>With the costs populated, re-running the identical transaction succeeds. Verified on <strong>28 of 28 items across two suppliers</strong>, with no manual UI work. Retries <em>before</em> the data fix failed every time.</p>
+<h4 id="when-you-cannot-fix-the-data">When you cannot fix the data</h4>
+<p>Use the Interactive API and answer the popup with <code>cb_1</code> ("Yes, Proceed Anyway") — see <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Item window popups</a>. Lead with the data fix: it is faster, it is bulk-safe, and it leaves the item correct for desktop users too.</p>
 <h3 id="response-validation">Response Validation</h3>
 <blockquote>
 <p><strong>Important:</strong> The Transaction API returns <strong>HTTP 200 even for failed transactions</strong>. Always check the <code>Summary</code> and <code>Messages</code> sections of the response body -- never rely on the HTTP status code alone to determine success or failure. <em>(Credit: Neil Timmerman)</em></p>

@@ -441,6 +441,8 @@ Two placement rules:
 >
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) for mapping the placement failure mode and the disabled-tab unlock behavior.
 
+> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261).
+
 ---
 
 ## UseCodeValues
@@ -793,7 +795,7 @@ GET /api/v2/definition/JobContractPricing
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `company_id` | Char | Yes | Company ID |
-| `contract_no` | Char | No | Contract number (auto-assigned if blank) |
+| `contract_no` | Char | **Yes** | Contract number. The definition marks it optional, but a create without it fails: `Required value missing for Contract No (for Job/Contract Hdr) on row 1.` P21 does not assign one on this path — see [Example: Create a Job Contract](#example-create-a-job-contract-with-break-and-non-break-lines) |
 | `customer_id` | Decimal | Yes | Customer ID |
 | `taker` | Char | No | Order taker / salesperson |
 | `end_date` | Datetime | No | Contract end date |
@@ -846,14 +848,18 @@ GET /api/v2/definition/JobContractPricing
 
 The VALUES DataElement defines quantity break tiers for a line item.
 
+> **Stop before you build a payload around this element.** On P21 26.1 every attempt to write `VALUES.values` through the Transaction API is refused, and `IgnoreDisabled: true` turns that refusal into a silent no-op. Read [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) first — the field reference below is accurate, but the write path is not currently usable.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `calculation_method_cd` | Char | Calculation method (see valid values below) |
 | `break1` through `break14` | Decimal | Break threshold quantities |
-| `calculation_value` through `calculation_value14` | Decimal | Price/value at each tier |
-| `other_cost` through `other_cost14` | Decimal | Other cost at each tier |
+| `calculation_value1` through `calculation_value15` | Decimal | Price/value at each tier |
+| `other_cost1` through `other_cost15` | Decimal | Other cost at each tier |
 
 **`calculation_method_cd` valid values:** `Difference`, `Multiplier`, `Mark up`, `Percentage`, `Fixed Price`
+
+> **Every tier field is numbered from 1.** There is no unsuffixed `calculation_value` or `other_cost` — the first tier is `calculation_value1` / `other_cost1`. Verified against `definitions/JobContractPricing.json` (both `FieldDefinitions` and the payload `Template`) and the live `GET /api/v2/definition/JobContractPricing`. The element also has **no per-tier `uom` field** — that is `SalesPricePage`, not this service.
 
 ##### Break Tier Structure
 
@@ -862,13 +868,13 @@ The service supports 15 price levels: 14 break thresholds (`break1`-`break14`) p
 Rules:
 - `break1` should NOT be 0 -- it defines where the second tier starts
 - The last active tier has its break set to `0`, signaling no further advance
-- `calculation_value` (no suffix) is the first tier; `calculation_value2` through `calculation_value14` are tiers 2-14; the 15th tier has no break threshold
+- `calculation_value1` is the first tier; `calculation_value2` through `calculation_value14` are tiers 2-14; `calculation_value15` is the 15th tier, which has no break threshold (there is no `break15`)
 
 **Example -- 3 tiers with Fixed Price method:**
 
 | Tier | Quantity Range | Field | Value | Break Field | Break Value |
 |------|---------------|-------|-------|-------------|-------------|
-| 1 | 1-9 | `calculation_value` | `10.00` | `break1` | `10` |
+| 1 | 1-9 | `calculation_value1` | `10.00` | `break1` | `10` |
 | 2 | 10-49 | `calculation_value2` | `8.50` | `break2` | `50` |
 | 3 | 50+ | `calculation_value3` | `7.00` | `break3` | `0` |
 
@@ -896,6 +902,40 @@ DataElements:
   3. VALUES.values (breaks -- applies only to last row)
 ```
 
+##### VALUES Writes Are Refused on 26.1
+
+> **Warning -- verified live on a P21 26.1 tenant, 2026-08-11.** Every write path to `VALUES.values` is refused by the server, and `IgnoreDisabled: true` converts the refusal into a **silent no-op that reports success**. The break-tier documentation above describes the element's real schema; it does not currently describe a working write.
+
+All three paths fail with the same error:
+
+```text
+General Exception: Tab page is disabled and cannot be selected
+```
+
+which also surfaces per-element as:
+
+```text
+VALUES.values: Error processing data element: values : Tab page is disabled and cannot be selected
+```
+
+| Path attempted | Result |
+|----------------|--------|
+| Update `VALUES` on a line of an **existing** contract | Refused |
+| Insert a new line (keyed upsert on `item_id`) onto an existing contract, with `VALUES` in the same transaction | Refused — **atomically**; the line is not created either |
+| Create a brand-new contract (header + fully specified `Source` line + `VALUES`) in one transaction | Refused — **atomically**; the contract is not created either |
+
+**The control, so you can size the damage.** The identical create transaction with the `VALUES.values` DataElement **removed** succeeds: `Summary: {"Succeeded": 1}`, the contract is created, the `Source`-priced line is created, both confirmed by read-back. Contract and line creation through the Transaction API work fine. It is specifically the `VALUES.values` DataElement that is refused.
+
+Other things checked, all on the same tenant:
+
+- **Resending the line's `pricing_method` / `source_price` / `multiplier`** in the same transaction — an attempt to make the window "select" the tab the way a user would — does **not** help. Identical failure.
+- **Both `calculation_value` and `calculation_value1` fail identically**, so this is not a field-naming problem. (`calculation_value1` is nonetheless the correct name — see [above](#break-tier-structure).)
+- **`IgnoreDisabled: true` at payload top level makes it worse.** The response flips to `Summary: {"Failed": 0, "Succeeded": 1}` with `Status: "Passed"` — and **nothing is written**. Read-back shows the row unchanged (an existing tier value of `519.81` survived a `"Passed"` response) or still absent. The echoed response also **silently drops the `JOBPRICELINE` and `VALUES` DataElements**, echoing only the header, so even the echo does not reveal the omission.
+
+**Whether this is a 26.1 regression or long-standing behavior is unknown** — no earlier build was available to compare against. Do not read it as a regression; read it as the behavior of the build in front of you, and re-test on yours.
+
+**Takeaway beyond this element:** `IgnoreDisabled: true` is not a universal unlock. It genuinely unlocks some disabled columns and tabs (see [IgnoreDisabled](#ignoredisabled)), but on this path it only converts a loud failure into a quiet one. **Always read back after a write that used it** — via `POST /api/v2/transaction/get` or OData — rather than trusting `Succeeded`.
+
 #### Commission Costs
 
 The `JOBPRICECOST` DataElement includes `commission_cost_value` and related commission fields. These columns are **disabled by default** -- without special handling the API returns "Column is disabled: commission_cost_value".
@@ -917,7 +957,7 @@ The `JOBPRICECOST` DataElement includes `commission_cost_value` and related comm
 }
 ```
 
-`commission_cost_type_cd` accepts the display labels `Order`, `Source`, `Value`, `None` (with `UseCodeValues: false`). Setting only the commission cost leaves `other_cost` untouched.
+`commission_cost_type_cd` accepts the display labels `Order`, `Source`, `Value`, `None` (with `UseCodeValues: false`). Setting only the commission cost leaves the element's `other_cost_*` fields (`other_cost_type_cd`, `other_cost_value`, `other_cost_source_cd`, `other_cost_calc_method_cd`, `other_cost_calc_value`) untouched.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) verified the `IgnoreDisabled` commission-cost write path. The Interactive API (JobContractPricing window) remains an alternative.
 
@@ -1069,6 +1109,13 @@ Gotchas (all verified live):
 
 #### Example: Create a Job Contract with Break and Non-Break Lines
 
+> **This example cannot succeed on P21 26.1.** It sends a `VALUES.values` DataElement, and every write to that element is refused — atomically, so the transaction creates **no contract and no lines**. See [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261). The example is kept because it is the correct payload *shape* (header → line → its VALUES, interleaved per break line) and because the same transaction **with the `VALUES.values` element deleted** does succeed. Delete DataElement 4 to get a runnable version.
+
+Separately -- and unrelated to that hazard -- two ordinary validation requirements that this example originally got wrong, both verified on 26.1:
+
+- **`contract_no` is required on the header.** A header submitted without it fails with `Required value missing for Contract No (for Job/Contract Hdr) on row 1.` P21 does not assign the number for you on this path, so it is included in the payload below. Reading `contract_no` back out of the response (as the code at the end of each tab does) is only meaningful as a confirmation of the number **you** supplied.
+- **A contract cannot be created as a bare header.** The transaction must include a fully specified line, `uom` included; a header sent with no line element at all fails with `Required value missing for Uom (for Job/Contract Line) on row 1.` You cannot create the header first and add lines in a later call.
+
 <!-- tabs -->
 ```python
 import httpx
@@ -1113,6 +1160,7 @@ payload = {
                 "Rows": [{
                     "Edits": [
                         {"Name": "company_id", "Value": "ACME"},
+                        {"Name": "contract_no", "Value": "JOB-1001"},   # required -- P21 does not assign it here
                         {"Name": "customer_id", "Value": "100198"},
                         {"Name": "corp_address_id", "Value": "1"},
                         {"Name": "end_date", "Value": "2027-12-31"},
@@ -1161,7 +1209,7 @@ payload = {
                     "Edits": [
                         {"Name": "calculation_method_cd", "Value": "Fixed Price"},
                         # Tier 1: qty 1-9 @ $10.00
-                        {"Name": "calculation_value", "Value": "10.00"},
+                        {"Name": "calculation_value1", "Value": "10.00"},
                         {"Name": "break1", "Value": "10"},
                         # Tier 2: qty 10-49 @ $8.50
                         {"Name": "calculation_value2", "Value": "8.50"},
@@ -1250,6 +1298,8 @@ var payload = new JObject
                             ["Edits"] = new JArray
                             {
                                 new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
+                                // required -- P21 does not assign the contract number here
+                                new JObject { ["Name"] = "contract_no", ["Value"] = "JOB-1001" },
                                 new JObject { ["Name"] = "customer_id", ["Value"] = "100198" },
                                 new JObject { ["Name"] = "corp_address_id", ["Value"] = "1" },
                                 new JObject { ["Name"] = "end_date", ["Value"] = "2027-12-31" },
@@ -1316,7 +1366,7 @@ var payload = new JObject
                             {
                                 new JObject { ["Name"] = "calculation_method_cd", ["Value"] = "Fixed Price" },
                                 // Tier 1: qty 1-9 @ $10.00
-                                new JObject { ["Name"] = "calculation_value", ["Value"] = "10.00" },
+                                new JObject { ["Name"] = "calculation_value1", ["Value"] = "10.00" },
                                 new JObject { ["Name"] = "break1", ["Value"] = "10" },
                                 // Tier 2: qty 10-49 @ $8.50
                                 new JObject { ["Name"] = "calculation_value2", ["Value"] = "8.50" },
@@ -1704,7 +1754,7 @@ What this writes, and the cascade (verified on a 68-item production run):
 #### Item Service Gotchas
 
 - **Silent no-op — the big one.** The target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the transaction still returns `Succeeded = 1` but **nothing flips** — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) **Always verify `inv_loc.primary_supplier_id` after writing** — do not trust `Succeeded`. Fix: add the location supplier row first, then set the flag.
-- **"Item Issues Detected" popup.** Items with data problems return an `Unexpected response window: Item Issues Detected` (`w_rule_callback_response`) in the response `Messages`. The Transaction API cannot get past this popup — it effectively answers "No" and discards the change. Use the Interactive API for those items and answer the popup with `cb_1` ("Yes, Proceed Anyway") — see [Item window popups](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback). Which items trip the rule differs per environment (it fires on each item's data state) — run transaction-first, verify, and fall back to the Interactive API for whatever didn't stick.
+- **"Item Issues Detected" popup — a data defect you can fix, not an API limitation.** Affected items return an `Unexpected response window: Item Issues Detected` (`w_rule_callback_response`) in the response `Messages`. The Transaction API cannot answer the popup, so the transaction aborts and the edit is discarded. The popup comes from a **site-configured DynaChange business rule with `apply_during_save_flag = 'Y'`**, which fires on *every* save of the Item window — so it blocks **all** Item-service writes, not just `product_group_id` changes. The behavior is **deterministic, not per-run session state**: retries fail every time until the underlying data is corrected, and once it is corrected the identical transaction succeeds. Identify the rule and its trigger, fix the data, re-run — see [Item Issues Detected Popup Root Cause and Data Fix](#item-issues-detected-popup-root-cause-and-data-fix). For items you cannot data-fix, fall back to the Interactive API and answer the popup with `cb_1` ("Yes, Proceed Anyway") — see [Item window popups](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback).
 - `SUPPLIER_X_LOCATION` is keyed by `supplier_id` scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent *interactive* flow must match rows on both `location_id` and `supplier_id` — the grid holds every location's rows.)
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July 2026).
@@ -1758,6 +1808,354 @@ The `BinLocation` service *is* the **Bin Location Maintenance** window: its form
 - **Read-back:** the raw `bin` table isn't always exposed via OData — verify through the `p21_view_bin` view instead, and compare field-for-field against the twin after the first run.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — pattern verified in production (July 2026), including the `IgnoreDisabled` placement failure mode.
+
+### Shipping Service -- Carrier Tracking Number
+
+**`Shipping` is the only service that writes `oe_pick_ticket.tracking_no`.** A scan of all **299** services returned by `GET /api/v2/services` (240 returned a definition; the rest answer with the unavailable-window HTTP 500) found the column in exactly one writable place. *Verified on a P21 26.1 tenant, 2026-08-11.*
+
+#### The element
+
+| Property | Value |
+|----------|-------|
+| DataElement | `TABPAGE_1.tp_1_dw_1` |
+| BusinessObjectName | `oe_pick_ticket` |
+| DatawindowName | `d_ship` |
+| KeyFields | `['pick_ticket_no']` |
+
+| Field | DataType | Label | Notes |
+|-------|----------|-------|-------|
+| `tracking_no` | Char | Carrier Tracking Number | Writes `oe_pick_ticket.tracking_no` |
+| `carrier_id` | Decimal | Carrier | Carries `ValidValues` — with `UseCodeValues: false` you send the carrier's **display name**, not the id |
+| `create_invoice` | Char | Confirm Shipment | `ValidValues`: `ON` / `OFF` |
+
+#### The limitation: invoiced pick tickets refuse the write
+
+Once the pick ticket has been **invoiced**, the write is refused:
+
+```text
+Summary: {"Failed": 1, "Succeeded": 0}
+General Exception: This pick ticket has already been invoiced.
+```
+
+The error is attributed to `DataElement: tp_1_dw_1, Column: pick_ticket_no` — **not** to `tracking_no`. That attribution is the tell: the gate fires at **record selection**, before any field-level validation, so **there is no edit you can drop from the payload to get past it.** Sending `tracking_no` alone fails exactly the same way.
+
+#### Other services expose a tracking column, but none writes this one
+
+| Service | DataElement | Field | DbColumnName |
+|---------|-------------|-------|--------------|
+| `Shipping` | `TP_SCANPACK.scan_pack_container_hdr` | `tracking_no` | `scan_pack_container_hdr.tracking_no` |
+| `Order`, `FrontCounter`, `RMA`, `ServiceOrder`, `ServiceOrderRMA`, `ConsignmentReplenishmentOrder` | `TP_SHIPMENTS.tp_shipments`, `TABPAGE_LINESHIPMENT.tabpage_lineshipment` | `c_tracking_no` | `c_tracking_no` (computed) |
+| `DirectShipConfirmation` | `TABPAGE_1.tp_1_dw_po` | `tracking_no` | `c_tracking_no` (computed) |
+| `Transfer`, `TransferShipping` | `ITEM_SHIPMENTS.item_shipments`, `SHIPMENTS.shipments`, `TABPAGE_1.tp_1_dw_1` | `carrier_tracking_no` | `transfer_shipment_hdr.carrier_tracking_no` |
+| `ProcessPOShipping` | `FORM.form` | `tracking_number` | `process_po_shipment_hdr.tracking_number` |
+
+#### The Order shipment grids are not a post-invoice back door
+
+They look like one — both are keyed grids on the `Order` service that survive invoicing:
+
+- `TABPAGE_LINESHIPMENT.tabpage_lineshipment` — List, `d_oe_line_pick_tickets`, KeyFields `['invoice_no']`
+- `TP_SHIPMENTS.tp_shipments` — List, `d_dw_pick_ticket_oe`, KeyFields `[]`
+
+Editing `c_tracking_no` on either returns `General Exception: Column is disabled: c_tracking_no`. It is a **computed display column**, not storage. Keying on `invoice_no` does not help.
+
+#### Workarounds
+
+1. **Set `tracking_no` in the same transaction that sets `create_invoice`** ("Confirm Shipment"). This is the normal path and it works — but only when the tracking number already exists at confirm time. The example below does exactly this.
+2. **A user-defined field on `oe_pick_ticket_ud`,** writable through the [UDT Service API](13-UDT-Service-API.md). **Caveat:** it does **not** populate the native `oe_pick_ticket.tracking_no`, so customer portals, EDI, and third-party shipping integrations that read the native column will not see it.
+
+#### Open question: `company.edit_tracking_number_flag`
+
+`company.edit_tracking_number_flag` (`varchar(1)`) is P21's own switch for tracking-number editing. **Treat this as unproven, not as a finding.** On the system under test it was `'N'`; flipping it to `'Y'` and retrying produced identical errors. That is **not** a disproof — the SOA middleware pools PowerBuilder sessions and reads company settings at session creation, so the change plausibly requires a middleware restart, which the test environment could not perform. If you can restart middleware, this is the first thing to re-test.
+
+#### Example: set the tracking number while confirming a shipment
+
+<!-- tabs -->
+```python
+"""Set carrier + tracking number on a pick ticket while confirming its shipment."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PICK_TICKET_NO = "123456"                 # must NOT be invoiced yet
+CARRIER = "ACME FREIGHT"                  # carrier DISPLAY name (UseCodeValues: false)
+TRACKING_NO = "TRACK-0000000000001"       # the carrier's tracking number
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def walk(node):
+    """Yield every {"Name": ..., "Value": ...} pair anywhere in a response."""
+    if isinstance(node, dict):
+        if "Name" in node and "Value" in node:
+            yield node["Name"], node["Value"]
+        for value in node.values():
+            yield from walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from walk(item)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Status "New" with a populated Keys array updates the keyed pick ticket.
+    payload = {
+        "Name": "Shipping",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [{
+                "Name": "TABPAGE_1.tp_1_dw_1",
+                "Type": "Form",
+                "Keys": ["pick_ticket_no"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "pick_ticket_no", "Value": PICK_TICKET_NO},
+                        {"Name": "carrier_id", "Value": CARRIER},
+                        {"Name": "tracking_no", "Value": TRACKING_NO},
+                        {"Name": "create_invoice", "Value": "ON"},   # Confirm Shipment
+                    ],
+                    "RelativeDateEdits": [],
+                }],
+            }],
+        }],
+    }
+
+    response = client.post(f"{ui_server}/api/v2/transaction", headers=headers, json=payload)
+    response.raise_for_status()          # HTTP 200 does NOT mean the write succeeded
+    result = response.json()
+    print("Summary:", result.get("Summary"))
+    for message in result.get("Messages") or []:
+        print("  Message:", message)
+
+    # ---- read-back: the only proof the value landed -------------------------
+    read_back = client.post(
+        f"{ui_server}/api/v2/transaction/get",
+        headers=headers,
+        json={
+            "ServiceName": "Shipping",
+            "TransactionStates": [{
+                "DataElementName": "TABPAGE_1.tp_1_dw_1",
+                "Keys": [{"Name": "pick_ticket_no", "Value": PICK_TICKET_NO}],
+            }],
+        },
+    )
+    read_back.raise_for_status()
+
+    wanted = {"pick_ticket_no", "carrier_id", "tracking_no", "invoice_no"}
+    for name, value in walk(read_back.json()):
+        if name in wanted:
+            print(f"  {name} = {value}")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string PickTicketNo = "123456";                  // must NOT be invoiced yet
+const string Carrier = "ACME FREIGHT";                 // carrier DISPLAY name
+const string TrackingNo = "TRACK-0000000000001";       // the carrier's tracking number
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Status "New" with a populated Keys array updates the keyed pick ticket.
+var payload = new
+{
+    Name = "Shipping",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new[]
+            {
+                new
+                {
+                    Name = "TABPAGE_1.tp_1_dw_1",
+                    Type = "Form",
+                    Keys = new[] { "pick_ticket_no" },
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "pick_ticket_no", Value = PickTicketNo },
+                                new { Name = "carrier_id", Value = Carrier },
+                                new { Name = "tracking_no", Value = TrackingNo },
+                                new { Name = "create_invoice", Value = "ON" },   // Confirm Shipment
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();     // HTTP 200 does NOT mean the write succeeded
+
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine($"Summary: {result.RootElement.GetProperty("Summary")}");
+if (result.RootElement.TryGetProperty("Messages", out var messages))
+{
+    foreach (var message in messages.EnumerateArray())
+        Console.WriteLine($"  Message: {message}");
+}
+
+// ---- read-back: the only proof the value landed ---------------------------
+var getPayload = new
+{
+    ServiceName = "Shipping",
+    TransactionStates = new[]
+    {
+        new
+        {
+            DataElementName = "TABPAGE_1.tp_1_dw_1",
+            Keys = new[] { new { Name = "pick_ticket_no", Value = PickTicketNo } },
+        }
+    }
+};
+
+var readBackResponse = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(JsonSerializer.Serialize(getPayload), Encoding.UTF8, "application/json"));
+readBackResponse.EnsureSuccessStatusCode();
+
+using var readBack = JsonDocument.Parse(await readBackResponse.Content.ReadAsStringAsync());
+var wanted = new HashSet<string> { "pick_ticket_no", "carrier_id", "tracking_no", "invoice_no" };
+foreach (var (name, value) in Walk(readBack.RootElement))
+{
+    if (wanted.Contains(name))
+        Console.WriteLine($"  {name} = {value}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Yield every {"Name": ..., "Value": ...} pair anywhere in a response.
+static IEnumerable<(string Name, string Value)> Walk(JsonElement node)
+{
+    if (node.ValueKind == JsonValueKind.Object)
+    {
+        if (node.TryGetProperty("Name", out var name) && node.TryGetProperty("Value", out var value))
+            yield return (name.ToString(), value.ToString());
+        foreach (var property in node.EnumerateObject())
+            foreach (var pair in Walk(property.Value))
+                yield return pair;
+    }
+    else if (node.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var item in node.EnumerateArray())
+            foreach (var pair in Walk(item))
+                yield return pair;
+    }
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
+```
+<!-- /tabs -->
 
 ---
 
@@ -2353,6 +2751,74 @@ Key characteristics:
 | Visual Rules with response/callback attributes | (Community-reported) These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. *(Credit: Brad Vandenbogaerde)* |
 | Wizard-type popups requiring user input | (Verified) Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input |
 | "Column is disabled" errors | (Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. *(Credit: Justin Cassidy)* |
+
+### Item Issues Detected Popup Root Cause and Data Fix
+
+*Verified on production P21, 2026-08-10.*
+
+The `Unexpected response window: Item Issues Detected` abort that kills `Item`-service transactions (see [Item Service Gotchas](#item-service-gotchas)) is not random and not environment luck. It is a **DynaChange business rule with `apply_during_save_flag = 'Y'`**, which fires on **every save of the Item window** — including the save the Transaction API performs internally. The rule raises a `w_rule_callback_response` modal, the Transaction API has no way to answer it, and the transaction aborts with the edit discarded.
+
+Two consequences worth stating plainly:
+
+- It blocks **all** `Item`-service writes on an affected item, not only `product_group_id` changes.
+- It is **deterministic**. Retrying the same transaction fails every time. Once the underlying data is corrected, the identical transaction succeeds with no other change.
+
+#### Step 1 -- Identify the responsible rule
+
+Join `business_rule` to `business_rule_data_element` for the window you are writing to. On the system under test the rule was:
+
+| Attribute | Value on the system under test |
+|-----------|-------------------------------|
+| `rule_name` | `ItemDefaults` |
+| `window_name` | `w_inventory_sheet` |
+| `window_title` | `Item Maintenance` |
+| `class_name` | `d_inventory2` |
+| `apply_during_save_flag` | `Y` |
+
+> The rule uid on that system was `25`. **That is environment-specific** — rule uids are assigned per site and are not a universal identifier. Look the rule up by `window_name` on your own system; the name, uid, and field list will all differ.
+
+Its `business_rule_data_element` rows covered:
+
+- `d_inventory2`: `delete_flag`, `item_desc`, `item_id`, `purchase_discount_group_id`, `sales_discount_group_id`
+- `d_item_suppliers`: `cost`, `list_price`, `supplier_part_no`
+
+#### Step 2 -- Find the rows that trip it
+
+On that system the specific trigger was an `inventory_supplier` row with **`cost = 0` AND `list_price = 0`**. Either value being non-zero satisfies the rule (confirmed in both directions).
+
+**It is the zero rows that matter, not the primary supplier row.** An item can have one supplier row carrying a real cost and still be blocked by a *different* supplier row on the same item with both values at zero. Find them all:
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SET LOCK_TIMEOUT 10000;
+
+SELECT m.item_id, s.inventory_supplier_uid, s.supplier_id, s.cost, s.list_price
+FROM inventory_supplier s WITH (NOLOCK)
+JOIN inv_mast m WITH (NOLOCK) ON m.inv_mast_uid = s.inv_mast_uid
+WHERE s.delete_flag = 'N'
+  AND ISNULL(s.cost, 0) = 0
+  AND ISNULL(s.list_price, 0) = 0;
+```
+
+#### Step 3 -- Populate a cost, then re-run
+
+Set `cost` on the offending rows **before** the API call. The most defensible source is the item's own purchase history with that supplier — the most recent non-zero PO line unit price:
+
+```sql
+SELECT TOP 1 pl.unit_price, ph.order_date, ph.po_no
+FROM po_hdr ph WITH (NOLOCK)
+JOIN po_line pl WITH (NOLOCK) ON pl.po_no = ph.po_no
+WHERE pl.inv_mast_uid = ? AND ph.supplier_id = ? AND pl.unit_price > 0
+ORDER BY ph.order_date DESC;
+```
+
+Items with **no PO history** have no value to derive and need an operator-chosen fallback — that decision belongs to whoever owns the item data, not to the integration.
+
+With the costs populated, re-running the identical transaction succeeds. Verified on **28 of 28 items across two suppliers**, with no manual UI work. Retries *before* the data fix failed every time.
+
+#### When you cannot fix the data
+
+Use the Interactive API and answer the popup with `cb_1` ("Yes, Proceed Anyway") — see [Item window popups](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback). Lead with the data fix: it is faster, it is bulk-safe, and it leaves the item correct for desktop users too.
 
 ### Response Validation
 

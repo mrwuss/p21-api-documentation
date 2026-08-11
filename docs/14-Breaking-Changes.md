@@ -10,7 +10,7 @@ A version-indexed registry of P21 middleware changes that **break or silently co
 
 | Version | Entries | Severity |
 |---------|---------|----------|
-| [2026.1](#p21-20261) | Empty 500 without `Accept: application/json` · ghost sessions (500/409) · `SessionId` → `Id` · `TabName` no longer accepted on `/v2/tab` · **silent-false-success on nonexistent-record loads** · **non-atomic batched changes** · **UDT update/delete can't target rows (delete silently no-ops)** | High — one hard break, three data-integrity hazards |
+| [2026.1](#p21-20261) | Empty 500 without `Accept: application/json` · ghost sessions (500/409) · `SessionId` → `Id` · `TabName` no longer accepted on `/v2/tab` · **silent-false-success on nonexistent-record loads** · **non-atomic batched changes** · **UDT update/delete can't target rows (delete silently no-ops)** · **`IgnoreDisabled` reports success on JobContractPricing `VALUES.values` writes that write nothing** | High — one hard break, four data-integrity hazards |
 | [25.2](#p21-252) | `DatawindowName` required in change requests | High — hard break for 3-param change calls |
 
 ---
@@ -149,6 +149,50 @@ GET /odataservice/odata/table/{udt}?$select=row_uid
 **Mitigation:** before relying on UDT update/delete, **check that `row_uid` exists** (above). If it doesn't, these endpoints cannot reach your data at all — use P21's maintenance UI or direct SQL, and don't build an integration on them. Where they *do* work, **parse the `[N]` row count out of `errorMessage`** and treat `[0]` as a failure; never trust `errorNo: 0` alone. The `row_uid` convention is well-attested by the contributors who first documented these endpoints, so tables predating 2026.1 evidently do carry the column. Full detail: [UDT Service API § Update](13-UDT-Service-API.md#update).
 
 Related payload trap: **delete reads `conditions` from the payload's top level**, not nested inside `rows[]` — the nested form returns `400 {"error":["Conditions cannot be blank or none!"]}` on 2026.1. See [UDT Service API § Delete](13-UDT-Service-API.md#delete).
+
+### 8. `IgnoreDisabled: true` reports success on `JobContractPricing` `VALUES.values` writes that write nothing
+
+**Data-integrity hazard — silent false success.**
+
+> **Verification scope:** like entry 7, this one has **no prior-version comparison** — no earlier build was available to A/B against. What follows is verified on 26.1; whether it's a *regression* or has always been true is **unproven**.
+
+Writing `VALUES.values` on an **existing** `JobContractPricing` contract line is refused — including on the exact case this repo documents as a working update (an active contract, `end_date` well in the future, on a Source-priced line):
+
+```jsonc
+{
+  "Summary": {"Failed": 1, "Succeeded": 0, "Other": 0},
+  "Messages": [
+    "Transaction 1:: General Exception: Tab page is disabled and cannot be selected",
+    "Transaction 1: VALUES.values: Error processing data element: values : Tab page is disabled and cannot be selected"
+  ]
+}
+```
+
+Resending the line's `pricing_method` / `source_price` / `multiplier` alongside `values` in the same transaction, to try to re-trigger the cascade that unlocks the tab, does not help — identical failure.
+
+**All three write paths for `VALUES.values` are refused, identically:**
+1. Updating `values` on an existing contract line.
+2. Inserting a new line (keyed upsert on `item_id`) onto an *existing* contract, with `VALUES.values` in the same transaction — fails atomically; the line is not created.
+3. Creating a brand-new contract (header + a fully specified Source-priced line + `VALUES.values`) in one transaction — also fails atomically; the contract is not created.
+
+All three return the identical `General Exception: Tab page is disabled and cannot be selected`, confirmed by read-back in each case.
+
+**Control — this isolates the finding to the `VALUES` DataElement specifically.** The identical create transaction (header + Source-priced line) with the `VALUES` DataElement *removed* succeeds: `Succeeded: 1`, and read-back confirms both the contract and the Source-priced line were created. Contract and line creation through the Transaction API work fine; it is specifically writing `VALUES.values` that the disabled-tab check refuses, on all three paths above.
+
+Adding **`IgnoreDisabled: true` at the payload top level** (the [documented unlock](03-Transaction-API.md#ignoredisabled) for disabled columns and sub-tabs) flips the response to a clean-looking success:
+
+```jsonc
+{
+  "Summary": {"Failed": 0, "Succeeded": 1, "Other": 0},
+  "Results": {"Transactions": [{"Status": "Passed", "DataElements": [ /* header only */ ]}]}
+}
+```
+
+...and writes **nothing**. A read-back of the target row shows it unchanged: in one run an existing value of `519.81` survived a `"Passed"` response; in another the value was still absent. The echoed response doesn't reveal the omission either — it drops the `JOBPRICELINE` and `VALUES` DataElements entirely and echoes only the header, so there's nothing in the response to notice is missing.
+
+Both the correct tier-1 field name (`calculation_value1`) and the incorrect unsuffixed spelling (`calculation_value`) fail identically — this is not a field-naming issue.
+
+**Mitigation:** always read back after any write that used `IgnoreDisabled: true` on `JobContractPricing` `VALUES.values` — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat `Status: "Passed"` under `IgnoreDisabled` as **unverified** until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write `VALUES.values` at all, on any of the three paths. See [Transaction API § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) and [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) for the same read-back discipline applied elsewhere in this repo.
 
 ### Related 2026.1 observations (not breaking changes)
 

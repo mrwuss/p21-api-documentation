@@ -440,6 +440,7 @@
         <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
         <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
         <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
@@ -460,6 +461,7 @@
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
 <li><a href="#6-batched-v2change-is-not-atomic-a-rejected-field-does-not-roll-back-its-neighbours">6. Batched /v2/change is not atomic — a rejected field does not roll back its neighbours</a></li>
 <li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
+<li><a href="#8-ignoredisabled-true-reports-success-on-jobcontractpricing-valuesvalues-writes-that-write-nothing">8. IgnoreDisabled: true reports success on JobContractPricing VALUES.values writes that write nothing</a></li>
 <li><a href="#related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</a></li>
 </ul>
 </li>
@@ -496,8 +498,8 @@
 <tbody>
 <tr>
 <td><a href="#p21-20261">2026.1</a></td>
-<td>Empty 500 without <code>Accept: application/json</code> · ghost sessions (500/409) · <code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>non-atomic batched changes</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong></td>
-<td>High — one hard break, three data-integrity hazards</td>
+<td>Empty 500 without <code>Accept: application/json</code> · ghost sessions (500/409) · <code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>non-atomic batched changes</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong> · <strong><code>IgnoreDisabled</code> reports success on JobContractPricing <code>VALUES.values</code> writes that write nothing</strong></td>
+<td>High — one hard break, four data-integrity hazards</td>
 </tr>
 <tr>
 <td><a href="#p21-252">25.2</a></td>
@@ -626,6 +628,38 @@
 
 <p><strong>Mitigation:</strong> before relying on UDT update/delete, <strong>check that <code>row_uid</code> exists</strong> (above). If it doesn't, these endpoints cannot reach your data at all — use P21's maintenance UI or direct SQL, and don't build an integration on them. Where they <em>do</em> work, <strong>parse the <code>[N]</code> row count out of <code>errorMessage</code></strong> and treat <code>[0]</code> as a failure; never trust <code>errorNo: 0</code> alone. The <code>row_uid</code> convention is well-attested by the contributors who first documented these endpoints, so tables predating 2026.1 evidently do carry the column. Full detail: <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a>.</p>
 <p>Related payload trap: <strong>delete reads <code>conditions</code> from the payload's top level</strong>, not nested inside <code>rows[]</code> — the nested form returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code> on 2026.1. See <a href="13-UDT-Service-API.html#delete">UDT Service API § Delete</a>.</p>
+<h3 id="8-ignoredisabled-true-reports-success-on-jobcontractpricing-valuesvalues-writes-that-write-nothing">8. <code>IgnoreDisabled: true</code> reports success on <code>JobContractPricing</code> <code>VALUES.values</code> writes that write nothing</h3>
+<p><strong>Data-integrity hazard — silent false success.</strong></p>
+<blockquote>
+<p><strong>Verification scope:</strong> like entry 7, this one has <strong>no prior-version comparison</strong> — no earlier build was available to A/B against. What follows is verified on 26.1; whether it's a <em>regression</em> or has always been true is <strong>unproven</strong>.</p>
+</blockquote>
+<p>Writing <code>VALUES.values</code> on an <strong>existing</strong> <code>JobContractPricing</code> contract line is refused — including on the exact case this repo documents as a working update (an active contract, <code>end_date</code> well in the future, on a Source-priced line):</p>
+<div class="highlight"><pre><span></span><code>{
+  &quot;Summary&quot;: {&quot;Failed&quot;: 1, &quot;Succeeded&quot;: 0, &quot;Other&quot;: 0},
+  &quot;Messages&quot;: [
+    &quot;Transaction 1:: General Exception: Tab page is disabled and cannot be selected&quot;,
+    &quot;Transaction 1: VALUES.values: Error processing data element: values : Tab page is disabled and cannot be selected&quot;
+  ]
+}
+</code></pre></div>
+
+<p>Resending the line's <code>pricing_method</code> / <code>source_price</code> / <code>multiplier</code> alongside <code>values</code> in the same transaction, to try to re-trigger the cascade that unlocks the tab, does not help — identical failure.</p>
+<p><strong>All three write paths for <code>VALUES.values</code> are refused, identically:</strong>
+1. Updating <code>values</code> on an existing contract line.
+2. Inserting a new line (keyed upsert on <code>item_id</code>) onto an <em>existing</em> contract, with <code>VALUES.values</code> in the same transaction — fails atomically; the line is not created.
+3. Creating a brand-new contract (header + a fully specified Source-priced line + <code>VALUES.values</code>) in one transaction — also fails atomically; the contract is not created.</p>
+<p>All three return the identical <code>General Exception: Tab page is disabled and cannot be selected</code>, confirmed by read-back in each case.</p>
+<p><strong>Control — this isolates the finding to the <code>VALUES</code> DataElement specifically.</strong> The identical create transaction (header + Source-priced line) with the <code>VALUES</code> DataElement <em>removed</em> succeeds: <code>Succeeded: 1</code>, and read-back confirms both the contract and the Source-priced line were created. Contract and line creation through the Transaction API work fine; it is specifically writing <code>VALUES.values</code> that the disabled-tab check refuses, on all three paths above.</p>
+<p>Adding <strong><code>IgnoreDisabled: true</code> at the payload top level</strong> (the <a href="03-Transaction-API.html#ignoredisabled">documented unlock</a> for disabled columns and sub-tabs) flips the response to a clean-looking success:</p>
+<div class="highlight"><pre><span></span><code>{
+  &quot;Summary&quot;: {&quot;Failed&quot;: 0, &quot;Succeeded&quot;: 1, &quot;Other&quot;: 0},
+  &quot;Results&quot;: {&quot;Transactions&quot;: [{&quot;Status&quot;: &quot;Passed&quot;, &quot;DataElements&quot;: [ /* header only */ ]}]}
+}
+</code></pre></div>
+
+<p>...and writes <strong>nothing</strong>. A read-back of the target row shows it unchanged: in one run an existing value of <code>519.81</code> survived a <code>"Passed"</code> response; in another the value was still absent. The echoed response doesn't reveal the omission either — it drops the <code>JOBPRICELINE</code> and <code>VALUES</code> DataElements entirely and echoes only the header, so there's nothing in the response to notice is missing.</p>
+<p>Both the correct tier-1 field name (<code>calculation_value1</code>) and the incorrect unsuffixed spelling (<code>calculation_value</code>) fail identically — this is not a field-naming issue.</p>
+<p><strong>Mitigation:</strong> always read back after any write that used <code>IgnoreDisabled: true</code> on <code>JobContractPricing</code> <code>VALUES.values</code> — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat <code>Status: "Passed"</code> under <code>IgnoreDisabled</code> as <strong>unverified</strong> until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write <code>VALUES.values</code> at all, on any of the three paths. See <a href="03-Transaction-API.html#ignoredisabled">Transaction API § IgnoreDisabled</a> and <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> for the same read-back discipline applied elsewhere in this repo.</p>
 <h3 id="related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</h3>
 <p>Found while re-verifying the above on 26.1.5894.1. None of these are regressions, but each will mislead you while debugging one.</p>
 <h4 id="reading-the-middleware-version">Reading the middleware version</h4>

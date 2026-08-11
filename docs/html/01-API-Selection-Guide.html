@@ -440,6 +440,7 @@
         <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
         <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
         <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
@@ -452,6 +453,7 @@
                 <div class="toc">
 <ul>
 <li><a href="#overview">Overview</a></li>
+<li><a href="#before-you-choose-interactive-is-not-an-escape-hatch">Before You Choose: Interactive Is Not an Escape Hatch</a></li>
 <li><a href="#quick-decision-table">Quick Decision Table</a></li>
 <li><a href="#api-comparison">API Comparison</a></li>
 <li><a href="#odata-api">OData API</a><ul>
@@ -529,6 +531,12 @@
 <hr />
 <h2 id="overview">Overview</h2>
 <p>Prophet 21 provides several APIs for external data access and manipulation. This guide helps you choose the right API for your use case.</p>
+<h2 id="before-you-choose-interactive-is-not-an-escape-hatch">Before You Choose: Interactive Is Not an Escape Hatch</h2>
+<p>The Interactive API is <strong>not</strong> a way around a disabled column or a window-level gate. Both the Transaction API and the Interactive API drive the same PowerBuilder windows and enforce the same business rules — a window that refuses a record or disables a column refuses/disables it for <strong>both</strong> APIs. The Interactive API only adds a stateful session with multi-step window interaction. Choose it because a workflow genuinely needs that statefulness (multi-step entry, answering response windows) — never because a write failed on one API and you're hoping the other will let it through.</p>
+<p>Two verified instances (2026-08-11), both documented in detail in the <a href="03-Transaction-API.html">Transaction API</a> guide:
+- The <code>Shipping</code> service refuses an already-invoiced pick ticket at record selection, so a tracking number cannot be set post-invoice through either API.
+- <code>c_tracking_no</code> on the <code>Order</code> / <code>FrontCounter</code> / <code>RMA</code> / <code>ServiceOrder</code> shipment grids is a computed, disabled display column (<code>Column is disabled: c_tracking_no</code>) — not a write path, in either API.</p>
+<p><strong>The genuine exception is response-window dialogs.</strong> The Interactive API can answer some dialogs the Transaction API cannot — see the <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">"Item Issues Detected" rule-callback worked example</a>. That is a real capability difference about <em>handling a dialog</em>, not about bypassing a disabled column or a window gate. Interactive answers dialogs; it does not unlock what the window has locked.</p>
 <h2 id="quick-decision-table">Quick Decision Table</h2>
 <table>
 <thead>

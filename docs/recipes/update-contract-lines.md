@@ -4,6 +4,25 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
 
 **API:** Transaction (`POST {ui_server}/api/v2/transaction`) · **Service:** `JobContractPricing` · **Deep dive:** [JobContractPricing Service](../03-Transaction-API.md#jobcontractpricing-service) · [Updating an Existing Contract](../03-Transaction-API.md#updating-an-existing-contract) · [Upsert Semantics](../03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) · [Commission Costs](../03-Transaction-API.md#commission-costs) · [Field Order Matters](../03-Transaction-API.md#field-order-matters) · [Known Limitations](../03-Transaction-API.md#known-limitations) · **Full schema:** [`definitions/JobContractPricing.json`](../../definitions/JobContractPricing.json)
 
+> **Warning (verified on P21 26.1, 2026-08-11):** every write path for `JOBPRICELINE`'s
+> `VALUES.values` break-tier data on `JobContractPricing` is refused with `General
+> Exception: Tab page is disabled and cannot be selected` — updating `VALUES` on an
+> existing line, inserting a new line (the keyed upsert this recipe documents) with
+> `VALUES` in the same transaction, and creating a brand-new contract (header + line +
+> `VALUES` in one transaction) all fail identically. Each of these fails atomically —
+> nothing is created or changed, including the header/line that would otherwise have
+> succeeded. As a control: the identical transaction with the `VALUES.values` element
+> removed succeeds — contract and line creation both work fine; it is specifically the
+> `VALUES.values` DataElement that is refused. For an existing line, adding
+> `IgnoreDisabled: true` at the top level flips the response to `Succeeded: 1` /
+> `Status: "Passed"` while writing NOTHING — the read-back shows the row unchanged, and
+> the echoed response silently drops the `JOBPRICELINE` and `VALUES` elements. **In
+> practice: the line upsert this recipe documents below still works, as long as the
+> payload carries no `VALUES.values` element — the moment you add break tiers, the
+> whole transaction is refused and the line does not land either.** Full write-up:
+> [`../03-Transaction-API.md`](../03-Transaction-API.md) (being added there separately
+> — no anchor yet, link the bare file).
+
 ## Prerequisites
 
 - The contract already exists — know its `contract_no` and its `job_no`. Renewals can leave the same `contract_no` on two header rows; `job_no` is unique, so include it whenever it's known.
@@ -81,7 +100,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
 }
 ```
 
-**Break-line variant:** for quantity-break lines set `pricing_method` to `"Source"`, `source_price` to `"Supplier List Price"` (or other source), and `multiplier` — do **not** send `price`. See [JobContractPricing Service](../03-Transaction-API.md#jobcontractpricing-service) for the VALUES break-tier structure.
+**Break-line variant:** for quantity-break lines set `pricing_method` to `"Source"`, `source_price` to `"Supplier List Price"` (or other source), and `multiplier` — do **not** send `price`. See [JobContractPricing Service](../03-Transaction-API.md#jobcontractpricing-service) for the VALUES break-tier structure. See the warning above before using `VALUES.values` edits.
 
 ## Complete example
 

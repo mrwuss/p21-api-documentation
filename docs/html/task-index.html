@@ -440,6 +440,7 @@
         <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
         <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
         <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
@@ -510,6 +511,10 @@
 <tr>
 <td>Pick which API to use for a task</td>
 <td><a href="01-API-Selection-Guide.html">01 API Selection Guide</a> (short — read whole)</td>
+</tr>
+<tr>
+<td>A write failed — will the <em>other</em> API get through? (usually no)</td>
+<td><a href="01-API-Selection-Guide.html#before-you-choose-interactive-is-not-an-escape-hatch">01 § Interactive Is Not an Escape Hatch</a></td>
 </tr>
 </tbody>
 </table>
@@ -599,7 +604,11 @@
 </tr>
 <tr>
 <td>Write through disabled columns/tabs (<code>IgnoreDisabled</code>)</td>
-<td><a href="03-Transaction-API.html#ignoredisabled">03 § IgnoreDisabled</a></td>
+<td><a href="03-Transaction-API.html#ignoredisabled">03 § IgnoreDisabled</a> — <strong>not a universal unlock; it can report success and write nothing</strong></td>
+</tr>
+<tr>
+<td>Contract break tiers refuse to save / "Tab page is disabled"</td>
+<td><a href="03-Transaction-API.html#values-writes-are-refused-on-261">03 § VALUES Writes Are Refused on 26.1</a> · <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-jobcontractpricing-valuesvalues-writes-that-write-nothing">14 § entry 8</a></td>
 </tr>
 <tr>
 <td>Field order silently changing values</td>
@@ -684,7 +693,27 @@
 <tr>
 <td><strong>Sales price pages</strong> (codes, breaks, field order)</td>
 <td>—</td>
-<td><a href="08-SalesPricePage-Codes.html">08 SalesPricePage Codes</a></td>
+<td><a href="08-SalesPricePage-Codes.html">08 SalesPricePage Codes</a> · <a href="08-SalesPricePage-Codes.html#transaction-api-alternative">08 § Transaction API Alternative</a></td>
+</tr>
+<tr>
+<td><strong>Purchase-side pricing pages</strong> (supplier / item / discount group)</td>
+<td>—</td>
+<td><a href="08-SalesPricePage-Codes.html#purchase-side-pricing-services">08 § Purchase-Side Pricing Services</a></td>
+</tr>
+<tr>
+<td>Break fields named differently per service (<code>calculation_value1</code> vs <code>value1</code>)</td>
+<td>—</td>
+<td><a href="08-SalesPricePage-Codes.html#cross-service-break-field-names">08 § Cross-Service Break-Field Names</a></td>
+</tr>
+<tr>
+<td><strong>Set a carrier tracking number</strong> on a pick ticket (and why not after invoicing)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#shipping-service-carrier-tracking-number">03 § Shipping Service — Carrier Tracking Number</a></td>
+</tr>
+<tr>
+<td><strong>Reassign a salesrep</strong> (customer + ship-to)</td>
+<td><a href="recipes/reassign-salesrep.html">reassign-salesrep</a></td>
+<td><a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
 <tr>
 <td><strong>Create a customer</strong> (salesrep_id + default_branch gotchas, no zip→rep cascade)</td>
@@ -769,7 +798,7 @@
 </tr>
 <tr>
 <td>Answer a rule-callback dialog ("Item Issues Detected")</td>
-<td><a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">04 § Worked Example</a></td>
+<td><a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">04 § Worked Example</a> — but fix the data first: <a href="03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">03 § Root Cause and Data Fix</a></td>
 </tr>
 <tr>
 <td>Fill fields in a popup (<code>TabName: null</code>)</td>

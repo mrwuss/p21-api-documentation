@@ -18,6 +18,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Token TTL / reuse across APIs | [00 § Token Lifetime and Reuse](00-Authentication.md#token-lifetime-and-reuse) |
 | Fix "not authorized" (P21 user permissions) | [00 § P21 Permissions](00-Authentication.md#p21-permissions-user-credential-auth) |
 | Pick which API to use for a task | [01 API Selection Guide](01-API-Selection-Guide.md) (short — read whole) |
+| A write failed — will the *other* API get through? (usually no) | [01 § Interactive Is Not an Escape Hatch](01-API-Selection-Guide.md#before-you-choose-interactive-is-not-an-escape-hatch) |
 
 ## Read data (OData)
 
@@ -44,7 +45,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Get a service's schema, template, defaults | [03 § Endpoints](03-Transaction-API.md#endpoints) · committed full-field JSON in [`definitions/`](../definitions/README.md) |
 | **Update an existing record** (Status `"New"` + keys; `"Existing"` is broken) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) |
 | **Insert new keyed rows (upsert)** + one-tx-per-POST rule | [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) |
-| Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) |
+| Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) — **not a universal unlock; it can report success and write nothing** |
+| Contract break tiers refuse to save / "Tab page is disabled" | [03 § VALUES Writes Are Refused on 26.1](03-Transaction-API.md#values-writes-are-refused-on-261) · [14 § entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-jobcontractpricing-valuesvalues-writes-that-write-nothing) |
 | Field order silently changing values | [03 § Field Order Matters](03-Transaction-API.md#field-order-matters) |
 | Labels vs code_no (`UseCodeValues`, `code_p21`) | [03 § UseCodeValues](03-Transaction-API.md#usecodevalues) |
 | Check success properly (HTTP 200 lies; per-tx pass/fail) | [03 § Response Format](03-Transaction-API.md#response-format) · [06 § Transaction API Errors](06-Error-Handling.md#transaction-api-errors) |
@@ -65,7 +67,11 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Assembly / BOM** definition | — | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
 | Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service-nested-location-edits) |
 | **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service-creating-bins) |
-| **Sales price pages** (codes, breaks, field order) | — | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) |
+| **Sales price pages** (codes, breaks, field order) | — | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) · [08 § Transaction API Alternative](08-SalesPricePage-Codes.md#transaction-api-alternative) |
+| **Purchase-side pricing pages** (supplier / item / discount group) | — | [08 § Purchase-Side Pricing Services](08-SalesPricePage-Codes.md#purchase-side-pricing-services) |
+| Break fields named differently per service (`calculation_value1` vs `value1`) | — | [08 § Cross-Service Break-Field Names](08-SalesPricePage-Codes.md#cross-service-break-field-names) |
+| **Set a carrier tracking number** on a pick ticket (and why not after invoicing) | — | [03 § Shipping Service — Carrier Tracking Number](03-Transaction-API.md#shipping-service-carrier-tracking-number) |
+| **Reassign a salesrep** (customer + ship-to) | [reassign-salesrep](recipes/reassign-salesrep.md) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
 | **Create a customer** (salesrep_id + default_branch gotchas, no zip→rep cascade) | [create-customer](recipes/create-customer.md) | [03 § Common Services](03-Transaction-API.md#common-services) |
 | **Create a requisition PO** (`po_type` 'R'; disabled `po_hdr_po_type`; vendor vs supplier) | [create-requisition-po](recipes/create-requisition-po.md) | [03 § Purchase Order Types](03-Transaction-API.md#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
 | **GL dimensions via API** (voucher services carry them; POs don't) | — | [03 § GL Dimensions in the API](03-Transaction-API.md#gl-dimensions-in-the-api) |
@@ -86,7 +92,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Find field / tab / datawindow names | [04 § Finding Field Names](04-Interactive-API.md#finding-field-names) · [04 § Window Discovery](04-Interactive-API.md#window-discovery-techniques) |
 | Open a window (use `ServiceName` — Name/Title can 400) · map window→service | [04 § Open Window](04-Interactive-API.md#2-open-window) · [04 § Window→Service Discovery](04-Interactive-API.md#8-window-to-service-discovery-frame_menu) |
 | **Handle popups / response windows** (Status 3, windowopened) | [04 § Response Windows](04-Interactive-API.md#response-windows) · [04 § Response Window Types](04-Interactive-API.md#response-window-types) |
-| Answer a rule-callback dialog ("Item Issues Detected") | [04 § Worked Example](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) |
+| Answer a rule-callback dialog ("Item Issues Detected") | [04 § Worked Example](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) — but fix the data first: [03 § Root Cause and Data Fix](03-Transaction-API.md#item-issues-detected-popup-root-cause-and-data-fix) |
 | Fill fields in a popup (`TabName: null`) | [04 § Response Window Handling (Tabless)](04-Interactive-API.md#response-window-handling-tabless-windows) |
 | Buttons / tools (`?windowId=`, not `?id=`) | [04 § Running Tools](04-Interactive-API.md#running-tools-buttons) |
 | Unlock a disabled tab | [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences) |

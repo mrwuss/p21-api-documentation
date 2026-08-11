@@ -440,6 +440,7 @@
         <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
         <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
         <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+        <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
         <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
         <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
         <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
@@ -458,6 +459,7 @@
 <li><a href="#why-order-matters">Why Order Matters</a></li>
 </ul>
 </li>
+<li><a href="#transaction-api-alternative">Transaction API Alternative</a></li>
 <li><a href="#calculation-method-values-tab">Calculation Method (VALUES Tab)</a></li>
 <li><a href="#price-page-type-form-tab">Price Page Type (FORM Tab)</a></li>
 <li><a href="#pricing-method-form-tab">Pricing Method (FORM Tab)</a></li>
@@ -470,6 +472,7 @@
 <li><a href="#discovery-method">Discovery Method</a></li>
 <li><a href="#price-breaks-quantity-based-pricing">Price Breaks (Quantity-Based Pricing)</a><ul>
 <li><a href="#fields">Fields</a></li>
+<li><a href="#cross-service-break-field-names">Cross-Service Break-Field Names</a></li>
 <li><a href="#example-setting-up-price-breaks">Example: Setting Up Price Breaks</a></li>
 <li><a href="#mapping">Mapping</a></li>
 <li><a href="#notes">Notes</a></li>
@@ -491,6 +494,11 @@
 <li><a href="#accessing-the-costs-tab">Accessing the COSTS Tab</a></li>
 <li><a href="#common-pattern-pass-through-costing">Common Pattern: Pass-Through Costing</a></li>
 <li><a href="#commission-cost-codes-different-from-values-tab">Commission Cost Codes (Different from VALUES Tab)</a></li>
+</ul>
+</li>
+<li><a href="#purchase-side-pricing-services">Purchase-Side Pricing Services</a><ul>
+<li><a href="#header-fields-tabpage_1tp_1_dw_1">Header Fields (TABPAGE_1.tp_1_dw_1)</a></li>
+<li><a href="#header-and-link-services">Header and Link Services</a></li>
 </ul>
 </li>
 <li><a href="#related">Related</a></li>
@@ -665,6 +673,69 @@
 <li>The VALUES tab fields are only available after FORM tab fields are set</li>
 <li>Some fields become read-only after others are set</li>
 </ul>
+<h2 id="transaction-api-alternative">Transaction API Alternative</h2>
+<p><code>SalesPricePage</code> is also available as a Transaction API service. Its full definition is
+available from <code>GET /api/v2/services</code>, and the service exposes these data elements:</p>
+<table>
+<thead>
+<tr>
+<th>DataElement</th>
+<th>Type</th>
+<th>KeyFields</th>
+<th>DatawindowName</th>
+<th>BusinessObjectName</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FORM.form</code></td>
+<td>Form</td>
+<td><code>price_page_uid</code></td>
+<td><code>d_dw_price_page_main</code></td>
+<td><code>price_page</code></td>
+</tr>
+<tr>
+<td><code>VALUES.values</code></td>
+<td>Form</td>
+<td>none</td>
+<td><code>d_dw_price_page_values</code></td>
+<td><code>price_page</code></td>
+</tr>
+<tr>
+<td><code>COSTS.costs</code></td>
+<td>Form</td>
+<td>none</td>
+<td><code>d_dw_price_page_cost</code></td>
+<td><code>price_page</code></td>
+</tr>
+<tr>
+<td><code>PO COST MULTIPLIERS.price_page_po_cost_calc</code></td>
+<td>List</td>
+<td><code>customer_id</code></td>
+<td><code>d_dw_price_page_po_cost_calc_dataentry</code></td>
+<td><code>price_page_po_cost_calc</code></td>
+</tr>
+<tr>
+<td><code>USED BY.price_book_x_page</code></td>
+<td>List</td>
+<td>none</td>
+<td><code>d_ds_price_book_x_page</code></td>
+<td><code>price_book</code></td>
+</tr>
+<tr>
+<td><code>TP_PRICE_PAGE_X_LOCATION.price_page_x_location</code></td>
+<td>List</td>
+<td>none</td>
+<td><code>d_dw_price_page_x_location_maint</code></td>
+<td><code>price_page_location</code></td>
+</tr>
+</tbody>
+</table>
+<p>For <strong>updating an existing page</strong>, the Transaction API is much simpler than the Interactive
+field-order sequence: <code>FORM.form</code> keys on <code>price_page_uid</code>, so it supports a keyed upsert via
+<code>POST /api/v2/transaction</code>. Interactive remains the better choice for <strong>creating</strong> a page,
+where the page type determines which subsequent fields are valid or required. In short, use
+Interactive for create workflows and the Transaction API for keyed updates.</p>
 <hr />
 <h2 id="calculation-method-values-tab">Calculation Method (VALUES Tab)</h2>
 <p>The <code>calculation_method_cd</code> field on the VALUES tab controls how pricing calculations are applied.</p>
@@ -994,24 +1065,101 @@
 <thead>
 <tr>
 <th>Field</th>
+<th>Type</th>
+<th>Label</th>
 <th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>calculation_value1</code></td>
-<td>Base price (applies to quantity 1+)</td>
-</tr>
-<tr>
-<td><code>calculation_value2</code> - <code>calculation_value15</code></td>
-<td>Applied at corresponding break quantity</td>
+<td><code>calculation_value1</code> - <code>calculation_value15</code></td>
+<td>Decimal</td>
+<td>-</td>
+<td>Price or calculation value for each tier; tier 1 applies to quantity 1+</td>
 </tr>
 <tr>
 <td><code>break1</code> - <code>break14</code></td>
-<td>Quantity thresholds for each price level</td>
+<td>Decimal</td>
+<td>-</td>
+<td>Quantity thresholds for tiers 2 through 15</td>
+</tr>
+<tr>
+<td><code>uom1</code> - <code>uom14</code></td>
+<td>Char</td>
+<td>UOM</td>
+<td>Per-tier unit of measure for tiers 1 through 14</td>
+</tr>
+<tr>
+<td><code>other_cost1</code> - <code>other_cost15</code></td>
+<td>Decimal</td>
+<td>-</td>
+<td>Per-tier other cost value</td>
+</tr>
+<tr>
+<td><code>calculation_method_cd</code></td>
+<td>Long</td>
+<td>-</td>
+<td>Calculation method</td>
+</tr>
+<tr>
+<td><code>values_currency_id</code></td>
+<td>Long</td>
+<td>Calculation Currency ID</td>
+<td>Calculation currency</td>
 </tr>
 </tbody>
 </table>
+<p>The VALUES tab repeats <code>calculation_value{n}</code>, <code>break{n}</code>, <code>uom{n}</code>, and
+<code>other_cost{n}</code> for each tier. Tier 15 has <code>calculation_value15</code> and <code>other_cost15</code>, but
+does not have <code>break15</code> or <code>uom15</code>.</p>
+<h3 id="cross-service-break-field-names">Cross-Service Break-Field Names</h3>
+<p>The same tiered-price concept uses different field names across services. Sending the wrong
+spelling does not necessarily error; the tier can silently fail to land.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Tier 1 field</th>
+<th>Tiers 2..n</th>
+<th>Breaks</th>
+<th>Per-tier UOM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SalesPricePage</code></td>
+<td><code>calculation_value1</code></td>
+<td><code>calculation_value2</code>-<code>calculation_value15</code></td>
+<td><code>break1</code>-<code>break14</code></td>
+<td><code>uom1</code>-<code>uom14</code></td>
+</tr>
+<tr>
+<td><code>JobContractPricing</code></td>
+<td><code>calculation_value1</code></td>
+<td><code>calculation_value2</code>-<code>calculation_value15</code></td>
+<td><code>break1</code>-<code>break14</code></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>SalesPriceBook</code> (<code>LIST.list_detail</code>, read-back summary)</td>
+<td><code>calculation_value1</code></td>
+<td><code>calculation_value2</code></td>
+<td><code>break1</code></td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>PurchasePricingPageSupplier</code> / <code>...Item</code> / <code>...DiscGrp</code></td>
+<td><code>value1</code></td>
+<td><code>value2</code>-<code>value15</code></td>
+<td><code>break1</code>-<code>break14</code></td>
+<td><code>uom1</code>-<code>uom14</code></td>
+</tr>
+</tbody>
+</table>
+<p>On the purchase-side services, the API field is <code>value{n}</code>, while the underlying database
+column is <code>purchase_pricing_page.Calculation_Value{n}</code>. The database column name and API
+field name therefore disagree, and neither matches the field names used by the other three
+services above.</p>
 <h3 id="example-setting-up-price-breaks">Example: Setting Up Price Breaks</h3>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -1472,6 +1620,388 @@
 <blockquote>
 <p><strong>Warning:</strong> Do not assume codes are the same across tabs. "Difference" is 228 on VALUES but 212 on COSTS.</p>
 </blockquote>
+<hr />
+<h2 id="purchase-side-pricing-services">Purchase-Side Pricing Services</h2>
+<p>The five-service picture includes sales price pages, sales price books, job contracts, and three purchase page variants: supplier, item, and discount group. Each service has its own key set.</p>
+<p>All three page variants share one shape: a header Form on <code>TABPAGE_1.tp_1_dw_1</code> carrying the keys, and an unkeyed values Form on <code>TABPAGE_2.tp_2_dw_2</code> carrying <code>calculation_type</code> plus <code>value1</code>-<code>value15</code>, <code>break1</code>-<code>break14</code>, and <code>uom1</code>-<code>uom14</code>. They differ only in which field the key set adds, and in the values datawindow name.</p>
+<p>The tier structure is identical to a sales price page — 15 value slots, 14 break thresholds, and a 15th catch-all tier with no break. Only the field <em>names</em> differ (<code>value{n}</code> here, <code>calculation_value{n}</code> there). The DB columns disagree with both: <code>value1</code> maps to <code>purchase_pricing_page.Calculation_Value1</code>, <code>uom1</code> to <code>purchase_pricing_page.UOM1</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Header datawindow</th>
+<th>Values datawindow</th>
+<th>KeyFields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PurchasePricingPageSupplier</code></td>
+<td><code>d_pur_source_price_supplier</code></td>
+<td><code>d_pur_source_price_supplier_values</code></td>
+<td><code>company_id</code>, <code>purchase_pricing_book_id</code>, <code>supplier_id</code>, <code>effective_date</code>, <code>expiration_date</code></td>
+</tr>
+<tr>
+<td><code>PurchasePricingPageSupplierItem</code></td>
+<td><code>d_pur_source_price_supplier_item</code></td>
+<td><code>d_pur_source_price_supplier_item_values</code></td>
+<td>...the same five, plus <code>inv_mast_item_id</code></td>
+</tr>
+<tr>
+<td><code>PurchasePricingPageSupplierDiscGrp</code></td>
+<td><code>d_pur_source_price_supplier_disc</code></td>
+<td><code>d_pur_source_price_supplier_disc_values</code></td>
+<td>...the same five, plus <code>discount_group_id</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="header-fields-tabpage_1tp_1_dw_1">Header Fields (<code>TABPAGE_1.tp_1_dw_1</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>company_id</code></td>
+<td>Key</td>
+</tr>
+<tr>
+<td><code>purchase_pricing_book_id</code></td>
+<td>Key. Maps to <code>purchase_pricing_page.pricing_book_id</code></td>
+</tr>
+<tr>
+<td><code>supplier_id</code></td>
+<td>Key</td>
+</tr>
+<tr>
+<td><code>effective_date</code> · <code>expiration_date</code></td>
+<td>Keys — a page is identified by its date range, so re-pricing means a new page, not an edit</td>
+</tr>
+<tr>
+<td><code>location_id</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>pricing_description</code> · <code>contract_number</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>pricing_method</code> · <code>source_price</code> · <code>price</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>totaling_basis</code> · <code>totaling_method</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>major_group_id</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>delete_flag</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="header-and-link-services">Header and Link Services</h3>
+<p>These carry no break fields — they exist to name a book or tie pages to it.</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>DataElement</th>
+<th>Datawindow</th>
+<th>KeyFields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PurchasePricingBook</code></td>
+<td><code>FORM.form</code></td>
+<td><code>d_dw_purchase_pricing_book_form</code></td>
+<td><code>company_id</code>, <code>purchase_pricing_book_id</code></td>
+</tr>
+<tr>
+<td><code>SupplierPricing</code></td>
+<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+<td><code>d_supplier_pricing_hdr</code></td>
+<td><code>company_id</code>, <code>supplier_id</code></td>
+</tr>
+<tr>
+<td><code>SupplierPricing</code></td>
+<td><code>TABPAGE_17.tp_17_dw_17</code> (List)</td>
+<td><code>d_supplier_pricing_detail</code></td>
+<td><code>purchase_price_library_id</code></td>
+</tr>
+<tr>
+<td><code>SalesPriceBook</code></td>
+<td><code>FORM.form</code></td>
+<td><code>d_dw_price_book_form</code></td>
+<td><code>price_book_id</code></td>
+</tr>
+<tr>
+<td><code>SalesPriceBook</code></td>
+<td><code>LIST.list_detail</code> (List)</td>
+<td><code>d_dw_price_page_x_book_grid</code></td>
+<td><code>price_page_uid</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>SalesPriceBook</code>'s <code>LIST.list_detail</code> exposes <code>calculation_value1</code>, <code>calculation_value2</code>, <code>break1</code>, and <code>other_cost_value</code> as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.</p>
+<blockquote>
+<p><strong>The purchase-side write path is untested.</strong> Everything above is read from the service definitions and confirmed by a live read. No write to a purchase pricing page has been verified, so treat creating or updating one as unproven until you have tested it in your own environment.</p>
+</blockquote>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Read a purchase pricing page and print its quantity-break tiers.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">COMPANY_ID</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>                       <span class="c1"># the five key fields below identify one page</span>
+<span class="n">PRICING_BOOK_ID</span> <span class="o">=</span> <span class="s2">&quot;19&quot;</span>
+<span class="n">SUPPLIER_ID</span> <span class="o">=</span> <span class="s2">&quot;19&quot;</span>
+<span class="n">EFFECTIVE_DATE</span> <span class="o">=</span> <span class="s2">&quot;2013-02-21&quot;</span>
+<span class="n">EXPIRATION_DATE</span> <span class="o">=</span> <span class="s2">&quot;2020-02-21&quot;</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>  <span class="c1"># some middleware answers in XML</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction and Interactive calls go to the UI server, not BASE_URL.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/ui/router/v1/?urlType=external&quot;</span><span class="p">,</span>  <span class="c1"># trailing slash avoids a 307</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;Url&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;Url&gt;([^&lt;]+)&lt;/Url&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No Url in router response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+
+<span class="n">TIER_FIELD</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^(value|break|uom)(\d+)$&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/transaction/get&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;ServiceName&quot;</span><span class="p">:</span> <span class="s2">&quot;PurchasePricingPageSupplier&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;TransactionStates&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;DataElementName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;purchase_pricing_book_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">PRICING_BOOK_ID</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">SUPPLIER_ID</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;effective_date&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">EFFECTIVE_DATE</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;expiration_date&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">EXPIRATION_DATE</span><span class="p">},</span>
+                    <span class="p">],</span>
+                <span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;DataElementName&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_2.tp_2_dw_2&quot;</span><span class="p">,</span> <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+    <span class="c1"># Fields come back as {&quot;Name&quot;: ..., &quot;Value&quot;: ...} entries inside each row&#39;s</span>
+    <span class="c1"># Edits array — not as top-level keys.</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">transaction</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Transactions&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">transaction</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DataElements&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">element</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Rows&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">for</span> <span class="n">edit</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Edits&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                    <span class="n">values</span><span class="p">[</span><span class="n">edit</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Name&quot;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">edit</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;calculation_type: </span><span class="si">{</span><span class="n">values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;calculation_type&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># 15 value slots, but only 14 break thresholds and UOMs — tier 15 is the</span>
+    <span class="c1"># catch-all above the last break.</span>
+    <span class="k">for</span> <span class="n">tier</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span>
+        <span class="n">value</span><span class="p">,</span> <span class="n">brk</span><span class="p">,</span> <span class="n">uom</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;value</span><span class="si">{</span><span class="n">tier</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                           <span class="n">values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;break</span><span class="si">{</span><span class="n">tier</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                           <span class="n">values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;uom</span><span class="si">{</span><span class="n">tier</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">((</span><span class="n">value</span><span class="p">,</span> <span class="n">brk</span><span class="p">,</span> <span class="n">uom</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  tier </span><span class="si">{</span><span class="n">tier</span><span class="si">:</span><span class="s2">&gt;2</span><span class="si">}</span><span class="s2">: value=</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">&lt;12</span><span class="si">}</span><span class="s2"> break=</span><span class="si">{</span><span class="n">brk</span><span class="si">:</span><span class="s2">&lt;10</span><span class="si">}</span><span class="s2"> uom=</span><span class="si">{</span><span class="n">uom</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span><span class="w">                       </span><span class="c1">// the five key fields below</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricingBookId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;19&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// identify one pricing page</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">SupplierId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;19&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">EffectiveDate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2013-02-21&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ExpirationDate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2020-02-21&quot;</span><span class="p">;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Test tenants often present a self-signed cert. Delete this line in production.</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">ServiceName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;PurchasePricingPageSupplier&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">TransactionStates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">new</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">DataElementName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;purchase_pricing_book_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PricingBookId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;supplier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SupplierId</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;effective_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EffectiveDate</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;expiration_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ExpirationDate</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">DataElementName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_2.tp_2_dw_2&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">});</span>
+
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{uiServer}/api/v2/transaction/get&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">body</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="c1">// Fields come back as {&quot;Name&quot;: ..., &quot;Value&quot;: ...} entries inside each row&#39;s</span>
+<span class="c1">// Edits array — not as top-level keys.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">values</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">document</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">document</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Transactions&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">transactions</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">transaction</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">transactions</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">transaction</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;DataElements&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">elements</span><span class="p">))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">element</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">elements</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">element</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Rows&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="p">))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">rows</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">row</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Edits&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">edits</span><span class="p">))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">                </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">edit</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">edits</span><span class="p">.</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="kt">var</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edit</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Name&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">                        </span><span class="n">values</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">edit</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Value&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="n">values</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="s">&quot;calculation_type&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">calculationType</span><span class="p">);</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;calculation_type: {calculationType}&quot;</span><span class="p">);</span>
+<span class="c1">// 15 value slots, but only 14 break thresholds and UOMs — tier 15 is the</span>
+<span class="c1">// catch-all above the last break.</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">tier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="n">tier</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">15</span><span class="p">;</span><span class="w"> </span><span class="n">tier</span><span class="o">++</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">values</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="s">$&quot;value{tier}&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="p">);</span>
+<span class="w">    </span><span class="n">values</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="s">$&quot;break{tier}&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">threshold</span><span class="p">);</span>
+<span class="w">    </span><span class="n">values</span><span class="p">.</span><span class="n">TryGetValue</span><span class="p">(</span><span class="s">$&quot;uom{tier}&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">uom</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">uom</span><span class="p">))</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;  tier {tier,2}: value={value,-12} break={threshold,-10} uom={uom}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// --- helpers ---------------------------------------------------------------</span>
+
+<span class="c1">// v2 token endpoint — credentials go in the body, never in headers.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Transaction and Interactive calls go to the UI server, not BaseUrl.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">request</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpRequestMessage</span><span class="p">(</span>
+<span class="w">        </span><span class="n">HttpMethod</span><span class="p">.</span><span class="n">Get</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">request</span><span class="p">.</span><span class="n">Headers</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">payload</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">field</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="k">value</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="k">value</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{field}&gt;([^&lt;]+)&lt;/{field}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">match</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {field} in response: {payload[..Math.Min(200, payload.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">match</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
 <hr />
 <h2 id="related">Related</h2>
 <ul>

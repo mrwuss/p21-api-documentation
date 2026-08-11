@@ -171,6 +171,26 @@ var result = JObject.Parse(await saveResp.Content.ReadAsStringAsync());
 - The VALUES tab fields are only available after FORM tab fields are set
 - Some fields become read-only after others are set
 
+## Transaction API Alternative
+
+`SalesPricePage` is also available as a Transaction API service. Its full definition is
+available from `GET /api/v2/services`, and the service exposes these data elements:
+
+| DataElement | Type | KeyFields | DatawindowName | BusinessObjectName |
+|-------------|------|-----------|----------------|--------------------|
+| `FORM.form` | Form | `price_page_uid` | `d_dw_price_page_main` | `price_page` |
+| `VALUES.values` | Form | none | `d_dw_price_page_values` | `price_page` |
+| `COSTS.costs` | Form | none | `d_dw_price_page_cost` | `price_page` |
+| `PO COST MULTIPLIERS.price_page_po_cost_calc` | List | `customer_id` | `d_dw_price_page_po_cost_calc_dataentry` | `price_page_po_cost_calc` |
+| `USED BY.price_book_x_page` | List | none | `d_ds_price_book_x_page` | `price_book` |
+| `TP_PRICE_PAGE_X_LOCATION.price_page_x_location` | List | none | `d_dw_price_page_x_location_maint` | `price_page_location` |
+
+For **updating an existing page**, the Transaction API is much simpler than the Interactive
+field-order sequence: `FORM.form` keys on `price_page_uid`, so it supports a keyed upsert via
+`POST /api/v2/transaction`. Interactive remains the better choice for **creating** a page,
+where the page type determines which subsequent fields are valid or required. In short, use
+Interactive for create workflows and the Transaction API for keyed updates.
+
 ---
 
 ## Calculation Method (VALUES Tab)
@@ -378,11 +398,35 @@ Price pages support up to 15 calculation values and 14 break quantities for quan
 
 ### Fields
 
-| Field | Purpose |
-|-------|---------|
-| `calculation_value1` | Base price (applies to quantity 1+) |
-| `calculation_value2` - `calculation_value15` | Applied at corresponding break quantity |
-| `break1` - `break14` | Quantity thresholds for each price level |
+| Field | Type | Label | Purpose |
+|-------|------|-------|---------|
+| `calculation_value1` - `calculation_value15` | Decimal | - | Price or calculation value for each tier; tier 1 applies to quantity 1+ |
+| `break1` - `break14` | Decimal | - | Quantity thresholds for tiers 2 through 15 |
+| `uom1` - `uom14` | Char | UOM | Per-tier unit of measure for tiers 1 through 14 |
+| `other_cost1` - `other_cost15` | Decimal | - | Per-tier other cost value |
+| `calculation_method_cd` | Long | - | Calculation method |
+| `values_currency_id` | Long | Calculation Currency ID | Calculation currency |
+
+The VALUES tab repeats `calculation_value{n}`, `break{n}`, `uom{n}`, and
+`other_cost{n}` for each tier. Tier 15 has `calculation_value15` and `other_cost15`, but
+does not have `break15` or `uom15`.
+
+### Cross-Service Break-Field Names
+
+The same tiered-price concept uses different field names across services. Sending the wrong
+spelling does not necessarily error; the tier can silently fail to land.
+
+| Service | Tier 1 field | Tiers 2..n | Breaks | Per-tier UOM |
+|---------|--------------|------------|--------|--------------|
+| `SalesPricePage` | `calculation_value1` | `calculation_value2`-`calculation_value15` | `break1`-`break14` | `uom1`-`uom14` |
+| `JobContractPricing` | `calculation_value1` | `calculation_value2`-`calculation_value15` | `break1`-`break14` | none |
+| `SalesPriceBook` (`LIST.list_detail`, read-back summary) | `calculation_value1` | `calculation_value2` | `break1` | none |
+| `PurchasePricingPageSupplier` / `...Item` / `...DiscGrp` | `value1` | `value2`-`value15` | `break1`-`break14` | `uom1`-`uom14` |
+
+On the purchase-side services, the API field is `value{n}`, while the underlying database
+column is `purchase_pricing_page.Calculation_Value{n}`. The database column name and API
+field name therefore disagree, and neither matches the field names used by the other three
+services above.
 
 ### Example: Setting Up Price Breaks
 
@@ -771,6 +815,303 @@ The COSTS tab uses **different code numbers** than the VALUES tab for calculatio
 | COSTS | 214 | Percentage |
 
 > **Warning:** Do not assume codes are the same across tabs. "Difference" is 228 on VALUES but 212 on COSTS.
+
+---
+
+## Purchase-Side Pricing Services
+
+The five-service picture includes sales price pages, sales price books, job contracts, and three purchase page variants: supplier, item, and discount group. Each service has its own key set.
+
+All three page variants share one shape: a header Form on `TABPAGE_1.tp_1_dw_1` carrying the keys, and an unkeyed values Form on `TABPAGE_2.tp_2_dw_2` carrying `calculation_type` plus `value1`-`value15`, `break1`-`break14`, and `uom1`-`uom14`. They differ only in which field the key set adds, and in the values datawindow name.
+
+The tier structure is identical to a sales price page — 15 value slots, 14 break thresholds, and a 15th catch-all tier with no break. Only the field *names* differ (`value{n}` here, `calculation_value{n}` there). The DB columns disagree with both: `value1` maps to `purchase_pricing_page.Calculation_Value1`, `uom1` to `purchase_pricing_page.UOM1`.
+
+| Service | Header datawindow | Values datawindow | KeyFields |
+|---------|-------------------|-------------------|-----------|
+| `PurchasePricingPageSupplier` | `d_pur_source_price_supplier` | `d_pur_source_price_supplier_values` | `company_id`, `purchase_pricing_book_id`, `supplier_id`, `effective_date`, `expiration_date` |
+| `PurchasePricingPageSupplierItem` | `d_pur_source_price_supplier_item` | `d_pur_source_price_supplier_item_values` | ...the same five, plus `inv_mast_item_id` |
+| `PurchasePricingPageSupplierDiscGrp` | `d_pur_source_price_supplier_disc` | `d_pur_source_price_supplier_disc_values` | ...the same five, plus `discount_group_id` |
+
+### Header Fields (`TABPAGE_1.tp_1_dw_1`)
+
+| Field | Notes |
+|-------|-------|
+| `company_id` | Key |
+| `purchase_pricing_book_id` | Key. Maps to `purchase_pricing_page.pricing_book_id` |
+| `supplier_id` | Key |
+| `effective_date` · `expiration_date` | Keys — a page is identified by its date range, so re-pricing means a new page, not an edit |
+| `location_id` | |
+| `pricing_description` · `contract_number` | |
+| `pricing_method` · `source_price` · `price` | |
+| `totaling_basis` · `totaling_method` | |
+| `major_group_id` | |
+| `delete_flag` | |
+
+### Header and Link Services
+
+These carry no break fields — they exist to name a book or tie pages to it.
+
+| Service | DataElement | Datawindow | KeyFields |
+|---------|-------------|------------|-----------|
+| `PurchasePricingBook` | `FORM.form` | `d_dw_purchase_pricing_book_form` | `company_id`, `purchase_pricing_book_id` |
+| `SupplierPricing` | `TABPAGE_1.tp_1_dw_1` | `d_supplier_pricing_hdr` | `company_id`, `supplier_id` |
+| `SupplierPricing` | `TABPAGE_17.tp_17_dw_17` (List) | `d_supplier_pricing_detail` | `purchase_price_library_id` |
+| `SalesPriceBook` | `FORM.form` | `d_dw_price_book_form` | `price_book_id` |
+| `SalesPriceBook` | `LIST.list_detail` (List) | `d_dw_price_page_x_book_grid` | `price_page_uid` |
+
+`SalesPriceBook`'s `LIST.list_detail` exposes `calculation_value1`, `calculation_value2`, `break1`, and `other_cost_value` as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.
+
+> **The purchase-side write path is untested.** Everything above is read from the service definitions and confirmed by a live read. No write to a purchase pricing page has been verified, so treat creating or updating one as unproven until you have tested it in your own environment.
+
+<!-- tabs -->
+
+**Python**
+
+```python
+"""Read a purchase pricing page and print its quantity-break tiers."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"                       # the five key fields below identify one page
+PRICING_BOOK_ID = "19"
+SUPPLIER_ID = "19"
+EFFECTIVE_DATE = "2013-02-21"
+EXPIRATION_DATE = "2020-02-21"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+TIER_FIELD = re.compile(r"^(value|break|uom)(\d+)$")
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    response = client.post(
+        f"{ui_server}/api/v2/transaction/get",
+        headers=headers,
+        json={
+            "ServiceName": "PurchasePricingPageSupplier",
+            "TransactionStates": [
+                {
+                    "DataElementName": "TABPAGE_1.tp_1_dw_1",
+                    "Keys": [
+                        {"Name": "company_id", "Value": COMPANY_ID},
+                        {"Name": "purchase_pricing_book_id", "Value": PRICING_BOOK_ID},
+                        {"Name": "supplier_id", "Value": SUPPLIER_ID},
+                        {"Name": "effective_date", "Value": EFFECTIVE_DATE},
+                        {"Name": "expiration_date", "Value": EXPIRATION_DATE},
+                    ],
+                },
+                {"DataElementName": "TABPAGE_2.tp_2_dw_2", "Keys": []},
+            ],
+        },
+    )
+    response.raise_for_status()
+    result = response.json()
+
+    # Fields come back as {"Name": ..., "Value": ...} entries inside each row's
+    # Edits array — not as top-level keys.
+    values = {}
+    for transaction in result.get("Transactions", []):
+        for element in transaction.get("DataElements", []):
+            for row in element.get("Rows", []):
+                for edit in row.get("Edits", []):
+                    values[edit.get("Name")] = edit.get("Value")
+
+    print(f"calculation_type: {values.get('calculation_type', '')}")
+    # 15 value slots, but only 14 break thresholds and UOMs — tier 15 is the
+    # catch-all above the last break.
+    for tier in range(1, 16):
+        value, brk, uom = (values.get(f"value{tier}", ""),
+                           values.get(f"break{tier}", ""),
+                           values.get(f"uom{tier}", ""))
+        if any((value, brk, uom)):
+            print(f"  tier {tier:>2}: value={value:<12} break={brk:<10} uom={uom}")
+```
+
+**C#**
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";                       // the five key fields below
+const string PricingBookId = "19";                     // identify one pricing page
+const string SupplierId = "19";
+const string EffectiveDate = "2013-02-21";
+const string ExpirationDate = "2020-02-21";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var body = JsonSerializer.Serialize(new
+{
+    ServiceName = "PurchasePricingPageSupplier",
+    TransactionStates = new object[]
+    {
+        new
+        {
+            DataElementName = "TABPAGE_1.tp_1_dw_1",
+            Keys = new[]
+            {
+                new { Name = "company_id", Value = CompanyId },
+                new { Name = "purchase_pricing_book_id", Value = PricingBookId },
+                new { Name = "supplier_id", Value = SupplierId },
+                new { Name = "effective_date", Value = EffectiveDate },
+                new { Name = "expiration_date", Value = ExpirationDate },
+            },
+        },
+        new { DataElementName = "TABPAGE_2.tp_2_dw_2", Keys = Array.Empty<object>() },
+    },
+});
+
+using var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(body, Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();
+
+// Fields come back as {"Name": ..., "Value": ...} entries inside each row's
+// Edits array — not as top-level keys.
+var values = new Dictionary<string, string>();
+using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+if (document.RootElement.TryGetProperty("Transactions", out var transactions))
+{
+    foreach (var transaction in transactions.EnumerateArray())
+    {
+        if (!transaction.TryGetProperty("DataElements", out var elements)) continue;
+        foreach (var element in elements.EnumerateArray())
+        {
+            if (!element.TryGetProperty("Rows", out var rows)) continue;
+            foreach (var row in rows.EnumerateArray())
+            {
+                if (!row.TryGetProperty("Edits", out var edits)) continue;
+                foreach (var edit in edits.EnumerateArray())
+                {
+                    var name = edit.GetProperty("Name").GetString();
+                    if (name is not null)
+                        values[name] = edit.GetProperty("Value").GetString() ?? "";
+                }
+            }
+        }
+    }
+}
+
+values.TryGetValue("calculation_type", out var calculationType);
+Console.WriteLine($"calculation_type: {calculationType}");
+// 15 value slots, but only 14 break thresholds and UOMs — tier 15 is the
+// catch-all above the last break.
+for (var tier = 1; tier <= 15; tier++)
+{
+    values.TryGetValue($"value{tier}", out var value);
+    values.TryGetValue($"break{tier}", out var threshold);
+    values.TryGetValue($"uom{tier}", out var uom);
+    if (!string.IsNullOrEmpty(value) || !string.IsNullOrEmpty(threshold) || !string.IsNullOrEmpty(uom))
+        Console.WriteLine($"  tier {tier,2}: value={value,-12} break={threshold,-10} uom={uom}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
 
 ---
 
