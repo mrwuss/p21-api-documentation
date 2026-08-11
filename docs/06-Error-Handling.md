@@ -419,6 +419,61 @@ Both mean the target isn't a registered UDT. Pass the **`udt_`-prefixed name** (
 
 ---
 
+## Field Length Limits — a Write That Fails on Size
+
+An over-length value is refused at the **`/change` call itself**, not at save:
+
+```text
+PUT /change failed for field 'external_po_no'
+```
+
+That is the good case — you learn immediately, on the field that caused it, before anything is committed.
+
+### The API will not tell you the limit
+
+`GET /api/v2/definition/{service}` returns `Name`, `Label`, `DataType`, `DbColumnName`, `Required` and `ValidValues` for every field — and **no length**. Verified on 26.1.5910.3. There is no API route to field widths; you have to go to the database or measure.
+
+The column width is a starting point, not the answer — query it directly:
+
+```sql
+SELECT ty.name, c.max_length
+FROM sys.columns c
+JOIN sys.types ty ON ty.user_type_id = c.user_type_id
+WHERE c.object_id = OBJECT_ID('dbo.po_hdr') AND c.name = 'external_po_no';
+```
+
+### Measured limits
+
+Established end to end — written through the real API, saved, and read back at each length — rather than inferred from the schema:
+
+| Field | Limit | Notes |
+|---|---|---|
+| `po_hdr.external_po_no` | **40** | 30–40 persist; 41, 42, 45 and 50 fail at `/change`. Sharp and reproducible: 40 persists, 41 is refused |
+| `inventory_supplier.supplier_part_no` | **40** | `varchar(40)` |
+| `po_line_notepad.topic` | **30** | `varchar(30)` |
+
+### Measuring one yourself — two traps that produce a confident wrong answer
+
+Both of these make a length sweep lie, and both have bitten this codebase:
+
+1. **A write that returns success need not persist.** 2026.1 answers a load for a *missing* record with an empty window instead of an error, so every write sails into nothing and reports OK — nine lengths once "succeeded" against a PO that didn't exist on the test server. Only a **read-back** distinguishes it. See [entry 5](14-Breaking-Changes.md#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window).
+2. **Not every record saves.** A PO that refuses to save at *every* length — including short ones — reads exactly like a length limit. Establish a **short-value control on that same record first**; if the control doesn't round-trip, the record is the problem, not the value.
+
+So: pick a record that provably round-trips a short value, then sweep lengths, reading back each one.
+
+> **A cautionary number.** This field was documented as 32 for a long time. That figure came from three data points — 30 wrote, 36 and 40 failed — with 31 through 35 never tested and 32 interpolated between them. Re-measurement contradicted it outright: 36 and 40 both persist, and the true boundary is 40/41. An interpolated limit is a guess wearing a measurement's clothes.
+
+### Truncate or reject
+
+Not interchangeable, and worth deciding per field rather than per call site:
+
+- **Identifiers reject.** Silently shortening a part number yields a *different, valid-looking* identifier that P21 will happily store, and nothing downstream can tell it was truncated. Refuse the write.
+- **Free text truncates, with a warning.** A clipped note still carries its meaning; failing an entire acknowledgment over a long comment is worse.
+
+Enforce the limit at your own boundary — a length check costs nothing, while the alternative is a round trip to the ERP to be told no.
+
+---
+
 ## Python Error Handling
 
 ### httpx Error Handling

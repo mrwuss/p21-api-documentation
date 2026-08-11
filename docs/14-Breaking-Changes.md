@@ -90,6 +90,19 @@ PUT /api/ui/interactive/v2/tab
 
 **Mitigation:** none needed if you follow the documented v2 shape — this repo has always documented `PageName` ([Interactive API § Changing Tabs](04-Interactive-API.md#changing-tabs)). Audit any legacy client for `TabName` in tab-change bodies.
 
+**`TabName` is ignored, not rejected — which matters for the error message you get.** Verified on 26.1.5910.3 against `SalesPricePage`, switching tabs and reading back which datawindow the window exposes:
+
+| Body | Result |
+|---|---|
+| `{"PageName": "VALUES"}` | 200 — switched |
+| `{"TabName": "COSTS"}` | **400** — `Tab with name or display text of  does not exist.` |
+| `{"TabName": "COSTS", "PageName": "COSTS"}` | 200 — switched |
+| `{"TabName": "VALUES", "PageName": "COSTS"}` | 200 — switched to **COSTS** |
+
+The last row is the proof: when the two disagree, `PageName` wins and `TabName` contributes nothing. So a client that sends **both** — as some cross-version clients do to support 25.2 and 26.1 from one code path — is safe here; only `TabName` *alone* fails.
+
+Note the error text when it does fail: **the tab name in the message is blank**, because the server is reporting on the `PageName` it never received rather than on the `TabName` you sent. It reads as "your tab name is wrong" when the real problem is the field name. If you see `Tab with name or display text of  does not exist.` with that empty slot, check the *key* you used before you check the tab.
+
 ### 5. Silent false success: loading a nonexistent record returns `Status: 2` with an **empty window**
 
 **Data-integrity hazard.**
@@ -127,7 +140,11 @@ A client that treats the 400 as "the change did not happen" is wrong: part of it
 
 **Mitigation (verified):** write **one field per `/change` call** and check the status of every call, so a failure is unambiguously attributable to one field. Then prove the result with a **read-back** — see [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone). A production run of 81 records using this pattern read back with zero silent drops.
 
-> **Correction (July 2026).** This entry originally reported the mechanism as *"a batch containing a field on a **non-active tab** returns `Status: 1` while silently not applying that field."* That does **not** reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, `DatawindowName` supplied and omitted, target tab active and inactive — the non-active-tab field was **applied every time** with `Status: 1`. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch **is** genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged. If you can reproduce the non-active-tab drop on any 2026.1 build, please [open an issue](https://github.com/mrwuss/p21-api-documentation/issues/new?template=bug-report.md) with the window and field names.
+> **Correction (July 2026).** This entry originally reported the mechanism as *"a batch containing a field on a **non-active tab** returns `Status: 1` while silently not applying that field."* That does **not** reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, `DatawindowName` supplied and omitted, target tab active and inactive — the non-active-tab field was **applied every time** with `Status: 1`. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch **is** genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged.
+>
+> **Re-tested again on 26.1.5910.3 (August 2026), still no reproduction.** PurchaseOrder, no save issued: with `TABPAGE_1` active, a write to `supplier_ship_date` on `TABPAGE_18` returned `Status: 1` and the value **was present** in the buffer after switching to that tab — matching the control that switched tabs first. The specific field named in the original 5873.1 report therefore applies normally on this build.
+>
+> **Write tab-by-tab anyway.** The client that filed the original report still groups its field writes by tab and switches before each group, and that remains the right shape regardless of which build you are on: it costs one `/v2/tab` call per tab, removes the question entirely, and matches how the window behaves for a human. Treat it as cheap insurance, not as a workaround for a bug we can currently demonstrate.
 
 ### 7. UDT Service update/delete cannot target rows in a UDT created on 2026.1
 

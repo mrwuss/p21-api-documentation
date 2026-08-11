@@ -135,6 +135,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Upgrading P21? What breaks between versions** | [14 Breaking Changes](14-Breaking-Changes.md) — 2026.1 (Accept-header 500, ghost sessions, non-atomic batched changes) · 25.2 (DatawindowName) |
 | Which middleware build am I on? | [14 § Reading the middleware version](14-Breaking-Changes.md#reading-the-middleware-version) — no version endpoint; it rides the session-create response |
 | Error catalog by API | [06 Error Handling](06-Error-Handling.md) (per-API sections) |
+| Write refused for being too long / how long is a field? | [06 § Field Length Limits](06-Error-Handling.md#field-length-limits-a-write-that-fails-on-size) — the API exposes no lengths; measured values + how to measure safely |
 | Quick symptom → cause table | [06 § Common Issues Quick Reference](06-Error-Handling.md#common-issues-quick-reference) |
 | Auth failures | [06 § Authentication Errors](06-Error-Handling.md#authentication-errors) |
 | Intermittent interactive failures under load | [07 Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) |

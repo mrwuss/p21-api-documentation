@@ -587,6 +587,35 @@
 </code></pre></div>
 
 <p><strong>Mitigation:</strong> none needed if you follow the documented v2 shape — this repo has always documented <code>PageName</code> (<a href="04-Interactive-API.html#changing-tabs">Interactive API § Changing Tabs</a>). Audit any legacy client for <code>TabName</code> in tab-change bodies.</p>
+<p><strong><code>TabName</code> is ignored, not rejected — which matters for the error message you get.</strong> Verified on 26.1.5910.3 against <code>SalesPricePage</code>, switching tabs and reading back which datawindow the window exposes:</p>
+<table>
+<thead>
+<tr>
+<th>Body</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{"PageName": "VALUES"}</code></td>
+<td>200 — switched</td>
+</tr>
+<tr>
+<td><code>{"TabName": "COSTS"}</code></td>
+<td><strong>400</strong> — <code>Tab with name or display text of  does not exist.</code></td>
+</tr>
+<tr>
+<td><code>{"TabName": "COSTS", "PageName": "COSTS"}</code></td>
+<td>200 — switched</td>
+</tr>
+<tr>
+<td><code>{"TabName": "VALUES", "PageName": "COSTS"}</code></td>
+<td>200 — switched to <strong>COSTS</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The last row is the proof: when the two disagree, <code>PageName</code> wins and <code>TabName</code> contributes nothing. So a client that sends <strong>both</strong> — as some cross-version clients do to support 25.2 and 26.1 from one code path — is safe here; only <code>TabName</code> <em>alone</em> fails.</p>
+<p>Note the error text when it does fail: <strong>the tab name in the message is blank</strong>, because the server is reporting on the <code>PageName</code> it never received rather than on the <code>TabName</code> you sent. It reads as "your tab name is wrong" when the real problem is the field name. If you see <code>Tab with name or display text of  does not exist.</code> with that empty slot, check the <em>key</em> you used before you check the tab.</p>
 <h3 id="5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns <code>Status: 2</code> with an <strong>empty window</strong></h3>
 <p><strong>Data-integrity hazard.</strong></p>
 <p>On 2026.1, keying a window to a record that doesn't exist (e.g., setting <code>po_no</code> to a nonexistent PO) returns <strong><code>Status: 2</code></strong> and leaves the window <strong>empty</strong>. 2025.2 returned <code>Status: 0</code> for the same action. An integration that treats "not found" as <code>Status: 0</code> — or that doesn't gate on load status at all — will <strong>silently proceed to write against an empty window</strong>.</p>
@@ -612,7 +641,9 @@
 <p>A client that treats the 400 as "the change did not happen" is wrong: part of it did. If it then retries or falls through to a save, it commits a partially-applied edit it never intended.</p>
 <p><strong>Mitigation (verified):</strong> write <strong>one field per <code>/change</code> call</strong> and check the status of every call, so a failure is unambiguously attributable to one field. Then prove the result with a <strong>read-back</strong> — see <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a>. A production run of 81 records using this pattern read back with zero silent drops.</p>
 <blockquote>
-<p><strong>Correction (July 2026).</strong> This entry originally reported the mechanism as <em>"a batch containing a field on a </em><em>non-active tab</em><em> returns <code>Status: 1</code> while silently not applying that field."</em> That does <strong>not</strong> reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, <code>DatawindowName</code> supplied and omitted, target tab active and inactive — the non-active-tab field was <strong>applied every time</strong> with <code>Status: 1</code>. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch <strong>is</strong> genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged. If you can reproduce the non-active-tab drop on any 2026.1 build, please <a href="https://github.com/mrwuss/p21-api-documentation/issues/new?template=bug-report.md">open an issue</a> with the window and field names.</p>
+<p><strong>Correction (July 2026).</strong> This entry originally reported the mechanism as <em>"a batch containing a field on a </em><em>non-active tab</em><em> returns <code>Status: 1</code> while silently not applying that field."</em> That does <strong>not</strong> reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, <code>DatawindowName</code> supplied and omitted, target tab active and inactive — the non-active-tab field was <strong>applied every time</strong> with <code>Status: 1</code>. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch <strong>is</strong> genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged.</p>
+<p><strong>Re-tested again on 26.1.5910.3 (August 2026), still no reproduction.</strong> PurchaseOrder, no save issued: with <code>TABPAGE_1</code> active, a write to <code>supplier_ship_date</code> on <code>TABPAGE_18</code> returned <code>Status: 1</code> and the value <strong>was present</strong> in the buffer after switching to that tab — matching the control that switched tabs first. The specific field named in the original 5873.1 report therefore applies normally on this build.</p>
+<p><strong>Write tab-by-tab anyway.</strong> The client that filed the original report still groups its field writes by tab and switches before each group, and that remains the right shape regardless of which build you are on: it costs one <code>/v2/tab</code> call per tab, removes the question entirely, and matches how the window behaves for a human. Treat it as cheap insurance, not as a workaround for a bug we can currently demonstrate.</p>
 </blockquote>
 <h3 id="7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</h3>
 <p><strong>Data-integrity hazard — silent false success on delete.</strong></p>

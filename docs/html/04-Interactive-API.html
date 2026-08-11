@@ -1586,6 +1586,7 @@
 <li>Close/dismiss it to resume the original operation</li>
 </ol>
 <blockquote>
+<p><strong>The popup's id lives in <code>Events</code> — not in the top-level <code>ResponseWindowId</code>.</strong> That field exists in the response and is <strong>empty on real 26.1 responses</strong>, so a client that reads it gets <code>""</code> and concludes there is no popup to answer. A production integration had <em>every</em> blocked save fail this way before switching to the event. Read <code>Events[] → windowopened → Data[] → windowid</code>; check the top-level field first only as forward-compatibility, never as the primary source.</p>
 <p><strong>Status codes</strong> match the <code>ResultStatus</code> enum in <code>P21.UI.Service.Model.Interactive.V2.ResultWrapper</code>:
 <code>None=0, Success=1, Failure=2, Blocked=3</code>.
 The API returns Status as an integer. String values (<code>"Success"</code>, <code>"Failure"</code>, <code>"Blocked"</code>) may appear in some contexts — handle both.</p>
@@ -1726,7 +1727,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li><code>save()</code> — if the dialog opens, the result is Status 3 (Blocked) with a <code>windowopened</code> event carrying the popup's window ID.</li>
 <li>Discover the buttons with <code>GET /v2/tools?windowId={popupId}</code>: <code>cb_1</code> = <strong>"Yes, Proceed Anyway"</strong>, <code>cb_2</code> = "No, Cancel". Run <code>cb_1</code> via <code>POST /v2/tools</code> with the popup's window ID; the save then commits.</li>
 </ol>
-<p>Which items trip the rule depends on each item's data state and differs between environments — don't hard-code a fallback list; run the Transaction API first, verify what stuck, and drive the exceptions interactively.</p>
+<p>Which items trip the rule is <strong>deterministic</strong>, not environmental luck: a site-configured DynaChange rule fires on every save of the Item window, and you can identify it — and usually fix the data instead — before writing any code. See <a href="03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected — Root Cause and Data Fix</a>. Use this interactive path for the cases you cannot data-fix; don't hard-code a fallback list of items.</p>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
 </blockquote>
@@ -1809,6 +1810,9 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <span class="p">}</span>
 </code></pre></div>
 
+<blockquote>
+<p><strong>The key must be <code>ToolName</code>.</strong> Posting the button under <code>Name</code> — the spelling most other P21 payloads use — is accepted and does <strong>nothing</strong>: P21 returns <code>Status: 2</code> (Failure) with no message, so the tool never runs and a popup you were trying to dismiss stays open. Verified live on 26.1. <code>GET /v2/tools</code> returns the buttons under <code>ToolName</code> too; carry that key straight through to the POST rather than re-mapping it.</p>
+</blockquote>
 <p>For datawindow or field-level tools, include the optional fields:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;w_sales_price_page&quot;</span><span class="p">,</span>

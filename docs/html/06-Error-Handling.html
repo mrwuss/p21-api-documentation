@@ -500,6 +500,13 @@
 <li><a href="#invalid-udt-table-incompatible-table-for-bulk-insert">"Invalid UDT table" / "Incompatible table for bulk insert"</a></li>
 </ul>
 </li>
+<li><a href="#field-length-limits-a-write-that-fails-on-size">Field Length Limits — a Write That Fails on Size</a><ul>
+<li><a href="#the-api-will-not-tell-you-the-limit">The API will not tell you the limit</a></li>
+<li><a href="#measured-limits">Measured limits</a></li>
+<li><a href="#measuring-one-yourself-two-traps-that-produce-a-confident-wrong-answer">Measuring one yourself — two traps that produce a confident wrong answer</a></li>
+<li><a href="#truncate-or-reject">Truncate or reject</a></li>
+</ul>
+</li>
 <li><a href="#python-error-handling">Python Error Handling</a><ul>
 <li><a href="#httpx-error-handling">httpx Error Handling</a></li>
 <li><a href="#transaction-api-error-handling">Transaction API Error Handling</a></li>
@@ -933,6 +940,67 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 
 <p>Both mean the target isn't a registered UDT. Pass the <strong><code>udt_</code>-prefixed name</strong> (<code>udt_custom_orders</code>) — the bare name from the maintenance window (<code>custom_orders</code>) and the <code>udv_</code> view name are both rejected. Ordinary P21 tables are rejected too, by design.</p>
 <p><strong>Solution</strong>: confirm the exact name in <code>master_udt_definition.udt_table_name</code> over OData.</p>
+<hr />
+<h2 id="field-length-limits-a-write-that-fails-on-size">Field Length Limits — a Write That Fails on Size</h2>
+<p>An over-length value is refused at the <strong><code>/change</code> call itself</strong>, not at save:</p>
+<div class="highlight"><pre><span></span><code>PUT /change failed for field &#39;external_po_no&#39;
+</code></pre></div>
+
+<p>That is the good case — you learn immediately, on the field that caused it, before anything is committed.</p>
+<h3 id="the-api-will-not-tell-you-the-limit">The API will not tell you the limit</h3>
+<p><code>GET /api/v2/definition/{service}</code> returns <code>Name</code>, <code>Label</code>, <code>DataType</code>, <code>DbColumnName</code>, <code>Required</code> and <code>ValidValues</code> for every field — and <strong>no length</strong>. Verified on 26.1.5910.3. There is no API route to field widths; you have to go to the database or measure.</p>
+<p>The column width is a starting point, not the answer — query it directly:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">ty</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">max_length</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">sys</span><span class="p">.</span><span class="n">columns</span><span class="w"> </span><span class="k">c</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">sys</span><span class="p">.</span><span class="n">types</span><span class="w"> </span><span class="n">ty</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">ty</span><span class="p">.</span><span class="n">user_type_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">user_type_id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">object_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">OBJECT_ID</span><span class="p">(</span><span class="s1">&#39;dbo.po_hdr&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="k">c</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;external_po_no&#39;</span><span class="p">;</span>
+</code></pre></div>
+
+<h3 id="measured-limits">Measured limits</h3>
+<p>Established end to end — written through the real API, saved, and read back at each length — rather than inferred from the schema:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Limit</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>po_hdr.external_po_no</code></td>
+<td><strong>40</strong></td>
+<td>30–40 persist; 41, 42, 45 and 50 fail at <code>/change</code>. Sharp and reproducible: 40 persists, 41 is refused</td>
+</tr>
+<tr>
+<td><code>inventory_supplier.supplier_part_no</code></td>
+<td><strong>40</strong></td>
+<td><code>varchar(40)</code></td>
+</tr>
+<tr>
+<td><code>po_line_notepad.topic</code></td>
+<td><strong>30</strong></td>
+<td><code>varchar(30)</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="measuring-one-yourself-two-traps-that-produce-a-confident-wrong-answer">Measuring one yourself — two traps that produce a confident wrong answer</h3>
+<p>Both of these make a length sweep lie, and both have bitten this codebase:</p>
+<ol>
+<li><strong>A write that returns success need not persist.</strong> 2026.1 answers a load for a <em>missing</em> record with an empty window instead of an error, so every write sails into nothing and reports OK — nine lengths once "succeeded" against a PO that didn't exist on the test server. Only a <strong>read-back</strong> distinguishes it. See <a href="14-Breaking-Changes.html#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">entry 5</a>.</li>
+<li><strong>Not every record saves.</strong> A PO that refuses to save at <em>every</em> length — including short ones — reads exactly like a length limit. Establish a <strong>short-value control on that same record first</strong>; if the control doesn't round-trip, the record is the problem, not the value.</li>
+</ol>
+<p>So: pick a record that provably round-trips a short value, then sweep lengths, reading back each one.</p>
+<blockquote>
+<p><strong>A cautionary number.</strong> This field was documented as 32 for a long time. That figure came from three data points — 30 wrote, 36 and 40 failed — with 31 through 35 never tested and 32 interpolated between them. Re-measurement contradicted it outright: 36 and 40 both persist, and the true boundary is 40/41. An interpolated limit is a guess wearing a measurement's clothes.</p>
+</blockquote>
+<h3 id="truncate-or-reject">Truncate or reject</h3>
+<p>Not interchangeable, and worth deciding per field rather than per call site:</p>
+<ul>
+<li><strong>Identifiers reject.</strong> Silently shortening a part number yields a <em>different, valid-looking</em> identifier that P21 will happily store, and nothing downstream can tell it was truncated. Refuse the write.</li>
+<li><strong>Free text truncates, with a warning.</strong> A clipped note still carries its meaning; failing an entire acknowledgment over a long comment is worse.</li>
+</ul>
+<p>Enforce the limit at your own boundary — a length check costs nothing, while the alternative is a round trip to the ERP to be told no.</p>
 <hr />
 <h2 id="python-error-handling">Python Error Handling</h2>
 <h3 id="httpx-error-handling">httpx Error Handling</h3>

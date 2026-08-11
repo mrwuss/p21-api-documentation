@@ -778,6 +778,8 @@ Response windows (dialogs) can pop up during operations. When this happens:
 4. Handle the response window (interact with it like any other window)
 5. Close/dismiss it to resume the original operation
 
+> **The popup's id lives in `Events` — not in the top-level `ResponseWindowId`.** That field exists in the response and is **empty on real 26.1 responses**, so a client that reads it gets `""` and concludes there is no popup to answer. A production integration had *every* blocked save fail this way before switching to the event. Read `Events[] → windowopened → Data[] → windowid`; check the top-level field first only as forward-compatibility, never as the primary source.
+
 > **Status codes** match the `ResultStatus` enum in `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
 > `None=0, Success=1, Failure=2, Blocked=3`.
 > The API returns Status as an integer. String values (`"Success"`, `"Failure"`, `"Blocked"`) may appear in some contexts — handle both.
@@ -928,7 +930,7 @@ A concrete `w_rule_callback_response` case from the Item window. Items with data
 4. `save()` — if the dialog opens, the result is Status 3 (Blocked) with a `windowopened` event carrying the popup's window ID.
 5. Discover the buttons with `GET /v2/tools?windowId={popupId}`: `cb_1` = **"Yes, Proceed Anyway"**, `cb_2` = "No, Cancel". Run `cb_1` via `POST /v2/tools` with the popup's window ID; the save then commits.
 
-Which items trip the rule depends on each item's data state and differs between environments — don't hard-code a fallback list; run the Transaction API first, verify what stuck, and drive the exceptions interactively.
+Which items trip the rule is **deterministic**, not environmental luck: a site-configured DynaChange rule fires on every save of the Item window, and you can identify it — and usually fix the data instead — before writing any code. See [Item Issues Detected — Root Cause and Data Fix](03-Transaction-API.md#item-issues-detected-popup-root-cause-and-data-fix). Use this interactive path for the cases you cannot data-fix; don't hard-code a fallback list of items.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier).
 
@@ -999,6 +1001,8 @@ POST /api/ui/interactive/v2/tools
     "ToolText": "Save"
 }
 ```
+
+> **The key must be `ToolName`.** Posting the button under `Name` — the spelling most other P21 payloads use — is accepted and does **nothing**: P21 returns `Status: 2` (Failure) with no message, so the tool never runs and a popup you were trying to dismiss stays open. Verified live on 26.1. `GET /v2/tools` returns the buttons under `ToolName` too; carry that key straight through to the POST rather than re-mapping it.
 
 For datawindow or field-level tools, include the optional fields:
 
