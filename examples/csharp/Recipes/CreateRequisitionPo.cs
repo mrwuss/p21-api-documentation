@@ -106,8 +106,8 @@ public static class CreateRequisitionPo
                             ["Rows"] = new JArray
                             {
                                 Row(("location_id", "10"),
-                                    ("vendor_id", "21445"),
-                                    ("vendor_supplier_id", "22132")),   // header, NOT the line
+                                    ("vendor_id", "99001"),
+                                    ("vendor_supplier_id", "10050")),   // header, NOT the line
                             },
                         },
                         new JObject

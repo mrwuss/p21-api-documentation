@@ -6,7 +6,7 @@ Enter a sales order interactively when a line is an assembly that must explode i
 
 ## Prerequisites
 
-- Token + UI server URL (shared auth helper — see the [recipes README](README.md)).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
 - The item is configured as an assembly (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save.
 - **Why not the Transaction API?** Entering an assembly item there fires an *"add as assembly?"* prompt which the stateless API auto-answers **No**, killing the explode ([Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas)). The Interactive API lets you answer it. For plain (non-assembly) orders, use the simpler [create-sales-order](create-sales-order.md) recipe instead.
 - The session must be started with **`ResponseWindowHandlingEnabled: true`** so you can inspect and answer the prompts yourself.
@@ -79,14 +79,61 @@ Includes an `answer_response_windows` helper grounded in the [Response Windows](
 
 <!-- tabs -->
 ```python
-import httpx  # p21_auth() from recipes/README.md
+"""Enter a sales order with an assembly line via the Interactive API, then verify."""
+import re
 
-BASE_URL = "https://play.p21server.com"
-USERNAME = "api_user"
-PASSWORD = "api_pass"
+import httpx
 
-token, ui_server, headers = p21_auth(BASE_URL, USERNAME, PASSWORD)
-iapi = f"{ui_server}/api/ui/interactive"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_ID = "100198"
+SALES_LOC_ID = "10"
+SOURCE_LOC_ID = "10"
+SHIP_TO_ID = "200"
+CONTACT_ID = "300"
+ORDER_DATE = "2030-01-05"
+REQUESTED_DATE = "2030-01-06"
+PO_NO = "PO-TEST-001"
+TAKER = "JSMITH"                          # else the order is taken by the API user
+ASSEMBLY_ITEM_ID = "WIDGET-001"           # the assembly item to explode
+UNIT_QUANTITY = "5"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
 
 def is_blocked(result: dict) -> bool:
@@ -109,304 +156,436 @@ def popup_ids(result: dict) -> list[str]:
     return ids
 
 
-def answer_response_windows(result: dict, button: str | None = None) -> dict:
-    """Answer every popup the last action opened, then return the last result.
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+    iapi = f"{ui_server}/api/ui/interactive"
 
-    Discovers buttons via GET /v2/tools?windowId= (the tools endpoint takes
-    ?windowId=, NOT ?id=), then clicks via POST /v2/tools with the POPUP's
-    window ID. If `button` is None, picks the first proceed-style button.
-    """
-    for popup_id in popup_ids(result):
-        tools = httpx.get(
-            f"{iapi}/v2/tools", params={"windowId": popup_id},
-            headers=headers, verify=False,
+    def answer_response_windows(result: dict, button: str | None = None) -> dict:
+        """Answer every popup the last action opened, then return the last result.
+
+        Discovers buttons via GET /v2/tools?windowId= (the tools endpoint takes
+        ?windowId=, NOT ?id=), then clicks via POST /v2/tools with the POPUP's
+        window ID. If `button` is None, picks the first proceed-style button.
+        """
+        for popup_id in popup_ids(result):
+            tools = client.get(f"{iapi}/v2/tools", params={"windowId": popup_id},
+                               headers=headers)
+            tools.raise_for_status()
+            available = [t.get("Name") or t.get("ToolName") for t in tools.json()]
+            pick = button
+            if pick is None:  # prefer common proceed buttons
+                pick = next((b for b in ("cb_ok", "cb_1", "cb_yes")
+                             if b in available), None)
+            if pick is None or pick not in available:
+                raise RuntimeError(
+                    f"Popup {popup_id}: buttons {available}, wanted {button}")
+            click = client.post(
+                f"{iapi}/v2/tools", headers=headers,
+                json={"WindowId": popup_id, "ToolName": pick},
+            )
+            click.raise_for_status()
+            result = click.json()
+        return result
+
+    def change(window_id: str, tab: str, dw: str, field: str, value: str,
+               answer: str | None = None) -> dict:
+        """Change one field; answer the popup it triggers (if any) with `answer`."""
+        resp = client.put(
+            f"{iapi}/v2/change", headers=headers,
+            json={"WindowId": window_id, "List": [{
+                "TabName": tab, "DatawindowName": dw,  # required on 25.2+
+                "FieldName": field, "Value": value,
+            }]},
         )
-        tools.raise_for_status()
-        available = [t.get("Name") or t.get("ToolName") for t in tools.json()]
-        pick = button
-        if pick is None:  # prefer common proceed buttons
-            pick = next((b for b in ("cb_ok", "cb_1", "cb_yes") if b in available), None)
-        if pick is None or pick not in available:
-            raise RuntimeError(f"Popup {popup_id}: buttons {available}, wanted {button}")
-        click = httpx.post(
-            f"{iapi}/v2/tools", headers=headers, verify=False,
-            json={"WindowId": popup_id, "ToolName": pick},
-        )
-        click.raise_for_status()
-        result = click.json()
-    return result
+        resp.raise_for_status()
+        result = resp.json()
+        if result.get("Status") in (2, "Failure"):
+            raise RuntimeError(f"{field}: {result.get('Messages')}")
+        if is_blocked(result):
+            result = answer_response_windows(result, answer)
+        return result
 
-
-def change(window_id: str, tab: str, dw: str, field: str, value: str,
-           answer: str | None = None) -> dict:
-    """Change one field; answer the popup it triggers (if any) with `answer`."""
-    resp = httpx.put(
-        f"{iapi}/v2/change", headers=headers, verify=False,
-        json={"WindowId": window_id, "List": [{
-            "TabName": tab, "DatawindowName": dw,  # DatawindowName required on 25.2+
-            "FieldName": field, "Value": value,
-        }]},
-    )
-    resp.raise_for_status()
-    result = resp.json()
-    if result.get("Status") in (2, "Failure"):
-        raise RuntimeError(f"{field}: {result.get('Messages')}")
-    if is_blocked(result):
-        result = answer_response_windows(result, answer)
-    return result
-
-
-# 1. Session with response-window handling ON
-httpx.post(
-    f"{iapi}/sessions", headers=headers, verify=False,
-    json={"ResponseWindowHandlingEnabled": True},
-).raise_for_status()
-
-# 2. Open the Order window
-win = httpx.post(
-    f"{iapi}/v2/window", headers=headers, verify=False,
-    json={"ServiceName": "Order"},
-)
-win.raise_for_status()
-window_id = win.json()["WindowId"]
-
-try:
-    # 3. Header -- TABPAGE_1 / datawindow "order". quote OFF = real order.
-    change(window_id, "TABPAGE_1", "order", "quote", "OFF")
-    change(window_id, "TABPAGE_1", "order", "sales_loc_id", "10")
-    change(window_id, "TABPAGE_1", "order", "source_loc_id", "10")
-    change(window_id, "TABPAGE_1", "order", "customer_id", "100198")
-    change(window_id, "TABPAGE_1", "order", "ship_to_id", "200")
-    change(window_id, "TABPAGE_1", "order", "contact_id", "300")
-    # Dates fire the w_response_common date-cascade prompt even on a NEW order
-    change(window_id, "TABPAGE_1", "order", "order_date", "2030-01-05", answer="cb_ok")
-    change(window_id, "TABPAGE_1", "order", "requested_date", "2030-01-06", answer="cb_ok")
-    change(window_id, "TABPAGE_1", "order", "po_no", "PO-TEST-001")
-    change(window_id, "TABPAGE_1", "order", "taker", "JSMITH")  # else = API user
-
-    # 4. Lines tab
-    httpx.put(
-        f"{iapi}/v2/tab", headers=headers, verify=False,
-        json={"WindowId": window_id, "PageName": "TP_ITEMS"},
+    # 1. Session with response-window handling ON
+    client.post(
+        f"{iapi}/sessions", headers=headers,
+        json={"ResponseWindowHandlingEnabled": True},
     ).raise_for_status()
 
-    # 5. Item on the EXISTING items row (no /v2/row add for the first line).
-    #    Assembly prompt: cb_1 = Yes (explode / link prod order).
-    change(window_id, "TP_ITEMS", "items", "oe_order_item_id", "WIDGET-001", answer="cb_1")
-    # 6. Quantity
-    change(window_id, "TP_ITEMS", "items", "unit_quantity", "5")
+    # 2. Open the Order window
+    win = client.post(f"{iapi}/v2/window", headers=headers,
+                      json={"ServiceName": "Order"})
+    win.raise_for_status()
+    window_id = win.json()["WindowId"]
 
-    # 7. Save -- v2 body is the bare window-ID string (an object => 422)
-    save = httpx.put(f"{iapi}/v2/data", headers=headers, verify=False, json=window_id)
-    save.raise_for_status()
-    result = save.json()
-    while is_blocked(result):  # follow-on prompts: answer with proceed button
-        result = answer_response_windows(result)
-    if result.get("Status") in (2, "Failure"):
-        raise RuntimeError(f"Save failed: {result.get('Messages')}")
-
-    # 8. Read order_no back. GET /v2/data returns the ACTIVE surface --
-    #    switch back to the header tab first.
-    httpx.put(
-        f"{iapi}/v2/tab", headers=headers, verify=False,
-        json={"WindowId": window_id, "PageName": "TABPAGE_1"},
-    ).raise_for_status()
-    data = httpx.get(
-        f"{iapi}/v2/data", params={"id": window_id},
-        headers=headers, verify=False,
-    )
-    data.raise_for_status()
     order_no = None
-    for dw in data.json():
-        if dw.get("Name") == "order":
-            row = dw["Data"][dw.get("ActiveRow", 0)]
-            order_no = row[dw["Columns"].index("order_no")]
-            print(f"Created order_no: {order_no}")
-finally:
-    # 9. Clean up (window uses ?id=; sessions endpoint takes no parameter)
-    httpx.delete(f"{iapi}/v2/window", params={"id": window_id},
-                 headers=headers, verify=False)
-    httpx.delete(f"{iapi}/sessions", headers=headers, verify=False)
+    try:
+        # 3. Header -- TABPAGE_1 / datawindow "order". quote OFF = real order.
+        change(window_id, "TABPAGE_1", "order", "quote", "OFF")
+        change(window_id, "TABPAGE_1", "order", "sales_loc_id", SALES_LOC_ID)
+        change(window_id, "TABPAGE_1", "order", "source_loc_id", SOURCE_LOC_ID)
+        change(window_id, "TABPAGE_1", "order", "customer_id", CUSTOMER_ID)
+        change(window_id, "TABPAGE_1", "order", "ship_to_id", SHIP_TO_ID)
+        change(window_id, "TABPAGE_1", "order", "contact_id", CONTACT_ID)
+        # Dates fire the w_response_common date-cascade prompt even on a NEW order
+        change(window_id, "TABPAGE_1", "order", "order_date", ORDER_DATE, answer="cb_ok")
+        change(window_id, "TABPAGE_1", "order", "requested_date", REQUESTED_DATE,
+               answer="cb_ok")
+        change(window_id, "TABPAGE_1", "order", "po_no", PO_NO)
+        change(window_id, "TABPAGE_1", "order", "taker", TAKER)
 
-# 10. Verify via OData (mirrors the Verify section): assembly codes on the
-#     lines, and the production-order link for the assembly line.
-lines = httpx.get(
-    f"{BASE_URL}/odataservice/odata/table/oe_line",
-    params={"$filter": f"order_no eq '{order_no}'"},
-    headers=headers, verify=False,
-)
-lines.raise_for_status()
-for line in lines.json()["value"]:
-    # assembly: B = kit parent, N = component, P = production-order line,
-    # S = build-to-stock allocation
-    print(f"Line {line['line_no']}: assembly={line['assembly']}")
-    if line["assembly"] == "P":
-        link = httpx.get(
-            f"{BASE_URL}/odataservice/odata/table/prod_order_line_link",
-            params={"$filter": f"transaction_uid eq {line['oe_line_uid']} "
-                               "and trans_type eq 'O'"},
-            headers=headers, verify=False,
-        )
-        link.raise_for_status()
-        linked = bool(link.json()["value"])
-        print(f"  prod_order_line_link: {'present' if linked else 'MISSING'}")
+        # 4. Lines tab
+        client.put(
+            f"{iapi}/v2/tab", headers=headers,
+            json={"WindowId": window_id, "PageName": "TP_ITEMS"},
+        ).raise_for_status()
+
+        # 5. Item on the EXISTING items row (no /v2/row add for the first line).
+        #    Assembly prompt: cb_1 = Yes (explode / link prod order).
+        change(window_id, "TP_ITEMS", "items", "oe_order_item_id",
+               ASSEMBLY_ITEM_ID, answer="cb_1")
+        # 6. Quantity
+        change(window_id, "TP_ITEMS", "items", "unit_quantity", UNIT_QUANTITY)
+
+        # 7. Save -- v2 body is the bare window-ID string (an object => 422)
+        save = client.put(f"{iapi}/v2/data", headers=headers, json=window_id)
+        save.raise_for_status()
+        result = save.json()
+        while is_blocked(result):  # follow-on prompts: answer with proceed button
+            result = answer_response_windows(result)
+        if result.get("Status") in (2, "Failure"):
+            raise RuntimeError(f"Save failed: {result.get('Messages')}")
+
+        # 8. Read order_no back. GET /v2/data returns the ACTIVE surface --
+        #    switch back to the header tab first.
+        client.put(
+            f"{iapi}/v2/tab", headers=headers,
+            json={"WindowId": window_id, "PageName": "TABPAGE_1"},
+        ).raise_for_status()
+        data = client.get(f"{iapi}/v2/data", params={"id": window_id},
+                          headers=headers)
+        data.raise_for_status()
+        for dw in data.json():
+            if dw.get("Name") == "order":
+                row = dw["Data"][dw.get("ActiveRow", 0)]
+                order_no = row[dw["Columns"].index("order_no")]
+                print(f"Created order_no: {order_no}")
+    finally:
+        # 9. Clean up (window uses ?id=; sessions endpoint takes no parameter)
+        client.delete(f"{iapi}/v2/window", params={"id": window_id}, headers=headers)
+        client.delete(f"{iapi}/sessions", headers=headers)
+
+    # 10. Verify via OData (mirrors the Verify section): assembly codes on the
+    #     lines, and the production-order link for the assembly line.
+    lines = client.get(
+        f"{BASE_URL}/odataservice/odata/table/oe_line",
+        params={"$filter": f"order_no eq '{order_no}'"},
+        headers=headers,
+    )
+    lines.raise_for_status()
+    for line in lines.json()["value"]:
+        # assembly: B = kit parent, N = component, P = production-order line,
+        # S = build-to-stock allocation
+        print(f"Line {line['line_no']}: assembly={line['assembly']}")
+        if line["assembly"] == "P":
+            link = client.get(
+                f"{BASE_URL}/odataservice/odata/table/prod_order_line_link",
+                params={"$filter": f"transaction_uid eq {line['oe_line_uid']} "
+                                   "and trans_type eq 'O'"},
+                headers=headers,
+            )
+            link.raise_for_status()
+            linked = bool(link.json()["value"])
+            print(f"  prod_order_line_link: {'present' if linked else 'MISSING'}")
 ```
 
 ```csharp
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "api_pass");
-var http = session.Http;
-var iapi = $"{session.UiServer}/api/ui/interactive";
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-bool IsBlocked(JObject r) =>
-    r["Status"]?.ToString() is "3" or "Blocked";  // int or string form
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerId = "100198";
+const string SalesLocId = "10";
+const string SourceLocId = "10";
+const string ShipToId = "200";
+const string ContactId = "300";
+const string OrderDate = "2030-01-05";
+const string RequestedDate = "2030-01-06";
+const string PoNo = "PO-TEST-001";
+const string Taker = "JSMITH";              // else the order is taken by the API user
+const string AssemblyItemId = "WIDGET-001"; // the assembly item to explode
+const string UnitQuantity = "5";
+// ---------------------------------------------------------------------------
 
-List<string> PopupIds(JObject r) =>
-    (r["Events"] as JArray ?? new JArray())
-        .Where(e => e["Name"]?.ToString() == "windowopened")
-        .SelectMany(e => e["Data"] as JArray ?? new JArray())
-        .Where(kv => kv["Key"]?.ToString() == "windowid")
-        .Select(kv => kv["Value"]!.ToString())
-        .ToList();
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+var iapi = $"{uiServer}/api/ui/interactive";
+
+// Status is an integer (ResultStatus enum: 0 None, 1 Success, 2 Failure,
+// 3 Blocked) but may appear as a string in some contexts -- handle both.
+static bool IsBlocked(JsonElement r) =>
+    r.TryGetProperty("Status", out var s) && StatusText(s) is "3" or "Blocked";
+
+static string? StatusText(JsonElement s) =>
+    s.ValueKind == JsonValueKind.String ? s.GetString() : s.ToString();
+
+// Window IDs of popups opened by the last action.
+// Events[].Data is a key-value list: [{"Key": "windowid", "Value": "..."}].
+static List<string> PopupIds(JsonElement r)
+{
+    var ids = new List<string>();
+    if (!r.TryGetProperty("Events", out var events)) return ids;
+    foreach (var e in events.EnumerateArray())
+    {
+        if (e.GetProperty("Name").GetString() != "windowopened") continue;
+        foreach (var kv in e.GetProperty("Data").EnumerateArray())
+        {
+            if (kv.GetProperty("Key").GetString() == "windowid")
+            {
+                ids.Add(kv.GetProperty("Value").GetString()!);
+            }
+        }
+    }
+    return ids;
+}
 
 // Answer every popup the last action opened; button null => first proceed button.
-async Task<JObject> AnswerResponseWindowsAsync(JObject result, string? button = null)
+async Task<JsonElement> AnswerResponseWindowsAsync(JsonElement result, string? button = null)
 {
     foreach (var popupId in PopupIds(result))
     {
         // Tools endpoint takes ?windowId=, NOT ?id=
-        var toolsResp = await http.GetAsync($"{iapi}/v2/tools?windowId={popupId}");
+        using var toolsResp = await client.GetAsync($"{iapi}/v2/tools?windowId={popupId}");
         toolsResp.EnsureSuccessStatusCode();
-        var available = JArray.Parse(await toolsResp.Content.ReadAsStringAsync())
-            .Select(t => (t["Name"] ?? t["ToolName"])?.ToString()).ToList();
+        using var tools = JsonDocument.Parse(await toolsResp.Content.ReadAsStringAsync());
+        var available = tools.RootElement.EnumerateArray()
+            .Select(t => t.TryGetProperty("Name", out var n)
+                ? n.GetString()
+                : t.GetProperty("ToolName").GetString())
+            .ToList();
         var pick = button
             ?? new[] { "cb_ok", "cb_1", "cb_yes" }.FirstOrDefault(available.Contains)
             ?? throw new InvalidOperationException(
                 $"Popup {popupId}: buttons [{string.Join(", ", available)}]");
-        var clickBody = new JObject { ["WindowId"] = popupId, ["ToolName"] = pick };
-        var clickResp = await http.PostAsync($"{iapi}/v2/tools",
-            new StringContent(clickBody.ToString(), Encoding.UTF8, "application/json"));
+        var clickBody = JsonSerializer.Serialize(new { WindowId = popupId, ToolName = pick });
+        using var clickResp = await client.PostAsync($"{iapi}/v2/tools",
+            new StringContent(clickBody, Encoding.UTF8, "application/json"));
         clickResp.EnsureSuccessStatusCode();
-        result = JObject.Parse(await clickResp.Content.ReadAsStringAsync());
+        using var clicked = JsonDocument.Parse(await clickResp.Content.ReadAsStringAsync());
+        result = clicked.RootElement.Clone();
     }
     return result;
 }
 
-async Task<JObject> ChangeAsync(string windowId, string tab, string dw,
+// Change one field; answer the popup it triggers (if any) with `answer`.
+async Task<JsonElement> ChangeAsync(string windowId, string tab, string dw,
     string field, string value, string? answer = null)
 {
-    var body = new JObject
+    var body = JsonSerializer.Serialize(new
     {
-        ["WindowId"] = windowId,
-        ["List"] = new JArray { new JObject
+        WindowId = windowId,
+        List = new[]
         {
-            ["TabName"] = tab,
-            ["DatawindowName"] = dw,   // required on 25.2+
-            ["FieldName"] = field,
-            ["Value"] = value,
-        }},
-    };
-    var resp = await http.PutAsync($"{iapi}/v2/change",
-        new StringContent(body.ToString(), Encoding.UTF8, "application/json"));
+            new
+            {
+                TabName = tab,
+                DatawindowName = dw,   // required on 25.2+
+                FieldName = field,
+                Value = value,
+            },
+        },
+    });
+    using var resp = await client.PutAsync($"{iapi}/v2/change",
+        new StringContent(body, Encoding.UTF8, "application/json"));
     resp.EnsureSuccessStatusCode();
-    var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-    if (result["Status"]?.ToString() is "2" or "Failure")
-        throw new InvalidOperationException($"{field}: {result["Messages"]}");
+    using var parsed = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+    var result = parsed.RootElement.Clone();
+    if (result.TryGetProperty("Status", out var status) &&
+        StatusText(status) is "2" or "Failure")
+    {
+        throw new InvalidOperationException($"{field}: {result.GetProperty("Messages")}");
+    }
     return IsBlocked(result) ? await AnswerResponseWindowsAsync(result, answer) : result;
 }
 
 // 1. Session with response-window handling ON
-var sessBody = new JObject { ["ResponseWindowHandlingEnabled"] = true };
-(await http.PostAsync($"{iapi}/sessions",
-    new StringContent(sessBody.ToString(), Encoding.UTF8, "application/json")))
-    .EnsureSuccessStatusCode();
+using (var sessResp = await client.PostAsync($"{iapi}/sessions",
+    new StringContent(
+        JsonSerializer.Serialize(new { ResponseWindowHandlingEnabled = true }),
+        Encoding.UTF8, "application/json")))
+{
+    sessResp.EnsureSuccessStatusCode();
+}
 
 // 2. Open the Order window
-var winBody = new JObject { ["ServiceName"] = "Order" };
-var winResp = await http.PostAsync($"{iapi}/v2/window",
-    new StringContent(winBody.ToString(), Encoding.UTF8, "application/json"));
-winResp.EnsureSuccessStatusCode();
-var windowId = JObject.Parse(await winResp.Content.ReadAsStringAsync())["WindowId"]!.ToString();
+string windowId;
+using (var winResp = await client.PostAsync($"{iapi}/v2/window",
+    new StringContent(JsonSerializer.Serialize(new { ServiceName = "Order" }),
+        Encoding.UTF8, "application/json")))
+{
+    winResp.EnsureSuccessStatusCode();
+    using var win = JsonDocument.Parse(await winResp.Content.ReadAsStringAsync());
+    windowId = win.RootElement.GetProperty("WindowId").GetString()!;
+}
 
 string? orderNo = null;
 try
 {
     // 3. Header -- TABPAGE_1 / datawindow "order". quote OFF = real order.
     await ChangeAsync(windowId, "TABPAGE_1", "order", "quote", "OFF");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "sales_loc_id", "10");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "source_loc_id", "10");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "customer_id", "100198");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "ship_to_id", "200");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "contact_id", "300");
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "sales_loc_id", SalesLocId);
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "source_loc_id", SourceLocId);
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "customer_id", CustomerId);
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "ship_to_id", ShipToId);
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "contact_id", ContactId);
     // Dates fire the w_response_common date-cascade prompt even on a NEW order
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "order_date", "2030-01-05", "cb_ok");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "requested_date", "2030-01-06", "cb_ok");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "po_no", "PO-TEST-001");
-    await ChangeAsync(windowId, "TABPAGE_1", "order", "taker", "JSMITH"); // else = API user
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "order_date", OrderDate, "cb_ok");
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "requested_date", RequestedDate, "cb_ok");
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "po_no", PoNo);
+    await ChangeAsync(windowId, "TABPAGE_1", "order", "taker", Taker);
 
     // 4. Lines tab
-    var tabBody = new JObject { ["WindowId"] = windowId, ["PageName"] = "TP_ITEMS" };
-    (await http.PutAsync($"{iapi}/v2/tab",
-        new StringContent(tabBody.ToString(), Encoding.UTF8, "application/json")))
-        .EnsureSuccessStatusCode();
+    await SwitchTabAsync(client, iapi, windowId, "TP_ITEMS");
 
     // 5. Item on the EXISTING items row; assembly prompt: cb_1 = Yes (explode)
-    await ChangeAsync(windowId, "TP_ITEMS", "items", "oe_order_item_id", "WIDGET-001", "cb_1");
+    await ChangeAsync(windowId, "TP_ITEMS", "items", "oe_order_item_id",
+        AssemblyItemId, "cb_1");
     // 6. Quantity
-    await ChangeAsync(windowId, "TP_ITEMS", "items", "unit_quantity", "5");
+    await ChangeAsync(windowId, "TP_ITEMS", "items", "unit_quantity", UnitQuantity);
 
     // 7. Save -- v2 body is the bare window-ID JSON string (an object => 422)
-    var saveResp = await http.PutAsync($"{iapi}/v2/data",
-        new StringContent($"\"{windowId}\"", Encoding.UTF8, "application/json"));
-    saveResp.EnsureSuccessStatusCode();
-    var result = JObject.Parse(await saveResp.Content.ReadAsStringAsync());
+    JsonElement result;
+    using (var saveResp = await client.PutAsync($"{iapi}/v2/data",
+        new StringContent($"\"{windowId}\"", Encoding.UTF8, "application/json")))
+    {
+        saveResp.EnsureSuccessStatusCode();
+        using var saved = JsonDocument.Parse(await saveResp.Content.ReadAsStringAsync());
+        result = saved.RootElement.Clone();
+    }
     while (IsBlocked(result))  // follow-on prompts: answer with proceed button
+    {
         result = await AnswerResponseWindowsAsync(result);
-    if (result["Status"]?.ToString() is "2" or "Failure")
-        throw new InvalidOperationException($"Save failed: {result["Messages"]}");
+    }
+    if (result.TryGetProperty("Status", out var saveStatus) &&
+        StatusText(saveStatus) is "2" or "Failure")
+    {
+        throw new InvalidOperationException($"Save failed: {result.GetProperty("Messages")}");
+    }
 
     // 8. Read order_no back -- /v2/data returns the ACTIVE surface, so
     //    switch back to the header tab first.
-    var backBody = new JObject { ["WindowId"] = windowId, ["PageName"] = "TABPAGE_1" };
-    (await http.PutAsync($"{iapi}/v2/tab",
-        new StringContent(backBody.ToString(), Encoding.UTF8, "application/json")))
-        .EnsureSuccessStatusCode();
-    var dataResp = await http.GetAsync($"{iapi}/v2/data?id={windowId}");
+    await SwitchTabAsync(client, iapi, windowId, "TABPAGE_1");
+    using var dataResp = await client.GetAsync($"{iapi}/v2/data?id={windowId}");
     dataResp.EnsureSuccessStatusCode();
-    foreach (var dw in JArray.Parse(await dataResp.Content.ReadAsStringAsync()))
+    using var data = JsonDocument.Parse(await dataResp.Content.ReadAsStringAsync());
+    foreach (var dw in data.RootElement.EnumerateArray())
     {
-        if (dw["Name"]?.ToString() != "order") continue;
-        var columns = (dw["Columns"] as JArray)!.Select(c => c.ToString()).ToList();
-        var row = (dw["Data"] as JArray)![(int?)dw["ActiveRow"] ?? 0];
-        orderNo = row[columns.IndexOf("order_no")]?.ToString();
+        if (dw.GetProperty("Name").GetString() != "order") continue;
+        var columns = dw.GetProperty("Columns").EnumerateArray()
+            .Select(c => c.GetString()).ToList();
+        var activeRow = dw.TryGetProperty("ActiveRow", out var a) ? a.GetInt32() : 0;
+        var row = dw.GetProperty("Data")[activeRow];
+        orderNo = row[columns.IndexOf("order_no")].ToString();
         Console.WriteLine($"Created order_no: {orderNo}");
     }
 }
 finally
 {
     // 9. Clean up (window uses ?id=; sessions endpoint takes no parameter)
-    await http.DeleteAsync($"{iapi}/v2/window?id={windowId}");
-    await http.DeleteAsync($"{iapi}/sessions");
+    await client.DeleteAsync($"{iapi}/v2/window?id={windowId}");
+    await client.DeleteAsync($"{iapi}/sessions");
 }
 
 // 10. Verify via OData (mirrors the Verify section): assembly codes on the
 //     lines, and the production-order link for the assembly line.
-var lineResp = await http.GetAsync(
-    "https://play.p21server.com/odataservice/odata/table/oe_line" +
-    $"?$filter=order_no eq '{orderNo}'");
-lineResp.EnsureSuccessStatusCode();
-foreach (var line in (JArray)JObject.Parse(await lineResp.Content.ReadAsStringAsync())["value"]!)
+foreach (var line in await ODataAsync(client, "oe_line", $"order_no eq '{orderNo}'"))
 {
     // assembly: B = kit parent, N = component, P = production-order line,
     // S = build-to-stock allocation
-    Console.WriteLine($"Line {line["line_no"]}: assembly={line["assembly"]}");
-    if (line["assembly"]?.ToString() != "P") continue;
-    var linkResp = await http.GetAsync(
-        "https://play.p21server.com/odataservice/odata/table/prod_order_line_link" +
-        $"?$filter=transaction_uid eq {line["oe_line_uid"]} and trans_type eq 'O'");
-    linkResp.EnsureSuccessStatusCode();
-    var linked = ((JArray)JObject.Parse(await linkResp.Content.ReadAsStringAsync())["value"]!).Any();
-    Console.WriteLine($"  prod_order_line_link: {(linked ? "present" : "MISSING")}");
+    var assembly = line.GetProperty("assembly").GetString();
+    Console.WriteLine($"Line {line.GetProperty("line_no")}: assembly={assembly}");
+    if (assembly != "P") continue;
+    var links = await ODataAsync(client, "prod_order_line_link",
+        $"transaction_uid eq {line.GetProperty("oe_line_uid")} and trans_type eq 'O'");
+    Console.WriteLine($"  prod_order_line_link: {(links.Count > 0 ? "present" : "MISSING")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static async Task SwitchTabAsync(HttpClient client, string iapi, string windowId, string page)
+{
+    var body = JsonSerializer.Serialize(new { WindowId = windowId, PageName = page });
+    using var resp = await client.PutAsync($"{iapi}/v2/tab",
+        new StringContent(body, Encoding.UTF8, "application/json"));
+    resp.EnsureSuccessStatusCode();
+}
+
+static async Task<List<JsonElement>> ODataAsync(HttpClient client, string table, string filter)
+{
+    using var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/{table}?$filter=" + Uri.EscapeDataString(filter));
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray()
+        .Select(x => x.Clone()).ToList();
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->

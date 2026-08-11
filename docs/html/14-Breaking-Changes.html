@@ -461,7 +461,7 @@
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
 <li><a href="#6-batched-v2change-is-not-atomic-a-rejected-field-does-not-roll-back-its-neighbours">6. Batched /v2/change is not atomic — a rejected field does not roll back its neighbours</a></li>
 <li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
-<li><a href="#8-ignoredisabled-true-reports-success-on-jobcontractpricing-valuesvalues-writes-that-write-nothing">8. IgnoreDisabled: true reports success on JobContractPricing VALUES.values writes that write nothing</a></li>
+<li><a href="#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">8. IgnoreDisabled: true reports success on writes that write nothing</a></li>
 <li><a href="#related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</a></li>
 </ul>
 </li>
@@ -568,6 +568,9 @@
 <p>The ghost also <strong>masks the original error</strong>: once one call has poisoned the session, every subsequent create returns 409 regardless of its headers — so the very header experiment you would run to diagnose #1 reports the wrong answer unless you clear the ghost between attempts.</p>
 <p><strong>Mitigation:</strong> fix the <code>Accept</code> header (#1). If you see 500/409 alternation on 2026.1, check the headers before anything else.</p>
 <p><strong>To clear a ghost, <code>DELETE</code> the session — don't wait it out.</strong> <code>DELETE {uiserver}/api/ui/interactive/sessions</code> returns 200 and a clean create succeeds <strong>immediately</strong> afterward (verified on 26.1.5894.1). Waiting for <code>SessionCleanupExpiration</code> (~6 min) also works but is unnecessary; make the delete the first step of your retry path.</p>
+<blockquote>
+<p><strong>This only works while you still hold the token that created the session.</strong> Verified on 26.1.5910.3: the delete is scoped to the bearer token, so a ghost left by a <em>previous</em> token — a crashed process, a worker that re-authenticated, a retry path that fetched a fresh token before cleaning up — cannot be deleted at all. Query parameters and body forms carrying the session id are all refused with <code>400 {"ErrorMessage":"Invalid session"}</code>, and only <code>SessionCleanupExpiration</code> will reap it. Keep the token alive until the session is closed; do not re-authenticate as part of your recovery path before deleting. Full attempt matrix: <a href="04-Interactive-API.html#6-end-session">Interactive API § End Session</a>.</p>
+</blockquote>
 <h3 id="3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: <code>SessionId</code> → <code>Id</code></h3>
 <p><code>POST /api/ui/interactive/sessions/</code> returns the session identifier under <strong><code>Id</code></strong> on 2026.1; 2025.2 returned <strong><code>SessionId</code></strong>.</p>
 <p><strong>Mitigation:</strong> read both (<code>data.get("Id") or data.get("SessionId")</code> / the C# equivalent) so one client works across versions.</p>
@@ -628,7 +631,7 @@
 
 <p><strong>Mitigation:</strong> before relying on UDT update/delete, <strong>check that <code>row_uid</code> exists</strong> (above). If it doesn't, these endpoints cannot reach your data at all — use P21's maintenance UI or direct SQL, and don't build an integration on them. Where they <em>do</em> work, <strong>parse the <code>[N]</code> row count out of <code>errorMessage</code></strong> and treat <code>[0]</code> as a failure; never trust <code>errorNo: 0</code> alone. The <code>row_uid</code> convention is well-attested by the contributors who first documented these endpoints, so tables predating 2026.1 evidently do carry the column. Full detail: <a href="13-UDT-Service-API.html#update">UDT Service API § Update</a>.</p>
 <p>Related payload trap: <strong>delete reads <code>conditions</code> from the payload's top level</strong>, not nested inside <code>rows[]</code> — the nested form returns <code>400 {"error":["Conditions cannot be blank or none!"]}</code> on 2026.1. See <a href="13-UDT-Service-API.html#delete">UDT Service API § Delete</a>.</p>
-<h3 id="8-ignoredisabled-true-reports-success-on-jobcontractpricing-valuesvalues-writes-that-write-nothing">8. <code>IgnoreDisabled: true</code> reports success on <code>JobContractPricing</code> <code>VALUES.values</code> writes that write nothing</h3>
+<h3 id="8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">8. <code>IgnoreDisabled: true</code> reports success on writes that write nothing</h3>
 <p><strong>Data-integrity hazard — silent false success.</strong></p>
 <blockquote>
 <p><strong>Verification scope:</strong> like entry 7, this one has <strong>no prior-version comparison</strong> — no earlier build was available to A/B against. What follows is verified on 26.1; whether it's a <em>regression</em> or has always been true is <strong>unproven</strong>.</p>
@@ -657,8 +660,14 @@
 }
 </code></pre></div>
 
-<p>...and writes <strong>nothing</strong>. A read-back of the target row shows it unchanged: in one run an existing value of <code>519.81</code> survived a <code>"Passed"</code> response; in another the value was still absent. The echoed response doesn't reveal the omission either — it drops the <code>JOBPRICELINE</code> and <code>VALUES</code> DataElements entirely and echoes only the header, so there's nothing in the response to notice is missing.</p>
+<p>...and writes <strong>nothing</strong>. A read-back of the target row shows it unchanged: in one run an existing value of <code>42.50</code> survived a <code>"Passed"</code> response; in another the value was still absent. The echoed response doesn't reveal the omission either — it drops the <code>JOBPRICELINE</code> and <code>VALUES</code> DataElements entirely and echoes only the header, so there's nothing in the response to notice is missing.</p>
 <p>Both the correct tier-1 field name (<code>calculation_value1</code>) and the incorrect unsuffixed spelling (<code>calculation_value</code>) fail identically — this is not a field-naming issue.</p>
+<p><strong>It is not limited to the <code>VALUES</code> tab — it is how the flag fails generally.</strong> The same false success appears on a disabled <em>column</em>. <code>corp_address_id</code> on the contract header is read-only once the contract is saved; without the flag the write is refused loudly:</p>
+<div class="highlight"><pre><span></span><code>General Exception: Column is disabled: corp_address_id
+</code></pre></div>
+
+<p>Add <code>IgnoreDisabled: true</code> and the identical payload returns <code>Summary: {"Failed": 0, "Succeeded": 1}</code> — and a read-back shows the value unchanged (verified 26.1.5910.3, 2026-08-11, on a throwaway contract).</p>
+<p>So <code>IgnoreDisabled</code> has two outcomes that are <strong>indistinguishable in the response</strong>: it genuinely unlocks the write (as it does for contract BINS quantities and JOBPRICECOST commission fields), or it swallows the refusal and writes nothing. You cannot tell which you got without reading the record back.</p>
 <p><strong>Mitigation:</strong> always read back after any write that used <code>IgnoreDisabled: true</code> on <code>JobContractPricing</code> <code>VALUES.values</code> — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat <code>Status: "Passed"</code> under <code>IgnoreDisabled</code> as <strong>unverified</strong> until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write <code>VALUES.values</code> at all, on any of the three paths. See <a href="03-Transaction-API.html#ignoredisabled">Transaction API § IgnoreDisabled</a> and <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> for the same read-back discipline applied elsewhere in this repo.</p>
 <h3 id="related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</h3>
 <p>Found while re-verifying the above on 26.1.5894.1. None of these are regressions, but each will mislead you while debugging one.</p>

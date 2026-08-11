@@ -39,127 +39,354 @@ When creating or modifying price pages, fields must be set in a specific order. 
 **Python**
 
 ```python
-# Step 1: Set page type FIRST - this determines available fields
-await window.change_data("FORM", "price_page_type_cd",
-                         "Supplier / Product Group", datawindow_name="form")
+"""Create a SalesPricePage through the Interactive API, in the required field order."""
+import json
+import re
 
-# Step 2: Set company_id BEFORE product_group_id
-await window.change_data("FORM", "company_id", "ACME", datawindow_name="form")
+import httpx
 
-# Step 3: Set product group
-await window.change_data("FORM", "product_group_id", "HVAC", datawindow_name="form")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+PRODUCT_GROUP_ID = "HVAC"
+SUPPLIER_ID = "10050"
+DESCRIPTION = "P2-L5-10050-HVAC-WHOLESALE"
+EFFECTIVE_DATE = "2025-01-01"
+EXPIRATION_DATE = "2030-12-31"
+MULTIPLIER = "0.85"                       # calculation_value1 -- tier 1, qty 1+
+# ---------------------------------------------------------------------------
 
-# Step 4: Set supplier
-await window.change_data("FORM", "supplier_id", "10050", datawindow_name="form")
 
-# Step 5: Set description
-await window.change_data("FORM", "description", "P2-L5-10050-HVAC-WHOLESALE",
-                         datawindow_name="form")
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# Step 6-7: Set pricing method and source
-await window.change_data("FORM", "pricing_method_cd", "Source", datawindow_name="form")
-await window.change_data("FORM", "source_price_cd", "Supplier List Price",
-                         datawindow_name="form")
 
-# Step 8: Set dates
-await window.change_data("FORM", "effective_date", "2025-01-01", datawindow_name="form")
-await window.change_data("FORM", "expiration_date", "2030-12-31", datawindow_name="form")
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
-# Step 9: Switch to VALUES tab
-await window.select_tab("VALUES")
 
-# Step 10-11: Set calculation method and value
-await window.change_data("VALUES", "calculation_method_cd", "Multiplier",
-                         datawindow_name="values")
-await window.change_data("VALUES", "calculation_value1", "0.85", datawindow_name="values")
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
 
-# Save
-result = await window.save_data()
+    def change(tab: str, datawindow: str, field: str, value: str) -> None:
+        """One field per call -- a batched /v2/change is non-atomic on 2026.1."""
+        r = client.put(
+            f"{ui_server}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{
+                    "TabName": tab,
+                    "DatawindowName": datawindow,   # required since 25.2
+                    "FieldName": field,
+                    "Value": value,
+                }],
+            },
+        )
+        r.raise_for_status()
+
+    # A session must exist before any window can be opened.
+    session = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    session.raise_for_status()
+
+    # ServiceName is the only reliable window identifier -- Name/Title can 400.
+    opened = client.post(
+        f"{ui_server}/api/ui/interactive/v2/window",
+        headers=headers,
+        json={"ServiceName": "SalesPricePage"},
+    )
+    opened.raise_for_status()
+    window_id = opened.json()["WindowId"]
+    print("Window opened:", window_id)
+
+    try:
+        # Step 1: page type FIRST -- it determines which fields are available
+        change("FORM", "form", "price_page_type_cd", "Supplier / Product Group")
+
+        # Step 2: company_id BEFORE product_group_id
+        change("FORM", "form", "company_id", COMPANY_ID)
+
+        # Step 3: product group
+        change("FORM", "form", "product_group_id", PRODUCT_GROUP_ID)
+
+        # Step 4: supplier
+        change("FORM", "form", "supplier_id", SUPPLIER_ID)
+
+        # Step 5: description
+        change("FORM", "form", "description", DESCRIPTION)
+
+        # Steps 6-7: pricing method and source price
+        change("FORM", "form", "pricing_method_cd", "Source")
+        change("FORM", "form", "source_price_cd", "Supplier List Price")
+
+        # Step 8: dates
+        change("FORM", "form", "effective_date", EFFECTIVE_DATE)
+        change("FORM", "form", "expiration_date", EXPIRATION_DATE)
+
+        # Step 9: switch to the VALUES tab (2026.1 binds PageName, not TabName)
+        tab = client.put(
+            f"{ui_server}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "VALUES"},
+        )
+        tab.raise_for_status()
+
+        # Steps 10-11: calculation method, then the tier-1 value
+        change("VALUES", "values", "calculation_method_cd", "Multiplier")
+        change("VALUES", "values", "calculation_value1", MULTIPLIER)
+
+        # Save -- v2 takes the bare WindowId string as the JSON body
+        saved = client.put(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            headers=headers,
+            content=json.dumps(window_id),
+        )
+        saved.raise_for_status()
+        result = saved.json()
+        # ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+        print("Save status:", result.get("Status"))
+        for message in result.get("Messages") or []:
+            print("  Message:", message)
+
+        # ---- read-back: HTTP 200 alone does not mean the save landed --------
+        read_back = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            params={"id": window_id},
+            headers=headers,
+        )
+        read_back.raise_for_status()
+        # /v2/data returns the datawindows of the ACTIVE tab, and only a subset
+        # of them -- absence here is not proof that a field failed to save.
+        print(json.dumps(read_back.json())[:2000])
+    finally:
+        client.delete(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            params={"id": window_id},
+            headers=headers,
+        )
+        # Always end the session -- a leaked one blocks the next create with 409
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 **C#**
 
 ```csharp
-using System;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-// Helper to send a v2 change request to the Interactive API
-async Task ChangeDataAsync(HttpClient client, string baseUrl, string windowId,
-    string tabName, string datawindowName, string fieldName, string value)
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const string ProductGroupId = "HVAC";
+const string SupplierId = "10050";
+const string Description = "P2-L5-10050-HVAC-WHOLESALE";
+const string EffectiveDate = "2025-01-01";
+const string ExpirationDate = "2030-12-31";
+const string Multiplier = "0.85";          // calculation_value1 -- tier 1, qty 1+
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    var payload = new JObject
-    {
-        ["WindowId"] = windowId,
-        ["List"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// A session must exist before any window can be opened.
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
+
+// ServiceName is the only reliable window identifier -- Name/Title can 400.
+var openResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/v2/window",
+    Json(new { ServiceName = "SalesPricePage" }));
+openResponse.EnsureSuccessStatusCode();
+
+using var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync());
+var windowId = opened.RootElement.GetProperty("WindowId").GetString()!;
+Console.WriteLine($"Window opened: {windowId}");
+
+// One field per call -- a batched /v2/change is non-atomic on 2026.1.
+async Task ChangeAsync(string tab, string datawindow, string field, string value)
+{
+    var response = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
         {
-            new JObject
+            WindowId = windowId,
+            List = new[]
             {
-                ["TabName"] = tabName,
-                ["DatawindowName"] = datawindowName,
-                ["FieldName"] = fieldName,
-                ["Value"] = value
+                new
+                {
+                    TabName = tab,
+                    DatawindowName = datawindow,     // required since 25.2
+                    FieldName = field,
+                    Value = value,
+                }
             }
-        }
-    };
-    var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-    var resp = await client.PutAsync(
-        $"{baseUrl}/api/ui/interactive/v2/change", content);
-    resp.EnsureSuccessStatusCode();
+        }));
+    response.EnsureSuccessStatusCode();
 }
 
-// Step 1: Set page type FIRST - this determines available fields
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "price_page_type_cd", "Supplier / Product Group");
+try
+{
+    // Step 1: page type FIRST -- it determines which fields are available
+    await ChangeAsync("FORM", "form", "price_page_type_cd", "Supplier / Product Group");
 
-// Step 2: Set company_id BEFORE product_group_id
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "company_id", "ACME");
+    // Step 2: company_id BEFORE product_group_id
+    await ChangeAsync("FORM", "form", "company_id", CompanyId);
 
-// Step 3: Set product group
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "product_group_id", "HVAC");
+    // Step 3: product group
+    await ChangeAsync("FORM", "form", "product_group_id", ProductGroupId);
 
-// Step 4: Set supplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "supplier_id", "10050");
+    // Step 4: supplier
+    await ChangeAsync("FORM", "form", "supplier_id", SupplierId);
 
-// Step 5: Set description
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "description", "P2-L5-10050-HVAC-WHOLESALE");
+    // Step 5: description
+    await ChangeAsync("FORM", "form", "description", Description);
 
-// Step 6-7: Set pricing method and source
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "pricing_method_cd", "Source");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "source_price_cd", "Supplier List Price");
+    // Steps 6-7: pricing method and source price
+    await ChangeAsync("FORM", "form", "pricing_method_cd", "Source");
+    await ChangeAsync("FORM", "form", "source_price_cd", "Supplier List Price");
 
-// Step 8: Set dates
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "effective_date", "2025-01-01");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "expiration_date", "2030-12-31");
+    // Step 8: dates
+    await ChangeAsync("FORM", "form", "effective_date", EffectiveDate);
+    await ChangeAsync("FORM", "form", "expiration_date", ExpirationDate);
 
-// Step 9: Switch to VALUES tab
-var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "VALUES" };
-var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
+    // Step 9: switch to the VALUES tab (2026.1 binds PageName, not TabName)
+    var tabResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/tab",
+        Json(new { WindowId = windowId, PageName = "VALUES" }));
+    tabResponse.EnsureSuccessStatusCode();
 
-// Step 10-11: Set calculation method and value
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_method_cd", "Multiplier");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value1", "0.85");
+    // Steps 10-11: calculation method, then the tier-1 value
+    await ChangeAsync("VALUES", "values", "calculation_method_cd", "Multiplier");
+    await ChangeAsync("VALUES", "values", "calculation_value1", Multiplier);
 
-// Save — v2 takes the bare WindowId string as the JSON body
-var saveContent = new StringContent($"\"{windowId}\"", Encoding.UTF8, "application/json");
-var saveResp = await client.PutAsync(
-    $"{baseUrl}/api/ui/interactive/v2/data", saveContent);
-saveResp.EnsureSuccessStatusCode();
-var result = JObject.Parse(await saveResp.Content.ReadAsStringAsync());
+    // Save -- v2 takes the bare WindowId string as the JSON body
+    var saveResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/data", Json(windowId));
+    saveResponse.EnsureSuccessStatusCode();
+
+    using var result = JsonDocument.Parse(await saveResponse.Content.ReadAsStringAsync());
+    // ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+    if (result.RootElement.TryGetProperty("Status", out var status))
+        Console.WriteLine($"Save status: {status}");
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        foreach (var message in messages.EnumerateArray())
+            Console.WriteLine($"  Message: {message}");
+    }
+
+    // ---- read-back: HTTP 200 alone does not mean the save landed ----------
+    var readBackResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
+    readBackResponse.EnsureSuccessStatusCode();
+
+    // /v2/data returns the datawindows of the ACTIVE tab, and only a subset of
+    // them -- absence here is not proof that a field failed to save.
+    var raw = await readBackResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(raw.Length > 2000 ? raw[..2000] : raw);
+}
+finally
+{
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    // Always end the session -- a leaked one blocks the next create with 409
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object payload) =>
+    new(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -207,41 +434,29 @@ The `calculation_method_cd` field on the VALUES tab controls how pricing calcula
 
 **Usage Example:**
 
+> Fragment -- it exists to contrast a display value with a code, not to run.
+> Full runnable version: [Example: Creating a Price Page](#example-creating-a-price-page).
+
 <!-- tabs -->
 
 **Python**
 
 ```python
 # Correct - use display value
-window.change_data("VALUES", "calculation_method_cd", "Mark Up", datawindow_name="values")
+change("VALUES", "values", "calculation_method_cd", "Mark Up")
 
 # Incorrect - do not use code
-window.change_data("VALUES", "calculation_method_cd", "229", datawindow_name="values")
+change("VALUES", "values", "calculation_method_cd", "229")
 ```
 
 **C#**
 
 ```csharp
 // Correct - use display value
-var payload = new JObject
-{
-    ["WindowId"] = windowId,
-    ["List"] = new JArray
-    {
-        new JObject
-        {
-            ["TabName"] = "VALUES",
-            ["DatawindowName"] = "values",
-            ["FieldName"] = "calculation_method_cd",
-            ["Value"] = "Mark Up"
-        }
-    }
-};
-var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/change", content);
+await ChangeAsync("VALUES", "values", "calculation_method_cd", "Mark Up");
 
 // Incorrect - do not use code
-// ["Value"] = "229"  // This will NOT work
+await ChangeAsync("VALUES", "values", "calculation_method_cd", "229");
 ```
 
 <!-- /tabs -->
@@ -344,48 +559,262 @@ These codes were discovered by:
 **Python**
 
 ```python
-# Example discovery code
-window = api.open_window(service_name="SalesPricePage")
-window.change_data("FORM", "price_page_uid", "45556", datawindow_name="form")
-window.select_tab("VALUES")
+"""Discovery: set a dropdown by display value, then read the window state back."""
+import json
+import re
 
-# Try setting a display value
-result = window.change_data("VALUES", "calculation_method_cd", "Mark Up", datawindow_name="values")
+import httpx
 
-# Read back the code from window state
-state = window.get_state()
-# Extract calculation_method_cd from state['Data']
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PRICE_PAGE_UID = "45556"                  # an existing page to probe
+DISPLAY_VALUE = "Mark Up"                 # the dropdown label under test
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def change(tab: str, datawindow: str, field: str, value: str) -> None:
+        """One field per call -- a batched /v2/change is non-atomic on 2026.1."""
+        r = client.put(
+            f"{ui_server}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{
+                    "TabName": tab,
+                    "DatawindowName": datawindow,   # required since 25.2
+                    "FieldName": field,
+                    "Value": value,
+                }],
+            },
+        )
+        r.raise_for_status()
+
+    session = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    session.raise_for_status()
+
+    opened = client.post(
+        f"{ui_server}/api/ui/interactive/v2/window",
+        headers=headers,
+        json={"ServiceName": "SalesPricePage"},
+    )
+    opened.raise_for_status()
+    window_id = opened.json()["WindowId"]
+
+    try:
+        # Load a specific price page, then move to the tab that owns the field
+        change("FORM", "form", "price_page_uid", PRICE_PAGE_UID)
+
+        tab = client.put(
+            f"{ui_server}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "VALUES"},
+        )
+        tab.raise_for_status()
+
+        # Try setting a display value
+        change("VALUES", "values", "calculation_method_cd", DISPLAY_VALUE)
+
+        # Read the window state back and find the code the label resolved to
+        state = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            params={"id": window_id},
+            headers=headers,
+        )
+        state.raise_for_status()
+        # Shape varies by window -- dump it and locate calculation_method_cd
+        print(json.dumps(state.json(), indent=2)[:3000])
+    finally:
+        client.delete(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            params={"id": window_id},
+            headers=headers,
+        )
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 **C#**
 
 ```csharp
-// Example discovery code — open window and load a price page
-var openPayload = new JObject { ["ServiceName"] = "SalesPricePage" };
-var openContent = new StringContent(openPayload.ToString(), Encoding.UTF8, "application/json");
-var openResp = await client.PostAsync(
-    $"{baseUrl}/api/ui/interactive/v2/window", openContent);
-var openResult = JObject.Parse(await openResp.Content.ReadAsStringAsync());
-var windowId = openResult["WindowId"]?.ToString();
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-// Load a specific price page (ChangeDataAsync helper defined above)
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "price_page_uid", "45556");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string PricePageUid = "45556";                   // an existing page to probe
+const string DisplayValue = "Mark Up";                 // the dropdown label under test
+// ---------------------------------------------------------------------------
 
-// Switch to VALUES tab
-var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "VALUES" };
-var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-// Try setting a display value
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_method_cd", "Mark Up");
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-// Read back the code from window state
-var stateResp = await client.GetAsync(
-    $"{baseUrl}/api/ui/interactive/v2/data?id={windowId}");
-var state = JObject.Parse(await stateResp.Content.ReadAsStringAsync());
-// Extract calculation_method_cd from state["Data"]
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
+
+var openResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/v2/window",
+    Json(new { ServiceName = "SalesPricePage" }));
+openResponse.EnsureSuccessStatusCode();
+
+using var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync());
+var windowId = opened.RootElement.GetProperty("WindowId").GetString()!;
+
+// One field per call -- a batched /v2/change is non-atomic on 2026.1.
+async Task ChangeAsync(string tab, string datawindow, string field, string value)
+{
+    var response = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
+        {
+            WindowId = windowId,
+            List = new[]
+            {
+                new
+                {
+                    TabName = tab,
+                    DatawindowName = datawindow,     // required since 25.2
+                    FieldName = field,
+                    Value = value,
+                }
+            }
+        }));
+    response.EnsureSuccessStatusCode();
+}
+
+try
+{
+    // Load a specific price page, then move to the tab that owns the field
+    await ChangeAsync("FORM", "form", "price_page_uid", PricePageUid);
+
+    var tabResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/tab",
+        Json(new { WindowId = windowId, PageName = "VALUES" }));
+    tabResponse.EnsureSuccessStatusCode();
+
+    // Try setting a display value
+    await ChangeAsync("VALUES", "values", "calculation_method_cd", DisplayValue);
+
+    // Read the window state back and find the code the label resolved to
+    var stateResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
+    stateResponse.EnsureSuccessStatusCode();
+
+    // Shape varies by window -- dump it and locate calculation_method_cd
+    var raw = await stateResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(raw.Length > 3000 ? raw[..3000] : raw);
+}
+finally
+{
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object payload) =>
+    new(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -435,46 +864,308 @@ services above.
 **Python**
 
 ```python
-# Base multiplier: 0.85 for qty 1+
-await window.change_data("VALUES", "calculation_value1", "0.85", datawindow_name="values")
+"""Set quantity-based price break tiers on an existing price page."""
+import json
+import re
 
-# Price break at qty 6: 0.82 multiplier
-await window.change_data("VALUES", "break1", "6", datawindow_name="values")
-await window.change_data("VALUES", "calculation_value2", "0.82", datawindow_name="values")
+import httpx
 
-# Price break at qty 25: 0.78 multiplier
-await window.change_data("VALUES", "break2", "25", datawindow_name="values")
-await window.change_data("VALUES", "calculation_value3", "0.78", datawindow_name="values")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PRICE_PAGE_UID = "45556"                  # the page whose tiers you are setting
+# ---------------------------------------------------------------------------
 
-# Price break at qty 100: 0.75 multiplier
-await window.change_data("VALUES", "break3", "100", datawindow_name="values")
-await window.change_data("VALUES", "calculation_value4", "0.75", datawindow_name="values")
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def change(tab: str, datawindow: str, field: str, value: str) -> None:
+        """One field per call -- a batched /v2/change is non-atomic on 2026.1."""
+        r = client.put(
+            f"{ui_server}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{
+                    "TabName": tab,
+                    "DatawindowName": datawindow,   # required since 25.2
+                    "FieldName": field,
+                    "Value": value,
+                }],
+            },
+        )
+        r.raise_for_status()
+
+    session = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    session.raise_for_status()
+
+    opened = client.post(
+        f"{ui_server}/api/ui/interactive/v2/window",
+        headers=headers,
+        json={"ServiceName": "SalesPricePage"},
+    )
+    opened.raise_for_status()
+    window_id = opened.json()["WindowId"]
+
+    try:
+        change("FORM", "form", "price_page_uid", PRICE_PAGE_UID)
+
+        tab = client.put(
+            f"{ui_server}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "VALUES"},
+        )
+        tab.raise_for_status()
+
+        # Base multiplier: 0.85 for qty 1+
+        change("VALUES", "values", "calculation_value1", "0.85")
+
+        # Price break at qty 6: 0.82 multiplier
+        change("VALUES", "values", "break1", "6")
+        change("VALUES", "values", "calculation_value2", "0.82")
+
+        # Price break at qty 25: 0.78 multiplier
+        change("VALUES", "values", "break2", "25")
+        change("VALUES", "values", "calculation_value3", "0.78")
+
+        # Price break at qty 100: 0.75 multiplier
+        change("VALUES", "values", "break3", "100")
+        change("VALUES", "values", "calculation_value4", "0.75")
+
+        # Save -- v2 takes the bare WindowId string as the JSON body
+        saved = client.put(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            headers=headers,
+            content=json.dumps(window_id),
+        )
+        saved.raise_for_status()
+        result = saved.json()
+        # ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+        print("Save status:", result.get("Status"))
+        for message in result.get("Messages") or []:
+            print("  Message:", message)
+
+        # ---- read-back: the only proof the tiers landed ---------------------
+        read_back = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            params={"id": window_id},
+            headers=headers,
+        )
+        read_back.raise_for_status()
+        print(json.dumps(read_back.json())[:2000])
+    finally:
+        client.delete(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            params={"id": window_id},
+            headers=headers,
+        )
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 **C#**
 
 ```csharp
-// Base multiplier: 0.85 for qty 1+
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value1", "0.85");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-// Price break at qty 6: 0.82 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "break1", "6");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value2", "0.82");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string PricePageUid = "45556";        // the page whose tiers you are setting
+// ---------------------------------------------------------------------------
 
-// Price break at qty 25: 0.78 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "break2", "25");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value3", "0.78");
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-// Price break at qty 100: 0.75 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "break3", "100");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value4", "0.75");
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
+
+var openResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/v2/window",
+    Json(new { ServiceName = "SalesPricePage" }));
+openResponse.EnsureSuccessStatusCode();
+
+using var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync());
+var windowId = opened.RootElement.GetProperty("WindowId").GetString()!;
+
+// One field per call -- a batched /v2/change is non-atomic on 2026.1.
+async Task ChangeAsync(string tab, string datawindow, string field, string value)
+{
+    var response = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
+        {
+            WindowId = windowId,
+            List = new[]
+            {
+                new
+                {
+                    TabName = tab,
+                    DatawindowName = datawindow,     // required since 25.2
+                    FieldName = field,
+                    Value = value,
+                }
+            }
+        }));
+    response.EnsureSuccessStatusCode();
+}
+
+try
+{
+    await ChangeAsync("FORM", "form", "price_page_uid", PricePageUid);
+
+    var tabResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/tab",
+        Json(new { WindowId = windowId, PageName = "VALUES" }));
+    tabResponse.EnsureSuccessStatusCode();
+
+    // Base multiplier: 0.85 for qty 1+
+    await ChangeAsync("VALUES", "values", "calculation_value1", "0.85");
+
+    // Price break at qty 6: 0.82 multiplier
+    await ChangeAsync("VALUES", "values", "break1", "6");
+    await ChangeAsync("VALUES", "values", "calculation_value2", "0.82");
+
+    // Price break at qty 25: 0.78 multiplier
+    await ChangeAsync("VALUES", "values", "break2", "25");
+    await ChangeAsync("VALUES", "values", "calculation_value3", "0.78");
+
+    // Price break at qty 100: 0.75 multiplier
+    await ChangeAsync("VALUES", "values", "break3", "100");
+    await ChangeAsync("VALUES", "values", "calculation_value4", "0.75");
+
+    // Save -- v2 takes the bare WindowId string as the JSON body
+    var saveResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/data", Json(windowId));
+    saveResponse.EnsureSuccessStatusCode();
+
+    using var result = JsonDocument.Parse(await saveResponse.Content.ReadAsStringAsync());
+    // ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+    if (result.RootElement.TryGetProperty("Status", out var status))
+        Console.WriteLine($"Save status: {status}");
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        foreach (var message in messages.EnumerateArray())
+            Console.WriteLine($"  Message: {message}");
+    }
+
+    // ---- read-back: the only proof the tiers landed ------------------------
+    var readBackResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
+    readBackResponse.EnsureSuccessStatusCode();
+
+    var raw = await readBackResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(raw.Length > 2000 ? raw[..2000] : raw);
+}
+finally
+{
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object payload) =>
+    new(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -521,42 +1212,334 @@ Discount group pages use `discount_group_id` instead of `product_group_id`. The 
 **Python**
 
 ```python
-# Step 1: Set page type to Discount Group
-await window.change_data("FORM", "price_page_type_cd",
-                         "Supplier / Discount Group", datawindow_name="form")
+"""Create a type-213 (Supplier / Discount Group) price page."""
+import json
+import re
 
-# Step 2: Company ID first
-await window.change_data("FORM", "company_id", "ACME", datawindow_name="form")
+import httpx
 
-# Step 3: Discount group (NOT product_group_id)
-await window.change_data("FORM", "discount_group_id", "DG001", datawindow_name="form")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+DISCOUNT_GROUP_ID = "DG001"               # replaces product_group_id on type 213
+SUPPLIER_ID = "10050"
+DESCRIPTION = "P2-L5-10050-DG001-WHOLESALE"
+EFFECTIVE_DATE = "2025-01-01"
+EXPIRATION_DATE = "2030-12-31"
+MULTIPLIER = "0.85"                       # calculation_value1 -- tier 1, qty 1+
+# ---------------------------------------------------------------------------
 
-# Step 4: Supplier
-await window.change_data("FORM", "supplier_id", "10050", datawindow_name="form")
 
-# Steps 5-11: Same as product group pages...
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def change(tab: str, datawindow: str, field: str, value: str) -> None:
+        """One field per call -- a batched /v2/change is non-atomic on 2026.1."""
+        r = client.put(
+            f"{ui_server}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{
+                    "TabName": tab,
+                    "DatawindowName": datawindow,   # required since 25.2
+                    "FieldName": field,
+                    "Value": value,
+                }],
+            },
+        )
+        r.raise_for_status()
+
+    session = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    session.raise_for_status()
+
+    opened = client.post(
+        f"{ui_server}/api/ui/interactive/v2/window",
+        headers=headers,
+        json={"ServiceName": "SalesPricePage"},
+    )
+    opened.raise_for_status()
+    window_id = opened.json()["WindowId"]
+
+    try:
+        # Step 1: page type to Discount Group
+        change("FORM", "form", "price_page_type_cd", "Supplier / Discount Group")
+
+        # Step 2: company_id first
+        change("FORM", "form", "company_id", COMPANY_ID)
+
+        # Step 3: discount group (NOT product_group_id)
+        change("FORM", "form", "discount_group_id", DISCOUNT_GROUP_ID)
+
+        # Step 4: supplier
+        change("FORM", "form", "supplier_id", SUPPLIER_ID)
+
+        # Steps 5-8: same as a product group page
+        change("FORM", "form", "description", DESCRIPTION)
+        change("FORM", "form", "pricing_method_cd", "Source")
+        change("FORM", "form", "source_price_cd", "Supplier List Price")
+        change("FORM", "form", "effective_date", EFFECTIVE_DATE)
+        change("FORM", "form", "expiration_date", EXPIRATION_DATE)
+
+        # Step 9: switch to the VALUES tab (2026.1 binds PageName, not TabName)
+        tab = client.put(
+            f"{ui_server}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "VALUES"},
+        )
+        tab.raise_for_status()
+
+        # Step 10: calculation method and values
+        change("VALUES", "values", "calculation_method_cd", "Multiplier")
+        change("VALUES", "values", "calculation_value1", MULTIPLIER)
+
+        # Save -- v2 takes the bare WindowId string as the JSON body
+        saved = client.put(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            headers=headers,
+            content=json.dumps(window_id),
+        )
+        saved.raise_for_status()
+        result = saved.json()
+        # ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+        print("Save status:", result.get("Status"))
+        for message in result.get("Messages") or []:
+            print("  Message:", message)
+
+        # ---- read-back: the only proof the page landed ----------------------
+        read_back = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            params={"id": window_id},
+            headers=headers,
+        )
+        read_back.raise_for_status()
+        print(json.dumps(read_back.json())[:2000])
+    finally:
+        client.delete(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            params={"id": window_id},
+            headers=headers,
+        )
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 **C#**
 
 ```csharp
-// Step 1: Set page type to Discount Group
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "price_page_type_cd", "Supplier / Discount Group");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-// Step 2: Company ID first
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "company_id", "ACME");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const string DiscountGroupId = "DG001";     // replaces product_group_id on type 213
+const string SupplierId = "10050";
+const string Description = "P2-L5-10050-DG001-WHOLESALE";
+const string EffectiveDate = "2025-01-01";
+const string ExpirationDate = "2030-12-31";
+const string Multiplier = "0.85";           // calculation_value1 -- tier 1, qty 1+
+// ---------------------------------------------------------------------------
 
-// Step 3: Discount group (NOT product_group_id)
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "discount_group_id", "DG001");
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-// Step 4: Supplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "FORM", "form", "supplier_id", "10050");
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-// Steps 5-11: Same as product group pages...
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
+
+var openResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/v2/window",
+    Json(new { ServiceName = "SalesPricePage" }));
+openResponse.EnsureSuccessStatusCode();
+
+using var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync());
+var windowId = opened.RootElement.GetProperty("WindowId").GetString()!;
+
+// One field per call -- a batched /v2/change is non-atomic on 2026.1.
+async Task ChangeAsync(string tab, string datawindow, string field, string value)
+{
+    var response = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
+        {
+            WindowId = windowId,
+            List = new[]
+            {
+                new
+                {
+                    TabName = tab,
+                    DatawindowName = datawindow,     // required since 25.2
+                    FieldName = field,
+                    Value = value,
+                }
+            }
+        }));
+    response.EnsureSuccessStatusCode();
+}
+
+try
+{
+    // Step 1: page type to Discount Group
+    await ChangeAsync("FORM", "form", "price_page_type_cd", "Supplier / Discount Group");
+
+    // Step 2: company_id first
+    await ChangeAsync("FORM", "form", "company_id", CompanyId);
+
+    // Step 3: discount group (NOT product_group_id)
+    await ChangeAsync("FORM", "form", "discount_group_id", DiscountGroupId);
+
+    // Step 4: supplier
+    await ChangeAsync("FORM", "form", "supplier_id", SupplierId);
+
+    // Steps 5-8: same as a product group page
+    await ChangeAsync("FORM", "form", "description", Description);
+    await ChangeAsync("FORM", "form", "pricing_method_cd", "Source");
+    await ChangeAsync("FORM", "form", "source_price_cd", "Supplier List Price");
+    await ChangeAsync("FORM", "form", "effective_date", EffectiveDate);
+    await ChangeAsync("FORM", "form", "expiration_date", ExpirationDate);
+
+    // Step 9: switch to the VALUES tab (2026.1 binds PageName, not TabName)
+    var tabResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/tab",
+        Json(new { WindowId = windowId, PageName = "VALUES" }));
+    tabResponse.EnsureSuccessStatusCode();
+
+    // Step 10: calculation method and values
+    await ChangeAsync("VALUES", "values", "calculation_method_cd", "Multiplier");
+    await ChangeAsync("VALUES", "values", "calculation_value1", Multiplier);
+
+    // Save -- v2 takes the bare WindowId string as the JSON body
+    var saveResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/data", Json(windowId));
+    saveResponse.EnsureSuccessStatusCode();
+
+    using var result = JsonDocument.Parse(await saveResponse.Content.ReadAsStringAsync());
+    // ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+    if (result.RootElement.TryGetProperty("Status", out var status))
+        Console.WriteLine($"Save status: {status}");
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        foreach (var message in messages.EnumerateArray())
+            Console.WriteLine($"  Message: {message}");
+    }
+
+    // ---- read-back: the only proof the page landed -------------------------
+    var readBackResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
+    readBackResponse.EnsureSuccessStatusCode();
+
+    var raw = await readBackResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(raw.Length > 2000 ? raw[..2000] : raw);
+}
+finally
+{
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object payload) =>
+    new(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -570,35 +1553,160 @@ When querying price pages, check both `product_group_id` and `discount_group_id`
 **Python**
 
 ```python
-# Get ALL active pages for a supplier (both types)
-params = {
-    "$filter": (
-        f"supplier_id eq {supplier_id} "
-        f"and row_status_flag eq 704 "
-        f"and (product_group_id ne null or discount_group_id ne null)"
-    ),
-    "$select": (
-        "price_page_uid,description,price_page_type_cd,"
-        "product_group_id,discount_group_id,supplier_id"
-    ),
-}
+"""List every active price page for one supplier -- product group and discount group."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SUPPLIER_ID = "10050"                     # numeric -- no quotes in the filter
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Get ALL active pages for a supplier (both types)
+    params = {
+        "$filter": (
+            f"supplier_id eq {SUPPLIER_ID} "
+            f"and row_status_flag eq 704 "
+            f"and (product_group_id ne null or discount_group_id ne null)"
+        ),
+        "$select": (
+            "price_page_uid,description,price_page_type_cd,"
+            "product_group_id,discount_group_id,supplier_id"
+        ),
+    }
+
+    # OData goes to BASE_URL directly -- no UI-server routing
+    response = client.get(
+        f"{BASE_URL}/odataservice/odata/table/sales_price_page",
+        params=params,          # httpx URL-encodes the query string
+        headers=headers,
+    )
+    response.raise_for_status()
+
+    rows = response.json()["value"]
+    print(f"{len(rows)} active pages for supplier {SUPPLIER_ID}")
+    for row in rows:
+        print(f"  {row.get('price_page_uid')}"
+              f"  type={row.get('price_page_type_cd')}"
+              f"  pg={row.get('product_group_id')}"
+              f"  dg={row.get('discount_group_id')}"
+              f"  {row.get('description')}")
 ```
 
 **C#**
 
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string SupplierId = "10050";                     // numeric -- no quotes in the filter
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
 // Get ALL active pages for a supplier (both types)
-var filter = $"supplier_id eq {supplierId} " +
+var filter = $"supplier_id eq {SupplierId} " +
     "and row_status_flag eq 704 " +
     "and (product_group_id ne null or discount_group_id ne null)";
 var select = "price_page_uid,description,price_page_type_cd," +
     "product_group_id,discount_group_id,supplier_id";
 
-var queryUrl = $"{baseUrl}/odataservice/odata/table/sales_price_page" +
+// OData goes to BaseUrl directly -- no UI-server routing
+var queryUrl = $"{BaseUrl}/odataservice/odata/table/sales_price_page" +
     $"?$filter={Uri.EscapeDataString(filter)}&$select={Uri.EscapeDataString(select)}";
-var resp = await client.GetAsync(queryUrl);
-resp.EnsureSuccessStatusCode();
-var data = JObject.Parse(await resp.Content.ReadAsStringAsync());
+var response = await client.GetAsync(queryUrl);
+response.EnsureSuccessStatusCode();
+
+using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+var rows = document.RootElement.GetProperty("value");
+Console.WriteLine($"{rows.GetArrayLength()} active pages for supplier {SupplierId}");
+foreach (var row in rows.EnumerateArray())
+{
+    Console.WriteLine(
+        $"  {Field(row, "price_page_uid")}" +
+        $"  type={Field(row, "price_page_type_cd")}" +
+        $"  pg={Field(row, "product_group_id")}" +
+        $"  dg={Field(row, "discount_group_id")}" +
+        $"  {Field(row, "description")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static string Field(JsonElement row, string name) =>
+    row.TryGetProperty(name, out var value) ? value.ToString() : "";
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -625,91 +1733,334 @@ Dollar-based breaks require additional fields on the VALUES tab:
 **Python**
 
 ```python
-# Switch to VALUES tab
-await window.select_tab("VALUES")
+"""Configure dollar-based (order-value) price breaks on an existing price page."""
+import json
+import re
 
-# Set calculation method
-await window.change_data("VALUES", "calculation_method_cd", "Multiplier",
-                         datawindow_name="values")
+import httpx
 
-# Configure dollar-based totaling
-await window.change_data("VALUES", "totaling_method_cd", "Discount Group",
-                         datawindow_name="values")
-await window.change_data("VALUES", "totaling_basis_cd", "Supplier List Price",
-                         datawindow_name="values")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PRICE_PAGE_UID = "45556"                  # the page whose tiers you are setting
+# ---------------------------------------------------------------------------
 
-# Set dollar-based breaks (total order value thresholds)
-# $0-$4,999: 0.85 multiplier
-await window.change_data("VALUES", "calculation_value1", "0.85",
-                         datawindow_name="values")
 
-# $5,000-$9,999: 0.82 multiplier
-await window.change_data("VALUES", "break1", "5000", datawindow_name="values")
-await window.change_data("VALUES", "calculation_value2", "0.82",
-                         datawindow_name="values")
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# $10,000-$14,999: 0.78 multiplier
-await window.change_data("VALUES", "break2", "10000", datawindow_name="values")
-await window.change_data("VALUES", "calculation_value3", "0.78",
-                         datawindow_name="values")
 
-# $15,000-$19,999: 0.75 multiplier
-await window.change_data("VALUES", "break3", "15000", datawindow_name="values")
-await window.change_data("VALUES", "calculation_value4", "0.75",
-                         datawindow_name="values")
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
-# $20,000+: 0.72 multiplier
-await window.change_data("VALUES", "break4", "20000", datawindow_name="values")
-await window.change_data("VALUES", "calculation_value5", "0.72",
-                         datawindow_name="values")
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def change(tab: str, datawindow: str, field: str, value: str) -> None:
+        """One field per call -- a batched /v2/change is non-atomic on 2026.1."""
+        r = client.put(
+            f"{ui_server}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{
+                    "TabName": tab,
+                    "DatawindowName": datawindow,   # required since 25.2
+                    "FieldName": field,
+                    "Value": value,
+                }],
+            },
+        )
+        r.raise_for_status()
+
+    session = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    session.raise_for_status()
+
+    opened = client.post(
+        f"{ui_server}/api/ui/interactive/v2/window",
+        headers=headers,
+        json={"ServiceName": "SalesPricePage"},
+    )
+    opened.raise_for_status()
+    window_id = opened.json()["WindowId"]
+
+    try:
+        change("FORM", "form", "price_page_uid", PRICE_PAGE_UID)
+
+        # Switch to VALUES tab
+        tab = client.put(
+            f"{ui_server}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "VALUES"},
+        )
+        tab.raise_for_status()
+
+        # Set calculation method
+        change("VALUES", "values", "calculation_method_cd", "Multiplier")
+
+        # Configure dollar-based totaling
+        change("VALUES", "values", "totaling_method_cd", "Discount Group")
+        change("VALUES", "values", "totaling_basis_cd", "Supplier List Price")
+
+        # Set dollar-based breaks (total order value thresholds)
+        # $0-$4,999: 0.85 multiplier
+        change("VALUES", "values", "calculation_value1", "0.85")
+
+        # $5,000-$9,999: 0.82 multiplier
+        change("VALUES", "values", "break1", "5000")
+        change("VALUES", "values", "calculation_value2", "0.82")
+
+        # $10,000-$14,999: 0.78 multiplier
+        change("VALUES", "values", "break2", "10000")
+        change("VALUES", "values", "calculation_value3", "0.78")
+
+        # $15,000-$19,999: 0.75 multiplier
+        change("VALUES", "values", "break3", "15000")
+        change("VALUES", "values", "calculation_value4", "0.75")
+
+        # $20,000+: 0.72 multiplier
+        change("VALUES", "values", "break4", "10050")
+        change("VALUES", "values", "calculation_value5", "0.72")
+
+        # Save -- v2 takes the bare WindowId string as the JSON body
+        saved = client.put(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            headers=headers,
+            content=json.dumps(window_id),
+        )
+        saved.raise_for_status()
+        result = saved.json()
+        # ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+        print("Save status:", result.get("Status"))
+        for message in result.get("Messages") or []:
+            print("  Message:", message)
+
+        # ---- read-back: the only proof the tiers landed ---------------------
+        read_back = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            params={"id": window_id},
+            headers=headers,
+        )
+        read_back.raise_for_status()
+        print(json.dumps(read_back.json())[:2000])
+    finally:
+        client.delete(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            params={"id": window_id},
+            headers=headers,
+        )
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 **C#**
 
 ```csharp
-// Switch to VALUES tab
-var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "VALUES" };
-var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-// Set calculation method
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_method_cd", "Multiplier");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string PricePageUid = "45556";        // the page whose tiers you are setting
+// ---------------------------------------------------------------------------
 
-// Configure dollar-based totaling
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "totaling_method_cd", "Discount Group");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "totaling_basis_cd", "Supplier List Price");
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-// Set dollar-based breaks (total order value thresholds)
-// $0-$4,999: 0.85 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value1", "0.85");
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-// $5,000-$9,999: 0.82 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "break1", "5000");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value2", "0.82");
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
 
-// $10,000-$14,999: 0.78 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "break2", "10000");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value3", "0.78");
+var openResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/v2/window",
+    Json(new { ServiceName = "SalesPricePage" }));
+openResponse.EnsureSuccessStatusCode();
 
-// $15,000-$19,999: 0.75 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "break3", "15000");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value4", "0.75");
+using var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync());
+var windowId = opened.RootElement.GetProperty("WindowId").GetString()!;
 
-// $20,000+: 0.72 multiplier
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "break4", "20000");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "VALUES", "values", "calculation_value5", "0.72");
+// One field per call -- a batched /v2/change is non-atomic on 2026.1.
+async Task ChangeAsync(string tab, string datawindow, string field, string value)
+{
+    var response = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
+        {
+            WindowId = windowId,
+            List = new[]
+            {
+                new
+                {
+                    TabName = tab,
+                    DatawindowName = datawindow,     // required since 25.2
+                    FieldName = field,
+                    Value = value,
+                }
+            }
+        }));
+    response.EnsureSuccessStatusCode();
+}
+
+try
+{
+    await ChangeAsync("FORM", "form", "price_page_uid", PricePageUid);
+
+    // Switch to VALUES tab
+    var tabResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/tab",
+        Json(new { WindowId = windowId, PageName = "VALUES" }));
+    tabResponse.EnsureSuccessStatusCode();
+
+    // Set calculation method
+    await ChangeAsync("VALUES", "values", "calculation_method_cd", "Multiplier");
+
+    // Configure dollar-based totaling
+    await ChangeAsync("VALUES", "values", "totaling_method_cd", "Discount Group");
+    await ChangeAsync("VALUES", "values", "totaling_basis_cd", "Supplier List Price");
+
+    // Set dollar-based breaks (total order value thresholds)
+    // $0-$4,999: 0.85 multiplier
+    await ChangeAsync("VALUES", "values", "calculation_value1", "0.85");
+
+    // $5,000-$9,999: 0.82 multiplier
+    await ChangeAsync("VALUES", "values", "break1", "5000");
+    await ChangeAsync("VALUES", "values", "calculation_value2", "0.82");
+
+    // $10,000-$14,999: 0.78 multiplier
+    await ChangeAsync("VALUES", "values", "break2", "10000");
+    await ChangeAsync("VALUES", "values", "calculation_value3", "0.78");
+
+    // $15,000-$19,999: 0.75 multiplier
+    await ChangeAsync("VALUES", "values", "break3", "15000");
+    await ChangeAsync("VALUES", "values", "calculation_value4", "0.75");
+
+    // $20,000+: 0.72 multiplier
+    await ChangeAsync("VALUES", "values", "break4", "10050");
+    await ChangeAsync("VALUES", "values", "calculation_value5", "0.72");
+
+    // Save -- v2 takes the bare WindowId string as the JSON body
+    var saveResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/data", Json(windowId));
+    saveResponse.EnsureSuccessStatusCode();
+
+    using var result = JsonDocument.Parse(await saveResponse.Content.ReadAsStringAsync());
+    // ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+    if (result.RootElement.TryGetProperty("Status", out var status))
+        Console.WriteLine($"Save status: {status}");
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        foreach (var message in messages.EnumerateArray())
+            Console.WriteLine($"  Message: {message}");
+    }
+
+    // ---- read-back: the only proof the tiers landed ------------------------
+    var readBackResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
+    readBackResponse.EnsureSuccessStatusCode();
+
+    var raw = await readBackResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(raw.Length > 2000 ? raw[..2000] : raw);
+}
+finally
+{
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object payload) =>
+    new(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -737,33 +2088,294 @@ The COSTS tab is a separate tab on the SalesPricePage window that controls **com
 **Python**
 
 ```python
-# Switch to COSTS tab
-await window.select_tab("COSTS")
+"""Set commission cost calculation on the COSTS tab of an existing price page."""
+import json
+import re
 
-# Set commission cost calculation method
-await window.change_data("COSTS", "commission_cost_calc_method_cd", "Multiplier",
-                         datawindow_name="costs")
+import httpx
 
-# Set commission cost value (1.01 = pass-through costing with 1% margin)
-await window.change_data("COSTS", "commission_cost_value1", "1.01",
-                         datawindow_name="costs")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PRICE_PAGE_UID = "45556"                  # the page whose COSTS tab you are setting
+COMMISSION_COST_VALUE = "1.01"            # 1.01 = pass-through costing, 1% margin
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def change(tab: str, datawindow: str, field: str, value: str) -> None:
+        """One field per call -- a batched /v2/change is non-atomic on 2026.1."""
+        r = client.put(
+            f"{ui_server}/api/ui/interactive/v2/change",
+            headers=headers,
+            json={
+                "WindowId": window_id,
+                "List": [{
+                    "TabName": tab,
+                    "DatawindowName": datawindow,   # required since 25.2
+                    "FieldName": field,
+                    "Value": value,
+                }],
+            },
+        )
+        r.raise_for_status()
+
+    session = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    session.raise_for_status()
+
+    opened = client.post(
+        f"{ui_server}/api/ui/interactive/v2/window",
+        headers=headers,
+        json={"ServiceName": "SalesPricePage"},
+    )
+    opened.raise_for_status()
+    window_id = opened.json()["WindowId"]
+
+    try:
+        change("FORM", "form", "price_page_uid", PRICE_PAGE_UID)
+
+        # Switch to COSTS tab
+        tab = client.put(
+            f"{ui_server}/api/ui/interactive/v2/tab",
+            headers=headers,
+            json={"WindowId": window_id, "PageName": "COSTS"},
+        )
+        tab.raise_for_status()
+
+        # Set commission cost calculation method -- COSTS codes differ from VALUES
+        change("COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier")
+
+        # Set commission cost value (1.01 = pass-through costing with 1% margin)
+        change("COSTS", "costs", "commission_cost_value1", COMMISSION_COST_VALUE)
+
+        # Save -- v2 takes the bare WindowId string as the JSON body
+        saved = client.put(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            headers=headers,
+            content=json.dumps(window_id),
+        )
+        saved.raise_for_status()
+        result = saved.json()
+        # ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+        print("Save status:", result.get("Status"))
+        for message in result.get("Messages") or []:
+            print("  Message:", message)
+
+        # ---- read-back: the only proof the COSTS values landed --------------
+        read_back = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            params={"id": window_id},
+            headers=headers,
+        )
+        read_back.raise_for_status()
+        print(json.dumps(read_back.json())[:2000])
+    finally:
+        client.delete(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            params={"id": window_id},
+            headers=headers,
+        )
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 **C#**
 
 ```csharp
-// Switch to COSTS tab
-var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "COSTS" };
-var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-// Set commission cost calculation method
-await ChangeDataAsync(client, baseUrl, windowId,
-    "COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string PricePageUid = "45556";        // the page whose COSTS tab you are setting
+const string CommissionCostValue = "1.01";  // 1.01 = pass-through costing, 1% margin
+// ---------------------------------------------------------------------------
 
-// Set commission cost value (1.01 = pass-through costing with 1% margin)
-await ChangeDataAsync(client, baseUrl, windowId,
-    "COSTS", "costs", "commission_cost_value1", "1.01");
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
+
+var openResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/v2/window",
+    Json(new { ServiceName = "SalesPricePage" }));
+openResponse.EnsureSuccessStatusCode();
+
+using var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync());
+var windowId = opened.RootElement.GetProperty("WindowId").GetString()!;
+
+// One field per call -- a batched /v2/change is non-atomic on 2026.1.
+async Task ChangeAsync(string tab, string datawindow, string field, string value)
+{
+    var response = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
+        {
+            WindowId = windowId,
+            List = new[]
+            {
+                new
+                {
+                    TabName = tab,
+                    DatawindowName = datawindow,     // required since 25.2
+                    FieldName = field,
+                    Value = value,
+                }
+            }
+        }));
+    response.EnsureSuccessStatusCode();
+}
+
+try
+{
+    await ChangeAsync("FORM", "form", "price_page_uid", PricePageUid);
+
+    // Switch to COSTS tab
+    var tabResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/tab",
+        Json(new { WindowId = windowId, PageName = "COSTS" }));
+    tabResponse.EnsureSuccessStatusCode();
+
+    // Set commission cost calculation method -- COSTS codes differ from VALUES
+    await ChangeAsync("COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier");
+
+    // Set commission cost value (1.01 = pass-through costing with 1% margin)
+    await ChangeAsync("COSTS", "costs", "commission_cost_value1", CommissionCostValue);
+
+    // Save -- v2 takes the bare WindowId string as the JSON body
+    var saveResponse = await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/data", Json(windowId));
+    saveResponse.EnsureSuccessStatusCode();
+
+    using var result = JsonDocument.Parse(await saveResponse.Content.ReadAsStringAsync());
+    // ResultStatus: None=0, Success=1, Failure=2, Blocked=3
+    if (result.RootElement.TryGetProperty("Status", out var status))
+        Console.WriteLine($"Save status: {status}");
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        foreach (var message in messages.EnumerateArray())
+            Console.WriteLine($"  Message: {message}");
+    }
+
+    // ---- read-back: the only proof the COSTS values landed -----------------
+    var readBackResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
+    readBackResponse.EnsureSuccessStatusCode();
+
+    var raw = await readBackResponse.Content.ReadAsStringAsync();
+    Console.WriteLine(raw.Length > 2000 ? raw[..2000] : raw);
+}
+finally
+{
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object payload) =>
+    new(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -772,29 +2384,23 @@ await ChangeDataAsync(client, baseUrl, windowId,
 
 For pages where commission cost should simply pass through at cost:
 
+> Fragment -- the pattern is just the two COSTS fields below, set to a `Multiplier`
+> of `1.01`. Full runnable version: [Accessing the COSTS Tab](#accessing-the-costs-tab).
+
 <!-- tabs -->
 
 **Python**
 
 ```python
-await window.select_tab("COSTS")
-await window.change_data("COSTS", "commission_cost_calc_method_cd", "Multiplier",
-                         datawindow_name="costs")
-await window.change_data("COSTS", "commission_cost_value1", "1.01",
-                         datawindow_name="costs")
+change("COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier")
+change("COSTS", "costs", "commission_cost_value1", "1.01")
 ```
 
 **C#**
 
 ```csharp
-var tabPayload = new JObject { ["WindowId"] = windowId, ["PageName"] = "COSTS" };
-var tabContent = new StringContent(tabPayload.ToString(), Encoding.UTF8, "application/json");
-await client.PutAsync($"{baseUrl}/api/ui/interactive/v2/tab", tabContent);
-
-await ChangeDataAsync(client, baseUrl, windowId,
-    "COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier");
-await ChangeDataAsync(client, baseUrl, windowId,
-    "COSTS", "costs", "commission_cost_value1", "1.01");
+await ChangeAsync("COSTS", "costs", "commission_cost_calc_method_cd", "Multiplier");
+await ChangeAsync("COSTS", "costs", "commission_cost_value1", "1.01");
 ```
 
 <!-- /tabs -->
@@ -825,6 +2431,16 @@ The five-service picture includes sales price pages, sales price books, job cont
 All three page variants share one shape: a header Form on `TABPAGE_1.tp_1_dw_1` carrying the keys, and an unkeyed values Form on `TABPAGE_2.tp_2_dw_2` carrying `calculation_type` plus `value1`-`value15`, `break1`-`break14`, and `uom1`-`uom14`. They differ only in which field the key set adds, and in the values datawindow name.
 
 The tier structure is identical to a sales price page — 15 value slots, 14 break thresholds, and a 15th catch-all tier with no break. Only the field *names* differ (`value{n}` here, `calculation_value{n}` there). The DB columns disagree with both: `value1` maps to `purchase_pricing_page.Calculation_Value1`, `uom1` to `purchase_pricing_page.UOM1`.
+
+Where to find them in the desktop client (from `frame_menu.service_name`, verified 2026-08-11):
+
+| Service | P21 window | Window class |
+|---------|-----------|--------------|
+| `PurchasePricingPageSupplier` | Page Maintenance By Supplier ID | `m_bysupplierid` |
+| `PurchasePricingPageSupplierItem` | Page Maintenance By Supplier ID/Item ID | `m_bysupplieriditemid` |
+| `PurchasePricingPageSupplierDiscGrp` | Page Maintenance By Supplier ID/Discount Group | `m_bysupplieriddiscountgroup` |
+
+`frame_menu` is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A `NULL` `service_name` means the window has no API surface.
 
 | Service | Header datawindow | Values datawindow | KeyFields |
 |---------|-------------------|-------------------|-----------|
@@ -879,10 +2495,10 @@ USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 COMPANY_ID = "ACME"                       # the five key fields below identify one page
-PRICING_BOOK_ID = "19"
-SUPPLIER_ID = "19"
-EFFECTIVE_DATE = "2013-02-21"
-EXPIRATION_DATE = "2020-02-21"
+PRICING_BOOK_ID = "PB-2026"
+SUPPLIER_ID = "10050"
+EFFECTIVE_DATE = "2026-01-01"
+EXPIRATION_DATE = "2030-12-31"
 # ---------------------------------------------------------------------------
 
 
@@ -985,10 +2601,10 @@ const string BaseUrl = "https://play.p21server.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";                       // the five key fields below
-const string PricingBookId = "19";                     // identify one pricing page
-const string SupplierId = "19";
-const string EffectiveDate = "2013-02-21";
-const string ExpirationDate = "2020-02-21";
+const string PricingBookId = "PB-2026";                     // identify one pricing page
+const string SupplierId = "10050";
+const string EffectiveDate = "2026-01-01";
+const string ExpirationDate = "2030-12-31";
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler

@@ -428,42 +428,93 @@ Both mean the target isn't a registered UDT. Pass the **`udt_`-prefixed name** (
 **Python**
 
 ```python
+"""Catch HTTP-level failures calling P21 -- distinct from the API's own Status field."""
+import re
+
 import httpx
 
-try:
-    response = httpx.get(url, headers=headers, verify=False)
-    response.raise_for_status()
-    data = response.json()
-except httpx.HTTPStatusError as e:
-    print(f"HTTP Error: {e.response.status_code}")
-    print(f"Response: {e.response.text}")
-except httpx.RequestError as e:
-    print(f"Request Error: {e}")
-except Exception as e:
-    print(f"Unexpected Error: {e}")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Swap in a bad key (e.g. a nonexistent customer) to see the except branch fire.
+    url = f"{BASE_URL}/api/entity/customers/ping"
+    try:
+        response = client.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        print(data)
+    except httpx.HTTPStatusError as e:
+        print(f"HTTP Error: {e.response.status_code}")
+        print(f"Response: {e.response.text}")
+    except httpx.RequestError as e:
+        print(f"Request Error: {e}")
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
 ```
 
 **C#**
 
 ```csharp
-using System;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
 {
-    ServerCertificateCustomValidationCallback = (msg, cert, chain, errors) => true
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
 };
-using var client = new HttpClient(handler);
-client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Swap in a bad key (e.g. a nonexistent customer) to see the catch branch fire.
+var url = $"{BaseUrl}/api/entity/customers/ping";
 try
 {
     var response = await client.GetAsync(url);
     var body = await response.Content.ReadAsStringAsync();
     response.EnsureSuccessStatusCode();
-    var data = JObject.Parse(body);
+    Console.WriteLine(body);
 }
 catch (HttpRequestException ex) when (ex.StatusCode != null)
 {
@@ -478,6 +529,36 @@ catch (Exception ex)
 {
     Console.WriteLine($"Unexpected Error: {ex.Message}");
 }
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -489,6 +570,54 @@ catch (Exception ex)
 **Python**
 
 ```python
+"""Check a Transaction API response's Summary -- HTTP 200 does not mean success."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_ID = "100198"
+ITEM_ID = "WIDGET-001"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
 def check_transaction_result(response_data: dict) -> bool:
     """Check if a Transaction API call succeeded."""
     summary = response_data.get("Summary", {})
@@ -501,47 +630,205 @@ def check_transaction_result(response_data: dict) -> bool:
 
     return True
 
-# Usage
-response = httpx.post(url, headers=headers, json=payload)
-response.raise_for_status()
-data = response.json()
 
-if not check_transaction_result(data):
-    # Handle failure
-    pass
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "Name": "Order",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [
+                {
+                    "Name": "TABPAGE_1.order",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [{"Name": "customer_id", "Value": CUSTOMER_ID}],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                {
+                    "Name": "TP_ITEMS.items",
+                    "Type": "List",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "oe_order_item_id", "Value": ITEM_ID},
+                            {"Name": "unit_quantity", "Value": "1"},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+            ],
+        }],
+    }
+
+    response = client.post(f"{ui_server}/api/v2/transaction", headers=headers, json=payload)
+    response.raise_for_status()
+    data = response.json()
+
+    if not check_transaction_result(data):
+        print("Transaction failed -- see messages above.")
+    else:
+        print("Transaction succeeded.")
 ```
 
 **C#**
 
 ```csharp
-bool CheckTransactionResult(JObject responseData)
-{
-    var summary = responseData["Summary"] as JObject;
-    var messages = responseData["Messages"] as JArray;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-    int failed = summary?["Failed"]?.Value<int>() ?? 0;
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerId = "100198";
+const string ItemId = "WIDGET-001";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = JsonSerializer.Serialize(new
+{
+    Name = "Order",
+    UseCodeValues = false,
+    Transactions = new object[]
+    {
+        new
+        {
+            Status = "New",
+            DataElements = new object[]
+            {
+                new
+                {
+                    Name = "TABPAGE_1.order",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new object[]
+                    {
+                        new
+                        {
+                            Edits = new object[] { new { Name = "customer_id", Value = CustomerId } },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+                new
+                {
+                    Name = "TP_ITEMS.items",
+                    Type = "List",
+                    Keys = Array.Empty<string>(),
+                    Rows = new object[]
+                    {
+                        new
+                        {
+                            Edits = new object[]
+                            {
+                                new { Name = "oe_order_item_id", Value = ItemId },
+                                new { Name = "unit_quantity", Value = "1" },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+            },
+        },
+    },
+});
+
+var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(payload, Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();
+using var data = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+if (!CheckTransactionResult(data.RootElement))
+    Console.WriteLine("Transaction failed -- see messages above.");
+else
+    Console.WriteLine("Transaction succeeded.");
+
+// --- helpers ---------------------------------------------------------------
+
+// Check if a Transaction API call succeeded.
+static bool CheckTransactionResult(JsonElement responseData)
+{
+    var failed = 0;
+    if (responseData.TryGetProperty("Summary", out var summary) &&
+        summary.TryGetProperty("Failed", out var failedElement))
+    {
+        failed = failedElement.GetInt32();
+    }
+
     if (failed > 0)
     {
-        foreach (var msg in messages ?? new JArray())
+        if (responseData.TryGetProperty("Messages", out var messages))
         {
-            Console.WriteLine($"Error: {msg}");
+            foreach (var msg in messages.EnumerateArray())
+                Console.WriteLine($"Error: {msg}");
         }
         return false;
     }
     return true;
 }
 
-// Usage
-var content = new StringContent(
-    payload.ToString(), System.Text.Encoding.UTF8, "application/json");
-var response = await client.PostAsync(url, content);
-var body = await response.Content.ReadAsStringAsync();
-response.EnsureSuccessStatusCode();
-var data = JObject.Parse(body);
-
-if (!CheckTransactionResult(data))
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
 {
-    // Handle failure
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -554,8 +841,37 @@ if (!CheckTransactionResult(data))
 **Python**
 
 ```python
-import time
+"""Retry a P21 call with exponential backoff on transient 5xx errors."""
 import random
+import re
+import time
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
 
 def retry_request(func, max_retries=3, base_delay=1.0):
     """Retry a request with exponential backoff."""
@@ -570,25 +886,72 @@ def retry_request(func, max_retries=3, base_delay=1.0):
                     continue
             raise
     return None
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def call():
+        r = client.get(f"{BASE_URL}/api/entity/customers/ping", headers=headers)
+        r.raise_for_status()
+        return r
+
+    response = retry_request(call)
+    print(response.json() if response is not None else "All retries exhausted")
 ```
 
 **C#**
 
 ```csharp
-static readonly int[] RetryableStatusCodes = { 500, 502, 503, 504 };
-static readonly Random Jitter = new();
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-async Task<HttpResponseMessage> RetryRequestAsync(
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var response = await RetryRequestAsync(
+    () => client.GetAsync($"{BaseUrl}/api/entity/customers/ping"));
+Console.WriteLine(response is not null
+    ? await response.Content.ReadAsStringAsync()
+    : "All retries exhausted");
+
+// --- helpers ---------------------------------------------------------------
+
+static async Task<HttpResponseMessage?> RetryRequestAsync(
     Func<Task<HttpResponseMessage>> func, int maxRetries = 3, double baseDelay = 1.0)
 {
+    var retryableStatusCodes = new[] { 500, 502, 503, 504 };
+    var jitter = new Random();
+
     for (int attempt = 0; attempt < maxRetries; attempt++)
     {
         var response = await func();
-        if (RetryableStatusCodes.Contains((int)response.StatusCode))
+        if (retryableStatusCodes.Contains((int)response.StatusCode))
         {
             if (attempt < maxRetries - 1)
             {
-                double delay = baseDelay * Math.Pow(2, attempt) + Jitter.NextDouble();
+                double delay = baseDelay * Math.Pow(2, attempt) + jitter.NextDouble();
                 await Task.Delay(TimeSpan.FromSeconds(delay));
                 continue;
             }
@@ -597,6 +960,34 @@ async Task<HttpResponseMessage> RetryRequestAsync(
         return response;
     }
     return null;
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -637,6 +1028,8 @@ var logger = loggerFactory.CreateLogger("HttpClient");
 ```
 
 <!-- /tabs -->
+
+> Full runnable version: [Retry Logic](#retry-logic) — drop these lines in before the `with httpx.Client(...)` block (Python) or before building `client` (C#) to see debug output on a real call.
 
 ### Log Request/Response
 
@@ -682,6 +1075,8 @@ void LogResponse(HttpResponseMessage response)
 ```
 
 <!-- /tabs -->
+
+> Full runnable version: [httpx Error Handling](#httpx-error-handling) — call `log_request`/`log_response` (or `LogRequest`/`LogResponse`) on the `response` object it builds.
 
 ### Check Token Expiration
 
@@ -755,6 +1150,8 @@ void CheckTokenExpiry(string token)
 ```
 
 <!-- /tabs -->
+
+> Full runnable version: [httpx Error Handling](#httpx-error-handling) — call `check_token_expiry(token)` (or `CheckTokenExpiry(token)`) right after `get_token`/`GetTokenAsync` returns.
 
 ---
 

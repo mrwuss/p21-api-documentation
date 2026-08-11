@@ -6,7 +6,7 @@ Create a sales order — header plus line items — in one stateless Transaction
 
 ## Prerequisites
 
-- Token + UI server URL (shared auth helper — see the [recipes README](README.md)).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
 - The customer, ship-to, contact, and items already exist; the items are stocked at the source location.
 - **No assembly lines.** If a line should explode into components or spawn a production order, the Transaction API auto-answers the *"add as assembly?"* prompt **No** and kills the explode — use the [order-with-assembly](order-with-assembly.md) recipe for those.
 
@@ -76,211 +76,376 @@ Do **not** send `company_id` — it is a disabled column on the Order window. Fo
 
 <!-- tabs -->
 ```python
-import httpx  # p21_auth() from recipes/README.md
+"""Create a sales order (header + two lines), then read the order back."""
+import re
 
-BASE_URL = "https://play.p21server.com"
-USERNAME = "api_user"
-PASSWORD = "api_pass"
+import httpx
 
-token, ui_server, headers = p21_auth(BASE_URL, USERNAME, PASSWORD)
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_ID = "100198"
+SALES_LOC_ID = "10"
+SOURCE_LOC_ID = "10"                      # required in practice (see Gotchas)
+ORDER_DATE = "2030-01-05"
+REQUESTED_DATE = "2030-01-06"             # must be AFTER order_date
+PO_NO = "PO-TEST-001"
+TAKER = "JSMITH"
+SHIP_TO_ID = "200"
+CONTACT_ID = "300"
+LINES = [("WIDGET-001", "5"), ("WIDGET-002", "2")]   # (oe_order_item_id, unit_quantity)
+# ---------------------------------------------------------------------------
 
-payload = {
-    "Name": "Order",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",
-        "DataElements": [
-            {
-                "Name": "TABPAGE_1.order",
-                "Type": "Form",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "customer_id",    "Value": "100198"},
-                        {"Name": "sales_loc_id",   "Value": "10"},
-                        {"Name": "source_loc_id",  "Value": "10"},   # required in practice
-                        {"Name": "order_date",     "Value": "2030-01-05"},
-                        {"Name": "requested_date", "Value": "2030-01-06"},  # must be AFTER order_date
-                        {"Name": "po_no",          "Value": "PO-TEST-001"},
-                        {"Name": "taker",          "Value": "JSMITH"},
-                        {"Name": "ship_to_id",     "Value": "200"},
-                        {"Name": "contact_id",     "Value": "300"},
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "Name": "Order",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [
+                {
+                    "Name": "TABPAGE_1.order",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "customer_id",    "Value": CUSTOMER_ID},
+                            {"Name": "sales_loc_id",   "Value": SALES_LOC_ID},
+                            {"Name": "source_loc_id",  "Value": SOURCE_LOC_ID},
+                            {"Name": "order_date",     "Value": ORDER_DATE},
+                            {"Name": "requested_date", "Value": REQUESTED_DATE},
+                            {"Name": "po_no",          "Value": PO_NO},
+                            {"Name": "taker",          "Value": TAKER},
+                            {"Name": "ship_to_id",     "Value": SHIP_TO_ID},
+                            {"Name": "contact_id",     "Value": CONTACT_ID},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                {
+                    "Name": "TP_ITEMS.items",
+                    "Type": "List",
+                    "Keys": [],
+                    "Rows": [
+                        {"Edits": [
+                            {"Name": "oe_order_item_id", "Value": item_id},
+                            {"Name": "unit_quantity",    "Value": qty},
+                        ], "RelativeDateEdits": []}
+                        for item_id, qty in LINES
                     ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            {
-                "Name": "TP_ITEMS.items",
-                "Type": "List",
-                "Keys": [],
-                "Rows": [
-                    {"Edits": [
-                        {"Name": "oe_order_item_id", "Value": "WIDGET-001"},
-                        {"Name": "unit_quantity",    "Value": "5"},
-                    ], "RelativeDateEdits": []},
-                    {"Edits": [
-                        {"Name": "oe_order_item_id", "Value": "WIDGET-002"},
-                        {"Name": "unit_quantity",    "Value": "2"},
-                    ], "RelativeDateEdits": []},
-                ],
-            },
-        ],
-    }],
-}
+                },
+            ],
+        }],
+    }
 
-response = httpx.post(
-    f"{ui_server}/api/v2/transaction",
-    headers=headers, json=payload, verify=False, timeout=120,
-)
-response.raise_for_status()
-result = response.json()
+    response = client.post(f"{ui_server}/api/v2/transaction",
+                           headers=headers, json=payload)
+    response.raise_for_status()
+    result = response.json()
 
-# HTTP 200 even on failure -- check the Summary, never the status code
-summary = result["Summary"]
-print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
-if summary["Failed"] > 0 or summary["Succeeded"] == 0:
-    for msg in result.get("Messages", []):
-        print(msg)
-    raise SystemExit("Order create failed")
+    # HTTP 200 even on failure -- check the Summary, never the status code
+    summary = result["Summary"]
+    print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
+    if summary["Failed"] > 0 or summary["Succeeded"] == 0:
+        for msg in result.get("Messages", []):
+            print(msg)
+        raise SystemExit("Order create failed")
 
-# The generated order_no comes back in the result rows of TABPAGE_1.order
-order_no = None
-for txn in result["Results"]["Transactions"]:
-    if txn.get("Status") != "Passed":
-        continue
-    for element in txn.get("DataElements", []):
-        if element.get("Name") != "TABPAGE_1.order":
+    # The generated order_no comes back in the result rows of TABPAGE_1.order
+    order_no = None
+    for txn in result["Results"]["Transactions"]:
+        if txn.get("Status") != "Passed":
             continue
-        for row in element.get("Rows", []):
-            for edit in row.get("Edits", []):
-                if edit.get("Name") == "order_no":
-                    order_no = edit.get("Value")
+        for element in txn.get("DataElements", []):
+            if element.get("Name") != "TABPAGE_1.order":
+                continue
+            for row in element.get("Rows", []):
+                for edit in row.get("Edits", []):
+                    if edit.get("Name") == "order_no":
+                        order_no = edit.get("Value")
 
-print(f"Created order_no: {order_no}")
+    print(f"Created order_no: {order_no}")
 
-# Read back via OData -- Succeeded is not proof every value landed (see Verify)
-hdr = httpx.get(
-    f"{BASE_URL}/odataservice/odata/table/oe_hdr",
-    params={"$filter": f"order_no eq '{order_no}'"},
-    headers=headers, verify=False,
-)
-hdr.raise_for_status()
-print(f"oe_hdr rows: {len(hdr.json()['value'])}")
+    # Read back via OData -- Succeeded is not proof every value landed (see Verify)
+    hdr = client.get(
+        f"{BASE_URL}/odataservice/odata/table/oe_hdr",
+        params={"$filter": f"order_no eq '{order_no}'"},
+        headers=headers,
+    )
+    hdr.raise_for_status()
+    for row in hdr.json()["value"]:
+        print({
+            "order_no": row.get("order_no"),
+            "taker": row.get("taker"),
+            "po_no": row.get("po_no"),
+            "ship_to_id": row.get("ship_to_id"),
+        })
 
-lines = httpx.get(
-    f"{BASE_URL}/odataservice/odata/table/oe_line",
-    params={"$filter": f"order_no eq '{order_no}'"},
-    headers=headers, verify=False,
-)
-lines.raise_for_status()
-line_count = len(lines.json()["value"])
-submitted = 2  # WIDGET-001 + WIDGET-002
-if line_count != submitted:
-    print(f"WARNING: {line_count} oe_line rows, submitted {submitted} -- "
-          "a DynaChange auto-answer can drop a line while the transaction "
-          "still reports Succeeded (see Gotchas)")
-else:
-    print(f"All {line_count} lines present")
+    lines = client.get(
+        f"{BASE_URL}/odataservice/odata/table/oe_line",
+        params={"$filter": f"order_no eq '{order_no}'"},
+        headers=headers,
+    )
+    lines.raise_for_status()
+    line_count = len(lines.json()["value"])
+    if line_count != len(LINES):
+        print(f"WARNING: {line_count} oe_line rows, submitted {len(LINES)} -- "
+              "a DynaChange auto-answer can drop a line while the transaction "
+              "still reports Succeeded (see Gotchas)")
+    else:
+        print(f"All {line_count} lines present")
 ```
 
 ```csharp
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "api_pass");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-JObject Row(params (string Name, string Value)[] edits) => new JObject
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerId = "100198";
+const string SalesLocId = "10";
+const string SourceLocId = "10";           // required in practice (see Gotchas)
+const string OrderDate = "2030-01-05";
+const string RequestedDate = "2030-01-06"; // must be AFTER order_date
+const string PoNo = "PO-TEST-001";
+const string Taker = "JSMITH";
+const string ShipToId = "200";
+const string ContactId = "300";
+var lines = new (string ItemId, string Quantity)[]
 {
-    ["Edits"] = new JArray(edits.Select(e =>
-        new JObject { ["Name"] = e.Name, ["Value"] = e.Value })),
-    ["RelativeDateEdits"] = new JArray(),
+    ("WIDGET-001", "5"),
+    ("WIDGET-002", "2"),
 };
+// ---------------------------------------------------------------------------
 
-var payload = new JObject
+var handler = new HttpClientHandler
 {
-    ["Name"] = "Order",
-    ["UseCodeValues"] = false,
-    ["Transactions"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    Name = "Order",
+    UseCodeValues = false,
+    Transactions = new[]
     {
-        new JObject
+        new
         {
-            ["Status"] = "New",
-            ["DataElements"] = new JArray
+            Status = "New",
+            DataElements = new object[]
             {
-                new JObject
+                new
                 {
-                    ["Name"] = "TABPAGE_1.order",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "TABPAGE_1.order",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new object[]
                     {
-                        Row(("customer_id", "100198"),
-                            ("sales_loc_id", "10"),
-                            ("source_loc_id", "10"),          // required in practice
-                            ("order_date", "2030-01-05"),
-                            ("requested_date", "2030-01-06"), // must be AFTER order_date
-                            ("po_no", "PO-TEST-001"),
-                            ("taker", "JSMITH"),
-                            ("ship_to_id", "200"),
-                            ("contact_id", "300")),
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "customer_id", Value = CustomerId },
+                                new { Name = "sales_loc_id", Value = SalesLocId },
+                                new { Name = "source_loc_id", Value = SourceLocId },
+                                new { Name = "order_date", Value = OrderDate },
+                                new { Name = "requested_date", Value = RequestedDate },
+                                new { Name = "po_no", Value = PoNo },
+                                new { Name = "taker", Value = Taker },
+                                new { Name = "ship_to_id", Value = ShipToId },
+                                new { Name = "contact_id", Value = ContactId },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
                     },
                 },
-                new JObject
+                new
                 {
-                    ["Name"] = "TP_ITEMS.items",
-                    ["Type"] = "List",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "TP_ITEMS.items",
+                    Type = "List",
+                    Keys = Array.Empty<string>(),
+                    Rows = lines.Select(l => (object)new
                     {
-                        Row(("oe_order_item_id", "WIDGET-001"), ("unit_quantity", "5")),
-                        Row(("oe_order_item_id", "WIDGET-002"), ("unit_quantity", "2")),
-                    },
+                        Edits = new[]
+                        {
+                            new { Name = "oe_order_item_id", Value = l.ItemId },
+                            new { Name = "unit_quantity", Value = l.Quantity },
+                        },
+                        RelativeDateEdits = Array.Empty<object>(),
+                    }).ToArray(),
                 },
             },
         },
     },
 };
 
-var response = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/transaction",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
+using var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 response.EnsureSuccessStatusCode();
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 // HTTP 200 even on failure -- check the Summary, never the status code
-var succeeded = (int)result["Summary"]!["Succeeded"]!;
-var failed = (int)result["Summary"]!["Failed"]!;
+var summary = result.RootElement.GetProperty("Summary");
+var succeeded = summary.GetProperty("Succeeded").GetInt32();
+var failed = summary.GetProperty("Failed").GetInt32();
 Console.WriteLine($"Succeeded: {succeeded}, Failed: {failed}");
 if (failed > 0 || succeeded == 0)
 {
-    foreach (var msg in result["Messages"] ?? new JArray())
-        Console.WriteLine(msg);
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        Console.Error.WriteLine(messages);
+    }
     throw new InvalidOperationException("Order create failed");
 }
 
 // The generated order_no comes back in the result rows of TABPAGE_1.order
-var orderNo = result.SelectTokens(
-        "$.Results.Transactions[?(@.Status == 'Passed')].DataElements[?(@.Name == 'TABPAGE_1.order')].Rows[*].Edits[?(@.Name == 'order_no')].Value")
-    .FirstOrDefault()?.ToString();
-
+var orderNo = ResultValue(result.RootElement, "TABPAGE_1.order", "order_no");
 Console.WriteLine($"Created order_no: {orderNo}");
 
 // Read back via OData -- Succeeded is not proof every value landed (see Verify)
-var hdrResp = await session.Http.GetAsync(
-    "https://play.p21server.com/odataservice/odata/table/oe_hdr" +
-    $"?$filter=order_no eq '{orderNo}'");
-hdrResp.EnsureSuccessStatusCode();
-var hdrRows = (JArray)JObject.Parse(await hdrResp.Content.ReadAsStringAsync())["value"]!;
-Console.WriteLine($"oe_hdr rows: {hdrRows.Count}");
+foreach (var row in await ODataAsync(client, "oe_hdr", $"order_no eq '{orderNo}'"))
+{
+    Console.WriteLine(
+        $"order_no={row.GetProperty("order_no")} taker={row.GetProperty("taker")} " +
+        $"po_no={row.GetProperty("po_no")} ship_to_id={row.GetProperty("ship_to_id")}");
+}
 
-var lineResp = await session.Http.GetAsync(
-    "https://play.p21server.com/odataservice/odata/table/oe_line" +
-    $"?$filter=order_no eq '{orderNo}'");
-lineResp.EnsureSuccessStatusCode();
-var lineCount = ((JArray)JObject.Parse(await lineResp.Content.ReadAsStringAsync())["value"]!).Count;
-const int submitted = 2; // WIDGET-001 + WIDGET-002
-Console.WriteLine(lineCount != submitted
-    ? $"WARNING: {lineCount} oe_line rows, submitted {submitted} -- a DynaChange " +
+var lineRows = await ODataAsync(client, "oe_line", $"order_no eq '{orderNo}'");
+Console.WriteLine(lineRows.Count != lines.Length
+    ? $"WARNING: {lineRows.Count} oe_line rows, submitted {lines.Length} -- a DynaChange " +
       "auto-answer can drop a line while the transaction still reports Succeeded (see Gotchas)"
-    : $"All {lineCount} lines present");
+    : $"All {lineRows.Count} lines present");
+
+// --- helpers ---------------------------------------------------------------
+
+// Pull one echoed field out of a passed transaction's result rows.
+static string? ResultValue(JsonElement root, string elementName, string fieldName)
+{
+    foreach (var txn in root.GetProperty("Results").GetProperty("Transactions").EnumerateArray())
+    {
+        if (txn.GetProperty("Status").GetString() != "Passed") continue;
+        foreach (var element in txn.GetProperty("DataElements").EnumerateArray())
+        {
+            if (element.GetProperty("Name").GetString() != elementName) continue;
+            foreach (var row in element.GetProperty("Rows").EnumerateArray())
+            {
+                foreach (var edit in row.GetProperty("Edits").EnumerateArray())
+                {
+                    if (edit.GetProperty("Name").GetString() == fieldName)
+                    {
+                        return edit.GetProperty("Value").GetString();
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
+static async Task<List<JsonElement>> ODataAsync(HttpClient client, string table, string filter)
+{
+    using var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/{table}?$filter=" + Uri.EscapeDataString(filter));
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray()
+        .Select(x => x.Clone()).ToList();
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 <!-- /tabs -->
 

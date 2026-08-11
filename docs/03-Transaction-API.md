@@ -80,6 +80,8 @@ See [Authentication](00-Authentication.md) for token generation.
 
 The main request body for create/update operations:
 
+> Payload shape only. Full runnable version: [Create Order](#create-order).
+
 ```json
 {
     "Name": "ServiceName",
@@ -286,9 +288,10 @@ Other verified XML specifics:
 | `Invoice` | Invoice Entry | Create/edit invoices |
 | `Customer` | Customer Maintenance | Customer records |
 | `Supplier` | Supplier Maintenance | Supplier records |
-| `SalesPricePage` | Sales Price Page | Price page management |
+| `SalesPricePage` | Sales Price Page Maintenance | Price page management — also drivable through the Transaction API, see [08 § Transaction API Alternative](08-SalesPricePage-Codes.md#transaction-api-alternative) |
 | `PurchaseOrder` | Purchase Order Entry | Create POs (Regular). Pick a non-Regular PO type via a **type-specific service**, not by setting `po_hdr_po_type` — see [Purchase Order Types](#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
 | `RequisitionPurchaseOrder` | Purchase Order Entry (type preset to Requisition) | Create requisition (internal / not-for-resale) POs — `po_hdr.po_type = 'R'`. Same window as PO Entry; easy to miss in `/api/v2/services`. See [create-requisition-po](recipes/create-requisition-po.md) |
+| `Shipping` | Shipping | Confirm shipments and set the carrier tracking number — the only service that writes `oe_pick_ticket.tracking_no`, and it refuses an already-invoiced pick ticket. See [Shipping Service — Carrier Tracking Number](#shipping-service-carrier-tracking-number) |
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
 | `m_storedprocedureexecutor` | Stored Procedure Executor | Load and execute stored procedure definitions (see [Stored Procedure Executor](#stored-procedure-executor)) (hidden from `/api/v2/services` — see the [PDF Report Generation](#pdf-report-generation) discovery note) |
@@ -494,7 +497,7 @@ Response includes a request ID:
 
 ```json
 {
-    "RequestId": "ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d",
+    "RequestId": "11111111-2222-3333-4444-555555555555",
     "Status": "Active"
 }
 ```
@@ -502,14 +505,14 @@ Response includes a request ID:
 ### Check Status
 
 ```http
-GET /api/v2/transaction/async?id=ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d
+GET /api/v2/transaction/async?id=11111111-2222-3333-4444-555555555555
 ```
 
 Response:
 
 ```json
 {
-    "RequestId": "ad8f6f74-bc27-4324-a812-0ca7d6cc6a7d",
+    "RequestId": "11111111-2222-3333-4444-555555555555",
     "Status": "Complete",
     "Messages": "...",
     "CompletedDate": "2025-01-15T16:34:53"
@@ -608,29 +611,186 @@ The `target_date` edit must appear before `start_date` in the Edits array (due t
 
 <!-- tabs -->
 ```python
+"""Print a Transaction API service definition -- elements, keys, and field names."""
+import re
+
 import httpx
 
-response = httpx.get(
-    f"{ui_server_url}/api/v2/definition/Order",
-    headers={"Authorization": f"Bearer {token}"},
-    verify=False
-)
-response.raise_for_status()
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SERVICE_NAME = "Order"                    # any name from GET /api/v2/services
+# ---------------------------------------------------------------------------
 
-definition = response.json()
-# definition["Template"] - blank template for creating records
-# definition["TransactionDefinition"] - field definitions with valid values
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    response = client.get(
+        f"{ui_server}/api/v2/definition/{SERVICE_NAME}", headers=headers
+    )
+    response.raise_for_status()
+    definition = response.json()
+
+    # definition["Template"] is a blank payload template for creating records.
+    # The elements live under TransactionDefinition.DataElementDefinitions.
+    elements = definition["TransactionDefinition"]["DataElementDefinitions"]
+    print(f"{SERVICE_NAME}: {len(elements)} DataElements")
+    for element in elements:
+        print(f"  {element.get('Name')}"
+              f"  Type={element.get('Type')}"
+              f"  Datawindow={element.get('DatawindowName')}"
+              f"  Keys={element.get('KeyFields')}")
+
+    # The API field Name is frequently NOT the underlying column name --
+    # DbColumnName is what maps a field back to the table you know.
+    first = elements[0]
+    print(f"\nFirst 10 fields on {first.get('Name')}:")
+    for field in first.get("FieldDefinitions", [])[:10]:
+        print(f"  {str(field.get('Name')):<30}"
+              f" db={str(field.get('DbColumnName')):<30}"
+              f" type={field.get('DataType')} required={field.get('Required')}")
 ```
 
 ```csharp
-var response = await client.GetAsync(
-    $"{uiServerUrl}/api/v2/definition/Order");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ServiceName = "Order";                    // any name from GET /api/v2/services
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var response = await client.GetAsync($"{uiServer}/api/v2/definition/{ServiceName}");
 response.EnsureSuccessStatusCode();
 
-var definition = JObject.Parse(
-    await response.Content.ReadAsStringAsync());
-// definition["Template"] - blank template for creating records
-// definition["TransactionDefinition"] - field definitions with valid values
+using var definition = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+// definition.RootElement.GetProperty("Template") is a blank payload template for
+// creating records. The elements live under TransactionDefinition.DataElementDefinitions.
+var elements = definition.RootElement
+    .GetProperty("TransactionDefinition")
+    .GetProperty("DataElementDefinitions");
+
+Console.WriteLine($"{ServiceName}: {elements.GetArrayLength()} DataElements");
+foreach (var element in elements.EnumerateArray())
+{
+    Console.WriteLine(
+        $"  {element.GetProperty("Name")}" +
+        $"  Type={element.GetProperty("Type")}" +
+        $"  Datawindow={element.GetProperty("DatawindowName")}" +
+        $"  Keys={element.GetProperty("KeyFields")}");
+}
+
+// The API field Name is frequently NOT the underlying column name --
+// DbColumnName is what maps a field back to the table you know.
+var first = elements[0];
+Console.WriteLine($"\nFirst 10 fields on {first.GetProperty("Name")}:");
+foreach (var field in first.GetProperty("FieldDefinitions").EnumerateArray().Take(10))
+{
+    Console.WriteLine(
+        $"  {field.GetProperty("Name"),-30}" +
+        $" db={field.GetProperty("DbColumnName"),-30}" +
+        $" type={field.GetProperty("DataType")} required={field.GetProperty("Required")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 <!-- /tabs -->
 
@@ -653,60 +813,178 @@ Use it to discover which tab/datawindow a given table lives on and exactly which
 
 <!-- tabs -->
 ```python
-payload = {
-    "Name": "Order",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",
-        "DataElements": [
-            {
-                "Name": "TABPAGE_1.order",
-                "Type": "Form",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "customer_id", "Value": "100198"}
-                    ],
-                    "RelativeDateEdits": []
-                }]
-            },
-            {
-                "Name": "TP_ITEMS.items",
-                "Type": "List",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "oe_order_item_id", "Value": "WIDGET-001"},
-                        {"Name": "unit_quantity", "Value": "1"}
-                    ],
-                    "RelativeDateEdits": []
-                }]
-            }
-        ]
-    }]
-}
+"""Create a sales order, then read the created order back by its order_no."""
+import re
 
-response = httpx.post(
-    f"{ui_server_url}/api/v2/transaction",
-    headers={
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_ID = "100198"                    # customer the order is placed for
+SOURCE_LOC_ID = "100"                     # effectively required -- see the gotchas below
+SALES_LOC_ID = "100"                      # selling location
+ITEM_ID = "WIDGET-001"                    # item on the first line
+QUANTITY = "1"                            # unit quantity for that line
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def walk(node):
+    """Yield every {"Name": ..., "Value": ...} pair anywhere in a response."""
+    if isinstance(node, dict):
+        if "Name" in node and "Value" in node:
+            yield node["Name"], node["Value"]
+        for value in node.values():
+            yield from walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from walk(item)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    },
-    json=payload,
-    verify=False
-)
-response.raise_for_status()
-result = response.json()
-succeeded = result['Summary']['Succeeded']
-failed = result['Summary']['Failed']
-print(f"Succeeded: {succeeded}, Failed: {failed}")
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
 
-if result["Summary"]["Failed"] > 0:
-    for msg in result.get("Messages", []):
-        print(f"  Message: {msg}")
+    payload = {
+        "Name": "Order",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [
+                {
+                    "Name": "TABPAGE_1.order",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "customer_id", "Value": CUSTOMER_ID},
+                            # Omit source_loc_id and the save fails with a
+                            # "Jurisdiction ID for Order Header Tax" error.
+                            {"Name": "sales_loc_id", "Value": SALES_LOC_ID},
+                            {"Name": "source_loc_id", "Value": SOURCE_LOC_ID},
+                        ],
+                        "RelativeDateEdits": []
+                    }]
+                },
+                {
+                    "Name": "TP_ITEMS.items",
+                    "Type": "List",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "oe_order_item_id", "Value": ITEM_ID},
+                            {"Name": "unit_quantity", "Value": QUANTITY}
+                        ],
+                        "RelativeDateEdits": []
+                    }]
+                }
+            ]
+        }]
+    }
+
+    response = client.post(f"{ui_server}/api/v2/transaction", headers=headers, json=payload)
+    response.raise_for_status()          # HTTP 200 does NOT mean the write succeeded
+    result = response.json()
+    print("Summary:", result.get("Summary"))
+    for transaction in result.get("Results", {}).get("Transactions", []):
+        print("  Transaction status:", transaction.get("Status"))
+    for message in result.get("Messages") or []:
+        print("  Message:", message)
+
+    # ---- read-back: the only proof the order landed -------------------------
+    # The generated order_no comes back in the result rows.
+    order_no = next((value for name, value in walk(result) if name == "order_no"), None)
+    print("Created order_no:", order_no)
+
+    if order_no:
+        read_back = client.post(
+            f"{ui_server}/api/v2/transaction/get",
+            headers=headers,
+            json={
+                "ServiceName": "Order",
+                "TransactionStates": [{
+                    "DataElementName": "TABPAGE_1.order",   # KeyFields: ["order_no"]
+                    "Keys": [{"Name": "order_no", "Value": order_no}],
+                }],
+            },
+        )
+        read_back.raise_for_status()
+
+        wanted = {"order_no", "customer_id", "order_date"}
+        for name, value in walk(read_back.json()):
+            if name in wanted:
+                print(f"  {name} = {value}")
 ```
 
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerId = "100198";                    // customer the order is for
+const string SourceLocId = "100";                      // effectively required -- see gotchas
+const string SalesLocId = "100";                       // selling location
+const string ItemId = "WIDGET-001";                    // item on the first line
+const string Quantity = "1";                           // unit quantity for that line
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
 var payload = new
 {
     Name = "Order",
@@ -721,7 +999,11 @@ var payload = new
                     Keys = Array.Empty<string>(),
                     Rows = new[] {
                         new { Edits = new[] {
-                            new { Name = "customer_id", Value = "100198" }
+                            new { Name = "customer_id", Value = CustomerId },
+                            // Omit source_loc_id and the save fails with a
+                            // "Jurisdiction ID for Order Header Tax" error.
+                            new { Name = "sales_loc_id", Value = SalesLocId },
+                            new { Name = "source_loc_id", Value = SourceLocId },
                         }}
                     }
                 },
@@ -731,8 +1013,8 @@ var payload = new
                     Keys = Array.Empty<string>(),
                     Rows = new[] {
                         new { Edits = new[] {
-                            new { Name = "oe_order_item_id", Value = "WIDGET-001" },
-                            new { Name = "unit_quantity", Value = "1" }
+                            new { Name = "oe_order_item_id", Value = ItemId },
+                            new { Name = "unit_quantity", Value = Quantity }
                         }}
                     }
                 }
@@ -741,26 +1023,121 @@ var payload = new
     }
 };
 
-var content = new StringContent(
-    JsonConvert.SerializeObject(payload),
-    Encoding.UTF8, "application/json");
 var response = await client.PostAsync(
-    $"{uiServerUrl}/api/v2/transaction", content);
-response.EnsureSuccessStatusCode();
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();     // HTTP 200 does NOT mean the write succeeded
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
-Console.WriteLine(
-    $"Succeeded: {result["Summary"]!["Succeeded"]}, " +
-    $"Failed: {result["Summary"]!["Failed"]}");
-
-if ((int)result["Summary"]!["Failed"]! > 0)
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine($"Summary: {result.RootElement.GetProperty("Summary")}");
+if (result.RootElement.TryGetProperty("Results", out var results)
+    && results.TryGetProperty("Transactions", out var resultTransactions))
 {
-    var messages = result["Messages"] as JArray;
-    if (messages != null)
+    foreach (var transaction in resultTransactions.EnumerateArray())
+        Console.WriteLine($"  Transaction status: {transaction.GetProperty("Status")}");
+}
+if (result.RootElement.TryGetProperty("Messages", out var messages))
+{
+    foreach (var message in messages.EnumerateArray())
+        Console.WriteLine($"  Message: {message}");
+}
+
+// ---- read-back: the only proof the order landed ---------------------------
+// The generated order_no comes back in the result rows.
+string? orderNo = null;
+foreach (var (name, value) in Walk(result.RootElement))
+{
+    if (name == "order_no") { orderNo = value; break; }
+}
+Console.WriteLine($"Created order_no: {orderNo}");
+
+if (!string.IsNullOrEmpty(orderNo))
+{
+    var getPayload = new
     {
-        foreach (var msg in messages)
-            Console.WriteLine($"  Message: {msg}");
+        ServiceName = "Order",
+        TransactionStates = new[]
+        {
+            new
+            {
+                DataElementName = "TABPAGE_1.order",     // KeyFields: ["order_no"]
+                Keys = new[] { new { Name = "order_no", Value = orderNo } },
+            }
+        }
+    };
+
+    var readBackResponse = await client.PostAsync(
+        $"{uiServer}/api/v2/transaction/get",
+        new StringContent(JsonSerializer.Serialize(getPayload), Encoding.UTF8, "application/json"));
+    readBackResponse.EnsureSuccessStatusCode();
+
+    using var readBack = JsonDocument.Parse(await readBackResponse.Content.ReadAsStringAsync());
+    var wanted = new HashSet<string> { "order_no", "customer_id", "order_date" };
+    foreach (var (name, value) in Walk(readBack.RootElement))
+    {
+        if (wanted.Contains(name))
+            Console.WriteLine($"  {name} = {value}");
     }
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Yield every {"Name": ..., "Value": ...} pair anywhere in a response.
+static IEnumerable<(string Name, string Value)> Walk(JsonElement node)
+{
+    if (node.ValueKind == JsonValueKind.Object)
+    {
+        if (node.TryGetProperty("Name", out var name) && node.TryGetProperty("Value", out var value))
+            yield return (name.ToString(), value.ToString());
+        foreach (var property in node.EnumerateObject())
+            foreach (var pair in Walk(property.Value))
+                yield return pair;
+    }
+    else if (node.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var item in node.EnumerateArray())
+            foreach (var pair in Walk(item))
+                yield return pair;
+    }
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->
@@ -806,7 +1183,7 @@ GET /api/v2/definition/JobContractPricing
 | `cancelled` | Char | No | Cancellation flag |
 | `consignment_flag` | Char | No | Consignment contract flag |
 
-> **Important:** `corp_address_id` must be set during initial creation. Based on production reports, this field becomes read-only after the contract is saved.
+> **Important:** `corp_address_id` must be set during initial creation — it is read-only once the contract is saved. Verified on 26.1.5910.3 (2026-08-11): changing it on a saved contract fails with `General Exception: Column is disabled: corp_address_id`, and adding `IgnoreDisabled: true` does **not** unlock it — the transaction then reports `Succeeded: 1` while leaving the value untouched (see [entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing)).
 
 #### Customer/Ship To -- `CUSTOMER_SHIP_TO.customer_ship_to` (List)
 
@@ -852,7 +1229,7 @@ The VALUES DataElement defines quantity break tiers for a line item.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `calculation_method_cd` | Char | Calculation method (see valid values below) |
+| `calculation_method_cd` | Long | Calculation method (see valid values below). `definitions/JobContractPricing.json` types this **Long**, not Char — with `UseCodeValues: false` you still send the display label |
 | `break1` through `break14` | Decimal | Break threshold quantities |
 | `calculation_value1` through `calculation_value15` | Decimal | Price/value at each tier |
 | `other_cost1` through `other_cost15` | Decimal | Other cost at each tier |
@@ -930,7 +1307,7 @@ Other things checked, all on the same tenant:
 
 - **Resending the line's `pricing_method` / `source_price` / `multiplier`** in the same transaction — an attempt to make the window "select" the tab the way a user would — does **not** help. Identical failure.
 - **Both `calculation_value` and `calculation_value1` fail identically**, so this is not a field-naming problem. (`calculation_value1` is nonetheless the correct name — see [above](#break-tier-structure).)
-- **`IgnoreDisabled: true` at payload top level makes it worse.** The response flips to `Summary: {"Failed": 0, "Succeeded": 1}` with `Status: "Passed"` — and **nothing is written**. Read-back shows the row unchanged (an existing tier value of `519.81` survived a `"Passed"` response) or still absent. The echoed response also **silently drops the `JOBPRICELINE` and `VALUES` DataElements**, echoing only the header, so even the echo does not reveal the omission.
+- **`IgnoreDisabled: true` at payload top level makes it worse.** The response flips to `Summary: {"Failed": 0, "Succeeded": 1}` with `Status: "Passed"` — and **nothing is written**. Read-back shows the row unchanged (an existing tier value of `42.50` survived a `"Passed"` response) or still absent. The echoed response also **silently drops the `JOBPRICELINE` and `VALUES` DataElements**, echoing only the header, so even the echo does not reveal the omission.
 
 **Whether this is a 26.1 regression or long-standing behavior is unknown** — no earlier build was available to compare against. Do not read it as a regression; read it as the behavior of the build in front of you, and re-test on yours.
 
@@ -941,6 +1318,8 @@ Other things checked, all on the same tenant:
 The `JOBPRICECOST` DataElement includes `commission_cost_value` and related commission fields. These columns are **disabled by default** -- without special handling the API returns "Column is disabled: commission_cost_value".
 
 **They are writable with `IgnoreDisabled: true`** at the payload top level (see [IgnoreDisabled](#ignoredisabled)). Key the element by `item_id` and set the cost type before the value -- verified live, including in the same transaction as a line insert:
+
+> Payload shape only -- drop this DataElement into a full program. Full runnable version: [Updating an Existing Contract](#updating-an-existing-contract).
 
 ```json
 {
@@ -970,49 +1349,356 @@ Use `Status = "New"` to update existing contracts -- there is no separate "Updat
 - Also include `end_date` in `Edits` -- the API validates required fields on every submit and rejects with `"Required value missing for End Date"` if it's absent.
 - On `JOBPRICELINE`, set `Keys: ["item_id"]` and put the `item_id` value in `Edits` alongside the fields you're changing.
 
-> Empirically verified 2026-05-14: 173 successful price updates against contract `A120-12` on a production tenant. Each call returned HTTP 200 with `Summary.Succeeded = 1`, and OData confirmed each `job_price_line.price` matched the submitted value.
+> Empirically verified 2026-05-14: 173 successful price updates against contract `JOB-1001` on a production tenant. Each call returned HTTP 200 with `Summary.Succeeded = 1`, and OData confirmed each `job_price_line.price` matched the submitted value.
 
 **Example -- update one line's price:**
 
+<!-- tabs -->
 ```python
-payload = {
-    "Name": "JobContractPricing",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",                          # still "New" for updates
-        "DataElements": [
+"""Update one line's price on an existing job contract, then read it back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"                       # FORM key fields go in Edits, not Keys
+CONTRACT_NO = "JOB-1001"
+JOB_NO = "31"                             # unique per header; survives renewals
+END_DATE = "2030-01-01"                   # must be >= today -- validated every save
+ITEM_ID = "WIDGET-001"                    # the line to update
+UOM = "EA"
+PRICE = "36.58"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def walk(node):
+    """Yield every {"Name": ..., "Value": ...} pair anywhere in a response."""
+    if isinstance(node, dict):
+        if "Name" in node and "Value" in node:
+            yield node["Name"], node["Value"]
+        for value in node.values():
+            yield from walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from walk(item)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "Name": "JobContractPricing",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",                          # still "New" for updates
+            "DataElements": [
+                {
+                    "Name": "FORM.d_dw_job_price_hdr",
+                    "Type": "Form",
+                    "Keys": [],                       # empty
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "company_id",  "Value": COMPANY_ID},
+                            {"Name": "contract_no", "Value": CONTRACT_NO},
+                            {"Name": "job_no",      "Value": JOB_NO},
+                            {"Name": "end_date",    "Value": END_DATE},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                {
+                    "Name": "JOBPRICELINE.jobpriceline",
+                    "Type": "List",
+                    "Keys": ["item_id"],
+                    "Rows": [{
+                        "Edits": [
+                            # pricing_method BEFORE price -- reversing them zeroes the price
+                            {"Name": "item_id",        "Value": ITEM_ID},
+                            {"Name": "uom",            "Value": UOM},
+                            {"Name": "pricing_method", "Value": "Price"},
+                            {"Name": "price",          "Value": PRICE},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+            ],
+        }],
+    }
+
+    response = client.post(f"{ui_server}/api/v2/transaction", headers=headers, json=payload)
+    response.raise_for_status()          # HTTP 200 does NOT mean the write succeeded
+    result = response.json()
+    print("Summary:", result.get("Summary"))
+    for transaction in result.get("Results", {}).get("Transactions", []):
+        print("  Transaction status:", transaction.get("Status"))
+    for message in result.get("Messages") or []:
+        print("  Message:", message)
+
+    # ---- read-back: the only proof the price landed -------------------------
+    read_back = client.post(
+        f"{ui_server}/api/v2/transaction/get",
+        headers=headers,
+        json={
+            "ServiceName": "JobContractPricing",
+            "TransactionStates": [
+                {
+                    "DataElementName": "FORM.d_dw_job_price_hdr",
+                    "Keys": [{"Name": "contract_no", "Value": CONTRACT_NO}],
+                },
+                {"DataElementName": "JOBPRICELINE.jobpriceline", "Keys": []},
+            ],
+        },
+    )
+    read_back.raise_for_status()
+
+    wanted = {"contract_no", "job_no", "item_id", "pricing_method", "price"}
+    for name, value in walk(read_back.json()):
+        if name in wanted:
+            print(f"  {name} = {value}")
+```
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";              // FORM key fields go in Edits, not Keys
+const string ContractNo = "JOB-1001";
+const string JobNo = "31";                    // unique per header; survives renewals
+const string EndDate = "2030-01-01";          // must be >= today -- validated every save
+const string ItemId = "WIDGET-001";           // the line to update
+const string Uom = "EA";
+const string Price = "36.58";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    Name = "JobContractPricing",
+    UseCodeValues = false,
+    Transactions = new[]
+    {
+        new
+        {
+            Status = "New",                          // still "New" for updates
+            DataElements = new object[]
             {
-                "Name": "FORM.d_dw_job_price_hdr",
-                "Type": "Form",
-                "Keys": [],                       # empty
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "company_id",  "Value": "ACME"},
-                        {"Name": "contract_no", "Value": "A120-12"},
-                        {"Name": "job_no",      "Value": "31"},
-                        {"Name": "end_date",    "Value": "2030-01-01"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            {
-                "Name": "JOBPRICELINE.jobpriceline",
-                "Type": "List",
-                "Keys": ["item_id"],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "item_id",        "Value": "WIDGET-001"},
-                        {"Name": "uom",            "Value": "EA"},
-                        {"Name": "pricing_method", "Value": "Price"},
-                        {"Name": "price",          "Value": "36.58"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-        ],
-    }],
+                new
+                {
+                    Name = "FORM.d_dw_job_price_hdr",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),     // empty
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "company_id", Value = CompanyId },
+                                new { Name = "contract_no", Value = ContractNo },
+                                new { Name = "job_no", Value = JobNo },
+                                new { Name = "end_date", Value = EndDate },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        }
+                    }
+                },
+                new
+                {
+                    Name = "JOBPRICELINE.jobpriceline",
+                    Type = "List",
+                    Keys = new[] { "item_id" },
+                    Rows = new[]
+                    {
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                // pricing_method BEFORE price -- reversing them zeroes the price
+                                new { Name = "item_id", Value = ItemId },
+                                new { Name = "uom", Value = Uom },
+                                new { Name = "pricing_method", Value = "Price" },
+                                new { Name = "price", Value = Price },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();     // HTTP 200 does NOT mean the write succeeded
+
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine($"Summary: {result.RootElement.GetProperty("Summary")}");
+if (result.RootElement.TryGetProperty("Results", out var results)
+    && results.TryGetProperty("Transactions", out var resultTransactions))
+{
+    foreach (var transaction in resultTransactions.EnumerateArray())
+        Console.WriteLine($"  Transaction status: {transaction.GetProperty("Status")}");
+}
+if (result.RootElement.TryGetProperty("Messages", out var messages))
+{
+    foreach (var message in messages.EnumerateArray())
+        Console.WriteLine($"  Message: {message}");
+}
+
+// ---- read-back: the only proof the price landed ---------------------------
+var getPayload = new
+{
+    ServiceName = "JobContractPricing",
+    TransactionStates = new object[]
+    {
+        new
+        {
+            DataElementName = "FORM.d_dw_job_price_hdr",
+            Keys = new[] { new { Name = "contract_no", Value = ContractNo } },
+        },
+        new { DataElementName = "JOBPRICELINE.jobpriceline", Keys = Array.Empty<object>() },
+    }
+};
+
+var readBackResponse = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(JsonSerializer.Serialize(getPayload), Encoding.UTF8, "application/json"));
+readBackResponse.EnsureSuccessStatusCode();
+
+using var readBack = JsonDocument.Parse(await readBackResponse.Content.ReadAsStringAsync());
+var wanted = new HashSet<string>
+{
+    "contract_no", "job_no", "item_id", "pricing_method", "price"
+};
+foreach (var (name, value) in Walk(readBack.RootElement))
+{
+    if (wanted.Contains(name))
+        Console.WriteLine($"  {name} = {value}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Yield every {"Name": ..., "Value": ...} pair anywhere in a response.
+static IEnumerable<(string Name, string Value)> Walk(JsonElement node)
+{
+    if (node.ValueKind == JsonValueKind.Object)
+    {
+        if (node.TryGetProperty("Name", out var name) && node.TryGetProperty("Value", out var value))
+            yield return (name.ToString(), value.ToString());
+        foreach (var property in node.EnumerateObject())
+            foreach (var pair in Walk(property.Value))
+                yield return pair;
+    }
+    else if (node.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var item in node.EnumerateArray())
+            foreach (var pair in Walk(item))
+                yield return pair;
+    }
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
+<!-- /tabs -->
 
 **Notes:**
 
@@ -1024,7 +1710,7 @@ payload = {
     "ServiceName": "JobContractPricing",
     "TransactionStates": [{
       "DataElementName": "FORM.d_dw_job_price_hdr",
-      "Keys": [{"Name": "contract_no", "Value": "A120-12"}]
+      "Keys": [{"Name": "contract_no", "Value": "JOB-1001"}]
     }]
   }
   ```
@@ -1050,6 +1736,8 @@ Submit each insert as its own POST -- each one then sees the current max `line_n
 #### Editing Bin Quantities on an Existing Contract
 
 Contract bin quantities (`BINS.bins` -- `min_qty`, `max_qty`, `reorder_qty`, `capacity`) live on a sub-tab that is normally disabled until a parent row is selected, which the stateless Transaction API cannot do. **`IgnoreDisabled: true` unlocks it** (see [IgnoreDisabled](#ignoredisabled)). One POST, batchable across many bins:
+
+> Payload shape only. Full runnable version -- same POST, same response checks: [Updating an Existing Contract](#updating-an-existing-contract).
 
 ```json
 {
@@ -1118,264 +1806,325 @@ Separately -- and unrelated to that hazard -- two ordinary validation requiremen
 
 <!-- tabs -->
 ```python
+"""Create a job contract with a fixed-price line and a break line (VALUES refused on 26.1)."""
+import re
+
 import httpx
 
-# Authenticate and get UI server URL
-base_url = "https://play.p21server.com"
-auth_resp = httpx.post(
-    f"{base_url}/api/security/token/v2",
-    json={"username": "api_user", "password": "api_pass"},
-    verify=False,
-)
-auth_resp.raise_for_status()
-token = auth_resp.json()["AccessToken"]
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+CONTRACT_NO = "JOB-1001"                  # required -- P21 does not assign it here
+CUSTOMER_ID = "100198"
+# ---------------------------------------------------------------------------
 
-router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1/?urlType=external",
-    headers={"Authorization": f"Bearer {token}"},
-    verify=False,
-    follow_redirects=True,
-)
-router_resp.raise_for_status()
-ui_server_url = router_resp.json()["Url"].rstrip("/")
 
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-}
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# Create a contract with one fixed-price line and one break line
-payload = {
-    "Name": "JobContractPricing",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",
-        "DataElements": [
-            # 1. Contract header
-            {
-                "Name": "FORM.d_dw_job_price_hdr",
-                "Type": "Form",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "company_id", "Value": "ACME"},
-                        {"Name": "contract_no", "Value": "JOB-1001"},   # required -- P21 does not assign it here
-                        {"Name": "customer_id", "Value": "100198"},
-                        {"Name": "corp_address_id", "Value": "1"},
-                        {"Name": "end_date", "Value": "2027-12-31"},
-                        {"Name": "approved", "Value": "ON"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            # 2. Fixed-price line (no breaks)
-            {
-                "Name": "JOBPRICELINE.jobpriceline",
-                "Type": "List",
-                "Keys": ["item_id"],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "item_id", "Value": "WIDGET-001"},
-                        {"Name": "uom", "Value": "EA"},
-                        {"Name": "pricing_method", "Value": "Price"},
-                        {"Name": "price", "Value": "25.00"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            # 3. Break line -- JOBPRICELINE (1 row)
-            {
-                "Name": "JOBPRICELINE.jobpriceline",
-                "Type": "List",
-                "Keys": ["item_id"],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "item_id", "Value": "WIDGET-002"},
-                        {"Name": "uom", "Value": "EA"},
-                        {"Name": "pricing_method", "Value": "Source"},
-                        {"Name": "source_price", "Value": "Supplier List Price"},
-                        {"Name": "multiplier", "Value": "1"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            # 4. Break tiers for WIDGET-002 (must follow its JOBPRICELINE)
-            {
-                "Name": "VALUES.values",
-                "Type": "Form",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "calculation_method_cd", "Value": "Fixed Price"},
-                        # Tier 1: qty 1-9 @ $10.00
-                        {"Name": "calculation_value1", "Value": "10.00"},
-                        {"Name": "break1", "Value": "10"},
-                        # Tier 2: qty 10-49 @ $8.50
-                        {"Name": "calculation_value2", "Value": "8.50"},
-                        {"Name": "break2", "Value": "50"},
-                        # Tier 3: qty 50+ @ $7.00
-                        {"Name": "calculation_value3", "Value": "7.00"},
-                        {"Name": "break3", "Value": "0"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-        ],
-    }],
-}
 
-response = httpx.post(
-    f"{ui_server_url}/api/v2/transaction",
-    headers=headers,
-    json=payload,
-    verify=False,
-)
-response.raise_for_status()
-result = response.json()
-succeeded = result['Summary']['Succeeded']
-failed = result['Summary']['Failed']
-print(f"Succeeded: {succeeded}, Failed: {failed}")
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
-if result["Summary"]["Succeeded"] > 0:
-    txn = result["Results"]["Transactions"][0]
-    contract_no = txn["DataElements"][0]["Rows"][0]["Edits"]
-    for edit in contract_no:
-        if edit["Name"] == "contract_no":
-            print(f"Contract #: {edit['Value']}")
-            break
+
+def walk(node):
+    """Yield every {"Name": ..., "Value": ...} pair anywhere in a response."""
+    if isinstance(node, dict):
+        if "Name" in node and "Value" in node:
+            yield node["Name"], node["Value"]
+        for value in node.values():
+            yield from walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from walk(item)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Create a contract with one fixed-price line and one break line
+    payload = {
+        "Name": "JobContractPricing",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [
+                # 1. Contract header
+                {
+                    "Name": "FORM.d_dw_job_price_hdr",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "company_id", "Value": COMPANY_ID},
+                            {"Name": "contract_no", "Value": CONTRACT_NO},   # required
+                            {"Name": "customer_id", "Value": CUSTOMER_ID},
+                            {"Name": "corp_address_id", "Value": "1"},
+                            {"Name": "end_date", "Value": "2027-12-31"},
+                            {"Name": "approved", "Value": "ON"},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                # 2. Fixed-price line (no breaks)
+                {
+                    "Name": "JOBPRICELINE.jobpriceline",
+                    "Type": "List",
+                    "Keys": ["item_id"],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "item_id", "Value": "WIDGET-001"},
+                            {"Name": "uom", "Value": "EA"},
+                            {"Name": "pricing_method", "Value": "Price"},
+                            {"Name": "price", "Value": "25.00"},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                # 3. Break line -- JOBPRICELINE (1 row)
+                {
+                    "Name": "JOBPRICELINE.jobpriceline",
+                    "Type": "List",
+                    "Keys": ["item_id"],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "item_id", "Value": "WIDGET-002"},
+                            {"Name": "uom", "Value": "EA"},
+                            {"Name": "pricing_method", "Value": "Source"},
+                            {"Name": "source_price", "Value": "Supplier List Price"},
+                            {"Name": "multiplier", "Value": "1"},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                # 4. Break tiers for WIDGET-002 (must follow its JOBPRICELINE).
+                #    DELETE THIS ELEMENT to get a version that succeeds on 26.1.
+                {
+                    "Name": "VALUES.values",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "calculation_method_cd", "Value": "Fixed Price"},
+                            # Tier 1: qty 1-9 @ $10.00
+                            {"Name": "calculation_value1", "Value": "10.00"},
+                            {"Name": "break1", "Value": "10"},
+                            # Tier 2: qty 10-49 @ $8.50
+                            {"Name": "calculation_value2", "Value": "8.50"},
+                            {"Name": "break2", "Value": "50"},
+                            # Tier 3: qty 50+ @ $7.00
+                            {"Name": "calculation_value3", "Value": "7.00"},
+                            {"Name": "break3", "Value": "0"},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+            ],
+        }],
+    }
+
+    response = client.post(f"{ui_server}/api/v2/transaction", headers=headers, json=payload)
+    response.raise_for_status()          # HTTP 200 does NOT mean the write succeeded
+    result = response.json()
+    print("Summary:", result.get("Summary"))
+    for transaction in result.get("Results", {}).get("Transactions", []):
+        print("  Transaction status:", transaction.get("Status"))
+    for message in result.get("Messages") or []:
+        print("  Message:", message)
+
+    if (result.get("Summary") or {}).get("Succeeded", 0) > 0:
+        txn = result["Results"]["Transactions"][0]
+        for edit in txn["DataElements"][0]["Rows"][0]["Edits"]:
+            if edit["Name"] == "contract_no":
+                # Only a confirmation of the number YOU supplied above.
+                print(f"Contract #: {edit['Value']}")
+                break
+
+    # ---- read-back: on 26.1 this prints nothing -- the VALUES refusal is
+    # atomic, so no contract and no lines were created.
+    read_back = client.post(
+        f"{ui_server}/api/v2/transaction/get",
+        headers=headers,
+        json={
+            "ServiceName": "JobContractPricing",
+            "TransactionStates": [{
+                "DataElementName": "FORM.d_dw_job_price_hdr",
+                "Keys": [{"Name": "contract_no", "Value": CONTRACT_NO}],
+            }],
+        },
+    )
+    read_back.raise_for_status()
+
+    wanted = {"contract_no", "job_no", "customer_id", "end_date"}
+    for name, value in walk(read_back.json()):
+        if name in wanted:
+            print(f"  {name} = {value}")
 ```
 
 ```csharp
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-// Authenticate and get UI server URL
-using var httpClient = new HttpClient();
-httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const string ContractNo = "JOB-1001";       // required -- P21 does not assign it here
+const string CustomerId = "100198";
+// ---------------------------------------------------------------------------
 
-var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
-var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
-var authResp = await httpClient.PostAsync(
-    "https://play.p21server.com/api/security/token/v2", authContent);
-authResp.EnsureSuccessStatusCode();
-var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
-var token = authJson["AccessToken"]!.ToString();
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-httpClient.DefaultRequestHeaders.Authorization =
-    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-var routerResp = await httpClient.GetAsync(
-    "https://play.p21server.com/api/ui/router/v1?urlType=external");
-routerResp.EnsureSuccessStatusCode();
-var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
-var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 // Create a contract with one fixed-price line and one break line
-var payload = new JObject
+var payload = new
 {
-    ["Name"] = "JobContractPricing",
-    ["UseCodeValues"] = false,
-    ["Transactions"] = new JArray
+    Name = "JobContractPricing",
+    UseCodeValues = false,
+    Transactions = new[]
     {
-        new JObject
+        new
         {
-            ["Status"] = "New",
-            ["DataElements"] = new JArray
+            Status = "New",
+            DataElements = new object[]
             {
                 // 1. Contract header
-                new JObject
+                new
                 {
-                    ["Name"] = "FORM.d_dw_job_price_hdr",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "FORM.d_dw_job_price_hdr",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                // required -- P21 does not assign the contract number here
-                                new JObject { ["Name"] = "contract_no", ["Value"] = "JOB-1001" },
-                                new JObject { ["Name"] = "customer_id", ["Value"] = "100198" },
-                                new JObject { ["Name"] = "corp_address_id", ["Value"] = "1" },
-                                new JObject { ["Name"] = "end_date", ["Value"] = "2027-12-31" },
-                                new JObject { ["Name"] = "approved", ["Value"] = "ON" },
+                                new { Name = "company_id", Value = CompanyId },
+                                new { Name = "contract_no", Value = ContractNo },
+                                new { Name = "customer_id", Value = CustomerId },
+                                new { Name = "corp_address_id", Value = "1" },
+                                new { Name = "end_date", Value = "2027-12-31" },
+                                new { Name = "approved", Value = "ON" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
+                            RelativeDateEdits = Array.Empty<object>(),
                         }
                     }
                 },
                 // 2. Fixed-price line (no breaks)
-                new JObject
+                new
                 {
-                    ["Name"] = "JOBPRICELINE.jobpriceline",
-                    ["Type"] = "List",
-                    ["Keys"] = new JArray { "item_id" },
-                    ["Rows"] = new JArray
+                    Name = "JOBPRICELINE.jobpriceline",
+                    Type = "List",
+                    Keys = new[] { "item_id" },
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "item_id", ["Value"] = "WIDGET-001" },
-                                new JObject { ["Name"] = "uom", ["Value"] = "EA" },
-                                new JObject { ["Name"] = "pricing_method", ["Value"] = "Price" },
-                                new JObject { ["Name"] = "price", ["Value"] = "25.00" },
+                                new { Name = "item_id", Value = "WIDGET-001" },
+                                new { Name = "uom", Value = "EA" },
+                                new { Name = "pricing_method", Value = "Price" },
+                                new { Name = "price", Value = "25.00" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
+                            RelativeDateEdits = Array.Empty<object>(),
                         }
                     }
                 },
                 // 3. Break line -- JOBPRICELINE (1 row)
-                new JObject
+                new
                 {
-                    ["Name"] = "JOBPRICELINE.jobpriceline",
-                    ["Type"] = "List",
-                    ["Keys"] = new JArray { "item_id" },
-                    ["Rows"] = new JArray
+                    Name = "JOBPRICELINE.jobpriceline",
+                    Type = "List",
+                    Keys = new[] { "item_id" },
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "item_id", ["Value"] = "WIDGET-002" },
-                                new JObject { ["Name"] = "uom", ["Value"] = "EA" },
-                                new JObject { ["Name"] = "pricing_method", ["Value"] = "Source" },
-                                new JObject { ["Name"] = "source_price", ["Value"] = "Supplier List Price" },
-                                new JObject { ["Name"] = "multiplier", ["Value"] = "1" },
+                                new { Name = "item_id", Value = "WIDGET-002" },
+                                new { Name = "uom", Value = "EA" },
+                                new { Name = "pricing_method", Value = "Source" },
+                                new { Name = "source_price", Value = "Supplier List Price" },
+                                new { Name = "multiplier", Value = "1" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
+                            RelativeDateEdits = Array.Empty<object>(),
                         }
                     }
                 },
-                // 4. Break tiers for WIDGET-002 (must follow its JOBPRICELINE)
-                new JObject
+                // 4. Break tiers for WIDGET-002 (must follow its JOBPRICELINE).
+                //    DELETE THIS ELEMENT to get a version that succeeds on 26.1.
+                new
                 {
-                    ["Name"] = "VALUES.values",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "VALUES.values",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "calculation_method_cd", ["Value"] = "Fixed Price" },
+                                new { Name = "calculation_method_cd", Value = "Fixed Price" },
                                 // Tier 1: qty 1-9 @ $10.00
-                                new JObject { ["Name"] = "calculation_value1", ["Value"] = "10.00" },
-                                new JObject { ["Name"] = "break1", ["Value"] = "10" },
+                                new { Name = "calculation_value1", Value = "10.00" },
+                                new { Name = "break1", Value = "10" },
                                 // Tier 2: qty 10-49 @ $8.50
-                                new JObject { ["Name"] = "calculation_value2", ["Value"] = "8.50" },
-                                new JObject { ["Name"] = "break2", ["Value"] = "50" },
+                                new { Name = "calculation_value2", Value = "8.50" },
+                                new { Name = "break2", Value = "50" },
                                 // Tier 3: qty 50+ @ $7.00
-                                new JObject { ["Name"] = "calculation_value3", ["Value"] = "7.00" },
-                                new JObject { ["Name"] = "break3", ["Value"] = "0" },
+                                new { Name = "calculation_value3", Value = "7.00" },
+                                new { Name = "break3", Value = "0" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
+                            RelativeDateEdits = Array.Empty<object>(),
                         }
                     }
                 }
@@ -1384,28 +2133,128 @@ var payload = new JObject
     }
 };
 
-var content = new StringContent(
-    payload.ToString(), Encoding.UTF8, "application/json");
-var response = await httpClient.PostAsync(
-    $"{uiServerUrl}/api/v2/transaction", content);
-response.EnsureSuccessStatusCode();
+var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();     // HTTP 200 does NOT mean the write succeeded
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
-Console.WriteLine(
-    $"Succeeded: {result["Summary"]!["Succeeded"]}, " +
-    $"Failed: {result["Summary"]!["Failed"]}");
-
-if ((int)result["Summary"]!["Succeeded"]! > 0)
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine($"Summary: {result.RootElement.GetProperty("Summary")}");
+if (result.RootElement.TryGetProperty("Results", out var results)
+    && results.TryGetProperty("Transactions", out var resultTransactions))
 {
-    var edits = result["Results"]!["Transactions"]![0]!["DataElements"]![0]!["Rows"]![0]!["Edits"]!;
-    foreach (var edit in edits)
+    foreach (var transaction in resultTransactions.EnumerateArray())
+        Console.WriteLine($"  Transaction status: {transaction.GetProperty("Status")}");
+
+    if (result.RootElement.GetProperty("Summary").GetProperty("Succeeded").GetInt32() > 0)
     {
-        if (edit["Name"]!.ToString() == "contract_no")
+        var edits = resultTransactions[0]
+            .GetProperty("DataElements")[0]
+            .GetProperty("Rows")[0]
+            .GetProperty("Edits");
+        foreach (var edit in edits.EnumerateArray())
         {
-            Console.WriteLine($"Contract #: {edit["Value"]}");
-            break;
+            if (edit.GetProperty("Name").GetString() == "contract_no")
+            {
+                // Only a confirmation of the number YOU supplied above.
+                Console.WriteLine($"Contract #: {edit.GetProperty("Value")}");
+                break;
+            }
         }
     }
+}
+if (result.RootElement.TryGetProperty("Messages", out var messages))
+{
+    foreach (var message in messages.EnumerateArray())
+        Console.WriteLine($"  Message: {message}");
+}
+
+// ---- read-back: on 26.1 this prints nothing -- the VALUES refusal is
+// atomic, so no contract and no lines were created.
+var getPayload = new
+{
+    ServiceName = "JobContractPricing",
+    TransactionStates = new[]
+    {
+        new
+        {
+            DataElementName = "FORM.d_dw_job_price_hdr",
+            Keys = new[] { new { Name = "contract_no", Value = ContractNo } },
+        }
+    }
+};
+
+var readBackResponse = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(JsonSerializer.Serialize(getPayload), Encoding.UTF8, "application/json"));
+readBackResponse.EnsureSuccessStatusCode();
+
+using var readBack = JsonDocument.Parse(await readBackResponse.Content.ReadAsStringAsync());
+var wanted = new HashSet<string> { "contract_no", "job_no", "customer_id", "end_date" };
+foreach (var (name, value) in Walk(readBack.RootElement))
+{
+    if (wanted.Contains(name))
+        Console.WriteLine($"  {name} = {value}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Yield every {"Name": ..., "Value": ...} pair anywhere in a response.
+static IEnumerable<(string Name, string Value)> Walk(JsonElement node)
+{
+    if (node.ValueKind == JsonValueKind.Object)
+    {
+        if (node.TryGetProperty("Name", out var name) && node.TryGetProperty("Value", out var value))
+            yield return (name.ToString(), value.ToString());
+        foreach (var property in node.EnumerateObject())
+            foreach (var pair in Walk(property.Value))
+                yield return pair;
+    }
+    else if (node.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var item in node.EnumerateArray())
+            foreach (var pair in Walk(item))
+                yield return pair;
+    }
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->
@@ -1489,191 +2338,250 @@ The Assembly service does NOT create new inventory items -- it adds BOM metadata
 
 <!-- tabs -->
 ```python
+"""Create an assembly/BOM definition on an existing inventory item, then read it back."""
+import re
+
 import httpx
 
-# Authenticate and get UI server URL
-base_url = "https://play.p21server.com"
-auth_resp = httpx.post(
-    f"{base_url}/api/security/token/v2",
-    json={"username": "api_user", "password": "api_pass"},
-    verify=False,
-)
-auth_resp.raise_for_status()
-token = auth_resp.json()["AccessToken"]
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # must ALREADY exist in inventory
+COMPONENT_A = "COMPONENT-A"               # component items, also pre-existing
+COMPONENT_B = "COMPONENT-B"
+# ---------------------------------------------------------------------------
 
-router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1/?urlType=external",
-    headers={"Authorization": f"Bearer {token}"},
-    verify=False,
-    follow_redirects=True,
-)
-router_resp.raise_for_status()
-ui_server_url = router_resp.json()["Url"].rstrip("/")
 
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-}
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# Create assembly definition for an existing item
-# The item WIDGET-001 must already exist in inventory
-payload = {
-    "Name": "Assembly",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",
-        "DataElements": [
-            # Assembly header
-            {
-                "Name": "TABPAGE_1.assemblyhdr",
-                "Type": "Form",
-                "Keys": ["inv_mast_item_id"],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "inv_mast_item_id", "Value": "WIDGET-001"},
-                        {"Name": "allow_disassembly", "Value": "ON"},
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def walk(node):
+    """Yield every {"Name": ..., "Value": ...} pair anywhere in a response."""
+    if isinstance(node, dict):
+        if "Name" in node and "Value" in node:
+            yield node["Name"], node["Value"]
+        for value in node.values():
+            yield from walk(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from walk(item)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Create assembly definition for an existing item.
+    # The Assembly service does NOT create the inventory item itself.
+    payload = {
+        "Name": "Assembly",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [
+                # Assembly header
+                {
+                    "Name": "TABPAGE_1.assemblyhdr",
+                    "Type": "Form",
+                    "Keys": ["inv_mast_item_id"],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "inv_mast_item_id", "Value": ITEM_ID},
+                            {"Name": "allow_disassembly", "Value": "ON"},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                # BOM components
+                {
+                    "Name": "TABPAGE_17.tp_17_dw_17",
+                    "Type": "List",
+                    "Keys": ["item_id_service_labor_id"],
+                    "Rows": [
+                        {
+                            "Edits": [
+                                {
+                                    "Name": "item_id_service_labor_id",
+                                    "Value": COMPONENT_A,
+                                },
+                                {"Name": "quantity", "Value": "2"},
+                                {"Name": "operation_cd", "Value": "ASSY"},
+                            ],
+                            "RelativeDateEdits": [],
+                        },
+                        {
+                            "Edits": [
+                                {
+                                    "Name": "item_id_service_labor_id",
+                                    "Value": COMPONENT_B,
+                                },
+                                {"Name": "quantity", "Value": "1"},
+                                {"Name": "operation_cd", "Value": "ASSY"},
+                            ],
+                            "RelativeDateEdits": [],
+                        },
                     ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            # BOM components
-            {
-                "Name": "TABPAGE_17.tp_17_dw_17",
-                "Type": "List",
-                "Keys": ["item_id_service_labor_id"],
-                "Rows": [
-                    {
-                        "Edits": [
-                            {
-                                "Name": "item_id_service_labor_id",
-                                "Value": "COMPONENT-A",
-                            },
-                            {"Name": "quantity", "Value": "2"},
-                            {"Name": "operation_cd", "Value": "ASSY"},
-                        ],
-                        "RelativeDateEdits": [],
-                    },
-                    {
-                        "Edits": [
-                            {
-                                "Name": "item_id_service_labor_id",
-                                "Value": "COMPONENT-B",
-                            },
-                            {"Name": "quantity", "Value": "1"},
-                            {"Name": "operation_cd", "Value": "ASSY"},
-                        ],
-                        "RelativeDateEdits": [],
-                    },
-                ],
-            },
-        ],
-    }],
-}
+                },
+            ],
+        }],
+    }
 
-response = httpx.post(
-    f"{ui_server_url}/api/v2/transaction",
-    headers=headers,
-    json=payload,
-    verify=False,
-)
-response.raise_for_status()
-result = response.json()
-succeeded = result['Summary']['Succeeded']
-failed = result['Summary']['Failed']
-print(f"Succeeded: {succeeded}, Failed: {failed}")
+    response = client.post(f"{ui_server}/api/v2/transaction", headers=headers, json=payload)
+    response.raise_for_status()          # HTTP 200 does NOT mean the write succeeded
+    result = response.json()
+    print("Summary:", result.get("Summary"))
+    for transaction in result.get("Results", {}).get("Transactions", []):
+        print("  Transaction status:", transaction.get("Status"))
+    for message in result.get("Messages") or []:
+        print("  Message:", message)
 
-if result["Summary"]["Failed"] > 0:
-    for msg in result.get("Messages", []):
-        print(f"  Message: {msg}")
+    # ---- read-back: the only proof the definition landed --------------------
+    read_back = client.post(
+        f"{ui_server}/api/v2/transaction/get",
+        headers=headers,
+        json={
+            "ServiceName": "Assembly",
+            "TransactionStates": [
+                {
+                    "DataElementName": "TABPAGE_1.assemblyhdr",  # Keys: inv_mast_item_id
+                    "Keys": [{"Name": "inv_mast_item_id", "Value": ITEM_ID}],
+                },
+                {"DataElementName": "TABPAGE_17.tp_17_dw_17", "Keys": []},
+            ],
+        },
+    )
+    read_back.raise_for_status()
+
+    wanted = {"inv_mast_item_id", "allow_disassembly",
+              "item_id_service_labor_id", "quantity"}
+    for name, value in walk(read_back.json()):
+        if name in wanted:
+            print(f"  {name} = {value}")
 ```
 
 ```csharp
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-// Authenticate and get UI server URL
-using var httpClient = new HttpClient();
-httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "WIDGET-001";                    // must ALREADY exist in inventory
+const string ComponentA = "COMPONENT-A";               // components, also pre-existing
+const string ComponentB = "COMPONENT-B";
+// ---------------------------------------------------------------------------
 
-var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
-var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
-var authResp = await httpClient.PostAsync(
-    "https://play.p21server.com/api/security/token/v2", authContent);
-authResp.EnsureSuccessStatusCode();
-var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
-var token = authJson["AccessToken"]!.ToString();
-
-httpClient.DefaultRequestHeaders.Authorization =
-    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-var routerResp = await httpClient.GetAsync(
-    "https://play.p21server.com/api/ui/router/v1?urlType=external");
-routerResp.EnsureSuccessStatusCode();
-var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
-var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
-
-// Create assembly definition for an existing item
-// The item WIDGET-001 must already exist in inventory
-var payload = new JObject
+var handler = new HttpClientHandler
 {
-    ["Name"] = "Assembly",
-    ["UseCodeValues"] = false,
-    ["Transactions"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Create assembly definition for an existing item.
+// The Assembly service does NOT create the inventory item itself.
+var payload = new
+{
+    Name = "Assembly",
+    UseCodeValues = false,
+    Transactions = new[]
     {
-        new JObject
+        new
         {
-            ["Status"] = "New",
-            ["DataElements"] = new JArray
+            Status = "New",
+            DataElements = new object[]
             {
                 // Assembly header
-                new JObject
+                new
                 {
-                    ["Name"] = "TABPAGE_1.assemblyhdr",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray { "inv_mast_item_id" },
-                    ["Rows"] = new JArray
+                    Name = "TABPAGE_1.assemblyhdr",
+                    Type = "Form",
+                    Keys = new[] { "inv_mast_item_id" },
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "inv_mast_item_id", ["Value"] = "WIDGET-001" },
-                                new JObject { ["Name"] = "allow_disassembly", ["Value"] = "ON" },
+                                new { Name = "inv_mast_item_id", Value = ItemId },
+                                new { Name = "allow_disassembly", Value = "ON" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
+                            RelativeDateEdits = Array.Empty<object>(),
                         }
                     }
                 },
                 // BOM components
-                new JObject
+                new
                 {
-                    ["Name"] = "TABPAGE_17.tp_17_dw_17",
-                    ["Type"] = "List",
-                    ["Keys"] = new JArray { "item_id_service_labor_id" },
-                    ["Rows"] = new JArray
+                    Name = "TABPAGE_17.tp_17_dw_17",
+                    Type = "List",
+                    Keys = new[] { "item_id_service_labor_id" },
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "item_id_service_labor_id", ["Value"] = "COMPONENT-A" },
-                                new JObject { ["Name"] = "quantity", ["Value"] = "2" },
-                                new JObject { ["Name"] = "operation_cd", ["Value"] = "ASSY" },
+                                new { Name = "item_id_service_labor_id", Value = ComponentA },
+                                new { Name = "quantity", Value = "2" },
+                                new { Name = "operation_cd", Value = "ASSY" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
+                            RelativeDateEdits = Array.Empty<object>(),
                         },
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "item_id_service_labor_id", ["Value"] = "COMPONENT-B" },
-                                new JObject { ["Name"] = "quantity", ["Value"] = "1" },
-                                new JObject { ["Name"] = "operation_cd", ["Value"] = "ASSY" },
+                                new { Name = "item_id_service_labor_id", Value = ComponentB },
+                                new { Name = "quantity", Value = "1" },
+                                new { Name = "operation_cd", Value = "ASSY" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
+                            RelativeDateEdits = Array.Empty<object>(),
                         }
                     }
                 }
@@ -1682,25 +2590,114 @@ var payload = new JObject
     }
 };
 
-var content = new StringContent(
-    payload.ToString(), Encoding.UTF8, "application/json");
-var response = await httpClient.PostAsync(
-    $"{uiServerUrl}/api/v2/transaction", content);
-response.EnsureSuccessStatusCode();
+var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();     // HTTP 200 does NOT mean the write succeeded
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
-Console.WriteLine(
-    $"Succeeded: {result["Summary"]!["Succeeded"]}, " +
-    $"Failed: {result["Summary"]!["Failed"]}");
-
-if ((int)result["Summary"]!["Failed"]! > 0)
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine($"Summary: {result.RootElement.GetProperty("Summary")}");
+if (result.RootElement.TryGetProperty("Results", out var results)
+    && results.TryGetProperty("Transactions", out var resultTransactions))
 {
-    var messages = result["Messages"] as JArray;
-    if (messages != null)
+    foreach (var transaction in resultTransactions.EnumerateArray())
+        Console.WriteLine($"  Transaction status: {transaction.GetProperty("Status")}");
+}
+if (result.RootElement.TryGetProperty("Messages", out var messages))
+{
+    foreach (var message in messages.EnumerateArray())
+        Console.WriteLine($"  Message: {message}");
+}
+
+// ---- read-back: the only proof the definition landed ----------------------
+var getPayload = new
+{
+    ServiceName = "Assembly",
+    TransactionStates = new object[]
     {
-        foreach (var msg in messages)
-            Console.WriteLine($"  Message: {msg}");
+        new
+        {
+            DataElementName = "TABPAGE_1.assemblyhdr",       // Keys: inv_mast_item_id
+            Keys = new[] { new { Name = "inv_mast_item_id", Value = ItemId } },
+        },
+        new { DataElementName = "TABPAGE_17.tp_17_dw_17", Keys = Array.Empty<object>() },
     }
+};
+
+var readBackResponse = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(JsonSerializer.Serialize(getPayload), Encoding.UTF8, "application/json"));
+readBackResponse.EnsureSuccessStatusCode();
+
+using var readBack = JsonDocument.Parse(await readBackResponse.Content.ReadAsStringAsync());
+var wanted = new HashSet<string>
+{
+    "inv_mast_item_id", "allow_disassembly", "item_id_service_labor_id", "quantity"
+};
+foreach (var (name, value) in Walk(readBack.RootElement))
+{
+    if (wanted.Contains(name))
+        Console.WriteLine($"  {name} = {value}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Yield every {"Name": ..., "Value": ...} pair anywhere in a response.
+static IEnumerable<(string Name, string Value)> Walk(JsonElement node)
+{
+    if (node.ValueKind == JsonValueKind.Object)
+    {
+        if (node.TryGetProperty("Name", out var name) && node.TryGetProperty("Value", out var value))
+            yield return (name.ToString(), value.ToString());
+        foreach (var property in node.EnumerateObject())
+            foreach (var pair in Walk(property.Value))
+                yield return pair;
+    }
+    else if (node.ValueKind == JsonValueKind.Array)
+    {
+        foreach (var item in node.EnumerateArray())
+            foreach (var pair in Walk(item))
+                yield return pair;
+    }
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->
@@ -1708,6 +2705,8 @@ if ((int)result["Summary"]!["Failed"]! > 0)
 ### Item Service -- Nested Location Edits
 
 The `Item` service (Item Maintenance window) supports **nested DataElement navigation** that mirrors the UI: select the item, select a location row, then edit that location's detail. This is the Transaction-API equivalent of "select parent row → edit child detail," and it works because the Item window's tabs aren't gated behind row selection. It's a good template for any nested edit.
+
+> The two payloads below are shapes, not programs -- swap either into the `payload` of a complete example. Full runnable version: [Create Order](#create-order).
 
 #### Set an item's primary bin at a location (Form → List → Form)
 
@@ -1741,7 +2740,7 @@ Same window, one level different — the third element is the supplier list:
 ```json
 { "Name": "SUPPLIER_X_LOCATION.supplier_x_location", "Type": "List", "Keys": ["supplier_id"],
   "Rows": [{ "Edits": [
-      {"Name": "supplier_id", "Value": "20000"},
+      {"Name": "supplier_id", "Value": "10050"},
       {"Name": "primary_supplier", "Value": "ON"}
   ] }] }
 ```
@@ -1762,6 +2761,8 @@ What this writes, and the cascade (verified on a 68-item production run):
 ### BinLocation Service -- Creating Bins
 
 The `BinLocation` service *is* the **Bin Location Maintenance** window: its form element `FORM.form` is business object `bin` (datawindow `d_dw_bin_form`), and every field in the payload is a real field on that screen. Bulk bin creation is a clean Transaction API use case — verified in production at hundreds of bins per run.
+
+> Payload shape only. Full runnable version -- same endpoint and response checks: [Create Order](#create-order). A complete bin-creation walkthrough lives in [recipes/create-bins.md](recipes/create-bins.md).
 
 ```json
 {
@@ -2191,6 +3192,8 @@ The Transaction API includes a dedicated endpoint for generating PDF documents -
 
 The payload follows the standard TransactionSet format. Report-specific criteria go in the DataElement's `Edits` array:
 
+> Payload shape only. Full runnable version: [Example: Generate and Save a PO Reprint](#example-generate-and-save-a-po-reprint).
+
 ```json
 {
     "Name": "m_reprintpurchaseorders",
@@ -2227,7 +3230,7 @@ The response is a **JSON array** (even for a single document). Each element cont
 ```json
 [
   {
-    "ClientId": "9a58084c-b2e5-451f-a8d3-6564594017f2",
+    "ClientId": "66666666-7777-8888-9999-aaaaaaaaaaaa",
     "RequestId": null,
     "DocumentType": 1,
     "DocumentId": "PO500100 PURCHASE_ORDER",
@@ -2274,178 +3277,249 @@ The response is a **JSON array** (even for a single document). Each element cont
 
 <!-- tabs -->
 ```python
+"""Generate a PO reprint PDF and save it to disk."""
 import base64
+import os
+import re
+
 import httpx
 
-# Authenticate and get UI server URL
-base_url = "https://play.p21server.com"
-auth_resp = httpx.post(
-    f"{base_url}/api/security/token/v2",
-    json={"username": "api_user", "password": "api_pass"},
-    verify=False,
-)
-auth_resp.raise_for_status()
-token = auth_resp.json()["AccessToken"]
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+PO_NO = "500100"                          # single PO: beg_po_no == end_po_no
+# ---------------------------------------------------------------------------
 
-router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1/?urlType=external",
-    headers={"Authorization": f"Bearer {token}"},
-    verify=False,
-    follow_redirects=True,
-)
-router_resp.raise_for_status()
-ui_server_url = router_resp.json()["Url"].rstrip("/")
 
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-}
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# Generate PO reprint PDF
-payload = {
-    "Name": "m_reprintpurchaseorders",
-    "Transactions": [{
-        "DataElements": [{
-            "Keys": [],
-            "Name": "TABPAGE_1.poreportcriteriadw",
-            "Rows": [{
-                "Edits": [
-                    {"Name": "company_id", "Value": "ACME"},
-                    {"Name": "beg_po_no", "Value": "500100"},
-                    {"Name": "end_po_no", "Value": "500100"},
-                    {"Name": "reprint_flag", "Value": "Y"},
-                ]
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Generate PO reprint PDF -- reports go to /process/pdfreport, never /transaction
+    payload = {
+        "Name": "m_reprintpurchaseorders",
+        "Transactions": [{
+            "DataElements": [{
+                "Keys": [],
+                "Name": "TABPAGE_1.poreportcriteriadw",
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "company_id", "Value": COMPANY_ID},
+                        {"Name": "beg_po_no", "Value": PO_NO},
+                        {"Name": "end_po_no", "Value": PO_NO},
+                        {"Name": "reprint_flag", "Value": "Y"},
+                    ]
+                }],
+                "Type": 0,
             }],
-            "Type": 0,
+            "Status": 0,
         }],
-        "Status": 0,
-    }],
-    "UseCodeValues": False,
-}
+        "UseCodeValues": False,
+    }
 
-response = httpx.post(
-    f"{ui_server_url}/api/v2/process/pdfreport",
-    headers=headers,
-    json=payload,
-    verify=False,
-)
-response.raise_for_status()
-result = response.json()
+    response = client.post(
+        f"{ui_server}/api/v2/process/pdfreport", headers=headers, json=payload
+    )
+    response.raise_for_status()
+    result = response.json()
 
-# Response is a JSON array -- even for a single document
-if isinstance(result, list) and len(result) > 0:
-    doc = result[0]
-    status = doc.get("ResponseStatus", {}).get("StatusCode")
-    if status == "Success" and doc.get("DocumentData"):
-        pdf_bytes = base64.b64decode(doc["DocumentData"])
-        filename = doc.get("FileName", "PO_500100.pdf")
-        with open(filename, "wb") as f:
-            f.write(pdf_bytes)
-        print(f"Saved {filename} ({len(pdf_bytes)} bytes)")
+    # Response is a JSON array -- even for a single document
+    if isinstance(result, list) and len(result) > 0:
+        doc = result[0]
+        status = doc.get("ResponseStatus", {}).get("StatusCode")
+        if status == "Success" and doc.get("DocumentData"):
+            pdf_bytes = base64.b64decode(doc["DocumentData"])
+            filename = doc.get("FileName", f"PO_{PO_NO}.pdf")
+            with open(filename, "wb") as f:
+                f.write(pdf_bytes)
+            # read-back: what actually landed on disk
+            print(f"Saved {filename} ({os.path.getsize(filename)} bytes)")
+        else:
+            msg = doc.get("ResponseStatus", {}).get("Message", "Unknown error")
+            print(f"Report failed: {msg}")
     else:
-        msg = doc.get("ResponseStatus", {}).get("Message", "Unknown error")
-        print(f"Report failed: {msg}")
-else:
-    print("No documents returned")
-    print(f"Response: {result}")
+        # Errors use the standard P21 envelope (ErrorType / ErrorMessage)
+        print("No documents returned")
+        print(f"Response: {result}")
 ```
 
 ```csharp
-using System;
-using System.IO;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-// Authenticate and get UI server URL
-using var httpClient = new HttpClient();
-httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const string PoNo = "500100";                          // single PO: beg == end
+// ---------------------------------------------------------------------------
 
-var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
-var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
-var authResp = await httpClient.PostAsync(
-    "https://play.p21server.com/api/security/token/v2", authContent);
-authResp.EnsureSuccessStatusCode();
-var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
-var token = authJson["AccessToken"]!.ToString();
-
-httpClient.DefaultRequestHeaders.Authorization =
-    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-var routerResp = await httpClient.GetAsync(
-    "https://play.p21server.com/api/ui/router/v1?urlType=external");
-routerResp.EnsureSuccessStatusCode();
-var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
-var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
-
-// Generate PO reprint PDF
-var payload = new JObject
+var handler = new HttpClientHandler
 {
-    ["Name"] = "m_reprintpurchaseorders",
-    ["Transactions"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Generate PO reprint PDF -- reports go to /process/pdfreport, never /transaction
+var payload = new
+{
+    Name = "m_reprintpurchaseorders",
+    Transactions = new[]
     {
-        new JObject
+        new
         {
-            ["DataElements"] = new JArray
+            DataElements = new[]
             {
-                new JObject
+                new
                 {
-                    ["Keys"] = new JArray(),
-                    ["Name"] = "TABPAGE_1.poreportcriteriadw",
-                    ["Rows"] = new JArray
+                    Keys = Array.Empty<string>(),
+                    Name = "TABPAGE_1.poreportcriteriadw",
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                new JObject { ["Name"] = "beg_po_no", ["Value"] = "500100" },
-                                new JObject { ["Name"] = "end_po_no", ["Value"] = "500100" },
-                                new JObject { ["Name"] = "reprint_flag", ["Value"] = "Y" },
+                                new { Name = "company_id", Value = CompanyId },
+                                new { Name = "beg_po_no", Value = PoNo },
+                                new { Name = "end_po_no", Value = PoNo },
+                                new { Name = "reprint_flag", Value = "Y" },
                             }
                         }
                     },
-                    ["Type"] = 0
+                    Type = 0
                 }
             },
-            ["Status"] = 0
+            Status = 0
         }
     },
-    ["UseCodeValues"] = false
+    UseCodeValues = false
 };
 
-var content = new StringContent(
-    payload.ToString(), Encoding.UTF8, "application/json");
-var response = await httpClient.PostAsync(
-    $"{uiServerUrl}/api/v2/process/pdfreport", content);
+var response = await client.PostAsync(
+    $"{uiServer}/api/v2/process/pdfreport",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 response.EnsureSuccessStatusCode();
 
-var resultArray = JArray.Parse(await response.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 // Response is a JSON array -- even for a single document
-if (resultArray.Count > 0)
+if (result.RootElement.ValueKind == JsonValueKind.Array && result.RootElement.GetArrayLength() > 0)
 {
-    var doc = resultArray[0] as JObject;
-    var status = doc?["ResponseStatus"]?["StatusCode"]?.ToString();
-    var documentData = doc?["DocumentData"]?.ToString();
+    var doc = result.RootElement[0];
+    var status = doc.GetProperty("ResponseStatus").GetProperty("StatusCode").GetString();
+    var documentData = doc.TryGetProperty("DocumentData", out var data) ? data.GetString() : null;
 
     if (status == "Success" && !string.IsNullOrEmpty(documentData))
     {
         var pdfBytes = Convert.FromBase64String(documentData);
-        var filename = doc?["FileName"]?.ToString() ?? "PO_500100.pdf";
+        var filename = doc.GetProperty("FileName").GetString() ?? $"PO_{PoNo}.pdf";
         await File.WriteAllBytesAsync(filename, pdfBytes);
-        Console.WriteLine($"Saved {filename} ({pdfBytes.Length} bytes)");
+        // read-back: what actually landed on disk
+        Console.WriteLine($"Saved {filename} ({new FileInfo(filename).Length} bytes)");
     }
     else
     {
-        var msg = doc?["ResponseStatus"]?["Message"]?.ToString() ?? "Unknown error";
-        Console.WriteLine($"Report failed: {msg}");
+        var message = doc.GetProperty("ResponseStatus").GetProperty("Message").GetString();
+        Console.WriteLine($"Report failed: {message ?? "Unknown error"}");
     }
 }
 else
 {
+    // Errors use the standard P21 envelope (ErrorType / ErrorMessage)
     Console.WriteLine("No documents returned");
+    Console.WriteLine($"Response: {result.RootElement}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->
@@ -2455,6 +3529,8 @@ else
 ### Example: Generate a Production-Order Pick Ticket (m_picktickets)
 
 Running `m_picktickets` **creates the pick-ticket record** at the given `location_id` **and** returns the PDF in a single call. This matters for production orders that are built at one location while their components stock at another — the `ProductionOrder` transaction print flag only emits at the *make* location (see [PDFs from the /transaction endpoint](#pdfs-from-the-transaction-endpoint-print-flags) below), but this report generates the ticket at whatever location you specify.
+
+> Payload shape only -- note `UseCodeValues: true` and the code values. Full runnable version (swap in this payload): [Example: Generate and Save a PO Reprint](#example-generate-and-save-a-po-reprint). End-to-end walkthrough: [recipes/generate-pick-ticket-pdf.md](recipes/generate-pick-ticket-pdf.md).
 
 ```json
 POST /api/v2/process/pdfreport
@@ -2557,143 +3633,195 @@ Use `POST /api/v2/transaction/get` with the `stored_procedure_def_uid` key to re
 
 <!-- tabs -->
 ```python
+"""Load a stored procedure definition and print its fields and parameters."""
+import re
+
 import httpx
 
-# Authenticate and get UI server URL (see Authentication examples above)
-base_url = "https://play.p21server.com"
-auth_resp = httpx.post(
-    f"{base_url}/api/security/token/v2",
-    json={"username": "api_user", "password": "api_pass"},
-    verify=False,
-)
-auth_resp.raise_for_status()
-token = auth_resp.json()["AccessToken"]
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SP_UID = "12345"                          # from the P21 Stored Procedure Executor UI
+# ---------------------------------------------------------------------------
 
-router_resp = httpx.get(
-    f"{base_url}/api/ui/router/v1/?urlType=external",
-    headers={"Authorization": f"Bearer {token}"},
-    verify=False,
-    follow_redirects=True,
-)
-router_resp.raise_for_status()
-ui_server_url = router_resp.json()["Url"].rstrip("/")
 
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-}
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# Load a stored procedure definition by UID
-sp_uid = "12345"  # Found in P21 Stored Procedure Executor UI
-payload = {
-    "ServiceName": "m_storedprocedureexecutor",
-    "TransactionStates": [{
-        "DataElementName": "DEFINITION.stored_procedure_def",
-        "Keys": [{
-            "Name": "stored_procedure_def_uid",
-            "Value": sp_uid,
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "ServiceName": "m_storedprocedureexecutor",
+        "TransactionStates": [{
+            "DataElementName": "DEFINITION.stored_procedure_def",
+            "Keys": [{
+                "Name": "stored_procedure_def_uid",
+                "Value": SP_UID,
+            }],
         }],
-    }],
-}
+    }
 
-response = httpx.post(
-    f"{ui_server_url}/api/v2/transaction/get",
-    headers=headers,
-    json=payload,
-    verify=False,
-)
-response.raise_for_status()
-result = response.json()
+    response = client.post(
+        f"{ui_server}/api/v2/transaction/get", headers=headers, json=payload
+    )
+    response.raise_for_status()
+    result = response.json()
 
-# The response includes the SP definition and its argument_list parameters
-for txn in result.get("Transactions", []):
-    for de in txn.get("DataElements", []):
-        print(f"DataElement: {de['Name']}")
-        for row in de.get("Rows", []):
-            for edit in row.get("Edits", []):
-                print(f"  {edit['Name']}: {edit['Value']}")
+    # The response includes the SP definition and its argument_list parameters
+    for txn in result.get("Transactions", []):
+        for de in txn.get("DataElements", []):
+            print(f"DataElement: {de['Name']}")
+            for row in de.get("Rows", []):
+                for edit in row.get("Edits", []):
+                    print(f"  {edit['Name']}: {edit['Value']}")
 ```
 
 ```csharp
-using System;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-// Authenticate and get UI server URL (see Authentication examples above)
-using var httpClient = new HttpClient();
-httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string SpUid = "12345";              // from the P21 Stored Procedure Executor UI
+// ---------------------------------------------------------------------------
 
-var authBody = new JObject { ["username"] = "api_user", ["password"] = "api_pass" };
-var authContent = new StringContent(authBody.ToString(), Encoding.UTF8, "application/json");
-var authResp = await httpClient.PostAsync(
-    "https://play.p21server.com/api/security/token/v2", authContent);
-authResp.EnsureSuccessStatusCode();
-var authJson = JObject.Parse(await authResp.Content.ReadAsStringAsync());
-var token = authJson["AccessToken"]!.ToString();
-
-httpClient.DefaultRequestHeaders.Authorization =
-    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-var routerResp = await httpClient.GetAsync(
-    "https://play.p21server.com/api/ui/router/v1?urlType=external");
-routerResp.EnsureSuccessStatusCode();
-var routerJson = JObject.Parse(await routerResp.Content.ReadAsStringAsync());
-var uiServerUrl = routerJson["Url"]!.ToString().TrimEnd('/');
-
-// Load a stored procedure definition by UID
-var spUid = "12345"; // Found in P21 Stored Procedure Executor UI
-var payload = new JObject
+var handler = new HttpClientHandler
 {
-    ["ServiceName"] = "m_storedprocedureexecutor",
-    ["TransactionStates"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    ServiceName = "m_storedprocedureexecutor",
+    TransactionStates = new[]
     {
-        new JObject
+        new
         {
-            ["DataElementName"] = "DEFINITION.stored_procedure_def",
-            ["Keys"] = new JArray
+            DataElementName = "DEFINITION.stored_procedure_def",
+            Keys = new[]
             {
-                new JObject
-                {
-                    ["Name"] = "stored_procedure_def_uid",
-                    ["Value"] = spUid
-                }
+                new { Name = "stored_procedure_def_uid", Value = SpUid }
             }
         }
     }
 };
 
-var content = new StringContent(
-    payload.ToString(), Encoding.UTF8, "application/json");
-var response = await httpClient.PostAsync(
-    $"{uiServerUrl}/api/v2/transaction/get", content);
+var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 response.EnsureSuccessStatusCode();
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 // The response includes the SP definition and its argument_list parameters
-var transactions = result["Transactions"] as JArray;
-if (transactions != null)
+if (result.RootElement.TryGetProperty("Transactions", out var transactions))
 {
-    foreach (var txn in transactions)
+    foreach (var txn in transactions.EnumerateArray())
     {
-        var dataElements = txn["DataElements"] as JArray;
-        if (dataElements == null) continue;
-        foreach (var de in dataElements)
+        if (!txn.TryGetProperty("DataElements", out var dataElements)) continue;
+        foreach (var de in dataElements.EnumerateArray())
         {
-            Console.WriteLine($"DataElement: {de["Name"]}");
-            var rows = de["Rows"] as JArray;
-            if (rows == null) continue;
-            foreach (var row in rows)
+            Console.WriteLine($"DataElement: {de.GetProperty("Name")}");
+            if (!de.TryGetProperty("Rows", out var rows)) continue;
+            foreach (var row in rows.EnumerateArray())
             {
-                var edits = row["Edits"] as JArray;
-                if (edits == null) continue;
-                foreach (var edit in edits)
-                    Console.WriteLine($"  {edit["Name"]}: {edit["Value"]}");
+                if (!row.TryGetProperty("Edits", out var edits)) continue;
+                foreach (var edit in edits.EnumerateArray())
+                    Console.WriteLine($"  {edit.GetProperty("Name")}: {edit.GetProperty("Value")}");
             }
         }
     }
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->
@@ -2823,6 +3951,8 @@ Use the Interactive API and answer the popup with `cb_1` ("Yes, Proceed Anyway")
 ### Response Validation
 
 > **Important:** The Transaction API returns **HTTP 200 even for failed transactions**. Always check the `Summary` and `Messages` sections of the response body -- never rely on the HTTP status code alone to determine success or failure. *(Credit: Neil Timmerman)*
+
+> Fragment -- shows only the check. Full runnable version: [Create Order](#create-order).
 
 <!-- tabs -->
 ```python

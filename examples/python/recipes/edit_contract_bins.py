@@ -29,7 +29,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
-CONTRACT_NO = "A120-12"   # used for the OData read-back
+CONTRACT_NO = "JOB-1001"   # used for the OData read-back
 JOB_NO = "31"             # unique across renewals -- load the header by this
 CUSTOMER_ID = "100198"
 SHIP_TO_ID = "200"

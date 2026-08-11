@@ -6,7 +6,7 @@ Create a customer master record in one stateless Transaction API call. `customer
 
 ## Prerequisites
 
-- Token + UI server URL (shared auth helper — see the [recipes README](README.md)).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
 - The salesrep exists (`salesrep_id`) and the branch exists (`default_branch`).
 
 ## What the defaults template already fills
@@ -68,138 +68,232 @@ For every other field the service accepts, load [`definitions/Customer.json`](..
 
 <!-- tabs -->
 ```python
-import httpx  # p21_auth() from recipes/README.md
+"""Create a customer master record, then read it back over OData."""
+import re
 
-BASE_URL = "https://play.p21server.com"
-USERNAME = "api_user"
-PASSWORD = "api_pass"
+import httpx
 
-token, ui_server, headers = p21_auth(BASE_URL, USERNAME, PASSWORD)
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_NAME = "ACME Industrial Supply"
+SALESREP_ID = "100"                       # hard-required (see Gotchas)
+DEFAULT_BRANCH = "10"                     # required, NOT defaulted
+MAIL_ADDRESS1 = "123 Main St"
+MAIL_CITY = "Des Moines"
+MAIL_STATE = "IA"
+MAIL_POSTAL_CODE = "50309"
+MAIL_COUNTRY = "USA"
+# ---------------------------------------------------------------------------
 
-payload = {
-    "Name": "Customer",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",
-        "DataElements": [
-            {
-                "Name": "TABPAGE_1.tp_1_dw_1",
-                "Type": "Form",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "customer_name",    "Value": "ACME Industrial Supply"},
-                        {"Name": "salesrep_id",      "Value": "100"},   # hard-required (see Gotchas)
-                        {"Name": "mail_address1",    "Value": "123 Main St"},
-                        {"Name": "mail_city",        "Value": "Des Moines"},
-                        {"Name": "mail_state",       "Value": "IA"},
-                        {"Name": "mail_postal_code", "Value": "50309"},
-                        {"Name": "mail_country",     "Value": "USA"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            {
-                "Name": "SHIP_TO_GENERAL.ship_to_general",
-                "Type": "Form",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "default_branch", "Value": "10"},  # required, NOT defaulted
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-        ],
-    }],
-}
 
-response = httpx.post(
-    f"{ui_server}/api/v2/transaction",
-    headers=headers, json=payload, verify=False, timeout=120,
-)
-response.raise_for_status()
-result = response.json()
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# HTTP 200 even on failure -- check the Summary, never the status code
-summary = result["Summary"]
-print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
-if summary["Failed"] > 0 or summary["Succeeded"] == 0:
-    for msg in result.get("Messages", []):
-        print(msg)
-    raise SystemExit("Customer create failed")
 
-# The generated customer_id comes back in the TABPAGE_1.tp_1_dw_1 result rows
-customer_id = None
-for txn in result["Results"]["Transactions"]:
-    if txn.get("Status") != "Passed":
-        continue
-    for element in txn.get("DataElements", []):
-        if element.get("Name") != "TABPAGE_1.tp_1_dw_1":
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "Name": "Customer",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [
+                {
+                    "Name": "TABPAGE_1.tp_1_dw_1",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "customer_name",    "Value": CUSTOMER_NAME},
+                            {"Name": "salesrep_id",      "Value": SALESREP_ID},
+                            {"Name": "mail_address1",    "Value": MAIL_ADDRESS1},
+                            {"Name": "mail_city",        "Value": MAIL_CITY},
+                            {"Name": "mail_state",       "Value": MAIL_STATE},
+                            {"Name": "mail_postal_code", "Value": MAIL_POSTAL_CODE},
+                            {"Name": "mail_country",     "Value": MAIL_COUNTRY},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                {
+                    "Name": "SHIP_TO_GENERAL.ship_to_general",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "default_branch", "Value": DEFAULT_BRANCH},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+            ],
+        }],
+    }
+
+    response = client.post(f"{ui_server}/api/v2/transaction",
+                           headers=headers, json=payload)
+    response.raise_for_status()
+    result = response.json()
+
+    # HTTP 200 even on failure -- check the Summary, never the status code
+    summary = result["Summary"]
+    print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
+    if summary["Failed"] > 0 or summary["Succeeded"] == 0:
+        for msg in result.get("Messages", []):
+            print(msg)
+        raise SystemExit("Customer create failed")
+
+    # The generated customer_id comes back in the TABPAGE_1.tp_1_dw_1 result rows
+    customer_id = None
+    for txn in result["Results"]["Transactions"]:
+        if txn.get("Status") != "Passed":
             continue
-        for row in element.get("Rows", []):
-            for edit in row.get("Edits", []):
-                if edit.get("Name") == "customer_id":
-                    customer_id = edit.get("Value")
+        for element in txn.get("DataElements", []):
+            if element.get("Name") != "TABPAGE_1.tp_1_dw_1":
+                continue
+            for row in element.get("Rows", []):
+                for edit in row.get("Edits", []):
+                    if edit.get("Name") == "customer_id":
+                        customer_id = edit.get("Value")
 
-print(f"Created customer_id: {customer_id}")
+    print(f"Created customer_id: {customer_id}")
 
-# Read back via OData
-cust = httpx.get(
-    f"{BASE_URL}/odataservice/odata/table/customer",
-    params={"$filter": f"customer_id eq {customer_id}"},
-    headers=headers, verify=False,
-)
-cust.raise_for_status()
-print(f"customer rows: {len(cust.json()['value'])}")
+    # Read back via OData -- Succeeded is not proof every value landed
+    cust = client.get(
+        f"{BASE_URL}/odataservice/odata/table/customer",
+        params={"$filter": f"customer_id eq {customer_id}"},
+        headers=headers,
+    )
+    cust.raise_for_status()
+    for row in cust.json()["value"]:
+        print({
+            "customer_id": row.get("customer_id"),
+            "customer_name": row.get("customer_name"),
+            "salesrep_id": row.get("salesrep_id"),
+            "mail_city": row.get("mail_city"),
+        })
 ```
 
 ```csharp
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "api_pass");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-JObject Row(params (string Name, string Value)[] edits) => new JObject
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerName = "ACME Industrial Supply";
+const string SalesrepId = "100";        // hard-required (see Gotchas)
+const string DefaultBranch = "10";      // required, NOT defaulted
+const string MailAddress1 = "123 Main St";
+const string MailCity = "Des Moines";
+const string MailState = "IA";
+const string MailPostalCode = "50309";
+const string MailCountry = "USA";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    ["Edits"] = new JArray(edits.Select(e =>
-        new JObject { ["Name"] = e.Name, ["Value"] = e.Value })),
-    ["RelativeDateEdits"] = new JArray(),
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
 };
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-var payload = new JObject
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
 {
-    ["Name"] = "Customer",
-    ["UseCodeValues"] = false,
-    ["Transactions"] = new JArray
+    Name = "Customer",
+    UseCodeValues = false,
+    Transactions = new[]
     {
-        new JObject
+        new
         {
-            ["Status"] = "New",
-            ["DataElements"] = new JArray
+            Status = "New",
+            DataElements = new object[]
             {
-                new JObject
+                new
                 {
-                    ["Name"] = "TABPAGE_1.tp_1_dw_1",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "TABPAGE_1.tp_1_dw_1",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[]
                     {
-                        Row(("customer_name", "ACME Industrial Supply"),
-                            ("salesrep_id", "100"),          // hard-required (see Gotchas)
-                            ("mail_address1", "123 Main St"),
-                            ("mail_city", "Des Moines"),
-                            ("mail_state", "IA"),
-                            ("mail_postal_code", "50309"),
-                            ("mail_country", "USA")),
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "customer_name", Value = CustomerName },
+                                new { Name = "salesrep_id", Value = SalesrepId },
+                                new { Name = "mail_address1", Value = MailAddress1 },
+                                new { Name = "mail_city", Value = MailCity },
+                                new { Name = "mail_state", Value = MailState },
+                                new { Name = "mail_postal_code", Value = MailPostalCode },
+                                new { Name = "mail_country", Value = MailCountry },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
                     },
                 },
-                new JObject
+                new
                 {
-                    ["Name"] = "SHIP_TO_GENERAL.ship_to_general",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "SHIP_TO_GENERAL.ship_to_general",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[]
                     {
-                        Row(("default_branch", "10")),       // required, NOT defaulted
+                        new
+                        {
+                            Edits = new[]
+                            {
+                                new { Name = "default_branch", Value = DefaultBranch },
+                            },
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
                     },
                 },
             },
@@ -207,29 +301,114 @@ var payload = new JObject
     },
 };
 
-var response = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/transaction",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
+using var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 response.EnsureSuccessStatusCode();
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 // HTTP 200 even on failure -- check the Summary, never the status code
-var succeeded = (int)result["Summary"]!["Succeeded"]!;
-var failed = (int)result["Summary"]!["Failed"]!;
+var summary = result.RootElement.GetProperty("Summary");
+var succeeded = summary.GetProperty("Succeeded").GetInt32();
+var failed = summary.GetProperty("Failed").GetInt32();
 Console.WriteLine($"Succeeded: {succeeded}, Failed: {failed}");
 if (failed > 0 || succeeded == 0)
 {
-    foreach (var msg in result["Messages"] ?? new JArray())
-        Console.WriteLine(msg);
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        Console.Error.WriteLine(messages);
+    }
     throw new InvalidOperationException("Customer create failed");
 }
 
 // The generated customer_id comes back in the TABPAGE_1.tp_1_dw_1 result rows
-var customerId = result.SelectTokens(
-        "$.Results.Transactions[?(@.Status == 'Passed')].DataElements[?(@.Name == 'TABPAGE_1.tp_1_dw_1')].Rows[*].Edits[?(@.Name == 'customer_id')].Value")
-    .FirstOrDefault()?.ToString();
-
+var customerId = ResultValue(result.RootElement, "TABPAGE_1.tp_1_dw_1", "customer_id");
 Console.WriteLine($"Created customer_id: {customerId}");
+
+// Read back via OData -- Succeeded is not proof every value landed
+foreach (var row in await ODataAsync(client, "customer", $"customer_id eq {customerId}"))
+{
+    Console.WriteLine(
+        $"customer_id={row.GetProperty("customer_id")} " +
+        $"customer_name={row.GetProperty("customer_name")} " +
+        $"salesrep_id={row.GetProperty("salesrep_id")} " +
+        $"mail_city={row.GetProperty("mail_city")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Pull one echoed field out of a passed transaction's result rows.
+static string? ResultValue(JsonElement root, string elementName, string fieldName)
+{
+    foreach (var txn in root.GetProperty("Results").GetProperty("Transactions").EnumerateArray())
+    {
+        if (txn.GetProperty("Status").GetString() != "Passed") continue;
+        foreach (var element in txn.GetProperty("DataElements").EnumerateArray())
+        {
+            if (element.GetProperty("Name").GetString() != elementName) continue;
+            foreach (var row in element.GetProperty("Rows").EnumerateArray())
+            {
+                foreach (var edit in row.GetProperty("Edits").EnumerateArray())
+                {
+                    if (edit.GetProperty("Name").GetString() == fieldName)
+                    {
+                        return edit.GetProperty("Value").GetString();
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
+static async Task<List<JsonElement>> ODataAsync(HttpClient client, string table, string filter)
+{
+    using var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/{table}?$filter=" + Uri.EscapeDataString(filter));
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray()
+        .Select(x => x.Clone()).ToList();
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 <!-- /tabs -->
 

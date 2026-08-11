@@ -13,7 +13,7 @@ Prophet 21 provides several APIs for external data access and manipulation. This
 The Interactive API is **not** a way around a disabled column or a window-level gate. Both the Transaction API and the Interactive API drive the same PowerBuilder windows and enforce the same business rules — a window that refuses a record or disables a column refuses/disables it for **both** APIs. The Interactive API only adds a stateful session with multi-step window interaction. Choose it because a workflow genuinely needs that statefulness (multi-step entry, answering response windows) — never because a write failed on one API and you're hoping the other will let it through.
 
 Two verified instances (2026-08-11), both documented in detail in the [Transaction API](03-Transaction-API.md) guide:
-- The `Shipping` service refuses an already-invoiced pick ticket at record selection, so a tracking number cannot be set post-invoice through either API.
+- The `Shipping` service refuses an already-invoiced pick ticket at record selection, so a tracking number cannot be set post-invoice through either API — see [Shipping Service — Carrier Tracking Number](03-Transaction-API.md#shipping-service-carrier-tracking-number).
 - `c_tracking_no` on the `Order` / `FrontCounter` / `RMA` / `ServiceOrder` shipment grids is a computed, disabled display column (`Column is disabled: c_tracking_no`) — not a write path, in either API.
 
 **The genuine exception is response-window dialogs.** The Interactive API can answer some dialogs the Transaction API cannot — see the ["Item Issues Detected" rule-callback worked example](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback). That is a real capability difference about *handling a dialog*, not about bypassing a disabled column or a window gate. Interactive answers dialogs; it does not unlock what the window has locked.
@@ -323,6 +323,14 @@ The most common pattern:
 3. Use **Interactive API** for flows that need window logic or dialog answers
 
 ### Example: Price Page Management
+
+The snippet below is illustrative — `odata`, `transaction`, and `interactive` are
+stand-ins for whichever client wrapper you build, shown here only to sketch the
+three-API hybrid pattern.
+
+> Full runnable version: [OData filtered query](02-OData-API.md#filtered-query),
+> [Transaction API create example](03-Transaction-API.md#example-create-a-job-contract-with-break-and-non-break-lines),
+> [Interactive API price page linking](04-Interactive-API.md#example-linking-price-page-to-price-book)
 
 <!-- tabs -->
 ```python

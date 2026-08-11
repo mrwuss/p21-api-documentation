@@ -41,7 +41,7 @@ def main():
     response = httpx.get(
         f"{config.odata_url}/table/price_page",
         params={
-            "$filter": "supplier_id eq 20000 and row_status_flag eq 704",
+            "$filter": "supplier_id eq 10050 and row_status_flag eq 704",
             "$select": "price_page_uid,description,effective_date,expiration_date,calculation_value1",
             "$orderby": "effective_date desc",
             "$top": 5
@@ -66,7 +66,7 @@ def main():
     response = httpx.get(
         f"{config.odata_url}/table/price_page",
         params={
-            "$filter": "(supplier_id eq 10 or supplier_id eq 20000) and row_status_flag eq 704",
+            "$filter": "(supplier_id eq 10 or supplier_id eq 10050) and row_status_flag eq 704",
             "$select": "price_page_uid,supplier_id,description",
             "$top": 10,
             "$count": "true"

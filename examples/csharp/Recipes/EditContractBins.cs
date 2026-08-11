@@ -20,7 +20,7 @@ namespace P21Examples.Recipes;
 
 public static class EditContractBins
 {
-    private const string ContractNo = "A120-12";
+    private const string ContractNo = "JOB-1001";
     private const string JobNo = "31";
     private const string CustomerId = "100198";
     private const string ShipToId = "200";

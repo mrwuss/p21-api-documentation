@@ -192,122 +192,179 @@ Insert multiple rows in a single request by adding objects to the `rows` array:
 
 **Python:**
 ```python
+"""Insert a row into a UDT table via the UDT Service API."""
+import re
+
 import httpx
 
-base_url = "https://play.p21server.com"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "udt_custom_orders"               # UDT table name
+# ---------------------------------------------------------------------------
 
-# Get token (see Authentication docs)
-token_resp = httpx.post(
-    f"{base_url}/api/security/token/v2",
-    json={"username": "api_user", "password": "password"},
-    headers={"Accept": "application/json"},
-    # verify=False,  # Only for dev environments with self-signed certs
-)
-token = token_resp.json()["AccessToken"]
 
-client = httpx.Client(
-    headers={
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
         "Content-Type": "application/json",
-    },
-    # verify=False,  # Only for dev environments with self-signed certs
-)
+    }
 
-payload = {
-    "table": "udt_custom_orders",
-    "rows": [
-        {
-            "columns": [
-                {"name": "order_ref", "value": "ORD-2026-001"},
-                {"name": "customer_name", "value": "ABC Supply Company"},
-                {"name": "order_total", "value": "1250.00"},
-                {"name": "status", "value": "pending"},
-            ],
-            "conditions": [],
-        }
-    ],
-}
+    payload = {
+        "table": TABLE,
+        "rows": [
+            {
+                "columns": [
+                    {"name": "order_ref", "value": "ORD-2026-001"},
+                    {"name": "customer_name", "value": "ABC Supply Company"},
+                    {"name": "order_total", "value": "1250.00"},
+                    {"name": "status", "value": "pending"},
+                ],
+                "conditions": [],
+            }
+        ],
+    }
 
-resp = client.post(
-    f"{base_url}/udtservice/api/udtdata/insertudtdata",
-    json=payload,
-)
-result = resp.json()
+    resp = client.post(
+        f"{BASE_URL}/udtservice/api/udtdata/insertudtdata",
+        json=payload,
+        headers=headers,
+    )
+    result = resp.json()
 
-if result["errorNo"] == 0:
-    print(f"Success: {result['errorMessage']}")
-else:
-    print(f"Error {result['errorNo']}: {result['errorMessage']}")
+    if result["errorNo"] == 0:
+        print(f"Insert: {result['errorMessage']}")
+    else:
+        print(f"Error {result['errorNo']}: {result['errorMessage']}")
+
+    # Read-back — errorNo == 0 does not prove the row landed; confirm via OData.
+    check = client.get(
+        f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+        params={"$filter": "order_ref eq 'ORD-2026-001'"},
+        headers=headers,
+    )
+    check.raise_for_status()
+    rows = check.json().get("value", [])
+    print(f"Read-back: {len(rows)} row(s) found for order_ref=ORD-2026-001")
 ```
 
 **C#:**
 ```csharp
-using System;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-var baseUrl = "https://play.p21server.com";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "udt_custom_orders";               // UDT table name
+// ---------------------------------------------------------------------------
 
-// Get token (see Authentication docs)
 var handler = new HttpClientHandler
 {
-    // ServerCertificateCustomValidationCallback = (_, _, _, _) => true  // Only for dev with self-signed certs
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
 };
-var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
-client.DefaultRequestHeaders.Add("Accept", "application/json");
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-var tokenPayload = JsonConvert.SerializeObject(new
-{
-    username = "api_user",
-    password = "password"
-});
-var tokenResp = await client.PostAsync(
-    "/api/security/token/v2",
-    new StringContent(tokenPayload, Encoding.UTF8, "application/json")
-);
-tokenResp.EnsureSuccessStatusCode();
-var tokenJson = JObject.Parse(await tokenResp.Content.ReadAsStringAsync());
-var token = tokenJson["AccessToken"]!.ToString();
-
-client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 // Insert a row
-var payload = new JObject
+var payload = new
 {
-    ["table"] = "udt_custom_orders",
-    ["rows"] = new JArray
+    table = Table,
+    rows = new object[]
     {
-        new JObject
+        new
         {
-            ["columns"] = new JArray
+            columns = new object[]
             {
-                new JObject { ["name"] = "order_ref", ["value"] = "ORD-2026-001" },
-                new JObject { ["name"] = "customer_name", ["value"] = "ABC Supply Company" },
-                new JObject { ["name"] = "order_total", ["value"] = "1250.00" },
-                new JObject { ["name"] = "status", ["value"] = "pending" }
+                new { name = "order_ref", value = "ORD-2026-001" },
+                new { name = "customer_name", value = "ABC Supply Company" },
+                new { name = "order_total", value = "1250.00" },
+                new { name = "status", value = "pending" },
             },
-            ["conditions"] = new JArray()
-        }
-    }
+            conditions = Array.Empty<object>(),
+        },
+    },
 };
 
 var resp = await client.PostAsync(
-    "/udtservice/api/udtdata/insertudtdata",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json")
-);
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
+    $"{BaseUrl}/udtservice/api/udtdata/insertudtdata",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
 
-if ((int)result["errorNo"] == 0)
+if (result.GetProperty("errorNo").GetInt32() == 0)
 {
-    Console.WriteLine($"Success: {result["errorMessage"]}");
+    Console.WriteLine($"Insert: {result.GetProperty("errorMessage").GetString()}");
 }
 else
 {
-    Console.WriteLine($"Error {result["errorNo"]}: {result["errorMessage"]}");
+    Console.WriteLine(
+        $"Error {result.GetProperty("errorNo").GetInt32()}: {result.GetProperty("errorMessage").GetString()}");
+}
+
+// Read-back — errorNo == 0 does not prove the row landed; confirm via OData.
+var checkResp = await client.GetAsync(
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=order_ref eq 'ORD-2026-001'");
+checkResp.EnsureSuccessStatusCode();
+var checkResult = JsonDocument.Parse(await checkResp.Content.ReadAsStringAsync()).RootElement;
+Console.WriteLine(
+    $"Read-back: {checkResult.GetProperty("value").GetArrayLength()} row(s) found for order_ref=ORD-2026-001");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -358,72 +415,199 @@ Accept: application/json
 
 ### Example
 
+> The `ROW_UID` constant below must be a value from the table's real `row_uid` column — see the note under [Limitations](#limitations): UDTs created on 2026.1 have no such column, and this call always 400s against them.
+
 <!-- tabs -->
 
 **Python:**
 ```python
-payload = {
-    "table": "udt_custom_orders",
-    "rows": [
-        {
-            "columns": [
-                {"name": "status", "value": "completed"},
-                {"name": "order_total", "value": "1300.00"},
-            ],
-            "conditions": [
-                {"name": "row_uid", "value": "12345"},
-            ],
-        }
-    ],
-}
+"""Update a UDT row identified by row_uid via the UDT Service API."""
+import re
 
-resp = client.put(
-    f"{base_url}/udtservice/api/udtdata/updateudtdata",
-    json=payload,
-)
-result = resp.json()
+import httpx
 
-if result["errorNo"] == 0:
-    print(f"Success: {result['errorMessage']}")
-else:
-    print(f"Error {result['errorNo']}: {result['errorMessage']}")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "udt_custom_orders"               # UDT table name
+ROW_UID = "12345"                         # row_uid of the record to update
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "table": TABLE,
+        "rows": [
+            {
+                "columns": [
+                    {"name": "status", "value": "completed"},
+                    {"name": "order_total", "value": "1300.00"},
+                ],
+                "conditions": [
+                    {"name": "row_uid", "value": ROW_UID},
+                ],
+            }
+        ],
+    }
+
+    resp = client.put(
+        f"{BASE_URL}/udtservice/api/udtdata/updateudtdata",
+        json=payload,
+        headers=headers,
+    )
+    result = resp.json()
+
+    if result["errorNo"] == 0:
+        print(f"Update: {result['errorMessage']}")
+    else:
+        print(f"Error {result['errorNo']}: {result['errorMessage']}")
+
+    # Read-back — confirm the new values actually landed via OData.
+    check = client.get(
+        f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+        params={"$filter": f"row_uid eq {ROW_UID}"},
+        headers=headers,
+    )
+    check.raise_for_status()
+    rows = check.json().get("value", [])
+    if rows:
+        print(f"Read-back: status={rows[0].get('status')}, order_total={rows[0].get('order_total')}")
+    else:
+        print("Read-back: row_uid not found")
 ```
 
 **C#:**
 ```csharp
-var payload = new JObject
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "udt_custom_orders";               // UDT table name
+const string RowUid = "12345";                          // row_uid of the record to update
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    ["table"] = "udt_custom_orders",
-    ["rows"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    table = Table,
+    rows = new object[]
     {
-        new JObject
+        new
         {
-            ["columns"] = new JArray
+            columns = new object[]
             {
-                new JObject { ["name"] = "status", ["value"] = "completed" },
-                new JObject { ["name"] = "order_total", ["value"] = "1300.00" }
+                new { name = "status", value = "completed" },
+                new { name = "order_total", value = "1300.00" },
             },
-            ["conditions"] = new JArray
+            conditions = new object[]
             {
-                new JObject { ["name"] = "row_uid", ["value"] = "12345" }
-            }
-        }
-    }
+                new { name = "row_uid", value = RowUid },
+            },
+        },
+    },
 };
 
 var resp = await client.PutAsync(
-    "/udtservice/api/udtdata/updateudtdata",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json")
-);
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
+    $"{BaseUrl}/udtservice/api/udtdata/updateudtdata",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
 
-if ((int)result["errorNo"] == 0)
+if (result.GetProperty("errorNo").GetInt32() == 0)
 {
-    Console.WriteLine($"Success: {result["errorMessage"]}");
+    Console.WriteLine($"Update: {result.GetProperty("errorMessage").GetString()}");
 }
 else
 {
-    Console.WriteLine($"Error {result["errorNo"]}: {result["errorMessage"]}");
+    Console.WriteLine(
+        $"Error {result.GetProperty("errorNo").GetInt32()}: {result.GetProperty("errorMessage").GetString()}");
+}
+
+// Read-back — confirm the new values actually landed via OData.
+var checkResp = await client.GetAsync(
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=row_uid eq {RowUid}");
+checkResp.EnsureSuccessStatusCode();
+var checkResult = JsonDocument.Parse(await checkResp.Content.ReadAsStringAsync()).RootElement;
+var checkRows = checkResult.GetProperty("value");
+if (checkRows.GetArrayLength() > 0)
+{
+    var row = checkRows[0];
+    Console.WriteLine(
+        $"Read-back: status={row.GetProperty("status").GetString()}, order_total={row.GetProperty("order_total").GetString()}");
+}
+else
+{
+    Console.WriteLine("Read-back: row_uid not found");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -472,67 +656,176 @@ Accept: application/json
 
 ### Example
 
+> `conditions` is sent at the **top level** of the payload, not nested inside `rows[]` — see the payload note above. This example intentionally differs from the `### Payload` block for that reason.
+
 <!-- tabs -->
 
 **Python:**
 ```python
-payload = {
-    "table": "udt_custom_orders",
-    "rows": [
-        {
-            "columns": [],
-            "conditions": [
-                {"name": "row_uid", "value": "12345"},
-            ],
-        }
-    ],
-}
+"""Delete a UDT row identified by row_uid via the UDT Service API."""
+import re
 
-resp = client.request(
-    "DELETE",
-    f"{base_url}/udtservice/api/udtdata/deleteudtdata",
-    json=payload,
-)
-result = resp.json()
+import httpx
 
-if result["errorNo"] == 0:
-    print(f"Success: {result['errorMessage']}")
-else:
-    print(f"Error {result['errorNo']}: {result['errorMessage']}")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "udt_custom_orders"               # UDT table name
+ROW_UID = "12345"                         # row_uid of the record to delete
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # conditions is TOP-LEVEL for delete, not nested in rows[] — see warning above.
+    payload = {
+        "table": TABLE,
+        "conditions": [
+            {"name": "row_uid", "value": ROW_UID},
+        ],
+    }
+
+    resp = client.request(
+        "DELETE",
+        f"{BASE_URL}/udtservice/api/udtdata/deleteudtdata",
+        json=payload,
+        headers=headers,
+    )
+    result = resp.json()
+
+    # Check the row count in errorMessage — errorNo == 0 lies when 0 rows were deleted.
+    if result["errorNo"] == 0:
+        print(f"Delete: {result['errorMessage']}")
+    else:
+        print(f"Error {result['errorNo']}: {result['errorMessage']}")
+
+    # Read-back — confirm the row is actually gone via OData.
+    check = client.get(
+        f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+        params={"$filter": f"row_uid eq {ROW_UID}"},
+        headers=headers,
+    )
+    check.raise_for_status()
+    rows = check.json().get("value", [])
+    print(f"Read-back: {len(rows)} row(s) remain with row_uid={ROW_UID}")
 ```
 
 **C#:**
 ```csharp
-var payload = new JObject
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "udt_custom_orders";               // UDT table name
+const string RowUid = "12345";                          // row_uid of the record to delete
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    ["table"] = "udt_custom_orders",
-    ["rows"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// conditions is TOP-LEVEL for delete, not nested in rows[] — see warning above.
+var payload = new
+{
+    table = Table,
+    conditions = new object[]
     {
-        new JObject
-        {
-            ["columns"] = new JArray(),
-            ["conditions"] = new JArray
-            {
-                new JObject { ["name"] = "row_uid", ["value"] = "12345" }
-            }
-        }
-    }
+        new { name = "row_uid", value = RowUid },
+    },
 };
 
-var request = new HttpRequestMessage(HttpMethod.Delete, "/udtservice/api/udtdata/deleteudtdata")
+var request = new HttpRequestMessage(
+    HttpMethod.Delete, $"{BaseUrl}/udtservice/api/udtdata/deleteudtdata")
 {
-    Content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json")
+    Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"),
 };
 var resp = await client.SendAsync(request);
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
+var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
 
-if ((int)result["errorNo"] == 0)
+// Check the row count in errorMessage — errorNo == 0 lies when 0 rows were deleted.
+if (result.GetProperty("errorNo").GetInt32() == 0)
 {
-    Console.WriteLine($"Success: {result["errorMessage"]}");
+    Console.WriteLine($"Delete: {result.GetProperty("errorMessage").GetString()}");
 }
 else
 {
-    Console.WriteLine($"Error {result["errorNo"]}: {result["errorMessage"]}");
+    Console.WriteLine(
+        $"Error {result.GetProperty("errorNo").GetInt32()}: {result.GetProperty("errorMessage").GetString()}");
+}
+
+// Read-back — confirm the row is actually gone via OData.
+var checkResp = await client.GetAsync(
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=row_uid eq {RowUid}");
+checkResp.EnsureSuccessStatusCode();
+var checkResult = JsonDocument.Parse(await checkResp.Content.ReadAsStringAsync()).RootElement;
+Console.WriteLine(
+    $"Read-back: {checkResult.GetProperty("value").GetArrayLength()} row(s) remain with row_uid={RowUid}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -607,15 +900,40 @@ Success returns HTTP 200:
 
 **Python:**
 ```python
+"""Bulk-insert rows into a UDT from an in-memory CSV, then verify with a read-back."""
 import csv
 import io
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-TABLE = "udt_custom_orders"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "udt_custom_orders"               # UDT table name
+# ---------------------------------------------------------------------------
 
 
-def bulk_upload(token: str, table: str, rows: list[dict]) -> dict:
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def bulk_upload(client: httpx.Client, table: str, rows: list[dict]) -> dict:
     """Bulk-insert rows into a UDT from an in-memory CSV.
 
     The header row is mandatory — without it the service returns success and
@@ -629,9 +947,8 @@ def bulk_upload(token: str, table: str, rows: list[dict]) -> dict:
     writer.writeheader()          # REQUIRED — omitting it silently inserts 0 rows
     writer.writerows(rows)
 
-    response = httpx.post(
+    response = client.post(
         f"{BASE_URL}/udtservice/api/bulkupload/{table}",
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
         files={"file": ("upload.csv", buf.getvalue().encode(), "text/csv")},
         timeout=300,
     )
@@ -639,11 +956,10 @@ def bulk_upload(token: str, table: str, rows: list[dict]) -> dict:
     return response.json()
 
 
-def row_count(token: str, table: str) -> int:
+def row_count(client: httpx.Client, table: str) -> int:
     """Read-back — the upload response carries no row count."""
-    response = httpx.get(
+    response = client.get(
         f"{BASE_URL}/odataservice/odata/table/{table}",
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
         params={"$count": "true", "$top": "0"},
         timeout=120,
     )
@@ -651,71 +967,124 @@ def row_count(token: str, table: str) -> int:
     return response.json().get("@odata.count", 0)
 
 
-# Usage — count before and after, because "isSuccessful" does not mean "inserted"
-before = row_count(token, TABLE)
-result = bulk_upload(token, TABLE, [
-    {"order_code": "A1", "description": "First order", "qty": "1.5"},
-    {"order_code": "A2", "description": "Second order", "qty": "2.5"},
-])
-after = row_count(token, TABLE)
-print(f"{result['message']} — rows inserted: {after - before}")
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    client.headers = httpx.Headers(
+        {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    )
+
+    # Usage — count before and after, because "isSuccessful" does not mean "inserted"
+    before = row_count(client, TABLE)
+    result = bulk_upload(client, TABLE, [
+        {"order_code": "A1", "description": "First order", "qty": "1.5"},
+        {"order_code": "A2", "description": "Second order", "qty": "2.5"},
+    ])
+    after = row_count(client, TABLE)
+    print(f"{result['message']} — rows inserted: {after - before}")
 ```
 
 **C#:**
 ```csharp
-using System.Globalization;
+using System.Net.Http.Headers;
 using System.Text;
-using CsvHelper;
+using System.Text.Json;
 
-const string BaseUrl = "https://play.p21server.com";
-const string Table = "udt_custom_orders";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "udt_custom_orders";               // UDT table name
+// ---------------------------------------------------------------------------
 
-/// <summary>Bulk-inserts rows into a UDT from an in-memory CSV.</summary>
-/// <remarks>
-/// The header row is mandatory — without it the service returns success and
-/// inserts nothing. Column names are case-sensitive and must match the UDT.
-/// </remarks>
-static async Task<string> BulkUploadAsync(
-    HttpClient client, string table, IEnumerable<object> rows)
+var handler = new HttpClientHandler
 {
-    await using var buffer = new MemoryStream();
-    await using (var writer = new StreamWriter(buffer, leaveOpen: true))
-    await using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-    {
-        await csv.WriteRecordsAsync(rows);   // writes the header automatically
-    }
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(5) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var rows = new List<Dictionary<string, string>>
+{
+    new() { ["order_code"] = "A1", ["description"] = "First order", ["qty"] = "1.5" },
+    new() { ["order_code"] = "A2", ["description"] = "Second order", ["qty"] = "2.5" },
+};
+
+// Usage — count before and after, because "isSuccessful" does not mean "inserted"
+var before = await RowCountAsync(client, Table);
+var message = await BulkUploadAsync(client, Table, rows);
+var after = await RowCountAsync(client, Table);
+Console.WriteLine($"{message} — rows inserted: {after - before}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Bulk-inserts rows into a UDT from an in-memory CSV, built by hand (no CSV package —
+// this repo's docs examples run with zero package installs). The header row is
+// mandatory — without it the service returns success and inserts nothing. Column
+// names are case-sensitive and must match the UDT.
+static async Task<string> BulkUploadAsync(
+    HttpClient client, string table, IReadOnlyList<Dictionary<string, string>> rows)
+{
+    if (rows.Count == 0) throw new ArgumentException("no rows to upload", nameof(rows));
+
+    var columns = rows[0].Keys.ToList();
+    var csv = new StringBuilder();
+    csv.AppendLine(string.Join(",", columns));   // REQUIRED — omitting it silently inserts 0 rows
+    foreach (var row in rows)
+        csv.AppendLine(string.Join(",", columns.Select(c => row[c])));
 
     using var content = new MultipartFormDataContent();
-    var file = new ByteArrayContent(buffer.ToArray());
+    var file = new ByteArrayContent(Encoding.UTF8.GetBytes(csv.ToString()));
     file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
     // The form field MUST be named "file" — any other name is rejected.
     content.Add(file, "file", "upload.csv");
 
-    var response = await client.PostAsync(
-        $"{BaseUrl}/udtservice/api/bulkupload/{table}", content);
+    var response = await client.PostAsync($"{BaseUrl}/udtservice/api/bulkupload/{table}", content);
     response.EnsureSuccessStatusCode();
     return await response.Content.ReadAsStringAsync();
 }
 
-/// <summary>Read-back — the upload response carries no row count.</summary>
+// Read-back — the upload response carries no row count.
 static async Task<int> RowCountAsync(HttpClient client, string table)
 {
     var response = await client.GetAsync(
         $"{BaseUrl}/odataservice/odata/table/{table}?$count=true&$top=0");
     response.EnsureSuccessStatusCode();
-    var json = JObject.Parse(await response.Content.ReadAsStringAsync());
-    return json["@odata.count"]?.Value<int>() ?? 0;
+    var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+    return json.TryGetProperty("@odata.count", out var count) ? count.GetInt32() : 0;
 }
 
-// Usage — count before and after, because "isSuccessful" does not mean "inserted"
-var before = await RowCountAsync(client, Table);
-var message = await BulkUploadAsync(client, Table, new[]
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
 {
-    new { order_code = "A1", description = "First order", qty = "1.5" },
-    new { order_code = "A2", description = "Second order", qty = "2.5" },
-});
-var after = await RowCountAsync(client, Table);
-Console.WriteLine($"{message} — rows inserted: {after - before}");
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -750,34 +1119,124 @@ Accept: application/json
 
 **Python:**
 ```python
-# Query UDT data via OData
-resp = client.get(
-    f"{base_url}/odataservice/odata/table/udt_custom_orders",
-    params={"$filter": "status eq 'pending'"},
-)
-resp.raise_for_status()
-data = resp.json()
+"""Query UDT data via OData — the UDT Service API has no read endpoints of its own."""
+import re
 
-for row in data.get("value", []):
-    print(f"Order: {row['order_ref']}, Total: {row['order_total']}")
-    # row_uid is available for subsequent update/delete operations
-    print(f"  row_uid: {row['row_uid']}")
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "udt_custom_orders"               # UDT table name
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+    }
+
+    resp = client.get(
+        f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+        params={"$filter": "status eq 'pending'"},
+        headers=headers,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    for row in data.get("value", []):
+        print(f"Order: {row['order_ref']}, Total: {row['order_total']}")
+        # row_uid is available for subsequent update/delete operations
+        print(f"  row_uid: {row['row_uid']}")
 ```
 
 **C#:**
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "udt_custom_orders";               // UDT table name
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
 // Query UDT data via OData
 var resp = await client.GetAsync(
-    "/odataservice/odata/table/udt_custom_orders?$filter=status eq 'pending'"
-);
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=status eq 'pending'");
 resp.EnsureSuccessStatusCode();
-var data = JObject.Parse(await resp.Content.ReadAsStringAsync());
+var data = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
 
-foreach (var row in data["value"]!)
+foreach (var row in data.GetProperty("value").EnumerateArray())
 {
-    Console.WriteLine($"Order: {row["order_ref"]}, Total: {row["order_total"]}");
+    Console.WriteLine($"Order: {row.GetProperty("order_ref")}, Total: {row.GetProperty("order_total")}");
     // row_uid is available for subsequent update/delete operations
-    Console.WriteLine($"  row_uid: {row["row_uid"]}");
+    Console.WriteLine($"  row_uid: {row.GetProperty("row_uid")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -848,35 +1307,170 @@ Always check `errorNo`, not `errorMessage`. Success messages are returned in the
 
 **Python:**
 ```python
-result = resp.json()
+"""Check errorNo (not errorMessage) to tell a UDT Service API success from a failure."""
+import re
 
-if result["errorNo"] == 0:
-    # Success — errorMessage contains the success description
-    print(f"OK: {result['errorMessage']}")
-else:
-    # Error — errorNo is non-zero
-    print(f"Failed (code {result['errorNo']}): {result['errorMessage']}")
-    if result.get("sqlErrorMessage"):
-        print(f"SQL Error: {result['sqlErrorMessage']}")
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "udt_custom_orders"               # UDT table name
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "table": TABLE,
+        "rows": [
+            {
+                "columns": [
+                    {"name": "order_ref", "value": "ORD-2026-002"},
+                    {"name": "customer_name", "value": "XYZ Manufacturing"},
+                    {"name": "order_total", "value": "875.50"},
+                    {"name": "status", "value": "pending"},
+                ],
+                "conditions": [],
+            }
+        ],
+    }
+
+    resp = client.post(
+        f"{BASE_URL}/udtservice/api/udtdata/insertudtdata",
+        json=payload,
+        headers=headers,
+    )
+    result = resp.json()
+
+    if result["errorNo"] == 0:
+        # Success — errorMessage contains the success description
+        print(f"OK: {result['errorMessage']}")
+    else:
+        # Error — errorNo is non-zero
+        print(f"Failed (code {result['errorNo']}): {result['errorMessage']}")
+        if result.get("sqlErrorMessage"):
+            print(f"SQL Error: {result['sqlErrorMessage']}")
 ```
 
 **C#:**
 ```csharp
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-if ((int)result["errorNo"] == 0)
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "udt_custom_orders";               // UDT table name
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    table = Table,
+    rows = new object[]
+    {
+        new
+        {
+            columns = new object[]
+            {
+                new { name = "order_ref", value = "ORD-2026-002" },
+                new { name = "customer_name", value = "XYZ Manufacturing" },
+                new { name = "order_total", value = "875.50" },
+                new { name = "status", value = "pending" },
+            },
+            conditions = Array.Empty<object>(),
+        },
+    },
+};
+
+var resp = await client.PostAsync(
+    $"{BaseUrl}/udtservice/api/udtdata/insertudtdata",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+
+if (result.GetProperty("errorNo").GetInt32() == 0)
 {
     // Success — errorMessage contains the success description
-    Console.WriteLine($"OK: {result["errorMessage"]}");
+    Console.WriteLine($"OK: {result.GetProperty("errorMessage").GetString()}");
 }
 else
 {
     // Error — errorNo is non-zero
-    Console.WriteLine($"Failed (code {result["errorNo"]}): {result["errorMessage"]}");
-    if (result["sqlErrorMessage"]?.ToString() is { Length: > 0 } sqlErr)
+    Console.WriteLine(
+        $"Failed (code {result.GetProperty("errorNo").GetInt32()}): {result.GetProperty("errorMessage").GetString()}");
+    if (result.TryGetProperty("sqlErrorMessage", out var sqlErr) && sqlErr.ValueKind == JsonValueKind.String)
     {
-        Console.WriteLine($"SQL Error: {sqlErr}");
+        Console.WriteLine($"SQL Error: {sqlErr.GetString()}");
     }
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -968,239 +1562,264 @@ A typical UDT workflow: insert a record, query it via OData, update it, then del
 
 **Python:**
 ```python
+"""Insert a UDT row, look it up via OData, update it, then delete it."""
+import re
+
 import httpx
 
-base_url = "https://play.p21server.com"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "udt_custom_orders"               # UDT table name
+# ---------------------------------------------------------------------------
 
-# Authenticate (see Authentication docs for TokenManager pattern)
-token_resp = httpx.post(
-    f"{base_url}/api/security/token/v2",
-    json={"username": "api_user", "password": "password"},
-    headers={"Accept": "application/json"},
-    # verify=False,  # Only for dev environments with self-signed certs
-)
-token = token_resp.json()["AccessToken"]
 
-client = httpx.Client(
-    headers={
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
         "Content-Type": "application/json",
-    },
-    # verify=False,  # Only for dev environments with self-signed certs
-    follow_redirects=True,
-)
+    }
 
-TABLE = "udt_custom_orders"
-
-# 1. INSERT a row
-insert_payload = {
-    "table": TABLE,
-    "rows": [
-        {
-            "columns": [
-                {"name": "order_ref", "value": "ORD-2026-100"},
-                {"name": "customer_name", "value": "ABC Supply Company"},
-                {"name": "order_total", "value": "500.00"},
-                {"name": "status", "value": "draft"},
-            ],
-            "conditions": [],
-        }
-    ],
-}
-resp = client.post(
-    f"{base_url}/udtservice/api/udtdata/insertudtdata",
-    json=insert_payload,
-)
-result = resp.json()
-print(f"Insert: errorNo={result['errorNo']}, {result['errorMessage']}")
-
-# 2. READ via OData to get row_uid
-resp = client.get(
-    f"{base_url}/odataservice/odata/table/{TABLE}",
-    params={"$filter": "order_ref eq 'ORD-2026-100'"},
-)
-resp.raise_for_status()
-rows = resp.json().get("value", [])
-if not rows:
-    print("Row not found via OData")
-else:
-    row_uid = str(rows[0]["row_uid"])
-    print(f"Found row_uid: {row_uid}")
-
-    # 3. UPDATE the row
-    update_payload = {
+    # 1. INSERT a row
+    insert_payload = {
         "table": TABLE,
         "rows": [
             {
                 "columns": [
-                    {"name": "status", "value": "confirmed"},
-                    {"name": "order_total", "value": "525.00"},
+                    {"name": "order_ref", "value": "ORD-2026-100"},
+                    {"name": "customer_name", "value": "ABC Supply Company"},
+                    {"name": "order_total", "value": "500.00"},
+                    {"name": "status", "value": "draft"},
                 ],
-                "conditions": [
-                    {"name": "row_uid", "value": row_uid},
-                ],
+                "conditions": [],
             }
         ],
     }
-    resp = client.put(
-        f"{base_url}/udtservice/api/udtdata/updateudtdata",
-        json=update_payload,
+    resp = client.post(
+        f"{BASE_URL}/udtservice/api/udtdata/insertudtdata",
+        json=insert_payload,
+        headers=headers,
     )
     result = resp.json()
-    print(f"Update: errorNo={result['errorNo']}, {result['errorMessage']}")
+    print(f"Insert: errorNo={result['errorNo']}, {result['errorMessage']}")
 
-    # 4. DELETE the row
-    delete_payload = {
-        "table": TABLE,
-        "rows": [
-            {
-                "columns": [],
-                "conditions": [
-                    {"name": "row_uid", "value": row_uid},
-                ],
-            }
-        ],
-    }
-    resp = client.request(
-        "DELETE",
-        f"{base_url}/udtservice/api/udtdata/deleteudtdata",
-        json=delete_payload,
+    # 2. READ via OData to get row_uid
+    resp = client.get(
+        f"{BASE_URL}/odataservice/odata/table/{TABLE}",
+        params={"$filter": "order_ref eq 'ORD-2026-100'"},
+        headers=headers,
     )
-    result = resp.json()
-    print(f"Delete: errorNo={result['errorNo']}, {result['errorMessage']}")
+    resp.raise_for_status()
+    rows = resp.json().get("value", [])
+    if not rows:
+        print("Row not found via OData")
+    else:
+        row_uid = str(rows[0]["row_uid"])
+        print(f"Found row_uid: {row_uid}")
+
+        # 3. UPDATE the row
+        update_payload = {
+            "table": TABLE,
+            "rows": [
+                {
+                    "columns": [
+                        {"name": "status", "value": "confirmed"},
+                        {"name": "order_total", "value": "525.00"},
+                    ],
+                    "conditions": [
+                        {"name": "row_uid", "value": row_uid},
+                    ],
+                }
+            ],
+        }
+        resp = client.put(
+            f"{BASE_URL}/udtservice/api/udtdata/updateudtdata",
+            json=update_payload,
+            headers=headers,
+        )
+        result = resp.json()
+        print(f"Update: errorNo={result['errorNo']}, {result['errorMessage']}")
+
+        # 4. DELETE the row — conditions is TOP-LEVEL for delete, not nested in rows[].
+        delete_payload = {
+            "table": TABLE,
+            "conditions": [
+                {"name": "row_uid", "value": row_uid},
+            ],
+        }
+        resp = client.request(
+            "DELETE",
+            f"{BASE_URL}/udtservice/api/udtdata/deleteudtdata",
+            json=delete_payload,
+            headers=headers,
+        )
+        result = resp.json()
+        print(f"Delete: errorNo={result['errorNo']}, {result['errorMessage']}")
 ```
 
 **C#:**
 ```csharp
-using System;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-var baseUrl = "https://play.p21server.com";
-var table = "udt_custom_orders";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "udt_custom_orders";               // UDT table name
+// ---------------------------------------------------------------------------
 
-// Authenticate (see Authentication docs for TokenManager pattern)
 var handler = new HttpClientHandler
 {
-    AllowAutoRedirect = true,
-    // ServerCertificateCustomValidationCallback = (_, _, _, _) => true  // Only for dev with self-signed certs
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
 };
-var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
-client.DefaultRequestHeaders.Add("Accept", "application/json");
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-var tokenPayload = JsonConvert.SerializeObject(new
-{
-    username = "api_user",
-    password = "password"
-});
-var tokenResp = await client.PostAsync(
-    "/api/security/token/v2",
-    new StringContent(tokenPayload, Encoding.UTF8, "application/json")
-);
-tokenResp.EnsureSuccessStatusCode();
-var tokenJson = JObject.Parse(await tokenResp.Content.ReadAsStringAsync());
-var token = tokenJson["AccessToken"]!.ToString();
-client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 // 1. INSERT a row
-var insertPayload = new JObject
+var insertPayload = new
 {
-    ["table"] = table,
-    ["rows"] = new JArray
+    table = Table,
+    rows = new object[]
     {
-        new JObject
+        new
         {
-            ["columns"] = new JArray
+            columns = new object[]
             {
-                new JObject { ["name"] = "order_ref", ["value"] = "ORD-2026-100" },
-                new JObject { ["name"] = "customer_name", ["value"] = "ABC Supply Company" },
-                new JObject { ["name"] = "order_total", ["value"] = "500.00" },
-                new JObject { ["name"] = "status", ["value"] = "draft" }
+                new { name = "order_ref", value = "ORD-2026-100" },
+                new { name = "customer_name", value = "ABC Supply Company" },
+                new { name = "order_total", value = "500.00" },
+                new { name = "status", value = "draft" },
             },
-            ["conditions"] = new JArray()
-        }
-    }
+            conditions = Array.Empty<object>(),
+        },
+    },
 };
 var resp = await client.PostAsync(
-    "/udtservice/api/udtdata/insertudtdata",
-    new StringContent(insertPayload.ToString(), Encoding.UTF8, "application/json")
-);
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine($"Insert: errorNo={result["errorNo"]}, {result["errorMessage"]}");
+    $"{BaseUrl}/udtservice/api/udtdata/insertudtdata",
+    new StringContent(JsonSerializer.Serialize(insertPayload), Encoding.UTF8, "application/json"));
+var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+Console.WriteLine(
+    $"Insert: errorNo={result.GetProperty("errorNo").GetInt32()}, {result.GetProperty("errorMessage").GetString()}");
 
 // 2. READ via OData to get row_uid
 resp = await client.GetAsync(
-    $"/odataservice/odata/table/{table}?$filter=order_ref eq 'ORD-2026-100'"
-);
+    $"{BaseUrl}/odataservice/odata/table/{Table}?$filter=order_ref eq 'ORD-2026-100'");
 resp.EnsureSuccessStatusCode();
-var data = JObject.Parse(await resp.Content.ReadAsStringAsync());
-var rows = data["value"] as JArray;
+var data = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+var rows = data.GetProperty("value");
 
-if (rows == null || rows.Count == 0)
+if (rows.GetArrayLength() == 0)
 {
     Console.WriteLine("Row not found via OData");
 }
 else
 {
-    var rowUid = rows[0]["row_uid"]!.ToString();
+    var rowUid = rows[0].GetProperty("row_uid").ToString();
     Console.WriteLine($"Found row_uid: {rowUid}");
 
     // 3. UPDATE the row
-    var updatePayload = new JObject
+    var updatePayload = new
     {
-        ["table"] = table,
-        ["rows"] = new JArray
+        table = Table,
+        rows = new object[]
         {
-            new JObject
+            new
             {
-                ["columns"] = new JArray
+                columns = new object[]
                 {
-                    new JObject { ["name"] = "status", ["value"] = "confirmed" },
-                    new JObject { ["name"] = "order_total", ["value"] = "525.00" }
+                    new { name = "status", value = "confirmed" },
+                    new { name = "order_total", value = "525.00" },
                 },
-                ["conditions"] = new JArray
+                conditions = new object[]
                 {
-                    new JObject { ["name"] = "row_uid", ["value"] = rowUid }
-                }
-            }
-        }
+                    new { name = "row_uid", value = rowUid },
+                },
+            },
+        },
     };
     resp = await client.PutAsync(
-        "/udtservice/api/udtdata/updateudtdata",
-        new StringContent(updatePayload.ToString(), Encoding.UTF8, "application/json")
-    );
-    result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-    Console.WriteLine($"Update: errorNo={result["errorNo"]}, {result["errorMessage"]}");
+        $"{BaseUrl}/udtservice/api/udtdata/updateudtdata",
+        new StringContent(JsonSerializer.Serialize(updatePayload), Encoding.UTF8, "application/json"));
+    result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+    Console.WriteLine(
+        $"Update: errorNo={result.GetProperty("errorNo").GetInt32()}, {result.GetProperty("errorMessage").GetString()}");
 
-    // 4. DELETE the row
-    var deletePayload = new JObject
+    // 4. DELETE the row — conditions is TOP-LEVEL for delete, not nested in rows[].
+    var deletePayload = new
     {
-        ["table"] = table,
-        ["rows"] = new JArray
+        table = Table,
+        conditions = new object[]
         {
-            new JObject
-            {
-                ["columns"] = new JArray(),
-                ["conditions"] = new JArray
-                {
-                    new JObject { ["name"] = "row_uid", ["value"] = rowUid }
-                }
-            }
-        }
+            new { name = "row_uid", value = rowUid },
+        },
     };
     var deleteRequest = new HttpRequestMessage(
-        HttpMethod.Delete, "/udtservice/api/udtdata/deleteudtdata")
+        HttpMethod.Delete, $"{BaseUrl}/udtservice/api/udtdata/deleteudtdata")
     {
-        Content = new StringContent(
-            deletePayload.ToString(), Encoding.UTF8, "application/json")
+        Content = new StringContent(JsonSerializer.Serialize(deletePayload), Encoding.UTF8, "application/json"),
     };
     resp = await client.SendAsync(deleteRequest);
-    result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-    Console.WriteLine($"Delete: errorNo={result["errorNo"]}, {result["errorMessage"]}");
+    result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+    Console.WriteLine(
+        $"Delete: errorNo={result.GetProperty("errorNo").GetInt32()}, {result.GetProperty("errorMessage").GetString()}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 

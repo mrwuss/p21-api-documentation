@@ -490,7 +490,7 @@ def self_test() -> int:
             "Transactions": [{"Status": "New", "DataElements": [
                 {"Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
                  "Rows": [{"Edits": [
-                     {"Name": "contract_no", "Value": "A120-12"},
+                     {"Name": "contract_no", "Value": "JOB-1001"},
                      {"Name": "end_date", "Value": "2030-01-01"}]}]},
                 {"Name": "JOBPRICELINE.jobpriceline", "Type": "List",
                  "Keys": ["item_id"],

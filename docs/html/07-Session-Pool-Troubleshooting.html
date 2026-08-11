@@ -754,6 +754,9 @@ c_shipped_flag = ON  →  &quot;Notify about shipment status&quot;
 </code></pre></div>
 </div>
 </div>
+<blockquote>
+<p>Full runnable version: <a href="03-Transaction-API.html#create-order">Transaction API — Create Order</a>. The retry wrapper above illustrates the jitter pattern around <code>call_transaction_api()</code> / <code>client.Transaction.CreateAsync()</code> placeholders — swap in a real <code>/api/v2/transaction</code> POST like the linked example.</p>
+</blockquote>
 <h4 id="option-b-use-async-endpoint">Option B: Use Async Endpoint</h4>
 <p>The async endpoint may use dedicated sessions:</p>
 <div class="highlight"><pre><span></span><code><span class="err">POST /uiserver0/api/v2/transaction/async</span>

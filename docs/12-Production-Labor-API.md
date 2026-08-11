@@ -108,6 +108,8 @@ GET /api/v2/definition/TimeEntry
 
 The example below posts labor by `service_labor_id` without `item_id` — the **service-labor variant**. To record labor against a specific production-order assembly line and labor component, use the production-order grid path (`prod_order_number` → `item_id` → `component_labor_id` → `start_time` → `end_time`) described in [Quick Time Entry](#time-entry-against-a-production-order-quick-time-entry).
 
+This is one step of the full production order lifecycle — see the [Production Order Runbook](recipes/production-order-runbook.md#stage-2-log-labor-before-printing) for the end-to-end sequence, and the standalone [record-labor-time recipe](recipes/record-labor-time.md) for a complete, paste-and-run version of this call (using the `item_id`/`component_labor_id` variant).
+
 <!-- tabs -->
 ```python
 import httpx
@@ -656,122 +658,226 @@ All of the following windows can be opened via the Interactive API for stateful,
 
 <!-- tabs -->
 ```python
+"""Open the ProductionOrder Interactive API window and load a specific order."""
+import re
+
 import httpx
 
-# After authentication and getting ui_server_url...
-headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PROD_ORDER_NUMBER = "1001"                # production order to load
+# ---------------------------------------------------------------------------
 
-# Create the session first -- response window handling is a session-level
-# setting, not a window-open option
-response = httpx.post(
-    f"{ui_server_url}/api/ui/interactive/sessions",
-    headers=headers,
-    json={"ResponseWindowHandlingEnabled": True},
-    verify=False
-)
-response.raise_for_status()
 
-# Open Production Order Entry window
-open_payload = {
-    "ServiceName": "ProductionOrder"
-}
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-response = httpx.post(
-    f"{ui_server_url}/api/ui/interactive/v2/window",
-    headers=headers,
-    json=open_payload,
-    verify=False
-)
-response.raise_for_status()
-result = response.json()
-window_id = result["WindowId"]
-print(f"Window opened: {window_id}")
 
-# Retrieve a production order
-change_payload = {
-    "WindowId": window_id,
-    "List": [{
-        "TabName": "TABPAGE_1",
-        "DatawindowName": "tp_1_dw_1",
-        "FieldName": "prod_order_number",
-        "Value": "1001"
-    }]
-}
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
-response = httpx.put(
-    f"{ui_server_url}/api/ui/interactive/v2/change",
-    headers=headers,
-    json=change_payload,
-    verify=False
-)
-response.raise_for_status()
 
-# Read current window data
-response = httpx.get(
-    f"{ui_server_url}/api/ui/interactive/v2/data",
-    params={"id": window_id},
-    headers=headers,
-    verify=False
-)
-response.raise_for_status()
-data = response.json()
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Create the session first -- response window handling is a session-level
+    # setting, not a window-open option
+    response = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": True},
+    )
+    response.raise_for_status()
+
+    # Open Production Order Entry window
+    open_payload = {"ServiceName": "ProductionOrder"}
+    response = client.post(
+        f"{ui_server}/api/ui/interactive/v2/window",
+        headers=headers,
+        json=open_payload,
+    )
+    response.raise_for_status()
+    result = response.json()
+    window_id = result["WindowId"]
+    print(f"Window opened: {window_id}")
+
+    # Retrieve a production order
+    change_payload = {
+        "WindowId": window_id,
+        "List": [{
+            "TabName": "TABPAGE_1",
+            "DatawindowName": "tp_1_dw_1",
+            "FieldName": "prod_order_number",
+            "Value": PROD_ORDER_NUMBER,
+        }],
+    }
+    response = client.put(
+        f"{ui_server}/api/ui/interactive/v2/change",
+        headers=headers,
+        json=change_payload,
+    )
+    response.raise_for_status()
+
+    # Read current window data -- confirms what the change call actually loaded
+    response = client.get(
+        f"{ui_server}/api/ui/interactive/v2/data",
+        params={"id": window_id},
+        headers=headers,
+    )
+    response.raise_for_status()
+    data = response.json()
+    print(f"Window data keys: {sorted(data.keys())}")
 ```
 
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ProdOrderNumber = "1001";                  // production order to load
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
 // Create the session first -- response window handling is a session-level
 // setting, not a window-open option
-var sessionPayload = new JObject { ["ResponseWindowHandlingEnabled"] = true };
+var sessionPayload = new JsonObject { ["ResponseWindowHandlingEnabled"] = true };
 var sessionContent = new StringContent(
-    sessionPayload.ToString(), Encoding.UTF8, "application/json");
+    sessionPayload.ToJsonString(), Encoding.UTF8, "application/json");
 var sessionResp = await client.PostAsync(
-    $"{uiServerUrl}/api/ui/interactive/sessions", sessionContent);
+    $"{uiServer}/api/ui/interactive/sessions", sessionContent);
 sessionResp.EnsureSuccessStatusCode();
 
 // Open Production Order Entry window
-var openPayload = new JObject
-{
-    ["ServiceName"] = "ProductionOrder"
-};
-
+var openPayload = new JsonObject { ["ServiceName"] = "ProductionOrder" };
 var openContent = new StringContent(
-    openPayload.ToString(), Encoding.UTF8, "application/json");
+    openPayload.ToJsonString(), Encoding.UTF8, "application/json");
 var openResp = await client.PostAsync(
-    $"{uiServerUrl}/api/ui/interactive/v2/window", openContent);
+    $"{uiServer}/api/ui/interactive/v2/window", openContent);
 openResp.EnsureSuccessStatusCode();
 
-var openResult = JObject.Parse(
-    await openResp.Content.ReadAsStringAsync());
-var windowId = openResult["WindowId"].ToString();
+var openResult = JsonNode.Parse(await openResp.Content.ReadAsStringAsync())!;
+var windowId = openResult["WindowId"]!.ToString();
 Console.WriteLine($"Window opened: {windowId}");
 
 // Retrieve a production order
-var changePayload = new JObject
+var changePayload = new JsonObject
 {
     ["WindowId"] = windowId,
-    ["List"] = new JArray
+    ["List"] = new JsonArray
     {
-        new JObject
+        new JsonObject
         {
             ["TabName"] = "TABPAGE_1",
             ["DatawindowName"] = "tp_1_dw_1",
             ["FieldName"] = "prod_order_number",
-            ["Value"] = "1001"
+            ["Value"] = ProdOrderNumber,
         }
     }
 };
-
 var changeContent = new StringContent(
-    changePayload.ToString(), Encoding.UTF8, "application/json");
+    changePayload.ToJsonString(), Encoding.UTF8, "application/json");
 var changeResp = await client.PutAsync(
-    $"{uiServerUrl}/api/ui/interactive/v2/change", changeContent);
+    $"{uiServer}/api/ui/interactive/v2/change", changeContent);
 changeResp.EnsureSuccessStatusCode();
 
-// Read current window data
+// Read current window data -- confirms what the change call actually loaded
 var dataResp = await client.GetAsync(
-    $"{uiServerUrl}/api/ui/interactive/v2/data?id={windowId}");
+    $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
 dataResp.EnsureSuccessStatusCode();
-var data = JObject.Parse(
-    await dataResp.Content.ReadAsStringAsync());
+var data = JsonNode.Parse(await dataResp.Content.ReadAsStringAsync())!.AsObject();
+Console.WriteLine($"Window data keys: {string.Join(", ", data.Select(kv => kv.Key))}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 <!-- /tabs -->
 
@@ -801,37 +907,123 @@ Once exposed, query them via the OData API:
 
 <!-- tabs -->
 ```python
+"""Query production orders via OData, after enabling the tables in SOA Admin."""
+import re
+
 import httpx
 
-# After authentication...
-headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"                       # company to filter on
+# ---------------------------------------------------------------------------
 
-# Query production orders (after enabling in SOA Admin)
-response = httpx.get(
-    f"{base_url}/odataservice/odata/table/prod_order_hdr",
-    params={"$filter": "company_id eq 'ACME'", "$top": "10"},
-    headers=headers,
-    verify=False
-)
-response.raise_for_status()
-orders = response.json()["value"]
-for order in orders:
-    print(f"PO# {order['prod_order_number']}: {order['complete']}")
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Query production orders (after enabling in SOA Admin)
+    response = client.get(
+        f"{BASE_URL}/odataservice/odata/table/prod_order_hdr",
+        headers=headers,
+        params={"$filter": f"company_id eq '{COMPANY_ID}'", "$top": "10"},
+    )
+    response.raise_for_status()
+    orders = response.json()["value"]
+    for order in orders:
+        print(f"PO# {order['prod_order_number']}: {order['complete']}")
 ```
 
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";                        // company to filter on
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Query production orders (after enabling in SOA Admin)
 var response = await client.GetAsync(
-    $"{baseUrl}/odataservice/odata/table/prod_order_hdr" +
-    "?$filter=company_id eq 'ACME'&$top=10");
+    $"{BaseUrl}/odataservice/odata/table/prod_order_hdr" +
+    $"?$filter=company_id eq '{CompanyId}'&$top=10");
 response.EnsureSuccessStatusCode();
 
-var data = JObject.Parse(
-    await response.Content.ReadAsStringAsync());
-var orders = data["value"] as JArray;
+var data = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+var orders = data["value"]!.AsArray();
 foreach (var order in orders)
 {
-    Console.WriteLine(
-        $"PO# {order["prod_order_number"]}: {order["complete"]}");
+    Console.WriteLine($"PO# {order!["prod_order_number"]}: {order["complete"]}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->

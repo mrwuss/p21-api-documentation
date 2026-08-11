@@ -85,55 +85,80 @@ Accept: application/json
 **Python:**
 
 ```python
+"""Get a P21 token via the V2 endpoint and print what came back."""
 import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
 
 def get_token_v2(base_url: str, username: str, password: str) -> dict:
     """Get token using V2 endpoint (recommended)."""
     response = httpx.post(
         f"{base_url}/api/security/token/v2",
         json={"username": username, "password": password},
-        headers={"Accept": "application/json"}
+        headers={"Accept": "application/json"},
+        verify=VERIFY_SSL,
     )
     response.raise_for_status()
     return response.json()
 
+
 # No V1 helper is provided — the V1 endpoint puts credentials in
 # HTTP headers, which get logged by proxies and middleware.
+
+if __name__ == "__main__":
+    token_data = get_token_v2(BASE_URL, USERNAME, PASSWORD)
+    print("TokenType:", token_data.get("TokenType"))
+    print("ExpiresInSeconds:", token_data.get("ExpiresInSeconds"))
+    print("AccessToken (truncated):", token_data["AccessToken"][:20] + "...")
 ```
 
 **C#:**
 
 ```csharp
-using System;
-using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-public static class P21Auth
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+using var client = new HttpClient();
+var tokenData = await GetTokenV2Async(client, BaseUrl, Username, Password);
+Console.WriteLine($"TokenType: {tokenData.GetProperty("TokenType").GetString()}");
+Console.WriteLine($"ExpiresInSeconds: {tokenData.GetProperty("ExpiresInSeconds").GetInt64()}");
+var accessToken = tokenData.GetProperty("AccessToken").GetString() ?? "";
+Console.WriteLine($"AccessToken (truncated): {accessToken[..Math.Min(20, accessToken.Length)]}...");
+
+// No V1 helper is provided — the V1 endpoint puts credentials in
+// HTTP headers, which get logged by proxies and middleware.
+
+// --- helpers ---------------------------------------------------------------
+
+/// <summary>Get token using V2 endpoint (recommended).</summary>
+static async Task<JsonElement> GetTokenV2Async(
+    HttpClient client, string baseUrl, string username, string password)
 {
-    /// <summary>Get token using V2 endpoint (recommended).</summary>
-    public static async Task<JObject> GetTokenV2Async(
-        string baseUrl, string username, string password)
-    {
-        using var client = new HttpClient();
-        var body = new { username, password };
-        var content = new StringContent(
-            JsonConvert.SerializeObject(body),
-            Encoding.UTF8, "application/json");
-        client.DefaultRequestHeaders.Add("Accept", "application/json");
+    var body = new { username, password };
+    var content = new StringContent(
+        JsonSerializer.Serialize(body),
+        Encoding.UTF8, "application/json");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
 
-        var response = await client.PostAsync(
-            $"{baseUrl}/api/security/token/v2", content);
-        response.EnsureSuccessStatusCode();
+    var response = await client.PostAsync(
+        $"{baseUrl}/api/security/token/v2", content);
+    response.EnsureSuccessStatusCode();
 
-        var json = await response.Content.ReadAsStringAsync();
-        return JObject.Parse(json);
-    }
-
-    // No V1 helper is provided — the V1 endpoint puts credentials in
-    // HTTP headers, which get logged by proxies and middleware.
+    var json = await response.Content.ReadAsStringAsync();
+    using var doc = JsonDocument.Parse(json);
+    return doc.RootElement.Clone();
 }
 ```
 
@@ -171,7 +196,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "ClientSecret": "62ccc18a-25e2-440c-bf6d-749c117fa9db",
+    "ClientSecret": "00000000-1111-2222-3333-444444444444",
     "GrantType": "client_credentials"
 }
 ```
@@ -204,7 +229,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "ClientSecret": "62ccc18a-25e2-440c-bf6d-749c117fa9db",
+    "ClientSecret": "00000000-1111-2222-3333-444444444444",
     "GrantType": "client_credentials",
     "username": "api_user"
 }
@@ -264,7 +289,16 @@ Consumer key tokens contain these claims:
 **Python:**
 
 ```python
+"""Get a P21 token via consumer key authentication and print what came back."""
 import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"                       # your P21 server
+CONSUMER_KEY = "00000000-1111-2222-3333-444444444444"          # from SOA Admin
+USERNAME = "apiuser"                                           # "" to omit (required for Interactive API)
+VERIFY_SSL = False                                              # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
 
 def get_consumer_token(
     base_url: str,
@@ -295,22 +329,50 @@ def get_consumer_token(
             "Accept": "application/json",
             "Content-Type": "application/json",
         },
+        verify=VERIFY_SSL,
     )
     response.raise_for_status()
     return response.json()
+
+
+if __name__ == "__main__":
+    token_data = get_consumer_token(BASE_URL, CONSUMER_KEY, USERNAME)
+    print("TokenType:", token_data.get("TokenType"))
+    print("ExpiresIn:", token_data.get("ExpiresIn"))
+    print("UserName:", token_data.get("UserName"))
+    print("AccessToken (truncated):", token_data["AccessToken"][:20] + "...")
 ```
 
 **C#:**
 
 ```csharp
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";                // your P21 server
+const string ConsumerKey = "00000000-1111-2222-3333-444444444444";  // from SOA Admin
+const string Username = "apiuser";                                   // "" to omit (required for Interactive API)
+// ---------------------------------------------------------------------------
+
+using var client = new HttpClient();
+var tokenData = await GetConsumerTokenAsync(client, BaseUrl, ConsumerKey, Username);
+Console.WriteLine($"TokenType: {tokenData.GetProperty("TokenType").GetString()}");
+Console.WriteLine($"ExpiresIn: {tokenData.GetProperty("ExpiresIn").GetInt64()}");
+Console.WriteLine($"UserName: {tokenData.GetProperty("UserName").GetString()}");
+var accessToken = tokenData.GetProperty("AccessToken").GetString() ?? "";
+Console.WriteLine($"AccessToken (truncated): {accessToken[..Math.Min(20, accessToken.Length)]}...");
+
+// --- helpers ---------------------------------------------------------------
+
 /// <summary>Get token using consumer key authentication.</summary>
+/// <param name="client">HttpClient to use for the request</param>
 /// <param name="baseUrl">P21 server URL</param>
 /// <param name="consumerKey">Consumer key GUID from SOA Admin</param>
 /// <param name="username">Optional P21 username (required for Interactive API)</param>
-public static async Task<JObject> GetConsumerTokenAsync(
-    string baseUrl, string consumerKey, string username = "")
+static async Task<JsonElement> GetConsumerTokenAsync(
+    HttpClient client, string baseUrl, string consumerKey, string username = "")
 {
-    using var client = new HttpClient();
     var payload = new Dictionary<string, string>
     {
         ["GrantType"] = "client_credentials",
@@ -320,7 +382,7 @@ public static async Task<JObject> GetConsumerTokenAsync(
         payload["username"] = username;
 
     var content = new StringContent(
-        JsonConvert.SerializeObject(payload),
+        JsonSerializer.Serialize(payload),
         Encoding.UTF8, "application/json");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 
@@ -329,7 +391,8 @@ public static async Task<JObject> GetConsumerTokenAsync(
     response.EnsureSuccessStatusCode();
 
     var json = await response.Content.ReadAsStringAsync();
-    return JObject.Parse(json);
+    using var doc = JsonDocument.Parse(json);
+    return doc.RootElement.Clone();
 }
 ```
 
@@ -439,6 +502,29 @@ Accept: application/json
 **Python:**
 
 ```python
+"""Build authorization headers from a token and use them to call OData."""
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def get_token_v2(base_url: str, username: str, password: str) -> dict:
+    """Get token using V2 endpoint (recommended)."""
+    response = httpx.post(
+        f"{base_url}/api/security/token/v2",
+        json={"username": username, "password": password},
+        headers={"Accept": "application/json"},
+        verify=VERIFY_SSL,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def get_auth_headers(token: str) -> dict:
     """Build authorization headers for API requests."""
     return {
@@ -447,21 +533,46 @@ def get_auth_headers(token: str) -> dict:
         "Accept": "application/json"
     }
 
-# Usage
-token_data = get_token_v2(base_url, username, password)
-headers = get_auth_headers(token_data["AccessToken"])
 
-response = httpx.get(
-    f"{base_url}/odataservice/odata/table/supplier",
-    headers=headers
-)
-response.raise_for_status()
+if __name__ == "__main__":
+    token_data = get_token_v2(BASE_URL, USERNAME, PASSWORD)
+    headers = get_auth_headers(token_data["AccessToken"])
+
+    response = httpx.get(
+        f"{BASE_URL}/odataservice/odata/table/supplier",
+        headers=headers,
+        verify=VERIFY_SSL,
+    )
+    response.raise_for_status()
+    print(response.json())
 ```
 
 **C#:**
 
 ```csharp
-public static HttpClient CreateAuthorizedClient(string token)
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+using var authClient = new HttpClient();
+var tokenData = await GetTokenV2Async(authClient, BaseUrl, Username, Password);
+var token = tokenData.GetProperty("AccessToken").GetString() ?? "";
+
+using var client = CreateAuthorizedClient(token);
+var response = await client.GetAsync(
+    $"{BaseUrl}/odataservice/odata/table/supplier");
+response.EnsureSuccessStatusCode();
+var body = await response.Content.ReadAsStringAsync();
+Console.WriteLine(body);
+
+// --- helpers ---------------------------------------------------------------
+
+static HttpClient CreateAuthorizedClient(string token)
 {
     var client = new HttpClient();
     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
@@ -469,14 +580,24 @@ public static HttpClient CreateAuthorizedClient(string token)
     return client;
 }
 
-// Usage
-var tokenData = await P21Auth.GetTokenV2Async(baseUrl, username, password);
-var token = tokenData["AccessToken"]!.ToString();
+/// <summary>Get token using V2 endpoint (recommended).</summary>
+static async Task<JsonElement> GetTokenV2Async(
+    HttpClient client, string baseUrl, string username, string password)
+{
+    var body = new { username, password };
+    var content = new StringContent(
+        JsonSerializer.Serialize(body),
+        Encoding.UTF8, "application/json");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
 
-using var client = CreateAuthorizedClient(token);
-var response = await client.GetAsync(
-    $"{baseUrl}/odataservice/odata/table/supplier");
-var body = await response.Content.ReadAsStringAsync();
+    var response = await client.PostAsync(
+        $"{baseUrl}/api/security/token/v2", content);
+    response.EnsureSuccessStatusCode();
+
+    var json = await response.Content.ReadAsStringAsync();
+    using var doc = JsonDocument.Parse(json);
+    return doc.RootElement.Clone();
+}
 ```
 
 <!-- /tabs -->
@@ -531,8 +652,16 @@ The following pattern caches the token, checks expiry with a 5-minute buffer bef
 **Python:**
 
 ```python
+"""Cache a P21 token, auto-refresh before it expires, and reuse it across calls."""
 import time
+
 import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+# ---------------------------------------------------------------------------
 
 # Buffer in seconds — re-authenticate this far before actual expiry
 TOKEN_REFRESH_BUFFER = 300  # 5 minutes
@@ -593,45 +722,71 @@ class TokenManager:
         }
 
 
-# Usage — authenticate once, reuse for all API calls
-manager = TokenManager(
-    base_url="https://play.p21server.com",
-    username="api_user",
-    password="your_password",
-)
+if __name__ == "__main__":
+    # Usage — authenticate once, reuse for all API calls
+    manager = TokenManager(
+        base_url=BASE_URL,
+        username=USERNAME,
+        password=PASSWORD,
+    )
 
-# OData query
-odata_resp = httpx.get(
-    "https://play.p21server.com/odataservice/odata/table/supplier",
-    headers=manager.get_headers(),
-)
-odata_resp.raise_for_status()
+    # OData query
+    odata_resp = httpx.get(
+        f"{BASE_URL}/odataservice/odata/table/supplier",
+        headers=manager.get_headers(),
+    )
+    odata_resp.raise_for_status()
+    print("OData status:", odata_resp.status_code)
 
-# Entity API query — same token, no re-authentication
-entity_resp = httpx.get(
-    "https://play.p21server.com/api/entity/customers/",
-    headers=manager.get_headers(),
-)
-entity_resp.raise_for_status()
+    # Entity API query — same token, no re-authentication
+    entity_resp = httpx.get(
+        f"{BASE_URL}/api/entity/customers/",
+        headers=manager.get_headers(),
+    )
+    entity_resp.raise_for_status()
+    print("Entity API status:", entity_resp.status_code)
 ```
 
 **C#:**
 
 ```csharp
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+// Usage — one long-lived HttpClient, per-request auth (always fresh token)
+var manager = new TokenManager(BaseUrl, Username, Password);
+using var client = new HttpClient();
+
+// OData query
+var odataReq = new HttpRequestMessage(
+    HttpMethod.Get, $"{BaseUrl}/odataservice/odata/table/supplier");
+await manager.ApplyAuthAsync(odataReq);
+var odataResp = await client.SendAsync(odataReq);
+odataResp.EnsureSuccessStatusCode();
+Console.WriteLine($"OData status: {(int)odataResp.StatusCode}");
+
+// Entity API query — same token, no re-authentication
+var entityReq = new HttpRequestMessage(
+    HttpMethod.Get, $"{BaseUrl}/api/entity/customers/");
+await manager.ApplyAuthAsync(entityReq);
+var entityResp = await client.SendAsync(entityReq);
+entityResp.EnsureSuccessStatusCode();
+Console.WriteLine($"Entity API status: {(int)entityResp.StatusCode}");
+
+// --- helpers ---------------------------------------------------------------
 
 /// <summary>
 /// Manages P21 token lifecycle with automatic refresh.
 /// Caches the token and re-authenticates when the token is
 /// within RefreshBufferSeconds of expiry.
 /// </summary>
-public class TokenManager
+class TokenManager
 {
     // Re-authenticate this far before actual expiry
     private const int RefreshBufferSeconds = 300; // 5 minutes
@@ -639,7 +794,7 @@ public class TokenManager
     private readonly string _baseUrl;
     private readonly string _username;
     private readonly string _password;
-    private JObject? _tokenData;
+    private JsonElement? _tokenData;
     private DateTime _tokenAcquiredAt = DateTime.MinValue;
 
     public TokenManager(string baseUrl, string username, string password)
@@ -652,9 +807,10 @@ public class TokenManager
     private bool IsTokenValid()
     {
         if (_tokenData == null) return false;
-        var expiresIn = _tokenData["ExpiresInSeconds"]?.Value<int>()
-                     ?? _tokenData["ExpiresIn"]?.Value<int>()
-                     ?? 0;
+        var data = _tokenData.Value;
+        var expiresIn = data.TryGetProperty("ExpiresInSeconds", out var expSeconds) ? expSeconds.GetInt64()
+                       : data.TryGetProperty("ExpiresIn", out var expires) ? expires.GetInt64()
+                       : 0;
         var elapsed = (DateTime.UtcNow - _tokenAcquiredAt).TotalSeconds;
         return elapsed < (expiresIn - RefreshBufferSeconds);
     }
@@ -666,7 +822,7 @@ public class TokenManager
         using var client = new HttpClient();
         var body = new { username = _username, password = _password };
         var content = new StringContent(
-            JsonConvert.SerializeObject(body),
+            JsonSerializer.Serialize(body),
             Encoding.UTF8, "application/json");
         client.DefaultRequestHeaders.Add("Accept", "application/json");
 
@@ -675,7 +831,8 @@ public class TokenManager
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
-        _tokenData = JObject.Parse(json);
+        using var doc = JsonDocument.Parse(json);
+        _tokenData = doc.RootElement.Clone();
         _tokenAcquiredAt = DateTime.UtcNow;
     }
 
@@ -684,7 +841,7 @@ public class TokenManager
     {
         if (!IsTokenValid())
             await AuthenticateAsync();
-        return _tokenData!["AccessToken"]!.ToString();
+        return _tokenData!.Value.GetProperty("AccessToken").GetString()!;
     }
 
     /// <summary>Apply auth to a request, refreshing the token if needed.</summary>
@@ -697,25 +854,6 @@ public class TokenManager
             request.Headers.Add("Accept", "application/json");
     }
 }
-
-// Usage — one long-lived HttpClient, per-request auth (always fresh token)
-var manager = new TokenManager(
-    "https://play.p21server.com", "api_user", "your_password");
-using var client = new HttpClient();
-
-// OData query
-var odataReq = new HttpRequestMessage(
-    HttpMethod.Get, "https://play.p21server.com/odataservice/odata/table/supplier");
-await manager.ApplyAuthAsync(odataReq);
-var odataResp = await client.SendAsync(odataReq);
-odataResp.EnsureSuccessStatusCode();
-
-// Entity API query — same token, no re-authentication
-var entityReq = new HttpRequestMessage(
-    HttpMethod.Get, "https://play.p21server.com/api/entity/customers/");
-await manager.ApplyAuthAsync(entityReq);
-var entityResp = await client.SendAsync(entityReq);
-entityResp.EnsureSuccessStatusCode();
 ```
 
 <!-- /tabs -->
@@ -749,7 +887,39 @@ Accept: application/json
 **Python:**
 
 ```python
+"""Resolve the P21 UI server URL needed for Interactive/Transaction API calls."""
 import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def get_token_v2(base_url: str, username: str, password: str) -> dict:
+    """Get token using V2 endpoint (recommended)."""
+    response = httpx.post(
+        f"{base_url}/api/security/token/v2",
+        json={"username": username, "password": password},
+        headers={"Accept": "application/json"},
+        verify=VERIFY_SSL,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def get_auth_headers(token: str) -> dict:
+    """Build authorization headers for API requests."""
+    return {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
 
 def get_ui_server_url(base_url: str, token: str) -> str:
     """Get UI server URL for Interactive/Transaction APIs."""
@@ -757,6 +927,7 @@ def get_ui_server_url(base_url: str, token: str) -> str:
         f"{base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
         headers=get_auth_headers(token),
         follow_redirects=True,
+        verify=VERIFY_SSL,
     )
     response.raise_for_status()
     # Try JSON first; some middleware returns XML (like the token endpoint)
@@ -768,24 +939,86 @@ def get_ui_server_url(base_url: str, token: str) -> str:
             raise ValueError(
                 f"Could not parse router response: {response.text[:500]}")
         return match.group(1).rstrip("/")
+
+
+if __name__ == "__main__":
+    token_data = get_token_v2(BASE_URL, USERNAME, PASSWORD)
+    ui_server = get_ui_server_url(BASE_URL, token_data["AccessToken"])
+    print("UI server URL:", ui_server)
 ```
 
 **C#:**
 
 ```csharp
-public static async Task<string> GetUiServerUrlAsync(
-    string baseUrl, string token)
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+using var authClient = new HttpClient();
+var tokenData = await GetTokenV2Async(authClient, BaseUrl, Username, Password);
+var token = tokenData.GetProperty("AccessToken").GetString() ?? "";
+
+var uiServer = await GetUiServerUrlAsync(BaseUrl, token);
+Console.WriteLine($"UI server URL: {uiServer}");
+
+// --- helpers ---------------------------------------------------------------
+
+static HttpClient CreateAuthorizedClient(string token)
+{
+    var client = new HttpClient();
+    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+    return client;
+}
+
+static async Task<string> GetUiServerUrlAsync(string baseUrl, string token)
 {
     using var client = CreateAuthorizedClient(token);
     var response = await client.GetAsync(
         $"{baseUrl}/api/ui/router/v1?urlType=external");
     response.EnsureSuccessStatusCode();
 
-    // Some middleware returns XML here — if JObject.Parse fails, fall back
-    // to regex extraction of <Url> (same pattern as ParseTokenResponse below)
+    // Some middleware returns XML here even when asked for JSON, so try JSON
+    // first and fall back to regex extraction of <Url> (same pattern as
+    // ParseTokenResponse below).
+    var payload = await response.Content.ReadAsStringAsync();
+    try
+    {
+        using var doc = JsonDocument.Parse(payload);
+        var url = doc.RootElement.GetProperty("Url").GetString();
+        if (!string.IsNullOrEmpty(url)) return url.TrimEnd('/');
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, "<Url>([^<]+)</Url>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"Could not parse router response: {payload[..Math.Min(500, payload.Length)]}");
+    return match.Groups[1].Value.TrimEnd('/');
+}
+
+/// <summary>Get token using V2 endpoint (recommended).</summary>
+static async Task<JsonElement> GetTokenV2Async(
+    HttpClient client, string baseUrl, string username, string password)
+{
+    var body = new { username, password };
+    var content = new StringContent(
+        JsonSerializer.Serialize(body),
+        Encoding.UTF8, "application/json");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+    var response = await client.PostAsync(
+        $"{baseUrl}/api/security/token/v2", content);
+    response.EnsureSuccessStatusCode();
+
     var json = await response.Content.ReadAsStringAsync();
-    var data = JObject.Parse(json);
-    return data["Url"]!.ToString().TrimEnd('/');
+    using var doc = JsonDocument.Parse(json);
+    return doc.RootElement.Clone();
 }
 ```
 
@@ -818,7 +1051,18 @@ Some P21 middleware instances return **XML instead of JSON** for token endpoints
 **Python:**
 
 ```python
+"""Get a token response and parse it whether the middleware answers JSON or XML."""
 import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
 
 def parse_token_response(response: httpx.Response) -> dict:
     """Parse token response, handling both JSON and XML formats."""
@@ -843,26 +1087,65 @@ def parse_token_response(response: httpx.Response) -> dict:
         raise ValueError(f"Could not parse token from response: {text[:500]}")
 
     return result
+
+
+if __name__ == "__main__":
+    raw_response = httpx.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+        verify=VERIFY_SSL,
+    )
+    raw_response.raise_for_status()
+    token_data = parse_token_response(raw_response)
+    print("TokenType:", token_data.get("TokenType"))
+    print("AccessToken (truncated):", token_data["AccessToken"][:20] + "...")
 ```
 
 **C#:**
 
 ```csharp
-public static JObject ParseTokenResponse(HttpResponseMessage response)
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+using var client = new HttpClient();
+var body = new { username = Username, password = Password };
+var content = new StringContent(
+    JsonSerializer.Serialize(body),
+    Encoding.UTF8, "application/json");
+client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+var response = await client.PostAsync($"{BaseUrl}/api/security/token/v2", content);
+response.EnsureSuccessStatusCode();
+var tokenData = ParseTokenResponse(response);
+var tokenType = tokenData.TryGetProperty("TokenType", out var tokenTypeEl) ? tokenTypeEl.GetString() : null;
+Console.WriteLine($"TokenType: {tokenType}");
+var accessToken = tokenData.GetProperty("AccessToken").GetString() ?? "";
+Console.WriteLine($"AccessToken (truncated): {accessToken[..Math.Min(20, accessToken.Length)]}...");
+
+// --- helpers ---------------------------------------------------------------
+
+static JsonElement ParseTokenResponse(HttpResponseMessage response)
 {
     var text = response.Content.ReadAsStringAsync().Result;
 
     // Try JSON first
     try
     {
-        var data = JObject.Parse(text);
-        if (data["AccessToken"] != null)
-            return data;
+        using var parsed = JsonDocument.Parse(text);
+        if (parsed.RootElement.TryGetProperty("AccessToken", out _))
+            return parsed.RootElement.Clone();
     }
-    catch (JsonReaderException) { }
+    catch (JsonException) { }
 
     // Fall back to XML regex parsing
-    var result = new JObject();
+    var result = new Dictionary<string, string>();
     var fields = new[]
     {
         "AccessToken", "TokenType", "ExpiresIn",
@@ -877,11 +1160,12 @@ public static JObject ParseTokenResponse(HttpResponseMessage response)
             result[field] = match.Groups[1].Value;
     }
 
-    if (result["AccessToken"] == null)
+    if (!result.ContainsKey("AccessToken"))
         throw new InvalidOperationException(
             $"Could not parse token from response: {text[..Math.Min(text.Length, 500)]}");
 
-    return result;
+    using var doc = JsonDocument.Parse(JsonSerializer.Serialize(result));
+    return doc.RootElement.Clone();
 }
 ```
 

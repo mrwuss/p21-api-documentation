@@ -156,7 +156,7 @@ List endpoints (`GET /api/entity/customers`) return a **307 redirect** to the sa
 
 **Python:**
 ```python
-client = httpx.Client(follow_redirects=True, ...)
+client = httpx.Client(follow_redirects=True, verify=VERIFY_SSL, timeout=120)
 ```
 
 **C#:**
@@ -166,6 +166,8 @@ var client = new HttpClient(handler);
 ```
 
 <!-- /tabs -->
+
+> Full runnable version: [Query Customers](#query-customers) — its client is built with `follow_redirects=True` / `AllowAutoRedirect = true` and calls a list endpoint.
 
 > **Note:** Be cautious with unfiltered list queries. The customers endpoint returned 19,896 records, contacts returned 58,639. Always use `$query` to filter when possible.
 
@@ -221,7 +223,7 @@ Accept: application/json
     "CompanyId": "ACME",
     "CustomerId": 10,
     "CustomerName": "ABC Supply Company",
-    "SalesrepId": "1100",
+    "SalesrepId": "200",
     "TermsId": "1",
     "CreditStatus": "GOOD",
     "CreditLimit": 1.0,
@@ -251,7 +253,7 @@ Content-Type: application/json
 {
     "CompanyId": "ACME",
     "CustomerName": "New Customer Inc.",
-    "SalesrepId": "1100",
+    "SalesrepId": "200",
     "TermsId": "1",
     "CodRequiredFlag": "N",
     "Taxable": "Y"
@@ -468,7 +470,7 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
     "CompanyId": "ACME",
     "CustomerId": 10,
     "CustomerName": "ABC Supply Company",
-    "SalesrepId": "1100",
+    "SalesrepId": "200",
     "CreditStatus": "GOOD",
     "UserDefinedFields": {},
     "ObjectName": "customer"
@@ -530,68 +532,115 @@ XML response example (ping):
 
 ### Setup
 
+Every example below is a complete, standalone program — paste it into a file, edit the
+`EDIT THESE` constants, run it. Entity API calls go straight to `BASE_URL`; there is no
+UI-server redirect to resolve (that only applies to Transaction and Interactive).
+
 <!-- tabs -->
 
 **Python:**
 ```python
+"""Authenticate against P21 and build a client for Entity API calls."""
+import re
+
 import httpx
 
-base_url = "https://play.p21server.com"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
 
-# Get token
-token_resp = httpx.post(
-    f"{base_url}/api/security/token/v2",
-    json={"username": "api_user", "password": "password"},
-    headers={"Accept": "application/json"},
-    verify=False,
-)
-token = token_resp.json()["AccessToken"]
 
-# Create client (must follow redirects for list endpoints)
-client = httpx.Client(
-    headers={
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
         "Content-Type": "application/json",
-    },
-    verify=False,
-    follow_redirects=True,
-)
+    }
+
+    # Every other example on this page repeats this same setup block, then adds
+    # its own call to /api/entity/... using `client` and `headers`.
+    print("Authenticated — token acquired.")
 ```
 
 **C#:**
 ```csharp
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-var baseUrl = "https://play.p21server.com";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
 
-// Get token
 var handler = new HttpClientHandler
 {
-    AllowAutoRedirect = true,
-    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,                           // list endpoints 307 without a slash
 };
-var client = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
-client.DefaultRequestHeaders.Add("Accept", "application/json");
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-var tokenPayload = JsonConvert.SerializeObject(new
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Every other example on this page repeats this same setup block, then adds
+// its own call to /api/entity/... using `client`.
+Console.WriteLine("Authenticated — token acquired.");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
 {
-    username = "api_user",
-    password = "password"
-});
-var tokenResp = await client.PostAsync(
-    "/api/security/token/v2",
-    new StringContent(tokenPayload, Encoding.UTF8, "application/json")
-);
-tokenResp.EnsureSuccessStatusCode();
-var tokenJson = JObject.Parse(await tokenResp.Content.ReadAsStringAsync());
-var token = tokenJson["AccessToken"]!.ToString();
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
 
-// Set auth header for all subsequent requests
-client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -602,17 +651,107 @@ client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
 
 **Python:**
 ```python
-resp = client.get(f"{base_url}/api/entity/customers/ping")
-resp.raise_for_status()
-print(resp.json())  # {"ResponseMessage": "success"}
+"""Ping the customers entity to confirm the Entity API is reachable."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    resp = client.get(f"{BASE_URL}/api/entity/customers/ping", headers=headers)
+    resp.raise_for_status()
+    print(resp.json())  # {"ResponseMessage": "success"}
 ```
 
 **C#:**
 ```csharp
-var resp = await client.GetAsync("/api/entity/customers/ping");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var resp = await client.GetAsync($"{BaseUrl}/api/entity/customers/ping");
 resp.EnsureSuccessStatusCode();
-var json = JObject.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine(json);  // {"ResponseMessage": "success"}
+Console.WriteLine(await resp.Content.ReadAsStringAsync());  // {"ResponseMessage": "success"}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -623,20 +762,114 @@ Console.WriteLine(json);  // {"ResponseMessage": "success"}
 
 **Python:**
 ```python
-resp = client.get(f"{base_url}/api/entity/customers/ACME_10")
-resp.raise_for_status()
-customer = resp.json()
-print(f"{customer['CustomerId']}: {customer['CustomerName']}")
-# 10: ABC Supply Company
+"""Fetch a single customer by its composite key."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_KEY = "ACME_10"                  # {CompanyId}_{CustomerId}
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    resp = client.get(f"{BASE_URL}/api/entity/customers/{CUSTOMER_KEY}", headers=headers)
+    resp.raise_for_status()
+    customer = resp.json()
+    print(f"{customer['CustomerId']}: {customer['CustomerName']}")
+    # 10: ABC Supply Company
 ```
 
 **C#:**
 ```csharp
-var resp = await client.GetAsync("/api/entity/customers/ACME_10");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerKey = "ACME_10";                   // {CompanyId}_{CustomerId}
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var resp = await client.GetAsync($"{BaseUrl}/api/entity/customers/{CustomerKey}");
 resp.EnsureSuccessStatusCode();
-var customer = JObject.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine($"{customer["CustomerId"]}: {customer["CustomerName"]}");
+using var customer = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var root = customer.RootElement;
+Console.WriteLine($"{root.GetProperty("CustomerId")}: {root.GetProperty("CustomerName")}");
 // 10: ABC Supply Company
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -647,27 +880,121 @@ Console.WriteLine($"{customer["CustomerId"]}: {customer["CustomerName"]}");
 
 **Python:**
 ```python
-resp = client.get(
-    f"{base_url}/api/entity/customers/ACME_10",
-    params={"extendedproperties": "CustomerAddress"},
-)
-resp.raise_for_status()
-customer = resp.json()
-addr = customer["CustomerAddress"]
-print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
-# Springfield, IL 62701
+"""Fetch a customer with its nested CustomerAddress populated."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_KEY = "ACME_10"                  # {CompanyId}_{CustomerId}
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    resp = client.get(
+        f"{BASE_URL}/api/entity/customers/{CUSTOMER_KEY}",
+        headers=headers,
+        params={"extendedproperties": "CustomerAddress"},
+    )
+    resp.raise_for_status()
+    customer = resp.json()
+    addr = customer["CustomerAddress"]
+    print(f"{addr['MailCity']}, {addr['MailState']} {addr['MailPostalCode']}")
+    # Springfield, IL 62701
 ```
 
 **C#:**
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerKey = "ACME_10";                   // {CompanyId}_{CustomerId}
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
 var resp = await client.GetAsync(
-    "/api/entity/customers/ACME_10?extendedproperties=CustomerAddress"
-);
+    $"{BaseUrl}/api/entity/customers/{CustomerKey}?extendedproperties=CustomerAddress");
 resp.EnsureSuccessStatusCode();
-var customer = JObject.Parse(await resp.Content.ReadAsStringAsync());
-var addr = customer["CustomerAddress"]!;
-Console.WriteLine($"{addr["MailCity"]}, {addr["MailState"]} {addr["MailPostalCode"]}");
+using var customer = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var addr = customer.RootElement.GetProperty("CustomerAddress");
+Console.WriteLine(
+    $"{addr.GetProperty("MailCity")}, {addr.GetProperty("MailState")} {addr.GetProperty("MailPostalCode")}");
 // Springfield, IL 62701
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -678,28 +1005,122 @@ Console.WriteLine($"{addr["MailCity"]}, {addr["MailState"]} {addr["MailPostalCod
 
 **Python:**
 ```python
-resp = client.get(
-    f"{base_url}/api/entity/customers/",
-    params={"$query": "startswith(CustomerName, 'ABC')"},
-)
-resp.raise_for_status()
-customers = resp.json()
-print(f"Found {len(customers)} customers")
-for c in customers:
-    print(f"  {c['CompanyId']}_{c['CustomerId']}: {c['CustomerName']}")
+"""List endpoint with a $query filter -- note the trailing slash and follow_redirects."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+NAME_PREFIX = "ABC"                       # customers whose name starts with this
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    resp = client.get(
+        f"{BASE_URL}/api/entity/customers/",
+        headers=headers,
+        params={"$query": f"startswith(CustomerName, '{NAME_PREFIX}')"},
+    )
+    resp.raise_for_status()
+    customers = resp.json()
+    print(f"Found {len(customers)} customers")
+    for c in customers:
+        print(f"  {c['CompanyId']}_{c['CustomerId']}: {c['CustomerName']}")
 ```
 
 **C#:**
 ```csharp
-var resp = await client.GetAsync(
-    "/api/entity/customers/?$query=startswith(CustomerName, 'ABC')"
-);
-resp.EnsureSuccessStatusCode();
-var customers = JArray.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine($"Found {customers.Count} customers");
-foreach (var c in customers)
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string NamePrefix = "ABC";                        // customers whose name starts with this
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    Console.WriteLine($"  {c["CompanyId"]}_{c["CustomerId"]}: {c["CustomerName"]}");
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,                           // list endpoints 307 without a slash
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var resp = await client.GetAsync(
+    $"{BaseUrl}/api/entity/customers/?$query=startswith(CustomerName, '{NamePrefix}')");
+resp.EnsureSuccessStatusCode();
+using var customers = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var rows = customers.RootElement;
+Console.WriteLine($"Found {rows.GetArrayLength()} customers");
+foreach (var c in rows.EnumerateArray())
+{
+    Console.WriteLine($"  {c.GetProperty("CompanyId")}_{c.GetProperty("CustomerId")}: {c.GetProperty("CustomerName")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -711,20 +1132,114 @@ foreach (var c in customers)
 
 **Python:**
 ```python
-resp = client.get(f"{base_url}/api/entity/contacts/1")
-resp.raise_for_status()
-contact = resp.json()
-print(f"{contact['FirstName']} {contact['LastName']}")
-# John Smith
+"""Fetch a single contact by its simple numeric ID."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CONTACT_ID = "1"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    resp = client.get(f"{BASE_URL}/api/entity/contacts/{CONTACT_ID}", headers=headers)
+    resp.raise_for_status()
+    contact = resp.json()
+    print(f"{contact['FirstName']} {contact['LastName']}")
+    # John Smith
 ```
 
 **C#:**
 ```csharp
-var resp = await client.GetAsync("/api/entity/contacts/1");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ContactId = "1";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var resp = await client.GetAsync($"{BaseUrl}/api/entity/contacts/{ContactId}");
 resp.EnsureSuccessStatusCode();
-var contact = JObject.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine($"{contact["FirstName"]} {contact["LastName"]}");
+using var contact = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var root = contact.RootElement;
+Console.WriteLine($"{root.GetProperty("FirstName")} {root.GetProperty("LastName")}");
 // John Smith
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -735,44 +1250,166 @@ Console.WriteLine($"{contact["FirstName"]} {contact["LastName"]}");
 
 **Python:**
 ```python
-# Get template first
-resp = client.get(f"{base_url}/api/entity/customers/new")
-resp.raise_for_status()
-template = resp.json()
+"""Create a customer from the /new template, then read it back to confirm."""
+import re
 
-# Fill required fields
-template["CompanyId"] = "ACME"
-template["CustomerName"] = "New Customer Inc."
-template["SalesrepId"] = "1100"
-template["TermsId"] = "1"
+import httpx
 
-# Create (POST without CustomerId = insert)
-resp = client.post(
-    f"{base_url}/api/entity/customers",
-    json=template,
-)
-resp.raise_for_status()
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+CUSTOMER_NAME = "New Customer Inc."
+SALESREP_ID = "200"
+TERMS_ID = "1"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Get template first
+    resp = client.get(f"{BASE_URL}/api/entity/customers/new", headers=headers)
+    resp.raise_for_status()
+    template = resp.json()
+
+    # Fill required fields
+    template["CompanyId"] = COMPANY_ID
+    template["CustomerName"] = CUSTOMER_NAME
+    template["SalesrepId"] = SALESREP_ID
+    template["TermsId"] = TERMS_ID
+
+    # Create (POST without CustomerId = insert)
+    resp = client.post(f"{BASE_URL}/api/entity/customers", headers=headers, json=template)
+    resp.raise_for_status()
+
+    # Read back -- HTTP 200 on the POST doesn't confirm what landed or the generated ID.
+    resp = client.get(
+        f"{BASE_URL}/api/entity/customers/",
+        headers=headers,
+        params={"$query": f"CompanyId eq '{COMPANY_ID}' and CustomerName eq '{CUSTOMER_NAME}'"},
+    )
+    resp.raise_for_status()
+    created = resp.json()
+    print(f"Found {len(created)} matching customer(s) after create:")
+    for c in created:
+        print(f"  {c['CompanyId']}_{c['CustomerId']}: {c['CustomerName']}")
 ```
 
 **C#:**
 ```csharp
-// Get template first
-var resp = await client.GetAsync("/api/entity/customers/new");
-resp.EnsureSuccessStatusCode();
-var template = JObject.Parse(await resp.Content.ReadAsStringAsync());
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-// Fill required fields
-template["CompanyId"] = "ACME";
-template["CustomerName"] = "New Customer Inc.";
-template["SalesrepId"] = "1100";
-template["TermsId"] = "1";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const string CustomerName = "New Customer Inc.";
+const string SalesrepId = "200";
+const string TermsId = "1";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,                           // list endpoints 307 without a slash
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Get template first
+var resp = await client.GetAsync($"{BaseUrl}/api/entity/customers/new");
+resp.EnsureSuccessStatusCode();
+using var templateDoc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+
+// Fill required fields (System.Text.Json documents are read-only, so build a fresh object)
+var template = new Dictionary<string, object?>();
+foreach (var property in templateDoc.RootElement.EnumerateObject())
+    template[property.Name] = property.Value;
+template["CompanyId"] = CompanyId;
+template["CustomerName"] = CustomerName;
+template["SalesrepId"] = SalesrepId;
+template["TermsId"] = TermsId;
 
 // Create (POST without CustomerId = insert)
 resp = await client.PostAsync(
-    "/api/entity/customers",
-    new StringContent(template.ToString(), Encoding.UTF8, "application/json")
-);
+    $"{BaseUrl}/api/entity/customers",
+    new StringContent(JsonSerializer.Serialize(template), Encoding.UTF8, "application/json"));
 resp.EnsureSuccessStatusCode();
+
+// Read back -- HTTP 200 on the POST doesn't confirm what landed or the generated ID.
+resp = await client.GetAsync(
+    $"{BaseUrl}/api/entity/customers/?$query=CompanyId eq '{CompanyId}' and CustomerName eq '{CustomerName}'");
+resp.EnsureSuccessStatusCode();
+using var created = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var rows = created.RootElement;
+Console.WriteLine($"Found {rows.GetArrayLength()} matching customer(s) after create:");
+foreach (var c in rows.EnumerateArray())
+{
+    Console.WriteLine($"  {c.GetProperty("CompanyId")}_{c.GetProperty("CustomerId")}: {c.GetProperty("CustomerName")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -783,30 +1420,142 @@ resp.EnsureSuccessStatusCode();
 
 **Python:**
 ```python
-resp = client.put(
-    f"{base_url}/api/entity/customers/ACME_10",
-    json={
-        "CompanyId": "ACME",
-        "CustomerId": 10,
-        "CustomerName": "Updated Customer Name",
-    },
-)
-resp.raise_for_status()
+"""Update a customer's name, then read it back to confirm what landed."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+CUSTOMER_ID = 10
+NEW_NAME = "Updated Customer Name"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    customer_key = f"{COMPANY_ID}_{CUSTOMER_ID}"
+    resp = client.put(
+        f"{BASE_URL}/api/entity/customers/{customer_key}",
+        headers=headers,
+        json={
+            "CompanyId": COMPANY_ID,
+            "CustomerId": CUSTOMER_ID,
+            "CustomerName": NEW_NAME,
+        },
+    )
+    resp.raise_for_status()
+
+    # Read back -- HTTP 200 on the PUT doesn't confirm what landed.
+    resp = client.get(f"{BASE_URL}/api/entity/customers/{customer_key}", headers=headers)
+    resp.raise_for_status()
+    customer = resp.json()
+    print(f"{customer['CustomerId']}: {customer['CustomerName']}")
 ```
 
 **C#:**
 ```csharp
-var payload = new JObject
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const int CustomerId = 10;
+const string NewName = "Updated Customer Name";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    ["CompanyId"] = "ACME",
-    ["CustomerId"] = 10,
-    ["CustomerName"] = "Updated Customer Name"
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,
 };
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var customerKey = $"{CompanyId}_{CustomerId}";
+var payload = JsonSerializer.Serialize(new
+{
+    CompanyId = CompanyId,
+    CustomerId = CustomerId,
+    CustomerName = NewName,
+});
 var resp = await client.PutAsync(
-    "/api/entity/customers/ACME_10",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json")
-);
+    $"{BaseUrl}/api/entity/customers/{customerKey}",
+    new StringContent(payload, Encoding.UTF8, "application/json"));
 resp.EnsureSuccessStatusCode();
+
+// Read back -- HTTP 200 on the PUT doesn't confirm what landed.
+resp = await client.GetAsync($"{BaseUrl}/api/entity/customers/{customerKey}");
+resp.EnsureSuccessStatusCode();
+using var customer = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var root = customer.RootElement;
+Console.WriteLine($"{root.GetProperty("CustomerId")}: {root.GetProperty("CustomerName")}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->

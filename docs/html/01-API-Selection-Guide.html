@@ -534,7 +534,7 @@
 <h2 id="before-you-choose-interactive-is-not-an-escape-hatch">Before You Choose: Interactive Is Not an Escape Hatch</h2>
 <p>The Interactive API is <strong>not</strong> a way around a disabled column or a window-level gate. Both the Transaction API and the Interactive API drive the same PowerBuilder windows and enforce the same business rules — a window that refuses a record or disables a column refuses/disables it for <strong>both</strong> APIs. The Interactive API only adds a stateful session with multi-step window interaction. Choose it because a workflow genuinely needs that statefulness (multi-step entry, answering response windows) — never because a write failed on one API and you're hoping the other will let it through.</p>
 <p>Two verified instances (2026-08-11), both documented in detail in the <a href="03-Transaction-API.html">Transaction API</a> guide:
-- The <code>Shipping</code> service refuses an already-invoiced pick ticket at record selection, so a tracking number cannot be set post-invoice through either API.
+- The <code>Shipping</code> service refuses an already-invoiced pick ticket at record selection, so a tracking number cannot be set post-invoice through either API — see <a href="03-Transaction-API.html#shipping-service-carrier-tracking-number">Shipping Service — Carrier Tracking Number</a>.
 - <code>c_tracking_no</code> on the <code>Order</code> / <code>FrontCounter</code> / <code>RMA</code> / <code>ServiceOrder</code> shipment grids is a computed, disabled display column (<code>Column is disabled: c_tracking_no</code>) — not a write path, in either API.</p>
 <p><strong>The genuine exception is response-window dialogs.</strong> The Interactive API can answer some dialogs the Transaction API cannot — see the <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">"Item Issues Detected" rule-callback worked example</a>. That is a real capability difference about <em>handling a dialog</em>, not about bypassing a disabled column or a window gate. Interactive answers dialogs; it does not unlock what the window has locked.</p>
 <h2 id="quick-decision-table">Quick Decision Table</h2>
@@ -986,6 +986,14 @@
 2. Use <strong>Transaction API</strong> for creates and keyed updates (fast)
 3. Use <strong>Interactive API</strong> for flows that need window logic or dialog answers</p>
 <h3 id="example-price-page-management">Example: Price Page Management</h3>
+<p>The snippet below is illustrative — <code>odata</code>, <code>transaction</code>, and <code>interactive</code> are
+stand-ins for whichever client wrapper you build, shown here only to sketch the
+three-API hybrid pattern.</p>
+<blockquote>
+<p>Full runnable version: <a href="02-OData-API.html#filtered-query">OData filtered query</a>,
+<a href="03-Transaction-API.html#example-create-a-job-contract-with-break-and-non-break-lines">Transaction API create example</a>,
+<a href="04-Interactive-API.html#example-linking-price-page-to-price-book">Interactive API price page linking</a></p>
+</blockquote>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>

@@ -122,14 +122,14 @@ def main():
         print(f"    {supplier['supplier_id']}: {supplier['supplier_name']}")
 
     # Example 3: Automatic pagination with filter
-    print("\n3. Fetch all active price pages for supplier 20000:")
+    print("\n3. Fetch all active price pages for supplier 10050:")
     print("-" * 40)
 
     records = get_all_records(
         config.odata_url,
         "price_page",
         headers,
-        filter_expr="supplier_id eq 20000 and row_status_flag eq 704",
+        filter_expr="supplier_id eq 10050 and row_status_flag eq 704",
         page_size=50,
         verify_ssl=config.verify_ssl
     )

@@ -26,7 +26,7 @@ public static class SetPrimaryBinSupplier
 {
     private const string ItemId = "WIDGET-001";
     private const string LocationId = "10";
-    private const string SupplierId = "20000";
+    private const string SupplierId = "10050";
 
     public static async Task RunAsync()
     {

@@ -8,7 +8,7 @@ The `Item` service (Item Maintenance window) supports **nested DataElement navig
 
 ## Prerequisites
 
-- Bearer token + UI server from the [shared auth helper](README.md#shared-conventions-recipes-dont-repeat-these).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
 - The item and stocking location already exist.
 - **For the primary-supplier write:** the target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the write is a **silent no-op** — see Gotchas.
 - OData read access to `inv_mast` and `inv_loc` for the mandatory verification.
@@ -43,7 +43,7 @@ The `Item` service (Item Maintenance window) supports **nested DataElement navig
 ```json
 { "Name": "SUPPLIER_X_LOCATION.supplier_x_location", "Type": "List", "Keys": ["supplier_id"],
   "Rows": [{ "Edits": [
-      {"Name": "supplier_id", "Value": "20000"},
+      {"Name": "supplier_id", "Value": "10050"},
       {"Name": "primary_supplier", "Value": "ON"}
   ] }] }
 ```
@@ -56,150 +56,283 @@ Sets the primary supplier, then performs the **mandatory** OData verification of
 
 <!-- tabs -->
 ```python
+"""Set an item's primary supplier at a location, then verify inv_loc over OData."""
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-token, ui_server, headers = p21_auth(BASE_URL, "api_user", "password")
-
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
 ITEM_ID = "WIDGET-001"
 LOCATION_ID = "10"
-SUPPLIER_ID = "20000"
+SUPPLIER_ID = "10050"                     # must already have a row at LOCATION_ID
+# ---------------------------------------------------------------------------
 
-payload = {
-    "Name": "Item",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",  # updates the keyed record; does not create a new item
-        "DataElements": [
-            {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["item_id"],
-             "Rows": [{"Edits": [{"Name": "item_id", "Value": ITEM_ID}]}]},
-            {"Name": "TABPAGE_17.invloclist", "Type": "List", "Keys": ["location_id"],
-             "Rows": [{"Edits": [{"Name": "location_id", "Value": LOCATION_ID}]}]},
-            {"Name": "SUPPLIER_X_LOCATION.supplier_x_location", "Type": "List",
-             "Keys": ["supplier_id"],
-             "Rows": [{"Edits": [
-                 {"Name": "supplier_id", "Value": SUPPLIER_ID},
-                 {"Name": "primary_supplier", "Value": "ON"},
-             ]}]},
-        ],
-    }],
-}
 
-resp = httpx.post(f"{ui_server}/api/v2/transaction",
-                  headers=headers, json=payload, verify=False, timeout=120)
-resp.raise_for_status()
-result = resp.json()
-summary = result["Summary"]
-print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
-if summary["Failed"] > 0 or summary["Succeeded"] == 0:
-    # A hard failure is NOT the silent no-op — read the Messages and stop here.
-    for msg in result.get("Messages") or []:
-        print(f"  {msg}")  # watch for 'Unexpected response window: Item Issues Detected'
-    raise SystemExit("Write failed")
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-# MANDATORY verification (success path) — a silent no-op still reports Succeeded = 1.
-# Write target is the inventory_supplier_x_loc flag; READ inv_loc.primary_supplier_id.
-mast = httpx.get(
-    f"{BASE_URL}/odataservice/odata/table/inv_mast",
-    params={"$filter": f"item_id eq '{ITEM_ID}'", "$select": "inv_mast_uid"},
-    headers=headers, verify=False,
-)
-mast.raise_for_status()
-inv_mast_uid = mast.json()["value"][0]["inv_mast_uid"]
 
-loc = httpx.get(
-    f"{BASE_URL}/odataservice/odata/table/inv_loc",
-    params={
-        "$filter": f"inv_mast_uid eq {inv_mast_uid} and location_id eq {LOCATION_ID}",
-        "$select": "primary_supplier_id",
-    },
-    headers=headers, verify=False,
-)
-loc.raise_for_status()
-actual = str(loc.json()["value"][0]["primary_supplier_id"])
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
-if actual == SUPPLIER_ID:
-    print(f"VERIFIED: primary_supplier_id = {actual}")
-else:
-    # Most likely cause: no inventory_supplier_x_loc row at this location.
-    # Add the location supplier row first, then set the flag again.
-    print(f"SILENT NO-OP: primary_supplier_id is {actual}, expected {SUPPLIER_ID}")
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "Name": "Item",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",  # updates the keyed record; does not create a new item
+            "DataElements": [
+                {"Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["item_id"],
+                 "Rows": [{"Edits": [{"Name": "item_id", "Value": ITEM_ID}]}]},
+                {"Name": "TABPAGE_17.invloclist", "Type": "List", "Keys": ["location_id"],
+                 "Rows": [{"Edits": [{"Name": "location_id", "Value": LOCATION_ID}]}]},
+                {"Name": "SUPPLIER_X_LOCATION.supplier_x_location", "Type": "List",
+                 "Keys": ["supplier_id"],
+                 "Rows": [{"Edits": [
+                     {"Name": "supplier_id", "Value": SUPPLIER_ID},
+                     {"Name": "primary_supplier", "Value": "ON"},
+                 ]}]},
+            ],
+        }],
+    }
+
+    resp = client.post(f"{ui_server}/api/v2/transaction",
+                       headers=headers, json=payload)
+    resp.raise_for_status()
+    result = resp.json()
+    summary = result["Summary"]
+    print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
+    if summary["Failed"] > 0 or summary["Succeeded"] == 0:
+        # A hard failure is NOT the silent no-op — read the Messages and stop here.
+        for msg in result.get("Messages") or []:
+            # watch for 'Unexpected response window: Item Issues Detected'
+            print(f"  {msg}")
+        raise SystemExit("Write failed")
+
+    # MANDATORY verification (success path) — a silent no-op still reports
+    # Succeeded = 1. Write target is the inventory_supplier_x_loc flag;
+    # READ inv_loc.primary_supplier_id.
+    mast = client.get(
+        f"{BASE_URL}/odataservice/odata/table/inv_mast",
+        params={"$filter": f"item_id eq '{ITEM_ID}'", "$select": "inv_mast_uid"},
+        headers=headers,
+    )
+    mast.raise_for_status()
+    inv_mast_uid = mast.json()["value"][0]["inv_mast_uid"]
+
+    loc = client.get(
+        f"{BASE_URL}/odataservice/odata/table/inv_loc",
+        params={
+            "$filter": f"inv_mast_uid eq {inv_mast_uid} and location_id eq {LOCATION_ID}",
+            "$select": "primary_supplier_id",
+        },
+        headers=headers,
+    )
+    loc.raise_for_status()
+    actual = str(loc.json()["value"][0]["primary_supplier_id"])
+
+    if actual == SUPPLIER_ID:
+        print(f"VERIFIED: primary_supplier_id = {actual}")
+    else:
+        # Most likely cause: no inventory_supplier_x_loc row at this location.
+        # Add the location supplier row first, then set the flag again.
+        print(f"SILENT NO-OP: primary_supplier_id is {actual}, expected {SUPPLIER_ID}")
 ```
 
 ```csharp
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "password");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
 const string ItemId = "WIDGET-001";
 const string LocationId = "10";
-const string SupplierId = "20000";
+const string SupplierId = "10050";     // must already have a row at LocationId
+// ---------------------------------------------------------------------------
 
-JObject Element(string name, string type, string key, params (string Name, string Value)[] edits) =>
-    new JObject
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+static object Element(string name, string type, string key,
+    params (string Name, string Value)[] edits) => new
     {
-        ["Name"] = name, ["Type"] = type, ["Keys"] = new JArray(key),
-        ["Rows"] = new JArray(new JObject
+        Name = name,
+        Type = type,
+        Keys = new[] { key },
+        Rows = new object[]
         {
-            ["Edits"] = new JArray(edits.Select(e =>
-                new JObject { ["Name"] = e.Name, ["Value"] = e.Value })),
-        }),
+            new { Edits = edits.Select(e => new { e.Name, e.Value }).ToArray() },
+        },
     };
 
-var payload = new JObject
+var payload = new
 {
-    ["Name"] = "Item",
-    ["UseCodeValues"] = false,
-    ["Transactions"] = new JArray(new JObject
+    Name = "Item",
+    UseCodeValues = false,
+    Transactions = new object[]
     {
-        ["Status"] = "New", // updates the keyed record; does not create a new item
-        ["DataElements"] = new JArray
+        new
         {
-            Element("TABPAGE_1.tp_1_dw_1", "Form", "item_id", ("item_id", ItemId)),
-            Element("TABPAGE_17.invloclist", "List", "location_id", ("location_id", LocationId)),
-            Element("SUPPLIER_X_LOCATION.supplier_x_location", "List", "supplier_id",
-                ("supplier_id", SupplierId), ("primary_supplier", "ON")),
+            Status = "New", // updates the keyed record; does not create a new item
+            DataElements = new[]
+            {
+                Element("TABPAGE_1.tp_1_dw_1", "Form", "item_id", ("item_id", ItemId)),
+                Element("TABPAGE_17.invloclist", "List", "location_id",
+                    ("location_id", LocationId)),
+                Element("SUPPLIER_X_LOCATION.supplier_x_location", "List", "supplier_id",
+                    ("supplier_id", SupplierId), ("primary_supplier", "ON")),
+            },
         },
-    }),
+    },
 };
 
-var resp = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/transaction",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
+using var resp = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 resp.EnsureSuccessStatusCode();
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-var summary = result["Summary"]!;
-Console.WriteLine($"Succeeded: {summary["Succeeded"]}, Failed: {summary["Failed"]}");
-if ((int)summary["Failed"]! > 0 || (int)summary["Succeeded"]! == 0)
+using var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var summary = result.RootElement.GetProperty("Summary");
+var succeeded = summary.GetProperty("Succeeded").GetInt32();
+var failed = summary.GetProperty("Failed").GetInt32();
+Console.WriteLine($"Succeeded: {succeeded}, Failed: {failed}");
+if (failed > 0 || succeeded == 0)
 {
     // A hard failure is NOT the silent no-op — read the Messages and stop here.
-    foreach (var msg in result["Messages"] as JArray ?? new JArray())
-        Console.WriteLine($"  {msg}"); // watch for 'Unexpected response window: Item Issues Detected'
+    // Watch for 'Unexpected response window: Item Issues Detected'.
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        Console.Error.WriteLine($"  {messages}");
+    }
     return;
 }
 
 // MANDATORY verification (success path) — a silent no-op still reports Succeeded = 1.
 // Write target is the inventory_supplier_x_loc flag; READ inv_loc.primary_supplier_id.
-var mastResp = await session.Http.GetAsync(
-    "https://play.p21server.com/odataservice/odata/table/inv_mast" +
-    $"?$filter=item_id eq '{ItemId}'&$select=inv_mast_uid");
-mastResp.EnsureSuccessStatusCode();
-var invMastUid = (string)JObject.Parse(
-    await mastResp.Content.ReadAsStringAsync())["value"]![0]!["inv_mast_uid"]!;
+var invMastUid = (await ODataAsync(client, "inv_mast", $"item_id eq '{ItemId}'",
+    "inv_mast_uid"))[0].GetProperty("inv_mast_uid");
 
-var locResp = await session.Http.GetAsync(
-    "https://play.p21server.com/odataservice/odata/table/inv_loc" +
-    $"?$filter=inv_mast_uid eq {invMastUid} and location_id eq {LocationId}" +
-    "&$select=primary_supplier_id");
-locResp.EnsureSuccessStatusCode();
-var actual = (string?)JObject.Parse(
-    await locResp.Content.ReadAsStringAsync())["value"]![0]!["primary_supplier_id"];
+var locRows = await ODataAsync(client, "inv_loc",
+    $"inv_mast_uid eq {invMastUid} and location_id eq {LocationId}",
+    "primary_supplier_id");
+var primarySupplier = locRows[0].GetProperty("primary_supplier_id");
+var actual = primarySupplier.ValueKind == JsonValueKind.String
+    ? primarySupplier.GetString()
+    : primarySupplier.ToString();
 
 if (actual == SupplierId)
+{
     Console.WriteLine($"VERIFIED: primary_supplier_id = {actual}");
+}
 else
+{
     // Most likely cause: no inventory_supplier_x_loc row at this location.
     // Add the location supplier row first, then set the flag again.
     Console.WriteLine($"SILENT NO-OP: primary_supplier_id is {actual}, expected {SupplierId}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static async Task<List<JsonElement>> ODataAsync(
+    HttpClient client, string table, string filter, string select)
+{
+    using var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/{table}" +
+        $"?$filter={Uri.EscapeDataString(filter)}&$select={select}");
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray()
+        .Select(x => x.Clone()).ToList();
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 <!-- /tabs -->
 

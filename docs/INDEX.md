@@ -46,7 +46,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Update an existing record** (Status `"New"` + keys; `"Existing"` is broken) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) |
 | **Insert new keyed rows (upsert)** + one-tx-per-POST rule | [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) |
 | Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) — **not a universal unlock; it can report success and write nothing** |
-| Contract break tiers refuse to save / "Tab page is disabled" | [03 § VALUES Writes Are Refused on 26.1](03-Transaction-API.md#values-writes-are-refused-on-261) · [14 § entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-jobcontractpricing-valuesvalues-writes-that-write-nothing) |
+| Contract break tiers refuse to save / "Tab page is disabled" | [03 § VALUES Writes Are Refused on 26.1](03-Transaction-API.md#values-writes-are-refused-on-261) · [14 § entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) |
 | Field order silently changing values | [03 § Field Order Matters](03-Transaction-API.md#field-order-matters) |
 | Labels vs code_no (`UseCodeValues`, `code_p21`) | [03 § UseCodeValues](03-Transaction-API.md#usecodevalues) |
 | Check success properly (HTTP 200 lies; per-tx pass/fail) | [03 § Response Format](03-Transaction-API.md#response-format) · [06 § Transaction API Errors](06-Error-Handling.md#transaction-api-errors) |

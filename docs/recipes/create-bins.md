@@ -8,7 +8,7 @@ The `BinLocation` service *is* the **Bin Location Maintenance** window: its form
 
 ## Prerequisites
 
-- Bearer token + UI server from the [shared auth helper](README.md#shared-conventions-recipes-dont-repeat-these).
+- P21 credentials — the complete example below authenticates itself; nothing else to install but `httpx` (Python) or a bare `net9.0` console project (C#).
 - A **"twin"** — an existing bin of the same `bin_type` at the target location. Copy its type, both zone codes, dimensions, sequences, `max_unique_items`, and flags rather than inventing them; that guarantees new bins match what the warehouse already uses. (Zone codes come from joining `bin.putaway_zone_uid` / `bin.pick_zone_uid` → `bin_zone.bin_zone_uid` → `bin_zone.bin_zone_id`.)
 - OData read access to the `p21_view_bin` view — for the skip-existing check and the read-back (the raw `bin` table isn't always exposed via OData).
 
@@ -53,15 +53,20 @@ Builds each bin's transaction from a twin's constants, skips bins that already e
 
 <!-- tabs -->
 ```python
+"""Bulk-create warehouse bins from a twin's constants, then read each one back."""
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-token, ui_server, headers = p21_auth(BASE_URL, "api_user", "password")
-
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
 COMPANY_ID = "ACME"
-LOCATION_ID = "10"
+LOCATION_ID = "10"                        # stocking location the bins belong to
 NEW_BIN_IDS = ["A01-02-01", "A01-02-02", "A01-02-03", "A01-02-04"]
-
+BATCH_SIZE = 20                           # tens of transactions per POST is fine and fast
 # Constants cloned from a "twin" bin of the same bin_type at this location.
 # Flags come back Y/N from the database — convert to ON/OFF for the form.
 TWIN = {
@@ -74,6 +79,40 @@ TWIN = {
     "full_flag": "OFF", "frozen_flag": "OFF",
     "consolidation_bin_flag": "OFF", "stage_bin_flag": "OFF", "door_bin_flag": "OFF",
 }
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
 
 def build_bin_transaction(bin_id: str, location_id: str, twin: dict) -> dict:
@@ -93,63 +132,78 @@ def build_bin_transaction(bin_id: str, location_id: str, twin: dict) -> dict:
     }
 
 
-# Skip-existing check via the p21_view_bin view (raw bin table isn't always in OData)
-existing_resp = httpx.get(
-    f"{BASE_URL}/odataservice/odata/view/p21_view_bin",
-    params={"$filter": f"location_id eq {LOCATION_ID}", "$select": "bin_id"},
-    headers=headers, verify=False,
-)
-existing_resp.raise_for_status()
-existing = {row["bin_id"] for row in existing_resp.json()["value"]}
-
-to_create = [b for b in NEW_BIN_IDS if b not in existing]
-print(f"{len(NEW_BIN_IDS) - len(to_create)} already exist, creating {len(to_create)}")
-
-BATCH_SIZE = 20  # tens of transactions per POST is fine and fast
-for start in range(0, len(to_create), BATCH_SIZE):
-    batch = to_create[start:start + BATCH_SIZE]
-    payload = {
-        "Name": "BinLocation",
-        "UseCodeValues": False,
-        "IgnoreDisabled": True,  # TOP LEVEL — inside a Transaction it is silently ignored
-        "Transactions": [build_bin_transaction(b, LOCATION_ID, TWIN) for b in batch],
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
     }
-    resp = httpx.post(f"{ui_server}/api/v2/transaction",
-                      headers=headers, json=payload, verify=False, timeout=300)
-    resp.raise_for_status()
-    result = resp.json()
 
-    summary = result["Summary"]
-    print(f"Batch {start // BATCH_SIZE + 1}: "
-          f"Succeeded={summary['Succeeded']}, Failed={summary['Failed']}")
-    if summary["Failed"] > 0:
-        for msg in result.get("Messages") or []:
-            print(f"  {msg}")
-    # Transactions pass/fail independently — check each one
-    for bin_id, txn in zip(batch, (result.get("Results") or {}).get("Transactions") or []):
-        if txn["Status"] != "Passed":
-            print(f"  FAILED: {bin_id}")
-
-# Read back every created bin through p21_view_bin (mirrors the Verify section)
-for bin_id in to_create:
-    check = httpx.get(
+    # Skip-existing check via p21_view_bin (raw bin table isn't always in OData)
+    existing_resp = client.get(
         f"{BASE_URL}/odataservice/odata/view/p21_view_bin",
-        params={"$filter": f"location_id eq {LOCATION_ID} and bin_id eq '{bin_id}'"},
-        headers=headers, verify=False,
+        params={"$filter": f"location_id eq {LOCATION_ID}", "$select": "bin_id"},
+        headers=headers,
     )
-    check.raise_for_status()
-    found = bool(check.json()["value"])
-    print(f"{bin_id}: {'found' if found else 'MISSING'}")
+    existing_resp.raise_for_status()
+    existing = {row["bin_id"] for row in existing_resp.json()["value"]}
+
+    to_create = [b for b in NEW_BIN_IDS if b not in existing]
+    print(f"{len(NEW_BIN_IDS) - len(to_create)} already exist, creating {len(to_create)}")
+
+    for start in range(0, len(to_create), BATCH_SIZE):
+        batch = to_create[start:start + BATCH_SIZE]
+        payload = {
+            "Name": "BinLocation",
+            "UseCodeValues": False,
+            # TOP LEVEL — inside a Transaction it is silently ignored
+            "IgnoreDisabled": True,
+            "Transactions": [build_bin_transaction(b, LOCATION_ID, TWIN) for b in batch],
+        }
+        resp = client.post(f"{ui_server}/api/v2/transaction",
+                           headers=headers, json=payload)
+        resp.raise_for_status()
+        result = resp.json()
+
+        summary = result["Summary"]
+        print(f"Batch {start // BATCH_SIZE + 1}: "
+              f"Succeeded={summary['Succeeded']}, Failed={summary['Failed']}")
+        if summary["Failed"] > 0:
+            for msg in result.get("Messages") or []:
+                print(f"  {msg}")
+        # Transactions pass/fail independently — check each one
+        transactions = (result.get("Results") or {}).get("Transactions") or []
+        for bin_id, txn in zip(batch, transactions):
+            if txn["Status"] != "Passed":
+                print(f"  FAILED: {bin_id}")
+
+    # Read back every created bin through p21_view_bin (mirrors the Verify section)
+    for bin_id in to_create:
+        check = client.get(
+            f"{BASE_URL}/odataservice/odata/view/p21_view_bin",
+            params={"$filter": f"location_id eq {LOCATION_ID} and bin_id eq '{bin_id}'"},
+            headers=headers,
+        )
+        check.raise_for_status()
+        found = bool(check.json()["value"])
+        print(f"{bin_id}: {'found' if found else 'MISSING'}")
 ```
 
 ```csharp
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "password");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
 const string CompanyId = "ACME";
-const string LocationId = "10";
+const string LocationId = "10";                        // stocking location
+const int BatchSize = 20;   // tens of transactions per POST is fine and fast
 var newBinIds = new[] { "A01-02-01", "A01-02-02", "A01-02-03", "A01-02-04" };
-
 // Constants cloned from a "twin" bin of the same bin_type at this location.
 // Flags come back Y/N from the database — convert to ON/OFF for the form.
 var twin = new (string Name, string Value)[]
@@ -163,82 +217,162 @@ var twin = new (string Name, string Value)[]
     ("full_flag", "OFF"), ("frozen_flag", "OFF"),
     ("consolidation_bin_flag", "OFF"), ("stage_bin_flag", "OFF"), ("door_bin_flag", "OFF"),
 };
+// ---------------------------------------------------------------------------
 
-JObject BuildBinTransaction(string binId)
+var handler = new HttpClientHandler
 {
-    var edits = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+object BuildBinTransaction(string binId)
+{
+    var edits = new List<object>
     {
-        new JObject { ["Name"] = "company_id", ["Value"] = CompanyId },
-        new JObject { ["Name"] = "location_id", ["Value"] = LocationId },
-        new JObject { ["Name"] = "bin_id", ["Value"] = binId },
+        new { Name = "company_id", Value = CompanyId },
+        new { Name = "location_id", Value = LocationId },
+        new { Name = "bin_id", Value = binId },
     };
     foreach (var (name, value) in twin)
-        edits.Add(new JObject { ["Name"] = name, ["Value"] = value });
-
-    return new JObject
     {
-        ["Status"] = "New",
-        ["DataElements"] = new JArray
+        edits.Add(new { Name = name, Value = value });
+    }
+
+    return new
+    {
+        Status = "New",
+        DataElements = new object[]
         {
-            new JObject
+            new
             {
-                ["Name"] = "FORM.form", ["Type"] = "Form",
-                ["Keys"] = new JArray("company_id", "location_id", "bin_id"),
-                ["Rows"] = new JArray(new JObject { ["Edits"] = edits }),
-            }
+                Name = "FORM.form",
+                Type = "Form",
+                Keys = new[] { "company_id", "location_id", "bin_id" },
+                Rows = new object[] { new { Edits = edits } },
+            },
         },
     };
 }
 
-// Skip-existing check via the p21_view_bin view (raw bin table isn't always in OData)
-var existingResp = await session.Http.GetAsync(
-    "https://play.p21server.com/odataservice/odata/view/p21_view_bin" +
-    $"?$filter=location_id eq {LocationId}&$select=bin_id");
-existingResp.EnsureSuccessStatusCode();
-var existing = JObject.Parse(await existingResp.Content.ReadAsStringAsync())["value"]!
-    .Select(r => (string)r["bin_id"]!).ToHashSet();
+// Skip-existing check via p21_view_bin (raw bin table isn't always in OData)
+var existing = new HashSet<string>();
+foreach (var row in await ODataAsync(
+    client, "view/p21_view_bin", $"location_id eq {LocationId}", "bin_id"))
+{
+    existing.Add(row.GetProperty("bin_id").GetString()!);
+}
 
 var toCreate = newBinIds.Where(b => !existing.Contains(b)).ToList();
 Console.WriteLine($"{newBinIds.Length - toCreate.Count} already exist, creating {toCreate.Count}");
 
-const int BatchSize = 20; // tens of transactions per POST is fine and fast
+var batchNo = 0;
 foreach (var batch in toCreate.Chunk(BatchSize))
 {
-    var payload = new JObject
+    batchNo++;
+    var payload = new
     {
-        ["Name"] = "BinLocation",
-        ["UseCodeValues"] = false,
-        ["IgnoreDisabled"] = true, // TOP LEVEL — inside a Transaction it is silently ignored
-        ["Transactions"] = new JArray(batch.Select(BuildBinTransaction)),
+        Name = "BinLocation",
+        UseCodeValues = false,
+        // TOP LEVEL — inside a Transaction it is silently ignored
+        IgnoreDisabled = true,
+        Transactions = batch.Select(BuildBinTransaction).ToArray(),
     };
-    var resp = await session.Http.PostAsync(
-        $"{session.UiServer}/api/v2/transaction",
-        new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
+    using var resp = await client.PostAsync(
+        $"{uiServer}/api/v2/transaction",
+        new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
     resp.EnsureSuccessStatusCode();
-    var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
+    using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
 
-    Console.WriteLine($"Succeeded={result["Summary"]!["Succeeded"]}, " +
-                      $"Failed={result["Summary"]!["Failed"]}");
-    if ((int)result["Summary"]!["Failed"]! > 0)
-        foreach (var msg in result["Messages"] as JArray ?? new JArray())
-            Console.WriteLine($"  {msg}");
+    var summary = doc.RootElement.GetProperty("Summary");
+    var failed = summary.GetProperty("Failed").GetInt32();
+    Console.WriteLine($"Batch {batchNo}: " +
+                      $"Succeeded={summary.GetProperty("Succeeded")}, Failed={failed}");
+    if (failed > 0 && doc.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        Console.WriteLine($"  {messages}");
+    }
 
     // Transactions pass/fail independently — check each one
-    var txns = result["Results"]?["Transactions"] as JArray ?? new JArray();
-    foreach (var (binId, txn) in batch.Zip(txns))
-        if ((string?)txn["Status"] != "Passed")
-            Console.WriteLine($"  FAILED: {binId}");
+    if (doc.RootElement.TryGetProperty("Results", out var results) &&
+        results.TryGetProperty("Transactions", out var txns))
+    {
+        foreach (var (binId, txn) in batch.Zip(txns.EnumerateArray()))
+        {
+            if (txn.GetProperty("Status").GetString() != "Passed")
+            {
+                Console.WriteLine($"  FAILED: {binId}");
+            }
+        }
+    }
 }
 
 // Read back every created bin through p21_view_bin (mirrors the Verify section)
 foreach (var binId in toCreate)
 {
-    var checkResp = await session.Http.GetAsync(
-        "https://play.p21server.com/odataservice/odata/view/p21_view_bin" +
-        $"?$filter=location_id eq {LocationId} and bin_id eq '{binId}'");
-    checkResp.EnsureSuccessStatusCode();
-    var found = JObject.Parse(await checkResp.Content.ReadAsStringAsync())["value"]!.Any();
-    Console.WriteLine($"{binId}: {(found ? "found" : "MISSING")}");
+    var rows = await ODataAsync(
+        client, "view/p21_view_bin",
+        $"location_id eq {LocationId} and bin_id eq '{binId}'", null);
+    Console.WriteLine($"{binId}: {(rows.Count > 0 ? "found" : "MISSING")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static async Task<List<JsonElement>> ODataAsync(
+    HttpClient client, string path, string filter, string? select)
+{
+    var url = $"{BaseUrl}/odataservice/odata/{path}?$filter={Uri.EscapeDataString(filter)}";
+    if (select is not null) url += $"&$select={select}";
+    using var response = await client.GetAsync(url);
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray()
+        .Select(x => x.Clone()).ToList();
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->

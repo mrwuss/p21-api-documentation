@@ -63,6 +63,8 @@ The ghost also **masks the original error**: once one call has poisoned the sess
 
 **To clear a ghost, `DELETE` the session — don't wait it out.** `DELETE {uiserver}/api/ui/interactive/sessions` returns 200 and a clean create succeeds **immediately** afterward (verified on 26.1.5894.1). Waiting for `SessionCleanupExpiration` (~6 min) also works but is unnecessary; make the delete the first step of your retry path.
 
+> **This only works while you still hold the token that created the session.** Verified on 26.1.5910.3: the delete is scoped to the bearer token, so a ghost left by a *previous* token — a crashed process, a worker that re-authenticated, a retry path that fetched a fresh token before cleaning up — cannot be deleted at all. Query parameters and body forms carrying the session id are all refused with `400 {"ErrorMessage":"Invalid session"}`, and only `SessionCleanupExpiration` will reap it. Keep the token alive until the session is closed; do not re-authenticate as part of your recovery path before deleting. Full attempt matrix: [Interactive API § End Session](04-Interactive-API.md#6-end-session).
+
 ### 3. Session-create response field renamed: `SessionId` → `Id`
 
 `POST /api/ui/interactive/sessions/` returns the session identifier under **`Id`** on 2026.1; 2025.2 returned **`SessionId`**.
@@ -150,7 +152,7 @@ GET /odataservice/odata/table/{udt}?$select=row_uid
 
 Related payload trap: **delete reads `conditions` from the payload's top level**, not nested inside `rows[]` — the nested form returns `400 {"error":["Conditions cannot be blank or none!"]}` on 2026.1. See [UDT Service API § Delete](13-UDT-Service-API.md#delete).
 
-### 8. `IgnoreDisabled: true` reports success on `JobContractPricing` `VALUES.values` writes that write nothing
+### 8. `IgnoreDisabled: true` reports success on writes that write nothing
 
 **Data-integrity hazard — silent false success.**
 
@@ -188,9 +190,19 @@ Adding **`IgnoreDisabled: true` at the payload top level** (the [documented unlo
 }
 ```
 
-...and writes **nothing**. A read-back of the target row shows it unchanged: in one run an existing value of `519.81` survived a `"Passed"` response; in another the value was still absent. The echoed response doesn't reveal the omission either — it drops the `JOBPRICELINE` and `VALUES` DataElements entirely and echoes only the header, so there's nothing in the response to notice is missing.
+...and writes **nothing**. A read-back of the target row shows it unchanged: in one run an existing value of `42.50` survived a `"Passed"` response; in another the value was still absent. The echoed response doesn't reveal the omission either — it drops the `JOBPRICELINE` and `VALUES` DataElements entirely and echoes only the header, so there's nothing in the response to notice is missing.
 
 Both the correct tier-1 field name (`calculation_value1`) and the incorrect unsuffixed spelling (`calculation_value`) fail identically — this is not a field-naming issue.
+
+**It is not limited to the `VALUES` tab — it is how the flag fails generally.** The same false success appears on a disabled *column*. `corp_address_id` on the contract header is read-only once the contract is saved; without the flag the write is refused loudly:
+
+```text
+General Exception: Column is disabled: corp_address_id
+```
+
+Add `IgnoreDisabled: true` and the identical payload returns `Summary: {"Failed": 0, "Succeeded": 1}` — and a read-back shows the value unchanged (verified 26.1.5910.3, 2026-08-11, on a throwaway contract).
+
+So `IgnoreDisabled` has two outcomes that are **indistinguishable in the response**: it genuinely unlocks the write (as it does for contract BINS quantities and JOBPRICECOST commission fields), or it swallows the refusal and writes nothing. You cannot tell which you got without reading the record back.
 
 **Mitigation:** always read back after any write that used `IgnoreDisabled: true` on `JobContractPricing` `VALUES.values` — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat `Status: "Passed"` under `IgnoreDisabled` as **unverified** until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write `VALUES.values` at all, on any of the three paths. See [Transaction API § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) and [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) for the same read-back discipline applied elsewhere in this repo.
 

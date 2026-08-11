@@ -82,25 +82,111 @@ Both endpoint families belong to the **same REST API** (see [Terminology — Epi
 **Python**
 
 ```python
-resp = client.get(f"{base_url}/api/inventory/parts/WIDGET-001")
-resp.raise_for_status()
-item = resp.json()
-print(f"{item['ItemId']}: {item['ItemDesc']}")
+"""Read a single inventory item via the Inventory REST API."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # item to look up
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    resp = client.get(f"{BASE_URL}/api/inventory/parts/{ITEM_ID}", headers=headers)
+    resp.raise_for_status()
+    item = resp.json()
+    print(f"{item['ItemId']}: {item['ItemDesc']}")
 ```
 
 **C#**
 
 ```csharp
-using System;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-var resp = await client.GetAsync($"{baseUrl}/api/inventory/parts/WIDGET-001");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "WIDGET-001";                     // item to look up
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var resp = await client.GetAsync($"{BaseUrl}/api/inventory/parts/{ItemId}");
 resp.EnsureSuccessStatusCode();
-var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine($"{item["ItemId"]}: {item["ItemDesc"]}");
+var item = JsonDocument.Parse(await resp.Content.ReadAsStringAsync()).RootElement;
+Console.WriteLine($"{item.GetProperty("ItemId")}: {item.GetProperty("ItemDesc")}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -155,35 +241,128 @@ Authorization: Bearer <ACCESS_TOKEN>
 **Python**
 
 ```python
-resp = client.get(
-    f"{base_url}/api/inventory/parts/WIDGET-001",
-    params={"extendedproperties": "*"}
-)
-resp.raise_for_status()
-item = resp.json()
+"""Read an inventory item plus its inv_loc, supplier, and UOM child records."""
+import re
 
-# Access nested Locations (inv_loc data)
-if item.get("Locations"):
-    for loc in item["Locations"]["list"]:
-        print(f"Loc: {loc['LocationId']}, Qty: {loc['QtyOnHand']}")
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # item to look up
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/{ITEM_ID}",
+        headers=headers,
+        params={"extendedproperties": "*"},
+    )
+    resp.raise_for_status()
+    item = resp.json()
+
+    # Access nested Locations (inv_loc data)
+    if item.get("Locations"):
+        for loc in item["Locations"]["list"]:
+            print(f"Loc: {loc['LocationId']}, Qty: {loc['QtyOnHand']}")
 ```
 
 **C#**
 
 ```csharp
-var resp = await client.GetAsync(
-    $"{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=*");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "WIDGET-001";                     // item to look up
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var resp = await client.GetAsync($"{BaseUrl}/api/inventory/parts/{ItemId}?extendedproperties=*");
 resp.EnsureSuccessStatusCode();
-var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
+var item = JsonNode.Parse(await resp.Content.ReadAsStringAsync())!;
 
 // Access nested Locations (inv_loc data)
-var locations = item["Locations"]?["list"] as JArray;
+var locations = item["Locations"]?["list"]?.AsArray();
 if (locations != null)
 {
     foreach (var loc in locations)
     {
-        Console.WriteLine($"Loc: {loc["LocationId"]}, Qty: {loc["QtyOnHand"]}");
+        Console.WriteLine($"Loc: {loc!["LocationId"]}, Qty: {loc["QtyOnHand"]}");
     }
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -485,64 +664,129 @@ P21 validates changed values through business logic. For example, setting an inv
 **Python**
 
 ```python
+"""GET -> modify -> PUT existing inv_loc fields, then re-GET to confirm the write."""
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-TOKEN = "<ACCESS_TOKEN>"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # item to update
+TARGET_LOCATION_ID = 1                    # inv_loc.LocationId to modify
+TARGET_COMPANY_ID = "ACME"                # inv_loc.CompanyId to modify
+EXTENDED_PROPS = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"
+# ---------------------------------------------------------------------------
 
-with httpx.Client(
-    headers={"Authorization": f"Bearer {TOKEN}"},
-    follow_redirects=True,
-) as client:
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
     # 1. GET current item with Locations
-    ext = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"
     resp = client.get(
-        f"{BASE_URL}/api/inventory/parts/WIDGET-001",
-        params={"extendedproperties": ext},
+        f"{BASE_URL}/api/inventory/parts/{ITEM_ID}",
+        headers=headers,
+        params={"extendedproperties": EXTENDED_PROPS},
     )
     resp.raise_for_status()
     item = resp.json()
 
-    # 2. Modify fields on existing location
+    # 2. Modify fields on the existing location -- do not drop the other records
     for loc in item["Locations"]["list"]:
-        if loc["LocationId"] == 1 and loc["CompanyId"] == "ACME":
+        if loc["LocationId"] == TARGET_LOCATION_ID and loc["CompanyId"] == TARGET_COMPANY_ID:
             loc["Sellable"] = "N"
             loc["ProductGroupId"] = "MISC"
             loc["PurchaseDiscountGroup"] = "BULK"
             loc["SalesDiscountGroup"] = "RETAIL"
             break
 
-    # 3. PUT back
-    resp = client.put(f"{BASE_URL}/api/inventory/parts/WIDGET-001", json=item)
+    # 3. PUT the whole item back
+    resp = client.put(f"{BASE_URL}/api/inventory/parts/{ITEM_ID}", headers=headers, json=item)
     resp.raise_for_status()
-    print(f"Updated: {resp.status_code}")
+    print(f"PUT status: {resp.status_code}")
+
+    # 4. Re-GET to prove what actually landed -- HTTP 200 alone does not confirm a write
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/{ITEM_ID}",
+        headers=headers,
+        params={"extendedproperties": EXTENDED_PROPS},
+    )
+    resp.raise_for_status()
+    after = resp.json()
+    for loc in after["Locations"]["list"]:
+        if loc["LocationId"] == TARGET_LOCATION_ID and loc["CompanyId"] == TARGET_COMPANY_ID:
+            print(
+                f"Sellable={loc['Sellable']} ProductGroupId={loc['ProductGroupId']} "
+                f"PurchaseDiscountGroup={loc['PurchaseDiscountGroup']} "
+                f"SalesDiscountGroup={loc['SalesDiscountGroup']}"
+            )
+            break
 ```
 
 **C#**
 
 ```csharp
-using System;
-using System.Linq;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
-var handler = new HttpClientHandler { AllowAutoRedirect = true };
-using var client = new HttpClient(handler);
-client.DefaultRequestHeaders.Add("Authorization", "Bearer <ACCESS_TOKEN>");
-var baseUrl = "https://play.p21server.com";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "WIDGET-001";                     // item to update
+const int TargetLocationId = 1;                         // inv_loc.LocationId to modify
+const string TargetCompanyId = "ACME";                  // inv_loc.CompanyId to modify
+const string ExtendedProps = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 // 1. GET current item with Locations
-var resp = await client.GetAsync(
-    $"{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure");
-resp.EnsureSuccessStatusCode();
-var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
+var getUrl = $"{BaseUrl}/api/inventory/parts/{ItemId}?extendedproperties={ExtendedProps}";
+var getResp = await client.GetAsync(getUrl);
+getResp.EnsureSuccessStatusCode();
+var item = JsonNode.Parse(await getResp.Content.ReadAsStringAsync())!;
 
-// 2. Modify fields on existing location
-var locations = item["Locations"]?["list"] as JArray;
-var target = locations?.FirstOrDefault(
-    l => (int)l["LocationId"] == 1 && (string)l["CompanyId"] == "ACME");
+// 2. Modify fields on the existing location -- do not drop the other records
+var locations = item["Locations"]!["list"]!.AsArray();
+var target = locations.FirstOrDefault(
+    l => (int)l!["LocationId"]! == TargetLocationId && (string)l["CompanyId"]! == TargetCompanyId);
 if (target != null)
 {
     target["Sellable"] = "N";
@@ -551,11 +795,55 @@ if (target != null)
     target["SalesDiscountGroup"] = "RETAIL";
 }
 
-// 3. PUT back
-var content = new StringContent(item.ToString(), Encoding.UTF8, "application/json");
-var putResp = await client.PutAsync($"{baseUrl}/api/inventory/parts/WIDGET-001", content);
+// 3. PUT the whole item back
+var putContent = new StringContent(item.ToJsonString(), Encoding.UTF8, "application/json");
+var putResp = await client.PutAsync($"{BaseUrl}/api/inventory/parts/{ItemId}", putContent);
 putResp.EnsureSuccessStatusCode();
-Console.WriteLine($"Updated: {(int)putResp.StatusCode}");
+Console.WriteLine($"PUT status: {(int)putResp.StatusCode}");
+
+// 4. Re-GET to prove what actually landed -- HTTP 200 alone does not confirm a write
+var afterResp = await client.GetAsync(getUrl);
+afterResp.EnsureSuccessStatusCode();
+var after = JsonNode.Parse(await afterResp.Content.ReadAsStringAsync())!;
+var afterTarget = after["Locations"]!["list"]!.AsArray().FirstOrDefault(
+    l => (int)l!["LocationId"]! == TargetLocationId && (string)l["CompanyId"]! == TargetCompanyId);
+if (afterTarget != null)
+{
+    Console.WriteLine(
+        $"Sellable={afterTarget["Sellable"]} ProductGroupId={afterTarget["ProductGroupId"]} " +
+        $"PurchaseDiscountGroup={afterTarget["PurchaseDiscountGroup"]} " +
+        $"SalesDiscountGroup={afterTarget["SalesDiscountGroup"]}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -581,117 +869,205 @@ Console.WriteLine($"Updated: {(int)putResp.StatusCode}");
 **Python**
 
 ```python
+"""Create a new inventory item with the minimum required fields, then re-GET it."""
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-TOKEN = "<ACCESS_TOKEN>"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+NEW_ITEM_ID = "WIDGET-002"                # must not already exist in inv_mast
+# ---------------------------------------------------------------------------
 
-payload = {
-    "ItemId": "WIDGET-002",
-    "ItemDesc": "Small Widget Assembly",
-    "Locations": {
-        "list": [
-            {
-                "LocationId": 1,
-                "ProductGroupId": "MISC",
-                "ObjectName": "inv_loc"
-            }
-        ]
-    },
-    "Suppliers": {
-        "list": [
-            {
-                "SupplierId": 10,
-                "DivisionId": 1,
-                "ObjectName": "inventory_supplier"
-            }
-        ]
-    },
-    "LocationSuppliers": {
-        "list": [
-            {
-                "LocationId": 1,
-                "SupplierId": 10,
-                "PrimarySupplier": "Y",
-                "ObjectName": "inventory_supplier_x_loc"
-            }
-        ]
-    },
-    "ObjectName": "inv_mast"
-}
 
-with httpx.Client(
-    headers={"Authorization": f"Bearer {TOKEN}"},
-    follow_redirects=True,
-) as client:
-    resp = client.post(f"{BASE_URL}/api/inventory/parts/", json=payload)
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "ItemId": NEW_ITEM_ID,
+        "ItemDesc": "Small Widget Assembly",
+        "Locations": {
+            "list": [
+                {
+                    "LocationId": 1,
+                    "ProductGroupId": "MISC",
+                    "ObjectName": "inv_loc",
+                }
+            ]
+        },
+        "Suppliers": {
+            "list": [
+                {
+                    "SupplierId": 10,
+                    "DivisionId": 1,
+                    "ObjectName": "inventory_supplier",
+                }
+            ]
+        },
+        "LocationSuppliers": {
+            "list": [
+                {
+                    "LocationId": 1,
+                    "SupplierId": 10,
+                    "PrimarySupplier": "Y",
+                    "ObjectName": "inventory_supplier_x_loc",
+                }
+            ]
+        },
+        "ObjectName": "inv_mast",
+    }
+
+    # POST returns 307 without a trailing slash -- see "POST Returns 307 Redirect" below
+    resp = client.post(f"{BASE_URL}/api/inventory/parts/", headers=headers, json=payload)
     resp.raise_for_status()
-    print(f"Created: {resp.json()['ItemId']}")
+    created = resp.json()
+    print(f"Created: {created['ItemId']}")
+
+    # Re-GET to confirm what actually landed -- HTTP 200 alone does not confirm a write
+    resp = client.get(f"{BASE_URL}/api/inventory/parts/{NEW_ITEM_ID}", headers=headers)
+    resp.raise_for_status()
+    confirmed = resp.json()
+    print(f"Confirmed: {confirmed['ItemId']}: {confirmed['ItemDesc']}")
 ```
 
 **C#**
 
 ```csharp
-using System;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
-var handler = new HttpClientHandler { AllowAutoRedirect = true };
-using var client = new HttpClient(handler);
-client.DefaultRequestHeaders.Add("Authorization", "Bearer <ACCESS_TOKEN>");
-var baseUrl = "https://play.p21server.com";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string NewItemId = "WIDGET-002";                  // must not already exist in inv_mast
+// ---------------------------------------------------------------------------
 
-var payload = new JObject
+var handler = new HttpClientHandler
 {
-    ["ItemId"] = "WIDGET-002",
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new JsonObject
+{
+    ["ItemId"] = NewItemId,
     ["ItemDesc"] = "Small Widget Assembly",
     ["ObjectName"] = "inv_mast",
-    ["Locations"] = new JObject
+    ["Locations"] = new JsonObject
     {
-        ["list"] = new JArray
+        ["list"] = new JsonArray
         {
-            new JObject
+            new JsonObject
             {
                 ["LocationId"] = 1,
                 ["ProductGroupId"] = "MISC",
-                ["ObjectName"] = "inv_loc"
+                ["ObjectName"] = "inv_loc",
             }
         }
     },
-    ["Suppliers"] = new JObject
+    ["Suppliers"] = new JsonObject
     {
-        ["list"] = new JArray
+        ["list"] = new JsonArray
         {
-            new JObject
+            new JsonObject
             {
                 ["SupplierId"] = 10,
                 ["DivisionId"] = 1,
-                ["ObjectName"] = "inventory_supplier"
+                ["ObjectName"] = "inventory_supplier",
             }
         }
     },
-    ["LocationSuppliers"] = new JObject
+    ["LocationSuppliers"] = new JsonObject
     {
-        ["list"] = new JArray
+        ["list"] = new JsonArray
         {
-            new JObject
+            new JsonObject
             {
                 ["LocationId"] = 1,
                 ["SupplierId"] = 10,
                 ["PrimarySupplier"] = "Y",
-                ["ObjectName"] = "inventory_supplier_x_loc"
+                ["ObjectName"] = "inventory_supplier_x_loc",
             }
         }
     }
 };
 
-var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-var resp = await client.PostAsync($"{baseUrl}/api/inventory/parts/", content);
+// POST returns 307 without a trailing slash -- see "POST Returns 307 Redirect" below
+var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+var resp = await client.PostAsync($"{BaseUrl}/api/inventory/parts/", content);
 resp.EnsureSuccessStatusCode();
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-Console.WriteLine($"Created: {result["ItemId"]}");
+var created = JsonNode.Parse(await resp.Content.ReadAsStringAsync())!;
+Console.WriteLine($"Created: {created["ItemId"]}");
+
+// Re-GET to confirm what actually landed -- HTTP 200 alone does not confirm a write
+var confirmResp = await client.GetAsync($"{BaseUrl}/api/inventory/parts/{NewItemId}");
+confirmResp.EnsureSuccessStatusCode();
+var confirmed = JsonNode.Parse(await confirmResp.Content.ReadAsStringAsync())!;
+Console.WriteLine($"Confirmed: {confirmed["ItemId"]}: {confirmed["ItemDesc"]}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -722,6 +1098,8 @@ The `ItemDesc` field on `inv_mast` has a **40-character maximum**. Behavior diff
 - **PUT** with >40 chars **silently discards** the value — no error, but the description is not updated
 
 Always validate before sending:
+
+> Full runnable version: [Minimum Create Payload](#minimum-create-payload) — run `validate_item_desc`/`ValidateItemDesc` on `ItemDesc` before calling POST or PUT.
 
 <!-- tabs -->
 
@@ -785,36 +1163,176 @@ Verified against **Prophet21Play (26.1)** by setting each candidate symbol on a 
 **Python**
 
 ```python
-# Probe whether a symbol survives a round-trip (PUT then GET).
-def symbol_round_trips(client, base_url, headers, item_id, symbol):
-    part = client.get(f"{base_url}/api/inventory/parts/{item_id}",
-                      headers=headers,
-                      params={"extendedproperties": "Locations,Suppliers,LocationSuppliers"}).json()
+"""Probe whether candidate symbols survive a PUT -> GET round-trip on ItemDesc, then restore it."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # item to probe -- ItemDesc is overwritten, then restored
+EXTENDED_PROPS = "Locations,Suppliers,LocationSuppliers"
+CANDIDATE_SYMBOLS = ['"', "'", "&", "<", ">", "#", "/", "\\", "%", "@"]
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_item(client: httpx.Client, headers: dict, item_id: str) -> dict:
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/{item_id}",
+        headers=headers,
+        params={"extendedproperties": EXTENDED_PROPS},
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def symbol_round_trips(client: httpx.Client, headers: dict, item_id: str, symbol: str) -> bool:
+    """Probe whether a symbol survives a round-trip (PUT then GET)."""
+    part = get_item(client, headers, item_id)
     test = f"AA{symbol}BB"
     part["ItemDesc"] = test
-    client.put(f"{base_url}/api/inventory/parts/{item_id}", headers=headers, json=part)
-    after = client.get(f"{base_url}/api/inventory/parts/{item_id}", headers=headers).json()["ItemDesc"]
-    return after == test          # True => allowed; baseline value => silently discarded
+    client.put(f"{BASE_URL}/api/inventory/parts/{item_id}", headers=headers, json=part)
+    after = get_item(client, headers, item_id)["ItemDesc"]
+    return after == test  # True => allowed; baseline value => silently discarded
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    original_desc = get_item(client, headers, ITEM_ID)["ItemDesc"]
+
+    for symbol in CANDIDATE_SYMBOLS:
+        allowed = symbol_round_trips(client, headers, ITEM_ID, symbol)
+        print(f"{symbol!r}: {'allowed' if allowed else 'discarded'}")
+
+    # Restore the original description
+    part = get_item(client, headers, ITEM_ID)
+    part["ItemDesc"] = original_desc
+    client.put(f"{BASE_URL}/api/inventory/parts/{ITEM_ID}", headers=headers, json=part)
+    restored = get_item(client, headers, ITEM_ID)["ItemDesc"]
+    print(f"Restored: {restored == original_desc}")
 ```
 
 **C#**
 
 ```csharp
-// Probe whether a symbol survives a round-trip (PUT then GET).
-static async Task<bool> SymbolRoundTrips(HttpClient client, string baseUrl,
-                                         string itemId, string symbol)
-{
-    var url = $"{baseUrl}/api/inventory/parts/{itemId}";
-    var part = JObject.Parse(await client.GetStringAsync(
-        $"{url}?extendedproperties=Locations,Suppliers,LocationSuppliers"));
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "WIDGET-001";                     // item to probe -- ItemDesc is overwritten, then restored
+const string ExtendedProps = "Locations,Suppliers,LocationSuppliers";
+string[] CandidateSymbols = { "\"", "'", "&", "<", ">", "#", "/", "\\", "%", "@" };
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var originalDesc = (await GetItemAsync(client, ItemId))["ItemDesc"]?.ToString();
+
+foreach (var symbol in CandidateSymbols)
+{
+    var allowed = await SymbolRoundTripsAsync(client, ItemId, symbol);
+    Console.WriteLine($"\"{symbol}\": {(allowed ? "allowed" : "discarded")}");
+}
+
+// Restore the original description
+var part = await GetItemAsync(client, ItemId);
+part["ItemDesc"] = originalDesc;
+await client.PutAsync(
+    $"{BaseUrl}/api/inventory/parts/{ItemId}",
+    new StringContent(part.ToJsonString(), Encoding.UTF8, "application/json"));
+var restored = (await GetItemAsync(client, ItemId))["ItemDesc"]?.ToString();
+Console.WriteLine($"Restored: {restored == originalDesc}");
+
+// --- helpers ---------------------------------------------------------------
+
+static async Task<JsonNode> GetItemAsync(HttpClient client, string itemId)
+{
+    var resp = await client.GetAsync(
+        $"{BaseUrl}/api/inventory/parts/{itemId}?extendedproperties={ExtendedProps}");
+    resp.EnsureSuccessStatusCode();
+    return JsonNode.Parse(await resp.Content.ReadAsStringAsync())!;
+}
+
+// Probe whether a symbol survives a round-trip (PUT then GET).
+static async Task<bool> SymbolRoundTripsAsync(HttpClient client, string itemId, string symbol)
+{
+    var part = await GetItemAsync(client, itemId);
     var test = $"AA{symbol}BB";
     part["ItemDesc"] = test;
-    await client.PutAsync(url,
-        new StringContent(part.ToString(), Encoding.UTF8, "application/json"));
+    await client.PutAsync(
+        $"{BaseUrl}/api/inventory/parts/{itemId}",
+        new StringContent(part.ToJsonString(), Encoding.UTF8, "application/json"));
+    var after = (await GetItemAsync(client, itemId))["ItemDesc"]?.ToString();
+    return after == test; // true => allowed; baseline value => silently discarded
+}
 
-    var after = JObject.Parse(await client.GetStringAsync(url))["ItemDesc"]?.ToString();
-    return after == test;         // true => allowed; baseline value => silently discarded
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -825,6 +1343,8 @@ static async Task<bool> SymbolRoundTrips(HttpClient client, string baseUrl,
 `POST /api/inventory/parts` (without trailing slash) returns **307 Temporary Redirect** to `/api/inventory/parts/`. Most HTTP clients do not follow redirects on POST by default.
 
 **Fix:** Either add a trailing slash to the URL, or configure your client to follow redirects:
+
+> Full runnable version: [Minimum Create Payload](#minimum-create-payload) — already POSTs to the trailing-slash URL with a redirect-following client.
 
 <!-- tabs -->
 
@@ -869,71 +1389,173 @@ To remove an item from a location without deleting the `inv_loc` record, set the
 **Python**
 
 ```python
+"""GET -> set Delete='Y' on one inv_loc -> PUT -> re-GET to confirm the soft-delete."""
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-TOKEN = "<ACCESS_TOKEN>"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # item to update
+TARGET_LOCATION_ID = 2                    # inv_loc.LocationId to soft-delete
+TARGET_COMPANY_ID = "ACME"                # inv_loc.CompanyId to soft-delete
+EXTENDED_PROPS = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"
+# ---------------------------------------------------------------------------
 
-with httpx.Client(
-    headers={"Authorization": f"Bearer {TOKEN}"},
-    follow_redirects=True,
-) as client:
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
     # 1. GET item with locations
-    ext = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"
     resp = client.get(
-        f"{BASE_URL}/api/inventory/parts/WIDGET-001",
-        params={"extendedproperties": ext},
+        f"{BASE_URL}/api/inventory/parts/{ITEM_ID}",
+        headers=headers,
+        params={"extendedproperties": EXTENDED_PROPS},
     )
     resp.raise_for_status()
     item = resp.json()
 
-    # 2. Set Delete flag on target location
+    # 2. Set Delete flag on the target location -- do not drop the other records
     for loc in item["Locations"]["list"]:
-        if loc["LocationId"] == 2 and loc["CompanyId"] == "ACME":
+        if loc["LocationId"] == TARGET_LOCATION_ID and loc["CompanyId"] == TARGET_COMPANY_ID:
             loc["Delete"] = "Y"
             break
 
-    # 3. PUT back
-    resp = client.put(f"{BASE_URL}/api/inventory/parts/WIDGET-001", json=item)
+    # 3. PUT the whole item back
+    resp = client.put(f"{BASE_URL}/api/inventory/parts/{ITEM_ID}", headers=headers, json=item)
     resp.raise_for_status()
-    print(f"Soft-deleted location: {resp.status_code}")
+    print(f"PUT status: {resp.status_code}")
+
+    # 4. Re-GET to prove what actually landed -- HTTP 200 alone does not confirm a write
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/{ITEM_ID}",
+        headers=headers,
+        params={"extendedproperties": EXTENDED_PROPS},
+    )
+    resp.raise_for_status()
+    after = resp.json()
+    for loc in after["Locations"]["list"]:
+        if loc["LocationId"] == TARGET_LOCATION_ID and loc["CompanyId"] == TARGET_COMPANY_ID:
+            print(f"Delete flag is now: {loc['Delete']}")
+            break
 ```
 
 **C#**
 
 ```csharp
-using System;
-using System.Linq;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
-var handler = new HttpClientHandler { AllowAutoRedirect = true };
-using var client = new HttpClient(handler);
-client.DefaultRequestHeaders.Add("Authorization", "Bearer <ACCESS_TOKEN>");
-var baseUrl = "https://play.p21server.com";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "WIDGET-001";                     // item to update
+const int TargetLocationId = 2;                         // inv_loc.LocationId to soft-delete
+const string TargetCompanyId = "ACME";                  // inv_loc.CompanyId to soft-delete
+const string ExtendedProps = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 // 1. GET item with locations
-var resp = await client.GetAsync(
-    $"{baseUrl}/api/inventory/parts/WIDGET-001?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure");
-resp.EnsureSuccessStatusCode();
-var item = JObject.Parse(await resp.Content.ReadAsStringAsync());
+var getUrl = $"{BaseUrl}/api/inventory/parts/{ItemId}?extendedproperties={ExtendedProps}";
+var getResp = await client.GetAsync(getUrl);
+getResp.EnsureSuccessStatusCode();
+var item = JsonNode.Parse(await getResp.Content.ReadAsStringAsync())!;
 
-// 2. Set Delete flag on target location
-var locations = item["Locations"]?["list"] as JArray;
-var target = locations?.FirstOrDefault(
-    l => (int)l["LocationId"] == 2 && (string)l["CompanyId"] == "ACME");
+// 2. Set Delete flag on the target location -- do not drop the other records
+var locations = item["Locations"]!["list"]!.AsArray();
+var target = locations.FirstOrDefault(
+    l => (int)l!["LocationId"]! == TargetLocationId && (string)l["CompanyId"]! == TargetCompanyId);
 if (target != null)
 {
     target["Delete"] = "Y";
 }
 
-// 3. PUT back
-var content = new StringContent(item.ToString(), Encoding.UTF8, "application/json");
-var putResp = await client.PutAsync($"{baseUrl}/api/inventory/parts/WIDGET-001", content);
+// 3. PUT the whole item back
+var putContent = new StringContent(item.ToJsonString(), Encoding.UTF8, "application/json");
+var putResp = await client.PutAsync($"{BaseUrl}/api/inventory/parts/{ItemId}", putContent);
 putResp.EnsureSuccessStatusCode();
-Console.WriteLine($"Soft-deleted location: {(int)putResp.StatusCode}");
+Console.WriteLine($"PUT status: {(int)putResp.StatusCode}");
+
+// 4. Re-GET to prove what actually landed -- HTTP 200 alone does not confirm a write
+var afterResp = await client.GetAsync(getUrl);
+afterResp.EnsureSuccessStatusCode();
+var after = JsonNode.Parse(await afterResp.Content.ReadAsStringAsync())!;
+var afterTarget = after["Locations"]!["list"]!.AsArray().FirstOrDefault(
+    l => (int)l!["LocationId"]! == TargetLocationId && (string)l["CompanyId"]! == TargetCompanyId);
+if (afterTarget != null)
+{
+    Console.WriteLine($"Delete flag is now: {afterTarget["Delete"]}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -953,22 +1575,49 @@ Units of Measure (`UnitsOfMeasure`) are defined at the `inv_mast` level and shar
 **Python**
 
 ```python
+"""Add an existing item to a new company/location via GET -> Append -> PUT."""
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "WIDGET-001"                    # item to append the new company/location to
 API = f"{BASE_URL}/api/inventory/parts"
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
 
 def process_item(
-    client: httpx.Client, item_id: str,
+    client: httpx.Client, headers: dict, item_id: str,
     new_location: dict, new_supplier: dict,
-):
+) -> dict:
     """Add an existing item to a new company/location via GET -> Append -> PUT."""
 
     # 1. Check if item exists
     try:
         resp = client.get(
             f"{API}/{item_id}",
+            headers=headers,
             params={"extendedproperties": "Locations,Suppliers"},
         )
         resp.raise_for_status()
@@ -977,7 +1626,7 @@ def process_item(
         if e.response.status_code == 404:
             # Item doesn't exist — create it with POST
             payload = {"ItemId": item_id, **new_location, **new_supplier}
-            resp = client.post(API, json=payload)
+            resp = client.post(f"{API}/", headers=headers, json=payload)
             resp.raise_for_status()
             return resp.json()
         raise
@@ -996,19 +1645,108 @@ def process_item(
     current_item["Suppliers"]["list"].append(new_supplier)
 
     # 4. PUT updated payload
-    resp = client.put(f"{API}/{item_id}", json=current_item)
+    resp = client.put(f"{API}/{item_id}", headers=headers, json=current_item)
     resp.raise_for_status()
     return resp.json()
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    new_location = {
+        "ItemId": ITEM_ID,
+        "LocationId": 2,
+        "CompanyId": "ACME-WEST",
+        "GlAccountNo": "1300-000",
+        "RevenueAccountNo": "4000-000",
+        "CosAccountNo": "5000-000",
+        "Sellable": "Y",
+        "Stockable": "Y",
+        "ObjectName": "inv_loc",
+    }
+    new_supplier = {
+        "ItemId": ITEM_ID,
+        "SupplierId": 20,
+        "DivisionId": 2,
+        "LeadTimeDays": 5,
+        "ObjectName": "inventory_supplier",
+    }
+
+    result = process_item(client, headers, ITEM_ID, new_location, new_supplier)
+
+    # Read-back what actually landed
+    linked = {loc["CompanyId"] for loc in result.get("Locations", {}).get("list", [])}
+    print(f"Item {ITEM_ID} now linked to companies: {sorted(linked)}")
 ```
 
 **C#**
 
 ```csharp
-const string BaseUrl = "https://play.p21server.com";
-const string Api = BaseUrl + "/api/inventory/parts";
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
-async Task<JObject> ProcessItemAsync(
-    HttpClient client, string itemId, JObject newLocation, JObject newSupplier)
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "WIDGET-001";                     // item to append the new company/location to
+const string Api = BaseUrl + "/api/inventory/parts";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var newLocation = new JsonObject
+{
+    ["ItemId"] = ItemId,
+    ["LocationId"] = 2,
+    ["CompanyId"] = "ACME-WEST",
+    ["GlAccountNo"] = "1300-000",
+    ["RevenueAccountNo"] = "4000-000",
+    ["CosAccountNo"] = "5000-000",
+    ["Sellable"] = "Y",
+    ["Stockable"] = "Y",
+    ["ObjectName"] = "inv_loc",
+};
+var newSupplier = new JsonObject
+{
+    ["ItemId"] = ItemId,
+    ["SupplierId"] = 20,
+    ["DivisionId"] = 2,
+    ["LeadTimeDays"] = 5,
+    ["ObjectName"] = "inventory_supplier",
+};
+
+var result = await ProcessItemAsync(client, ItemId, newLocation, newSupplier);
+
+// Read-back what actually landed
+var linked = result["Locations"]?["list"]?.AsArray()
+    .Select(loc => loc!["CompanyId"]?.ToString())
+    .Distinct()
+    .ToList() ?? new List<string?>();
+Console.WriteLine($"Item {ItemId} now linked to companies: {string.Join(", ", linked)}");
+
+// --- helpers ---------------------------------------------------------------
+
+// Add an existing item to a new company/location via GET -> Append -> PUT.
+static async Task<JsonNode> ProcessItemAsync(
+    HttpClient client, string itemId, JsonObject newLocation, JsonObject newSupplier)
 {
     // 1. Check if item exists
     var resp = await client.GetAsync($"{Api}/{itemId}?extendedproperties=Locations,Suppliers");
@@ -1016,23 +1754,23 @@ async Task<JObject> ProcessItemAsync(
     if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
     {
         // Item doesn't exist — create it with POST
-        var createPayload = new JObject { ["ItemId"] = itemId };
-        createPayload.Merge(newLocation);
-        createPayload.Merge(newSupplier);
+        var createPayload = new JsonObject { ["ItemId"] = itemId };
+        foreach (var kv in newLocation) createPayload[kv.Key] = kv.Value?.DeepClone();
+        foreach (var kv in newSupplier) createPayload[kv.Key] = kv.Value?.DeepClone();
         var createContent = new StringContent(
-            createPayload.ToString(), Encoding.UTF8, "application/json");
-        var createResp = await client.PostAsync(Api, createContent);
+            createPayload.ToJsonString(), Encoding.UTF8, "application/json");
+        var createResp = await client.PostAsync($"{Api}/", createContent);
         createResp.EnsureSuccessStatusCode();
-        return JObject.Parse(await createResp.Content.ReadAsStringAsync());
+        return JsonNode.Parse(await createResp.Content.ReadAsStringAsync())!;
     }
 
     resp.EnsureSuccessStatusCode();
-    var currentItem = JObject.Parse(await resp.Content.ReadAsStringAsync());
+    var currentItem = JsonNode.Parse(await resp.Content.ReadAsStringAsync())!;
 
     // 2. Check if company/location already linked
-    var locations = currentItem["Locations"]?["list"] as JArray ?? new JArray();
+    var locations = currentItem["Locations"]?["list"]?.AsArray() ?? new JsonArray();
     var existingCompanies = locations
-        .Select(loc => loc["CompanyId"]?.ToString())
+        .Select(loc => loc?["CompanyId"]?.ToString())
         .Where(c => c != null)
         .ToHashSet();
 
@@ -1044,16 +1782,44 @@ async Task<JObject> ProcessItemAsync(
     }
 
     // 3. Append new records
-    locations.Add(newLocation);
-    var suppliers = currentItem["Suppliers"]?["list"] as JArray ?? new JArray();
-    suppliers.Add(newSupplier);
+    locations.Add(newLocation.DeepClone());
+    var suppliers = currentItem["Suppliers"]?["list"]?.AsArray() ?? new JsonArray();
+    suppliers.Add(newSupplier.DeepClone());
 
     // 4. PUT updated payload
     var putContent = new StringContent(
-        currentItem.ToString(), Encoding.UTF8, "application/json");
+        currentItem.ToJsonString(), Encoding.UTF8, "application/json");
     var putResp = await client.PutAsync($"{Api}/{itemId}", putContent);
     putResp.EnsureSuccessStatusCode();
-    return JObject.Parse(await putResp.Content.ReadAsStringAsync());
+    return JsonNode.Parse(await putResp.Content.ReadAsStringAsync())!;
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 

@@ -193,7 +193,7 @@ public static class CreateEntity
             ["CompanyId"] = "ACME",
             // CustomerId is intentionally omitted (null = INSERT)
             ["CustomerName"] = "New Customer Inc.",
-            ["SalesrepId"] = "1100",
+            ["SalesrepId"] = "200",
             ["TermsId"] = "1",
             ["CodRequiredFlag"] = "N",
             ["Taxable"] = "Y"

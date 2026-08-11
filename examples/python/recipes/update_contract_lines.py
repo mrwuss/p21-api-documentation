@@ -30,7 +30,7 @@ warnings.filterwarnings("ignore")
 # --- Configuration (generic placeholders -- substitute your own) ------------
 CONTRACT = {
     "company_id": "ACME",
-    "contract_no": "A120-12",
+    "contract_no": "JOB-1001",
     "job_no": "31",            # unique across renewals -- include it
     "end_date": "2030-01-01",  # required on EVERY submit, must be >= today
 }

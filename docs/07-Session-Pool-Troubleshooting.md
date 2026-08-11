@@ -262,6 +262,8 @@ async Task<TransactionResult> CallTransactionApiAsync(
 ```
 <!-- /tabs -->
 
+> Full runnable version: [Transaction API — Create Order](03-Transaction-API.md#create-order). The retry wrapper above illustrates the jitter pattern around `call_transaction_api()` / `client.Transaction.CreateAsync()` placeholders — swap in a real `/api/v2/transaction` POST like the linked example.
+
 #### Option B: Use Async Endpoint
 
 The async endpoint may use dedicated sessions:

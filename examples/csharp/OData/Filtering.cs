@@ -41,7 +41,7 @@ public static class Filtering
         // -----------------------------------------------------------------
         // Example 1: Equality filter
         // -----------------------------------------------------------------
-        Console.WriteLine("\n1. Equality filter (supplier_id eq 20000):");
+        Console.WriteLine("\n1. Equality filter (supplier_id eq 10050):");
         Console.WriteLine(new string('-', 40));
 
         // The "eq" operator tests exact equality.
@@ -49,7 +49,7 @@ public static class Filtering
         var data = await odata.QueryAsync(
             "price_page",
             select: "price_page_uid,description,supplier_id",
-            filter: "supplier_id eq 20000",
+            filter: "supplier_id eq 10050",
             top: 5);
 
         var values = data["value"]!;
@@ -70,11 +70,11 @@ public static class Filtering
         data = await odata.QueryAsync(
             "price_page",
             select: "price_page_uid,description,row_status_flag",
-            filter: "supplier_id eq 20000 and row_status_flag eq 704",
+            filter: "supplier_id eq 10050 and row_status_flag eq 704",
             top: 5);
 
         values = data["value"]!;
-        Console.WriteLine($"  Active pages for supplier 20000: {values.Count()} found");
+        Console.WriteLine($"  Active pages for supplier 10050: {values.Count()} found");
         foreach (var page in values)
         {
             var desc = Truncate(page["description"]?.ToString(), 40);

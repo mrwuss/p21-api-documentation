@@ -133,7 +133,7 @@ Response (**25.2**):
 Response (**2026.1** — the identifier is renamed `SessionId` → `Id`):
 ```json
 {
-    "Id": "3c2aca0b-ada7-4dbc-bc82-c5ce31cde2ae",
+    "Id": "3f2b8c9e-1234-4a5b-9c0d-7e8f9a0b1c2d",
     "Properties": [
         {
             "Name": "Telemetry",
@@ -260,7 +260,7 @@ PUT /api/ui/interactive/v2/change
 >
 > The bug persists through at least version **25.2.5776.1**. Epicor has acknowledged this as a development bug.
 
-**Fix example (C# SDK):**
+**Fix example (C# SDK)** — the P21 C# SDK's `ChangeData`, not the REST call. For the REST equivalent see the change payloads in [Linking Price Page to Price Book](#example-linking-price-page-to-price-book).
 
 ```csharp
 // Broken in 25.2+:
@@ -341,6 +341,21 @@ DELETE /api/ui/interactive/v2/window?id=w_sales_price_page
 DELETE /api/ui/interactive/sessions
 ```
 
+No body, no query parameter. The endpoint deletes **the session belonging to the bearer token you send** — which is why it needs neither.
+
+> **A session can only be deleted by the token that created it.** Verified on 26.1.5910.3 (2026-08-11): create a session and `DELETE` it on the same token and you get `200` and the session is gone. Present a **different** token — a fresh login after your process restarted, another worker, a retry that re-authenticated — and *every* form is refused with `400 {"ErrorMessage":"Invalid session"}`:
+>
+> | Attempt (different token) | Result |
+> |---|---|
+> | `DELETE /sessions` (no body, as documented) | `400 Invalid session` |
+> | `DELETE /sessions?id={sessionId}` | `400 Invalid session` |
+> | `DELETE /sessions?sessionId={sessionId}` | `400 Invalid session` |
+> | `DELETE /sessions` body `{"Id": "..."}` | `400 Invalid session` |
+> | `DELETE /sessions` body `{"SessionId": "..."}` | `400 Invalid session` |
+> | `DELETE /v2/sessions?id={sessionId}` | `404` (no such endpoint) |
+>
+> The orphan stays visible in `GET /api/ui/interactive/sessions` and there is no documented way to reap it early — you wait out `SessionCleanupExpiration`. The practical rule: **delete the session on the token that opened it, in a `finally`, before that token goes out of scope.** Once the token is gone, so is your ability to clean up.
+
 ---
 
 ## Finding Field Names
@@ -363,81 +378,290 @@ Understanding a window's structure is essential before automating it. These tech
 
 ### 1. Get Window State
 
-After opening a window, call `GetState()` (SDK) or `GET /api/ui/interactive/v2/window?id={windowId}` (REST) to retrieve the full window definition. This returns all datawindows, fields, tabs, enabled states, and current data structure.
+After opening a window, call `GetState()` (SDK) or `GET /api/ui/interactive/v2/window?id={windowId}` (REST) to retrieve the window definition — datawindows, fields, tabs, enabled states, and current data.
+
+**The response shape**, verified live on 26.1.5910.3 (2026-08-11):
+
+```jsonc
+{
+  "Data": { /* current values */ },
+  "Definition": {
+    "Id": "...", "Name": "...", "Title": "...",
+    "TabPageList": [ /* array */ ],
+    "Datawindows": {                 // a MAP keyed by datawindow name -- not an array
+      "tp_1_dw_1": {
+        "Name": "...", "ParentPage": "...", "Style": "...",
+        "Fields": { /* also a MAP, keyed by field name */ }
+      },
+      "tp_17_dw_17": { }
+    }
+  }
+}
+```
+
+Three things that catch people out:
+
+- **Everything is under `Definition`.** The datawindows are not at the top level; `Data` is a sibling, not a parent.
+- **`Datawindows` and `Fields` are maps, not arrays.** Iterating them positionally yields keys (strings), not objects. `TabPageList` *is* an array — the two shapes sit side by side.
+- **You get a subset, not the whole window.** Opening `PurchaseOrder` returned exactly two datawindows (`tp_1_dw_1`, `tp_17_dw_17`) out of the dozens the service defines. A datawindow's **absence here proves nothing** — use `definitions/{Service}.json` for the full picture and treat this endpoint as "what the window currently has bound". The same caveat applies to `GET /v2/data`.
+
+Complete program — authenticates, opens a window by `ServiceName`, prints every tab and datawindow it exposes, then closes the window and the session. Run it against any window whose structure you need before automating it.
 
 <!-- tabs -->
 
 #### Python
 
 ```python
-async def get_window_state(
-    client: httpx.AsyncClient,
-    ui_url: str,
-    headers: dict[str, str],
-    window_id: str,
-) -> dict:
-    """Get full window state including datawindows, fields, and tabs.
+"""Open a P21 window and print the tabs, datawindows and fields it exposes."""
+import re
 
-    Args:
-        client: httpx async client.
-        ui_url: UI server base URL.
-        headers: Request headers with auth token.
-        window_id: The window ID to inspect.
+import httpx
 
-    Returns:
-        Parsed window definition dict.
-    """
-    response = await client.get(
-        f"{ui_url}/api/ui/interactive/v2/window",
-        headers=headers,
-        params={"id": window_id},
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SERVICE_NAME = "SalesPricePage"           # window to inspect — always open by ServiceName
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
     )
-    response.raise_for_status()
-    state = response.json()
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-    # Enumerate datawindows and their fields
-    for dw in state.get("Datawindows", []):
-        dw_name = dw.get("Name")
-        parent_tab = dw.get("ParentPage")
-        fields = [f.get("Name") for f in dw.get("Fields", [])]
-        logger.info(
-            "Datawindow %s (tab: %s) — fields: %s",
-            dw_name, parent_tab, fields,
-        )
 
-    return state
-```
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
-#### C\#
 
-```csharp
-public async Task<JObject> GetWindowStateAsync(
-    HttpClient http,
-    string uiUrl,
-    string windowId)
-{
-    // Get full window state including datawindows, fields, and tabs.
-    var response = await http.GetAsync(
-        $"{uiUrl}/api/ui/interactive/v2/window?id={windowId}");
-    response.EnsureSuccessStatusCode();
-
-    var state = JObject.Parse(await response.Content.ReadAsStringAsync());
-
-    // Enumerate datawindows and their fields
-    foreach (var dw in state["Datawindows"] ?? new JArray())
-    {
-        var dwName = dw["Name"]?.ToString();
-        var parentTab = dw["ParentPage"]?.ToString();
-        var fields = (dw["Fields"] as JArray)?
-            .Select(f => f["Name"]?.ToString())
-            .ToList() ?? new List<string?>();
-
-        _logger.LogInformation(
-            "Datawindow {DwName} (tab: {ParentTab}) — fields: {Fields}",
-            dwName, parentTab, string.Join(", ", fields));
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
     }
 
-    return state;
+    r = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    r.raise_for_status()
+    session = r.json()
+    # 25.2 returns SessionId; 2026.1 renamed it Id — read either.
+    print("session:", session.get("Id") or session.get("SessionId"))
+
+    window_id = None
+    try:
+        r = client.post(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            headers=headers,
+            json={"ServiceName": SERVICE_NAME},
+        )
+        r.raise_for_status()
+        opened = r.json()
+        window_id = opened.get("WindowId") or opened.get("Id")
+        print("window:", window_id)
+
+        r = client.get(
+            f"{ui_server}/api/ui/interactive/v2/window",   # note: ?id=, not ?windowId=
+            headers=headers,
+            params={"id": window_id},
+        )
+        r.raise_for_status()
+        state = r.json()
+        definition = state.get("Definition", state)
+
+        for tab in definition.get("TabPageList", []):
+            print(f"tab {tab.get('Name')!r:32} enabled={tab.get('Enabled')}")
+
+        # Datawindows arrive as a map keyed by name; normalise to a list either way.
+        datawindows = definition.get("Datawindows", {})
+        if isinstance(datawindows, dict):
+            datawindows = [{"Name": k, **v} for k, v in datawindows.items()]
+        for dw in datawindows:
+            fields = dw.get("Fields", {})
+            names = sorted(fields) if isinstance(fields, dict) else [
+                f.get("Name") for f in fields
+            ]
+            print(f"datawindow {dw.get('Name')} (tab: {dw.get('ParentPage')})")
+            print(f"    fields: {names}")
+    finally:
+        if window_id:
+            client.delete(
+                f"{ui_server}/api/ui/interactive/v2/window",
+                headers=headers,
+                params={"id": window_id},
+            )
+        # Always delete the session: a leaked one 409s ("Session already exists")
+        # on your next create until it is cleaned up.
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
+```
+
+#### C#
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ServiceName = "SalesPricePage";           // window to inspect — open by ServiceName
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
+using (var session = JsonDocument.Parse(await sessionResponse.Content.ReadAsStringAsync()))
+{
+    // 25.2 returns SessionId; 2026.1 renamed it Id — read either.
+    Console.WriteLine($"session: {Field(session.RootElement, "Id") ?? Field(session.RootElement, "SessionId")}");
+}
+
+string? windowId = null;
+try
+{
+    var openResponse = await client.PostAsync(
+        $"{uiServer}/api/ui/interactive/v2/window",
+        Json(new { ServiceName }));
+    openResponse.EnsureSuccessStatusCode();
+    using (var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync()))
+        windowId = Field(opened.RootElement, "WindowId") ?? Field(opened.RootElement, "Id");
+    Console.WriteLine($"window: {windowId}");
+
+    // note: ?id=, not ?windowId=
+    var stateResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    stateResponse.EnsureSuccessStatusCode();
+
+    using var state = JsonDocument.Parse(await stateResponse.Content.ReadAsStringAsync());
+    var definition = state.RootElement.TryGetProperty("Definition", out var d)
+        ? d
+        : state.RootElement;
+
+    if (definition.TryGetProperty("TabPageList", out var tabs))
+        foreach (var tab in tabs.EnumerateArray())
+            Console.WriteLine($"tab {Field(tab, "Name")} enabled={Field(tab, "Enabled")}");
+
+    if (definition.TryGetProperty("Datawindows", out var datawindows))
+    {
+        // Datawindows arrive as a map keyed by name; tolerate an array too.
+        var entries = datawindows.ValueKind == JsonValueKind.Object
+            ? datawindows.EnumerateObject().Select(p => (Name: p.Name, Value: p.Value))
+            : datawindows.EnumerateArray().Select(e => (Name: Field(e, "Name") ?? "", Value: e));
+
+        foreach (var (name, dw) in entries)
+        {
+            var fields = new List<string>();
+            if (dw.TryGetProperty("Fields", out var f))
+                fields = f.ValueKind == JsonValueKind.Object
+                    ? f.EnumerateObject().Select(p => p.Name).ToList()
+                    : f.EnumerateArray().Select(e => Field(e, "Name") ?? "").ToList();
+
+            Console.WriteLine($"datawindow {name} (tab: {Field(dw, "ParentPage")})");
+            Console.WriteLine($"    fields: {string.Join(", ", fields)}");
+        }
+    }
+}
+finally
+{
+    if (windowId is not null)
+        await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+
+    // Always delete the session: a leaked one 409s ("Session already exists")
+    // on your next create until it is cleaned up.
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object body) =>
+    new(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+static string? Field(JsonElement element, string name) =>
+    element.TryGetProperty(name, out var value) ? value.ToString() : null;
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -586,7 +810,9 @@ PUT /api/ui/interactive/v2/change
 }
 ```
 
-**REST examples (Python / C#):**
+**REST examples (Python / C#)** — one step of a longer sequence: the response window must already have been opened by something (a tool, a save), and its ID comes from that call's `windowopened` event.
+
+> Full runnable version: [Recipe: Add a Header Note](#recipe-add-a-header-note)
 
 <!-- tabs -->
 
@@ -638,7 +864,7 @@ async def change_response_window_field(
 #### C\#
 
 ```csharp
-public async Task<JObject> ChangeResponseWindowFieldAsync(
+public async Task<JsonElement> ChangeResponseWindowFieldAsync(
     HttpClient http,
     string uiUrl,
     string responseWindowId,
@@ -647,12 +873,12 @@ public async Task<JObject> ChangeResponseWindowFieldAsync(
     string value)
 {
     // Response windows have no tabs — set TabName to null
-    var payload = new JObject
+    var payload = new JsonElement
     {
         ["WindowId"] = responseWindowId,
-        ["List"] = new JArray
+        ["List"] = new JsonElement
         {
-            new JObject
+            new JsonElement
             {
                 ["TabName"] = null,
                 ["DatawindowName"] = datawindowName,
@@ -665,7 +891,7 @@ public async Task<JObject> ChangeResponseWindowFieldAsync(
     var response = await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/change", content);
     response.EnsureSuccessStatusCode();
 
-    return JObject.Parse(await response.Content.ReadAsStringAsync());
+    return JsonElement.Parse(await response.Content.ReadAsStringAsync());
 }
 ```
 
@@ -780,134 +1006,234 @@ For datawindow or field-level tools, include the optional fields:
 
 ### Basic Client Class
 
+The minimum viable Interactive client: authenticate, resolve the UI server, open a session with the [session parameters](#session-parameters-userparameters), read it back from `GET /sessions`, and always delete it. Complete program — it is also the quickest way to print your middleware build, since P21 exposes no version endpoint.
+
 <!-- tabs -->
 
 #### Python
 
 ```python
+"""Open an Interactive session, print the middleware build, and clean it up."""
+import re
+
 import httpx
 
-class InteractiveClient:
-    # verify_ssl=False is for dev/test servers with self-signed certs only
-    def __init__(self, base_url, username, password, verify_ssl=True):
-        self.base_url = base_url.rstrip('/')
-        self.username = username
-        self.password = password
-        self.verify_ssl = verify_ssl
-        self.token = None
-        self.ui_server_url = None
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SESSION_TYPE = "Auto"                     # User | Auto | AutoInteractive
+SESSION_TIMEOUT = 120                     # inactivity seconds before cleanup
+CLIENT_APP = "PricePageSync"              # shows up in server-side logging
+WORKSTATION_ID = "INTEGRATION-01"         # your identifier for this machine
+# ---------------------------------------------------------------------------
 
-    def authenticate(self):
-        response = httpx.post(
-            f"{self.base_url}/api/security/token/v2",
-            json={"username": self.username, "password": self.password},
-            verify=self.verify_ssl
-        )
-        response.raise_for_status()
-        self.token = response.json()["AccessToken"]
 
-    def get_ui_server(self):
-        # Trailing slash matters: the no-slash form can answer with a
-        # 307 redirect, so follow redirects as well.
-        response = httpx.get(
-            f"{self.base_url}/api/ui/router/v1/?urlType=external",
-            headers={"Authorization": f"Bearer {self.token}"},
-            verify=self.verify_ssl,
-            follow_redirects=True
-        )
-        response.raise_for_status()
-        self.ui_server_url = response.json()["Url"].rstrip("/")
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-    def start_session(self):
-        response = httpx.post(
-            f"{self.ui_server_url}/api/ui/interactive/sessions/",
-            headers={
-                "Authorization": f"Bearer {self.token}",
-                "Content-Type": "application/json"
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    try:
+        r = client.post(
+            f"{ui_server}/api/ui/interactive/sessions",
+            headers=headers,
+            json={
+                "SessionType": SESSION_TYPE,
+                "SessionTimeout": SESSION_TIMEOUT,
+                "ResponseWindowHandlingEnabled": False,
+                "ClientPlatformApp": CLIENT_APP,
+                "WorkstationID": WORKSTATION_ID,
             },
-            json={"ResponseWindowHandlingEnabled": False},
-            verify=self.verify_ssl
         )
-        response.raise_for_status()
+        r.raise_for_status()
+        session = r.json()
 
-    def end_session(self):
-        httpx.delete(
-            f"{self.ui_server_url}/api/ui/interactive/sessions/",
-            headers={"Authorization": f"Bearer {self.token}"},
-            verify=self.verify_ssl
-        )
+        # 25.2 returns SessionId; 2026.1 renamed it Id — read either.
+        print("session:", session.get("Id") or session.get("SessionId"))
+
+        # There is no version endpoint: the build rides the create response.
+        for prop in session.get("Properties", []):
+            build = (prop.get("Properties") or {}).get("fullversion")
+            if build:
+                print("middleware build:", build)
+
+        # Read-back: list the sessions the server thinks are open.
+        r = client.get(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
+        r.raise_for_status()
+        print("open sessions:", r.text[:400])
+    finally:
+        # A session left behind 409s ("Session already exists") on the next
+        # create — including the ghost left by a failed create. DELETE clears
+        # it instantly; don't wait out SessionCleanupExpiration.
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 #### C#
 
 ```csharp
-using System.Net.Http;
 using System.Net.Http.Headers;
-using Newtonsoft.Json.Linq;
+using System.Text;
+using System.Text.Json;
 
-public class InteractiveClient
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string SessionType = "Auto";                     // User | Auto | AutoInteractive
+const int SessionTimeout = 120;                        // inactivity seconds before cleanup
+const string ClientApp = "PricePageSync";              // shows up in server-side logging
+const string WorkstationId = "INTEGRATION-01";         // your identifier for this machine
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    private readonly string _baseUrl;
-    private readonly string _username;
-    private readonly string _password;
-    private readonly HttpClient _http;
-    private string? _token;
-    private string? _uiServerUrl;
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-    // verifySsl: false is for dev/test servers with self-signed certs only
-    public InteractiveClient(string baseUrl, string username, string password, bool verifySsl = true)
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+try
+{
+    var createResponse = await client.PostAsync(
+        $"{uiServer}/api/ui/interactive/sessions",
+        Json(new
+        {
+            SessionType,
+            SessionTimeout,
+            ResponseWindowHandlingEnabled = false,
+            ClientPlatformApp = ClientApp,
+            WorkstationID = WorkstationId,
+        }));
+    createResponse.EnsureSuccessStatusCode();
+
+    using (var session = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync()))
     {
-        _baseUrl = baseUrl.TrimEnd('/');
-        _username = username;
-        _password = password;
+        // 25.2 returns SessionId; 2026.1 renamed it Id — read either.
+        var root = session.RootElement;
+        Console.WriteLine($"session: {Field(root, "Id") ?? Field(root, "SessionId")}");
 
-        var handler = new HttpClientHandler();
-        if (!verifySsl)
-            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
-
-        _http = new HttpClient(handler);
+        // There is no version endpoint: the build rides the create response.
+        if (root.TryGetProperty("Properties", out var properties))
+            foreach (var property in properties.EnumerateArray())
+                if (property.TryGetProperty("Properties", out var inner) &&
+                    inner.TryGetProperty("fullversion", out var build))
+                    Console.WriteLine($"middleware build: {build}");
     }
 
-    public async Task AuthenticateAsync()
+    // Read-back: list the sessions the server thinks are open.
+    var listResponse = await client.GetAsync($"{uiServer}/api/ui/interactive/sessions");
+    listResponse.EnsureSuccessStatusCode();
+    var body = await listResponse.Content.ReadAsStringAsync();
+    Console.WriteLine($"open sessions: {body[..Math.Min(400, body.Length)]}");
+}
+finally
+{
+    // A session left behind 409s ("Session already exists") on the next create —
+    // including the ghost left by a failed create. DELETE clears it instantly;
+    // don't wait out SessionCleanupExpiration.
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static StringContent Json(object body) =>
+    new(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+static string? Field(JsonElement element, string name) =>
+    element.TryGetProperty(name, out var value) ? value.ToString() : null;
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
     {
-        var body = new JObject { ["username"] = _username, ["password"] = _password };
-        var content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
-        var response = await _http.PostAsync($"{_baseUrl}/api/security/token/v2", content);
-        response.EnsureSuccessStatusCode();
-
-        var parsed = JObject.Parse(await response.Content.ReadAsStringAsync());
-        _token = parsed["AccessToken"]!.ToString();
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
     }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
 
-    public async Task GetUiServerAsync()
-    {
-        var response = await _http.GetAsync($"{_baseUrl}/api/ui/router/v1?urlType=external");
-        response.EnsureSuccessStatusCode();
-
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        _uiServerUrl = body["Url"]!.ToString().TrimEnd('/');
-    }
-
-    public async Task StartSessionAsync()
-    {
-        var payload = new JObject { ["ResponseWindowHandlingEnabled"] = false };
-        var content = new StringContent(payload.ToString(), System.Text.Encoding.UTF8, "application/json");
-
-        var response = await _http.PostAsync($"{_uiServerUrl}/api/ui/interactive/sessions", content);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task EndSessionAsync()
-    {
-        await _http.DeleteAsync($"{_uiServerUrl}/api/ui/interactive/sessions");
-    }
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
 <!-- /tabs -->
 
 ### Context Manager / Disposable Usage (Sync)
+
+Structural sketch, not a runnable program — it shows only the lifecycle hooks wrapped around the methods above, and `open_window` / `change_data` / `save` are your own thin wrappers over the REST calls.
+
+> Full runnable version: [Basic Client Class](#basic-client-class)
 
 <!-- tabs -->
 
@@ -973,7 +1299,9 @@ window.Close();
 
 ### Async Context Manager / IAsyncDisposable (Recommended)
 
-For production code, use async patterns with proper cleanup:
+For production code, use async patterns with proper cleanup. Structural sketch — the elided bodies (`# ... get ui_server_url and start session ...`) are the calls shown in full below.
+
+> Full runnable version: [Basic Client Class](#basic-client-class)
 
 <!-- tabs -->
 
@@ -1057,29 +1385,25 @@ async with P21Client(base_url, username, password) as client:
 #### C#
 
 ```csharp
-using System.Net.Http;
 using System.Net.Http.Headers;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
+using System.Text;
+using System.Text.Json;
 
 public class P21Client : IAsyncDisposable
 {
     private readonly string _baseUrl;
     private readonly string _username;
     private readonly string _password;
-    private readonly ILogger<P21Client> _logger;
     private HttpClient? _http;
     private string? _token;
     private string? _uiServerUrl;
 
     public P21Client(string baseUrl, string username, string password,
-                     bool verifySsl = true, ILogger<P21Client>? logger = null)
+                     bool verifySsl = true)
     {
         _baseUrl = baseUrl.TrimEnd('/');
         _username = username;
         _password = password;
-        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<P21Client>.Instance;
-
         var handler = new HttpClientHandler();
         if (!verifySsl)
             handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
@@ -1087,14 +1411,14 @@ public class P21Client : IAsyncDisposable
         _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
     }
 
-    public async Task<JObject> AuthenticateAsync()
+    public async Task<JsonElement> AuthenticateAsync()
     {
-        var body = new JObject { ["username"] = _username, ["password"] = _password };
+        var body = JsonSerializer.Serialize(new { username = _username, password = _password });
         var content = new StringContent(body.ToString(), System.Text.Encoding.UTF8, "application/json");
         var response = await _http!.PostAsync($"{_baseUrl}/api/security/token/v2", content);
         response.EnsureSuccessStatusCode();
 
-        var parsed = JObject.Parse(await response.Content.ReadAsStringAsync());
+        using var parsed = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         _token = parsed["AccessToken"]!.ToString();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
         return parsed;
@@ -1120,7 +1444,7 @@ public class P21Client : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Session cleanup error (ignored)");
+            Console.Error.WriteLine($"Session cleanup error (ignored): {ex.Message}");
         }
 
         _http?.Dispose();
@@ -1206,135 +1530,390 @@ See [Production & Labor API](12-Production-Labor-API.md) for detailed field defi
 
 This example shows how to use the SalesPriceBook window to link a price page to a price book. This is a common operation after creating a new price page.
 
+Complete program — session, window, retrieve, tab switch, add row, change, save, read-back, cleanup. It is the reference for every "change a field / add a grid row / save" sequence in this guide.
+
 <!-- tabs -->
 
 #### Python
 
 ```python
-async def link_page_to_book(
-    client: P21Client,
-    price_page_uid: int,
-    price_book_id: str
-) -> bool:
-    """Link a price page to a price book via SalesPriceBook window.
+"""Link a price page to a price book through the SalesPriceBook window."""
+import re
 
-    Args:
-        client: Authenticated P21Client with active session
-        price_page_uid: The price page UID to link
-        price_book_id: The price book ID (e.g., "ACME_BOOK_A")
+import httpx
 
-    Returns:
-        True if successful
-    """
-    # Open the SalesPriceBook window
-    window = await client.open_window(service_name='SalesPriceBook')
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PRICE_BOOK_ID = "ACME_BOOK_A"             # the book to load on the FORM tab
+PRICE_PAGE_UID = "100198"                 # the page to link — sent as a string
+# ---------------------------------------------------------------------------
 
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
     try:
-        # Step 1: Retrieve the book by ID on FORM tab
-        result = await window.change_data(
-            'FORM', 'price_book_id', price_book_id,
-            datawindow_name='form'
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def check(response: httpx.Response, step: str) -> dict:
+        """Raise unless the call returned Status 1 (Success)."""
+        response.raise_for_status()
+        result = response.json()
+        status = result.get("Status")
+        messages = [m.get("Text") for m in result.get("Messages", [])]
+        if status not in (1, "Success"):
+            raise RuntimeError(f"{step}: Status={status} {messages}")
+        if messages:
+            print(f"{step}: {messages}")
+        return result
+
+    r = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": False},
+    )
+    r.raise_for_status()
+    session = r.json()
+    print("session:", session.get("Id") or session.get("SessionId"))
+
+    window_id = None
+    try:
+        # Open by ServiceName — the by-Name and by-Title paths are unreliable.
+        r = client.post(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            headers=headers,
+            json={"ServiceName": "SalesPriceBook"},
         )
-        if not result.success:
-            logger.error(f"Failed to retrieve book {price_book_id}: {result.messages}")
-            return False
+        r.raise_for_status()
+        opened = r.json()
+        window_id = opened.get("WindowId") or opened.get("Id")
 
-        # Step 2: Switch to LIST tab
-        await window.select_tab('LIST')
-
-        # Step 3: Add a new row to the list_detail datawindow
-        result = await window.add_row('list_detail')
-        if not result.success:
-            logger.error(f"Failed to add row: {result.messages}")
-            return False
-
-        # Step 4: Set the price_page_uid on the new row
-        result = await window.change_data(
-            'LIST', 'price_page_uid', str(price_page_uid),
-            datawindow_name='list_detail'
+        # Step 1: retrieve the book by ID on the FORM tab. DatawindowName is
+        # required from 25.2 on — the 3-parameter form stopped working.
+        check(
+            client.put(
+                f"{ui_server}/api/ui/interactive/v2/change",
+                headers=headers,
+                json={
+                    "WindowId": window_id,
+                    "List": [
+                        {
+                            "TabName": "FORM",
+                            "DatawindowName": "form",
+                            "FieldName": "price_book_id",
+                            "Value": PRICE_BOOK_ID,
+                        }
+                    ],
+                },
+            ),
+            "retrieve book",
         )
-        if not result.success:
-            logger.error(f"Failed to set price_page_uid: {result.messages}")
-            return False
 
-        # Step 5: Save the changes
-        result = await window.save_data()
+        # Step 2: switch to the LIST tab (v2 binds PageName, not TabName)
+        check(
+            client.put(
+                f"{ui_server}/api/ui/interactive/v2/tab",
+                headers=headers,
+                json={"WindowId": window_id, "PageName": "LIST"},
+            ),
+            "select LIST tab",
+        )
 
-        if result.success:
-            logger.info(f"Linked page {price_page_uid} to book {price_book_id}")
-            return True
-        else:
-            logger.error(f"Failed to save: {result.messages}")
-            return False
+        # Step 3: add a new row to the list_detail datawindow
+        check(
+            client.post(
+                f"{ui_server}/api/ui/interactive/v2/row",
+                headers=headers,
+                json={"WindowId": window_id, "DatawindowName": "list_detail"},
+            ),
+            "add row",
+        )
 
+        # Step 4: set price_page_uid on the new row
+        check(
+            client.put(
+                f"{ui_server}/api/ui/interactive/v2/change",
+                headers=headers,
+                json={
+                    "WindowId": window_id,
+                    "List": [
+                        {
+                            "TabName": "LIST",
+                            "DatawindowName": "list_detail",
+                            "FieldName": "price_page_uid",
+                            "Value": PRICE_PAGE_UID,
+                        }
+                    ],
+                },
+            ),
+            "set price_page_uid",
+        )
+
+        # Step 5: save — the v2 body is the bare window-id GUID as a JSON
+        # string, NOT wrapped in an object (a wrapped body 422s).
+        check(
+            client.put(
+                f"{ui_server}/api/ui/interactive/v2/data",
+                headers=headers,
+                json=window_id,
+            ),
+            "save",
+        )
+
+        # Step 6: read back. /v2/data returns only a varying subset of the
+        # window's datawindows, so the LIST tab must be active — and absence
+        # still proves nothing. For records that matter, verify out of band
+        # too (see "Verifying Writes").
+        r = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            headers=headers,
+            params={"id": window_id},
+        )
+        r.raise_for_status()
+        for dw in r.json():
+            if dw.get("Name") == "list_detail":
+                print("columns:", dw.get("Columns"))
+                for row in dw.get("Data", []):
+                    print("row:", row)
     finally:
-        await window.close()
+        if window_id:
+            client.delete(
+                f"{ui_server}/api/ui/interactive/v2/window",
+                headers=headers,
+                params={"id": window_id},
+            )
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
 ```
 
 #### C#
 
 ```csharp
-public async Task<bool> LinkPageToBookAsync(
-    P21Client client,
-    int pricePageUid,
-    string priceBookId)
-{
-    // Open the SalesPriceBook window
-    var window = await client.OpenWindowAsync(serviceName: "SalesPriceBook");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string PriceBookId = "ACME_BOOK_A";              // the book to load on the FORM tab
+const string PricePageUid = "100198";                  // the page to link — sent as a string
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var sessionResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = false }));
+sessionResponse.EnsureSuccessStatusCode();
+using (var session = JsonDocument.Parse(await sessionResponse.Content.ReadAsStringAsync()))
+    Console.WriteLine($"session: {Field(session.RootElement, "Id") ?? Field(session.RootElement, "SessionId")}");
+
+string? windowId = null;
+try
+{
+    // Open by ServiceName — the by-Name and by-Title paths are unreliable.
+    var openResponse = await client.PostAsync(
+        $"{uiServer}/api/ui/interactive/v2/window",
+        Json(new { ServiceName = "SalesPriceBook" }));
+    openResponse.EnsureSuccessStatusCode();
+    using (var opened = JsonDocument.Parse(await openResponse.Content.ReadAsStringAsync()))
+        windowId = Field(opened.RootElement, "WindowId") ?? Field(opened.RootElement, "Id");
+
+    // Step 1: retrieve the book by ID on the FORM tab. DatawindowName is
+    // required from 25.2 on — the 3-parameter form stopped working.
+    await Check(await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
+        {
+            WindowId = windowId,
+            List = new[]
+            {
+                new
+                {
+                    TabName = "FORM",
+                    DatawindowName = "form",
+                    FieldName = "price_book_id",
+                    Value = PriceBookId,
+                },
+            },
+        })), "retrieve book");
+
+    // Step 2: switch to the LIST tab (v2 binds PageName, not TabName)
+    await Check(await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/tab",
+        Json(new { WindowId = windowId, PageName = "LIST" })), "select LIST tab");
+
+    // Step 3: add a new row to the list_detail datawindow
+    await Check(await client.PostAsync(
+        $"{uiServer}/api/ui/interactive/v2/row",
+        Json(new { WindowId = windowId, DatawindowName = "list_detail" })), "add row");
+
+    // Step 4: set price_page_uid on the new row
+    await Check(await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/change",
+        Json(new
+        {
+            WindowId = windowId,
+            List = new[]
+            {
+                new
+                {
+                    TabName = "LIST",
+                    DatawindowName = "list_detail",
+                    FieldName = "price_page_uid",
+                    Value = PricePageUid,
+                },
+            },
+        })), "set price_page_uid");
+
+    // Step 5: save — the v2 body is the bare window-id GUID as a JSON string,
+    // NOT wrapped in an object (a wrapped body 422s).
+    await Check(await client.PutAsync(
+        $"{uiServer}/api/ui/interactive/v2/data",
+        new StringContent(JsonSerializer.Serialize(windowId), Encoding.UTF8, "application/json")),
+        "save");
+
+    // Step 6: read back. /v2/data returns only a varying subset of the window's
+    // datawindows, so the LIST tab must be active — and absence still proves
+    // nothing. For records that matter, verify out of band too.
+    var dataResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={windowId}");
+    dataResponse.EnsureSuccessStatusCode();
+
+    using var data = JsonDocument.Parse(await dataResponse.Content.ReadAsStringAsync());
+    foreach (var dw in data.RootElement.EnumerateArray())
+    {
+        if (Field(dw, "Name") != "list_detail") continue;
+        Console.WriteLine($"columns: {Field(dw, "Columns")}");
+        if (dw.TryGetProperty("Data", out var rows))
+            foreach (var row in rows.EnumerateArray())
+                Console.WriteLine($"row: {row}");
+    }
+}
+finally
+{
+    if (windowId is not null)
+        await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Raise unless the call returned Status 1 (Success).
+static async Task<JsonDocument> Check(HttpResponseMessage response, string step)
+{
+    response.EnsureSuccessStatusCode();
+    var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+    var status = Field(result.RootElement, "Status");
+    var messages = new List<string>();
+    if (result.RootElement.TryGetProperty("Messages", out var items))
+        messages = items.EnumerateArray().Select(m => Field(m, "Text") ?? "").ToList();
+
+    if (status != "1" && status != "Success")
+        throw new InvalidOperationException(
+            $"{step}: Status={status} {string.Join("; ", messages)}");
+    if (messages.Count > 0)
+        Console.WriteLine($"{step}: {string.Join("; ", messages)}");
+
+    return result;
+}
+
+static StringContent Json(object body) =>
+    new(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+static string? Field(JsonElement element, string name) =>
+    element.TryGetProperty(name, out var value) ? value.ToString() : null;
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
     try
     {
-        // Step 1: Retrieve the book by ID on FORM tab
-        var result = await window.ChangeDataAsync(
-            "FORM", "price_book_id", priceBookId,
-            datawindowName: "form");
-        if (!result.Success)
-        {
-            _logger.LogError("Failed to retrieve book {BookId}: {Messages}",
-                priceBookId, result.Messages);
-            return false;
-        }
-
-        // Step 2: Switch to LIST tab
-        await window.SelectTabAsync("LIST");
-
-        // Step 3: Add a new row to the list_detail datawindow
-        result = await window.AddRowAsync("list_detail");
-        if (!result.Success)
-        {
-            _logger.LogError("Failed to add row: {Messages}", result.Messages);
-            return false;
-        }
-
-        // Step 4: Set the price_page_uid on the new row
-        result = await window.ChangeDataAsync(
-            "LIST", "price_page_uid", pricePageUid.ToString(),
-            datawindowName: "list_detail");
-        if (!result.Success)
-        {
-            _logger.LogError("Failed to set price_page_uid: {Messages}", result.Messages);
-            return false;
-        }
-
-        // Step 5: Save the changes
-        result = await window.SaveDataAsync();
-
-        if (result.Success)
-        {
-            _logger.LogInformation("Linked page {PageUid} to book {BookId}",
-                pricePageUid, priceBookId);
-            return true;
-        }
-        else
-        {
-            _logger.LogError("Failed to save: {Messages}", result.Messages);
-            return false;
-        }
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
     }
-    finally
-    {
-        await window.CloseAsync();
-    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -1359,60 +1938,152 @@ In production P21 environments, price book names are often inconsistent. For exa
 
 **Strategy: Case-Insensitive OData Lookup**
 
-Use `contains()` with case-insensitive matching to find books by partial name:
+Use `contains()` with case-insensitive matching to find books by partial name. Complete program — OData reads go straight to `BASE_URL`, so no UI-server lookup and no session:
 
 <!-- tabs -->
 
 #### Python
 
 ```python
-async def find_price_book(
-    odata_client: ODataClient,
-    search_terms: list[str],
-) -> dict | None:
-    """Find a price book by trying multiple naming patterns.
+"""Find a price book by trying several partial-name patterns over OData."""
+import re
 
-    Args:
-        odata_client: OData API client
-        search_terms: List of partial names to try (e.g., ["BOOK_B", "BOOK_C"])
+import httpx
 
-    Returns:
-        Price book record or None
-    """
-    for term in search_terms:
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SEARCH_TERMS = ["BOOK_B", "BOOK_C", "BOOK_D"]   # tried in order, first hit wins
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+
+    book = None
+    for term in SEARCH_TERMS:
         filter_expr = (
             f"contains(price_book_id,'{term}') "
             f"and row_status_flag eq 704"
         )
-        results = await odata_client.query(
-            "price_book",
-            filter_expr=filter_expr,
-            select="price_book_id,description",
+        r = client.get(
+            f"{BASE_URL}/odataservice/odata/table/price_book",
+            headers=headers,
+            params={"$filter": filter_expr, "$select": "price_book_id,description"},
         )
+        r.raise_for_status()
+        results = r.json().get("value", [])
+        print(f"{term}: {len(results)} match(es)")
         if results:
-            return results[0]
-    return None
+            book = results[0]
+            break
+
+    print("resolved book:", book)
 ```
 
 #### C#
 
 ```csharp
-public async Task<JObject?> FindPriceBookAsync(
-    ODataClient odataClient,
-    IEnumerable<string> searchTerms)
-{
-    foreach (var term in searchTerms)
-    {
-        var filterExpr = $"contains(price_book_id,'{term}') and row_status_flag eq 704";
-        var results = await odataClient.QueryAsync(
-            "price_book",
-            filterExpr: filterExpr,
-            select: "price_book_id,description");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-        if (results.Count > 0)
-            return results[0];
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// tried in order, first hit wins
+string[] searchTerms = ["BOOK_B", "BOOK_C", "BOOK_D"];
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+JsonElement? book = null;
+foreach (var term in searchTerms)
+{
+    var filterExpr = $"contains(price_book_id,'{term}') and row_status_flag eq 704";
+    var url = $"{BaseUrl}/odataservice/odata/table/price_book"
+            + $"?$filter={Uri.EscapeDataString(filterExpr)}"
+            + $"&$select={Uri.EscapeDataString("price_book_id,description")}";
+
+    var response = await client.GetAsync(url);
+    response.EnsureSuccessStatusCode();
+
+    using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    var results = payload.RootElement.GetProperty("value");
+    Console.WriteLine($"{term}: {results.GetArrayLength()} match(es)");
+
+    if (results.GetArrayLength() > 0)
+    {
+        book = results[0].Clone();   // Clone: the JsonDocument is disposed below
+        break;
     }
-    return null;
+}
+
+Console.WriteLine($"resolved book: {book?.ToString() ?? "none"}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers the token endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -1420,7 +2091,9 @@ public async Task<JObject?> FindPriceBookAsync(
 
 **Strategy: Library-to-Book Resolution**
 
-Price books are organized into libraries. Use the `price_book_x_library` junction table to resolve which books belong to a library:
+Price books are organized into libraries. Use the `price_book_x_library` junction table to resolve which books belong to a library. Query shape only — `odata_client.query()` stands in for the OData GET shown in full above:
+
+> Full runnable version: [Price Book Naming and Lookup Strategies](#price-book-naming-and-lookup-strategies)
 
 <!-- tabs -->
 
@@ -1454,7 +2127,7 @@ async def get_books_for_library(
 #### C#
 
 ```csharp
-public async Task<List<JObject>> GetBooksForLibraryAsync(
+public async Task<List<JsonElement>> GetBooksForLibraryAsync(
     ODataClient odataClient,
     string libraryId)
 {
@@ -1464,7 +2137,7 @@ public async Task<List<JObject>> GetBooksForLibraryAsync(
         select: "price_book_uid");
 
     var bookUids = links.Select(l => l["price_book_uid"]!.ToString()).ToList();
-    var books = new List<JObject>();
+    var books = new List<JsonElement>();
 
     foreach (var uid in bookUids)
     {
@@ -1484,7 +2157,9 @@ public async Task<List<JObject>> GetBooksForLibraryAsync(
 
 **Strategy: Cache Library-to-Book Mapping**
 
-For bulk operations that link many pages to books, cache the library-to-book mapping to avoid N+1 queries:
+For bulk operations that link many pages to books, cache the library-to-book mapping to avoid N+1 queries. Caching wrapper only — it makes no calls of its own:
+
+> Full runnable version: [Price Book Naming and Lookup Strategies](#price-book-naming-and-lookup-strategies)
 
 <!-- tabs -->
 
@@ -1513,14 +2188,14 @@ public class BookLookupCache
 {
     /// <summary>Cache library-to-book mappings for bulk operations.</summary>
     private readonly ODataClient _odata;
-    private readonly Dictionary<string, List<JObject>> _cache = new();
+    private readonly Dictionary<string, List<JsonElement>> _cache = new();
 
     public BookLookupCache(ODataClient odataClient)
     {
         _odata = odataClient;
     }
 
-    public async Task<List<JObject>> GetBooksAsync(string libraryId)
+    public async Task<List<JsonElement>> GetBooksAsync(string libraryId)
     {
         if (!_cache.TryGetValue(libraryId, out var books))
         {
@@ -1542,13 +2217,13 @@ The PurchaseOrder window exposes **two separate notepad surfaces**, and they use
 
 | | Header notes | Line notes |
 |---|---|---|
-| **Table** | `po_hdr_notepad` | `po_line_notes` |
+| **Table** | `po_hdr_notepad` | `po_line_notepad` |
 | **Keyed by** | `po_no` only | `po_no` + line |
 | **Tab** | "PO Note" tab | Line-notes tab (select a line first) |
 | **Datawindow** | `tp_7_dw_7` (`d_update_po_hdr_notes_po_entry`) | `tp_21_dw_21` (`d_update_po_line_notes_po_entry`) |
 | **Add / Edit tools** | `cb_add` / `cb_edit` | `cb_add_line` / `cb_edit_line` |
 
-> **Warning — silent misfile:** Both tools are labelled **"Add Note"**, but they are distinct. Using `cb_add_line` (the line tool) when you intend a header note **files the note against the currently-selected line** (line 1 after a fresh load) — a perfectly valid *line* note. Every call returns HTTP 200 / `Status: 1` including the save (`savesucceeded`), and the row simply never appears in `po_hdr_notepad`. Symptom: "header note write succeeds but the note is never there." Verified against P21 25.2; reproduced end-to-end July 2026 (misfiled note landed in `tp_21_dw_21` / `po_line_notes` bound to line 1).
+> **Warning — silent misfile:** Both tools are labelled **"Add Note"**, but they are distinct. Using `cb_add_line` (the line tool) when you intend a header note **files the note against the currently-selected line** (line 1 after a fresh load) — a perfectly valid *line* note. Every call returns HTTP 200 / `Status: 1` including the save (`savesucceeded`), and the row simply never appears in `po_hdr_notepad`. Symptom: "header note write succeeds but the note is never there." Verified against P21 25.2; reproduced end-to-end July 2026 (misfiled note landed in `tp_21_dw_21` / `po_line_notepad` bound to line 1).
 
 > **Requirement — `ResponseWindowHandlingEnabled: true`:** Both add tools open the **Notepad Entry** popup (`w_notepad_response_lite`), which is a response window. The session must be created with `"ResponseWindowHandlingEnabled": true`. With `false`, the tool call fails with HTTP 400: `"Unexpected response window: Notepad Entry Window. Window class: w_notepad_response_lite"`.
 
@@ -1611,6 +2286,455 @@ Changes to the popup use the **popup's** window ID with `TabName: null` (it is t
 
 5. Run `cb_select_all` then `cb_ok` on the popup window ID (`POST /api/ui/interactive/v2/tools`). The popup closes and the staged row (with its new `note_id`) appears in `tp_7_dw_7`.
 6. Save the window (`PUT /api/ui/interactive/v2/data`) and [verify the write](#verifying-writes-dont-trust-save-status-alone).
+
+Complete program — the whole sequence above, including the response-window handshake and a read-back through a **fresh window load** (a reload proves the row came from the database; the staged row in the window you just saved does not):
+
+<!-- tabs -->
+
+#### Python
+
+```python
+"""Add a header note to a purchase order through the Notepad Entry popup."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PO_NO = "123456"                          # existing purchase order to annotate
+TOPIC = "API NOTE"                        # po_hdr_notepad.topic (required)
+NOTE_TEXT = "Written through the Interactive API."   # po_hdr_notepad.note
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    def post(path: str, body: object) -> dict:
+        r = client.post(f"{ui_server}{path}", headers=headers, json=body)
+        r.raise_for_status()
+        return r.json()
+
+    def put(path: str, body: object) -> dict:
+        r = client.put(f"{ui_server}{path}", headers=headers, json=body)
+        r.raise_for_status()
+        return r.json()
+
+    def popup_window_id(result: dict) -> str | None:
+        """Pull the popup's ID out of the windowopened event."""
+        for event in result.get("Events", []):
+            if event.get("Name") == "windowopened":
+                for kv in event.get("Data", []):
+                    if str(kv.get("Key", "")).lower() == "windowid":
+                        return kv.get("Value")
+        return None
+
+    def open_po() -> str:
+        """Open PurchaseOrder and load PO_NO on the header tab."""
+        opened = post("/api/ui/interactive/v2/window", {"ServiceName": "PurchaseOrder"})
+        wid = opened.get("WindowId") or opened.get("Id")
+        loaded = put(
+            "/api/ui/interactive/v2/change",
+            {
+                "WindowId": wid,
+                "List": [
+                    {
+                        "TabName": "TABPAGE_1",
+                        "DatawindowName": "tp_1_dw_1",
+                        "FieldName": "po_no",
+                        "Value": PO_NO,
+                    }
+                ],
+            },
+        )
+        # A PO that doesn't exist loads as Status 2 with an empty window on
+        # 26.1 ("Enter a valid ID or leave ID blank.") — stop here, not later.
+        if loaded.get("Status") not in (1, "Success"):
+            raise RuntimeError(f"load {PO_NO}: {loaded}")
+        return wid
+
+    # The Notepad Entry popup is a response window: with
+    # ResponseWindowHandlingEnabled false, cb_add fails with HTTP 400
+    # "Unexpected response window ... w_notepad_response_lite".
+    r = client.post(
+        f"{ui_server}/api/ui/interactive/sessions",
+        headers=headers,
+        json={"ResponseWindowHandlingEnabled": True},
+    )
+    r.raise_for_status()
+    session = r.json()
+    print("session:", session.get("Id") or session.get("SessionId"))
+
+    window_id = None
+    verify_id = None
+    try:
+        window_id = open_po()
+
+        # PO Notes tab — identified by its datawindow (tp_7_dw_7), not by
+        # counting tabs in the UI.
+        put(
+            "/api/ui/interactive/v2/tab",
+            {"WindowId": window_id, "PageName": "TABPAGE_7"},
+        )
+
+        # The HEADER add tool. cb_add_line is the line-note tool and would
+        # file the note against the selected line instead — silently, with
+        # every call still returning Status 1.
+        result = post(
+            "/api/ui/interactive/v2/tools",
+            {"WindowId": window_id, "ToolName": "cb_add", "ToolText": "Add Note"},
+        )
+        popup_id = popup_window_id(result)   # Status 3 (Blocked) + windowopened
+        if not popup_id:
+            raise RuntimeError(f"no Notepad Entry popup opened: {result}")
+        print("popup:", popup_id)
+
+        # The popup is tabless — TabName must be null, and the window ID is
+        # the POPUP's, not the parent's.
+        put(
+            "/api/ui/interactive/v2/change",
+            {
+                "WindowId": popup_id,
+                "List": [
+                    {
+                        "TabName": None,
+                        "DatawindowName": "_dw_hdr",
+                        "FieldName": "topic",
+                        "Value": TOPIC,
+                    },
+                    {
+                        "TabName": None,
+                        "DatawindowName": "_dw_hdr",
+                        "FieldName": "note",
+                        "Value": NOTE_TEXT,
+                    },
+                ],
+            },
+        )
+
+        post("/api/ui/interactive/v2/tools",
+             {"WindowId": popup_id, "ToolName": "cb_select_all"})
+        post("/api/ui/interactive/v2/tools",
+             {"WindowId": popup_id, "ToolName": "cb_ok"})
+
+        # Save — the v2 body is the bare window-id GUID as a JSON string.
+        saved = put("/api/ui/interactive/v2/data", window_id)
+        print("save status:", saved.get("Status"))
+
+        # Read-back through a fresh load. A save reports savesucceeded for
+        # tp_1_dw_1 whether or not the child row persisted, so reopen the PO.
+        client.delete(
+            f"{ui_server}/api/ui/interactive/v2/window",
+            headers=headers,
+            params={"id": window_id},
+        )
+        window_id = None
+
+        verify_id = open_po()
+        put("/api/ui/interactive/v2/tab",
+            {"WindowId": verify_id, "PageName": "TABPAGE_7"})
+        r = client.get(
+            f"{ui_server}/api/ui/interactive/v2/data",
+            headers=headers,
+            params={"id": verify_id},
+        )
+        r.raise_for_status()
+        for dw in r.json():
+            if dw.get("Name") == "tp_7_dw_7":
+                print("columns:", dw.get("Columns"))
+                for row in dw.get("Data", []):
+                    print("note row:", row)
+    finally:
+        for wid in (window_id, verify_id):
+            if wid:
+                client.delete(
+                    f"{ui_server}/api/ui/interactive/v2/window",
+                    headers=headers,
+                    params={"id": wid},
+                )
+        client.delete(f"{ui_server}/api/ui/interactive/sessions", headers=headers)
+```
+
+#### C#
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string PoNo = "123456";                          // existing purchase order to annotate
+const string Topic = "API NOTE";                       // po_hdr_notepad.topic (required)
+const string NoteText = "Written through the Interactive API.";   // po_hdr_notepad.note
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// The Notepad Entry popup is a response window: with
+// ResponseWindowHandlingEnabled false, cb_add fails with HTTP 400
+// "Unexpected response window ... w_notepad_response_lite".
+var createResponse = await client.PostAsync(
+    $"{uiServer}/api/ui/interactive/sessions",
+    Json(new { ResponseWindowHandlingEnabled = true }));
+createResponse.EnsureSuccessStatusCode();
+using (var session = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync()))
+    Console.WriteLine($"session: {Field(session.RootElement, "Id") ?? Field(session.RootElement, "SessionId")}");
+
+string? windowId = null;
+string? verifyId = null;
+try
+{
+    windowId = await OpenPoAsync();
+
+    // PO Notes tab — identified by its datawindow (tp_7_dw_7), not by counting
+    // tabs in the UI.
+    await Put("/api/ui/interactive/v2/tab",
+        new { WindowId = windowId, PageName = "TABPAGE_7" });
+
+    // The HEADER add tool. cb_add_line is the line-note tool and would file the
+    // note against the selected line instead — silently, with every call still
+    // returning Status 1.
+    var result = await Post("/api/ui/interactive/v2/tools",
+        new { WindowId = windowId, ToolName = "cb_add", ToolText = "Add Note" });
+
+    var popupId = PopupWindowId(result);   // Status 3 (Blocked) + windowopened
+    if (popupId is null)
+        throw new InvalidOperationException($"no Notepad Entry popup opened: {result}");
+    Console.WriteLine($"popup: {popupId}");
+
+    // The popup is tabless — TabName must be null, and the window ID is the
+    // POPUP's, not the parent's.
+    await Put("/api/ui/interactive/v2/change", new
+    {
+        WindowId = popupId,
+        List = new[]
+        {
+            new
+            {
+                TabName = (string?)null,
+                DatawindowName = "_dw_hdr",
+                FieldName = "topic",
+                Value = Topic,
+            },
+            new
+            {
+                TabName = (string?)null,
+                DatawindowName = "_dw_hdr",
+                FieldName = "note",
+                Value = NoteText,
+            },
+        },
+    });
+
+    await Post("/api/ui/interactive/v2/tools",
+        new { WindowId = popupId, ToolName = "cb_select_all" });
+    await Post("/api/ui/interactive/v2/tools",
+        new { WindowId = popupId, ToolName = "cb_ok" });
+
+    // Save — the v2 body is the bare window-id GUID as a JSON string.
+    var saved = await Put("/api/ui/interactive/v2/data", windowId);
+    Console.WriteLine($"save status: {Field(saved, "Status")}");
+
+    // Read-back through a fresh load. A save reports savesucceeded for
+    // tp_1_dw_1 whether or not the child row persisted, so reopen the PO.
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={windowId}");
+    windowId = null;
+
+    verifyId = await OpenPoAsync();
+    await Put("/api/ui/interactive/v2/tab",
+        new { WindowId = verifyId, PageName = "TABPAGE_7" });
+
+    var dataResponse = await client.GetAsync(
+        $"{uiServer}/api/ui/interactive/v2/data?id={verifyId}");
+    dataResponse.EnsureSuccessStatusCode();
+
+    using var data = JsonDocument.Parse(await dataResponse.Content.ReadAsStringAsync());
+    foreach (var dw in data.RootElement.EnumerateArray())
+    {
+        if (Field(dw, "Name") != "tp_7_dw_7") continue;
+        Console.WriteLine($"columns: {Field(dw, "Columns")}");
+        if (dw.TryGetProperty("Data", out var rows))
+            foreach (var row in rows.EnumerateArray())
+                Console.WriteLine($"note row: {row}");
+    }
+}
+finally
+{
+    foreach (var id in new[] { windowId, verifyId })
+        if (id is not null)
+            await client.DeleteAsync($"{uiServer}/api/ui/interactive/v2/window?id={id}");
+
+    await client.DeleteAsync($"{uiServer}/api/ui/interactive/sessions");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+async Task<JsonElement> Post(string path, object body)
+{
+    var response = await client.PostAsync($"{uiServer}{path}", Json(body));
+    response.EnsureSuccessStatusCode();
+    using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return document.RootElement.Clone();
+}
+
+async Task<JsonElement> Put(string path, object body)
+{
+    var response = await client.PutAsync($"{uiServer}{path}", Json(body));
+    response.EnsureSuccessStatusCode();
+    using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return document.RootElement.Clone();
+}
+
+// Open PurchaseOrder and load PoNo on the header tab.
+async Task<string> OpenPoAsync()
+{
+    var opened = await Post("/api/ui/interactive/v2/window", new { ServiceName = "PurchaseOrder" });
+    var id = Field(opened, "WindowId") ?? Field(opened, "Id")
+             ?? throw new InvalidOperationException($"no window id in open response: {opened}");
+
+    var loaded = await Put("/api/ui/interactive/v2/change", new
+    {
+        WindowId = id,
+        List = new[]
+        {
+            new
+            {
+                TabName = "TABPAGE_1",
+                DatawindowName = "tp_1_dw_1",
+                FieldName = "po_no",
+                Value = PoNo,
+            },
+        },
+    });
+
+    // A PO that doesn't exist loads as Status 2 with an empty window on 26.1
+    // ("Enter a valid ID or leave ID blank.") — stop here, not later.
+    var status = Field(loaded, "Status");
+    if (status != "1" && status != "Success")
+        throw new InvalidOperationException($"load {PoNo}: Status={status}");
+    return id;
+}
+
+// Pull the popup's ID out of the windowopened event.
+static string? PopupWindowId(JsonElement result)
+{
+    if (!result.TryGetProperty("Events", out var events)) return null;
+
+    foreach (var evt in events.EnumerateArray())
+    {
+        if (Field(evt, "Name") != "windowopened") continue;
+        if (!evt.TryGetProperty("Data", out var data)) continue;
+
+        foreach (var kv in data.EnumerateArray())
+            if (string.Equals(Field(kv, "Key"), "windowid", StringComparison.OrdinalIgnoreCase))
+                return Field(kv, "Value");
+    }
+    return null;
+}
+
+static StringContent Json(object body) =>
+    new(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+
+static string? Field(JsonElement element, string name) =>
+    element.TryGetProperty(name, out var value) ? value.ToString() : null;
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
 
 ### Recipe: Add a Line Note
 
@@ -1853,6 +2977,10 @@ Row 5 selected → Detail shows row 4 (1 behind)
 
 **Workaround:** Select row N+1 after selecting row N to "push" row N's data through to the detail view.
 
+The calls below are the middle of a sequence — they assume a session, an open `Item` window (`window_id`) with an item already loaded, and the location list populated. Note that `product_group_id` is exactly the field whose GL-account dialog is described in [Response Windows](#response-windows); run it knowingly.
+
+> Full runnable version of the surrounding session/window/save scaffold: [Linking Price Page to Price Book](#example-linking-price-page-to-price-book)
+
 <!-- tabs -->
 
 #### Python
@@ -1930,7 +3058,9 @@ After switching to a tab that contains a list or grid datawindow, row 0 is **aut
 
 **Symptom:** `PUT /api/ui/interactive/v2/row` with `Row: 0` returns 422 error.
 
-**Workaround:** Skip the `change_row(0)` call when targeting the first row. Start explicit row selection at row 1.
+**Workaround:** Skip the `change_row(0)` call when targeting the first row. Start explicit row selection at row 1. Guard helper only — it makes no call of its own:
+
+> Full runnable version of the row/tab calls it wraps: [Linking Price Page to Price Book](#example-linking-price-page-to-price-book)
 
 <!-- tabs -->
 
@@ -2107,7 +3237,9 @@ On window open, 7 tabs are disabled: `CUSTSHIPTOCONSIGN`, `BINS`, `VALUES`, `BIN
 
 > For bulk bin-quantity changes, the Transaction API with `IgnoreDisabled: true` is faster — see [Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract). Use this interactive recipe when a Transaction-API edge case appears or the contract is expired-adjacent work that needs window logic.
 
-**Detecting tab unlock events:**
+**Detecting tab unlock events** — an event parser plus the single change call that triggers the unlock; it runs inside an established session and window:
+
+> Full runnable version of that change call: [Linking Price Page to Price Book](#example-linking-price-page-to-price-book)
 
 <!-- tabs -->
 
@@ -2154,17 +3286,17 @@ unlocked = check_tab_unlocks(response)
 #### C\#
 
 ```csharp
-public List<string> CheckTabUnlocks(JObject result)
+public List<string> CheckTabUnlocks(JsonElement result)
 {
     // Extract tab unlock events from an API response.
     var unlocked = new List<string>();
-    var events = result["Events"] as JArray ?? new JArray();
+    var events = result["Events"] as JsonElement ?? new JsonElement();
 
     foreach (var evt in events)
     {
         if (evt["Name"]?.ToString() == "tabpageenabled")
         {
-            var data = evt["Data"] as JArray ?? new JArray();
+            var data = evt["Data"] as JsonElement ?? new JsonElement();
             foreach (var kv in data)
             {
                 if (kv["Key"]?.ToString() == "pagename")
@@ -2176,12 +3308,12 @@ public List<string> CheckTabUnlocks(JObject result)
 }
 
 // Usage: monitor unlocks as you populate fields
-var payload = new JObject
+var payload = new JsonElement
 {
     ["WindowId"] = windowId,
-    ["List"] = new JArray
+    ["List"] = new JsonElement
     {
-        new JObject
+        new JsonElement
         {
             ["TabName"] = "FORM",
             ["DatawindowName"] = "form",
@@ -2192,7 +3324,7 @@ var payload = new JObject
 };
 var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
 var response = await http.PutAsync($"{uiUrl}/api/ui/interactive/v2/change", content);
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+var result = JsonElement.Parse(await response.Content.ReadAsStringAsync());
 var unlocked = CheckTabUnlocks(result);
 // unlocked == ["CUSTOMER_SHIP_TO"]
 ```
@@ -2207,7 +3339,9 @@ When calling `add_row`, P21 returns `Status: 2` (Failure) if the **previous** ro
 
 **Example:** `add_row("bins")` returns Status=2 with message *"Required value missing for Bin ID on row 1"* — but row 2 is created and editable.
 
-**Guidance:** When adding multiple rows in sequence, expect Status=2 on subsequent `add_row` calls if prior rows are not fully populated. Do not treat Status=2 as a fatal error in this context — check the messages to determine whether the failure is about the previous row's validation or a real problem.
+**Guidance:** When adding multiple rows in sequence, expect Status=2 on subsequent `add_row` calls if prior rows are not fully populated. Do not treat Status=2 as a fatal error in this context — check the messages to determine whether the failure is about the previous row's validation or a real problem. Drop-in replacement for the plain add-row call, taking an existing `window_id`:
+
+> Full runnable version of that call in context: [Linking Price Page to Price Book](#example-linking-price-page-to-price-book)
 
 <!-- tabs -->
 
@@ -2269,14 +3403,14 @@ async def add_row_tolerant(
 #### C\#
 
 ```csharp
-public async Task<JObject> AddRowTolerantAsync(
+public async Task<JsonElement> AddRowTolerantAsync(
     string windowId,
     string datawindowName,
     HttpClient http,
     string uiUrl)
 {
     // Add a row, tolerating Status=2 from incomplete previous rows.
-    var payload = new JObject
+    var payload = new JsonElement
     {
         ["WindowId"] = windowId,
         ["DatawindowName"] = datawindowName
@@ -2285,7 +3419,7 @@ public async Task<JObject> AddRowTolerantAsync(
     var response = await http.PostAsync($"{uiUrl}/api/ui/interactive/v2/row", content);
     response.EnsureSuccessStatusCode();
 
-    var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+    var result = JsonElement.Parse(await response.Content.ReadAsStringAsync());
     var status = result["Status"]?.Value<int>() ?? 0;
 
     if (status == 2)
@@ -2297,7 +3431,7 @@ public async Task<JObject> AddRowTolerantAsync(
         // Previous-row validation warnings are expected — row was still added
         if (messages.Any(m => m.Contains("required value missing", StringComparison.OrdinalIgnoreCase)))
         {
-            _logger.LogInformation("add_row returned Status=2 (previous row incomplete), row added");
+            Console.WriteLine($"add_row returned Status=2 (previous row incomplete), row added");
             return result;
         }
         // Unexpected failure — raise
@@ -2323,7 +3457,9 @@ Response windows fall into distinct categories based on what interactions they s
 
 **Editability (reconciled July 2026):** earlier testing (April 2026) concluded form-type response windows could only be dismissed — `GET /data` returned 400 and `PUT /change` returned 500 with *"Tab with name FORM does not exist"*. Those change attempts addressed the popup's fields with `TabName: "FORM"`. Later work showed form-style response windows **are editable** when the change request uses **`TabName: null`** with the popup's window ID — verified end-to-end on `w_notepad_response_lite` (see [PurchaseOrder Notepad Writes](#purchaseorder-notepad-writes-header-vs-line)). If a popup's fields reject edits, retry with `TabName: null` before concluding the window is dismiss-only. `w_message` boxes remain uneditable and are auto-answered.
 
-**Inspecting and dismissing response windows:**
+**Inspecting and dismissing response windows** — takes the `response_window_id` from a `windowopened` event, so it only runs once something has opened a popup:
+
+> Full runnable version: [Recipe: Add a Header Note](#recipe-add-a-header-note)
 
 <!-- tabs -->
 
@@ -2382,7 +3518,7 @@ async def handle_response_window(
 #### C\#
 
 ```csharp
-public async Task<JObject> HandleResponseWindowAsync(
+public async Task<JsonElement> HandleResponseWindowAsync(
     string windowId,
     string responseWindowId,
     HttpClient http,
@@ -2394,13 +3530,13 @@ public async Task<JObject> HandleResponseWindowAsync(
         $"{uiUrl}/api/ui/interactive/v2/tools?windowId={responseWindowId}");
     toolsResp.EnsureSuccessStatusCode();
 
-    var tools = JArray.Parse(await toolsResp.Content.ReadAsStringAsync());
+    var tools = JsonElement.Parse(await toolsResp.Content.ReadAsStringAsync());
     var available = tools.Select(t => t["Name"]?.ToString() ?? t["ToolName"]?.ToString()).ToList();
-    _logger.LogInformation("Response window {WindowId} has buttons: {Buttons}",
+    Console.WriteLine($"Response window {WindowId} has buttons: {Buttons}",
         responseWindowId, string.Join(", ", available));
 
     // Step 2: Click the desired button
-    var payload = new JObject
+    var payload = new JsonElement
     {
         ["WindowId"] = responseWindowId,
         ["ToolName"] = button
@@ -2409,7 +3545,7 @@ public async Task<JObject> HandleResponseWindowAsync(
     var clickResp = await http.PostAsync($"{uiUrl}/api/ui/interactive/v2/tools", content);
     clickResp.EnsureSuccessStatusCode();
 
-    return JObject.Parse(await clickResp.Content.ReadAsStringAsync());
+    return JsonElement.Parse(await clickResp.Content.ReadAsStringAsync());
 }
 ```
 

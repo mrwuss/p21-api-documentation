@@ -82,185 +82,317 @@ If on-hand ends up wrong, post an `InventoryAdjustment` — [inventory-adjustmen
 
 ## Complete example — print the pick ticket and read back its status
 
-Generates the production pick ticket at the **stock** location with `m_picktickets` (creates the ticket record *and* returns the PDF), then reads the new ticket back with `POST /api/v2/transaction/get` to check its status. Prerequisite: the order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first. Auth comes from the [shared helper](README.md#shared-conventions-recipes-dont-repeat-these).
+Generates the production pick ticket at the **stock** location with `m_picktickets` (creates the ticket record *and* returns the PDF), then reads the new ticket back with `POST /api/v2/transaction/get` to check its status. Prerequisite: the order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
+
+The other stages above are described, not scripted — each links to the recipe that carries its complete program. Stage 4 (confirm) and Stage 5 (complete) are Interactive-API window work; the closest complete Interactive program in this cookbook is [order-with-assembly](order-with-assembly.md), whose session/change/tools scaffolding those stages reuse.
 
 <!-- tabs -->
 ```python
+"""Generate a production pick ticket, save the PDF, and read the ticket back."""
 import base64
+import os
 import re
 
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-token, ui_server, headers = p21_auth(BASE_URL, "api_user", "api_pass")
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PROD_ORDER = "1000123"                    # production order number
+STOCK_LOCATION = "10"   # where the components stock (NOT necessarily the make location)
+OUTPUT_DIR = "."                          # where the .pdf is written
+# ---------------------------------------------------------------------------
 
-PROD_ORDER = "1000123"   # production order number
-STOCK_LOCATION = "10"    # where the components stock (NOT necessarily the make location)
 
-# --- 1. Generate the pick ticket (creates the record + returns the PDF) ---
-report = {
-    "Name": "m_picktickets",
-    "UseCodeValues": True,  # m_picktickets REQUIRES code values; False returns HTTP 500
-    "Transactions": [{
-        "Status": 0,        # reports use numeric 0, not "New"
-        "DataElements": [{
-            "Keys": [],
-            "Type": 0,
-            "Name": "TABPAGE_1.tp_1_dw_1",
-            "Rows": [{"Edits": [
-                {"Name": "create_pick_ticket_type", "Value": "P"},  # code "P" = Production Order
-                {"Name": "beg_prod_order", "Value": PROD_ORDER},
-                {"Name": "end_prod_order", "Value": PROD_ORDER},
-                {"Name": "location_id", "Value": STOCK_LOCATION},
-            ]}],
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # --- 1. Generate the pick ticket (creates the record + returns the PDF) ---
+    report = {
+        "Name": "m_picktickets",
+        # m_picktickets REQUIRES code values; False returns HTTP 500
+        "UseCodeValues": True,
+        "Transactions": [{
+            "Status": 0,        # reports use numeric 0, not "New"
+            "DataElements": [{
+                "Keys": [],
+                "Type": 0,
+                "Name": "TABPAGE_1.tp_1_dw_1",
+                "Rows": [{"Edits": [
+                    # code "P" = Production Order
+                    {"Name": "create_pick_ticket_type", "Value": "P"},
+                    {"Name": "beg_prod_order", "Value": PROD_ORDER},
+                    {"Name": "end_prod_order", "Value": PROD_ORDER},
+                    {"Name": "location_id", "Value": STOCK_LOCATION},
+                ]}],
+            }],
         }],
-    }],
-}
+    }
 
-resp = httpx.post(
-    f"{ui_server}/api/v2/process/pdfreport",  # NOT /api/v2/transaction (silent no-op there)
-    headers=headers, json=report, verify=False, timeout=120,
-)
-resp.raise_for_status()
-result = resp.json()
+    resp = client.post(
+        # NOT /api/v2/transaction (silent no-op there)
+        f"{ui_server}/api/v2/process/pdfreport",
+        headers=headers, json=report,
+    )
+    resp.raise_for_status()
+    result = resp.json()
 
-if not isinstance(result, list):  # errors come back as an envelope, not an array
-    raise SystemExit(f"Report failed: {result.get('ErrorMessage')}")
+    if not isinstance(result, list):  # errors come back as an envelope, not an array
+        raise SystemExit(f"Report failed: {result.get('ErrorMessage')}")
 
-doc = result[0]
-if doc["ResponseStatus"]["StatusCode"] != "Success" or not doc.get("DocumentData"):
-    raise SystemExit(f"Report failed: {doc['ResponseStatus'].get('Message')}")
+    doc = result[0]
+    if doc["ResponseStatus"]["StatusCode"] != "Success" or not doc.get("DocumentData"):
+        raise SystemExit(f"Report failed: {doc['ResponseStatus'].get('Message')}")
 
-file_name = doc["FileName"]  # e.g. "PPT123456 PRODUCTION_PICK_TICKET.pdf"
-with open(file_name, "wb") as f:
-    f.write(base64.b64decode(doc["DocumentData"]))
-print(f"Saved {file_name}")
+    file_name = doc["FileName"]  # e.g. "PPT123456 PRODUCTION_PICK_TICKET.pdf"
+    path = os.path.join(OUTPUT_DIR, file_name)
+    with open(path, "wb") as f:
+        f.write(base64.b64decode(doc["DocumentData"]))
+    print(f"Saved {path}")
 
-# --- 2. Read the new ticket back (ticket number comes from the FileName) ---
-ticket_no = re.match(r"PPT(\d+)", file_name).group(1)
-get_payload = {
-    "ServiceName": "ProductionOrderPicking",
-    "TransactionStates": [{
-        "DataElementName": "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
-        "Keys": [{"Name": "prod_pick_ticket_number", "Value": ticket_no}],
-    }],
-}
-resp = httpx.post(
-    f"{ui_server}/api/v2/transaction/get",
-    headers=headers, json=get_payload, verify=False,
-)
-resp.raise_for_status()
+    # --- 2. Read the new ticket back (ticket number comes from the FileName) ---
+    ticket_no = re.match(r"PPT(\d+)", file_name).group(1)
+    get_payload = {
+        "ServiceName": "ProductionOrderPicking",
+        "TransactionStates": [{
+            "DataElementName": "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
+            "Keys": [{"Name": "prod_pick_ticket_number", "Value": ticket_no}],
+        }],
+    }
+    resp = client.post(f"{ui_server}/api/v2/transaction/get",
+                       headers=headers, json=get_payload)
+    resp.raise_for_status()
 
-for txn in resp.json().get("Transactions", []):
-    for de in txn.get("DataElements", []):
-        for row in de.get("Rows", []):
-            fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
-            if "row_status_flag" in fields:
-                # 702 = Open, 1962 = Confirmed, 1268 = Completed
-                print(f"Ticket {fields.get('prod_pick_ticket_number')} "
-                      f"for prod order {fields.get('prod_order_number')}: "
-                      f"status {fields.get('row_status_flag')}")
+    for txn in resp.json().get("Transactions", []):
+        for de in txn.get("DataElements", []):
+            for row in de.get("Rows", []):
+                fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
+                if "row_status_flag" in fields:
+                    # 702 = Open, 1962 = Confirmed, 1268 = Completed
+                    print(f"Ticket {fields.get('prod_pick_ticket_number')} "
+                          f"for prod order {fields.get('prod_order_number')}: "
+                          f"status {fields.get('row_status_flag')}")
 ```
 
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "api_pass");
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ProdOrder = "1000123";     // production order number
+const string StockLocation = "10";      // where the components stock
+const string OutputDir = ".";           // where the .pdf is written
+// ---------------------------------------------------------------------------
 
-const string prodOrder = "1000123";   // production order number
-const string stockLocation = "10";    // where the components stock
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 // --- 1. Generate the pick ticket (creates the record + returns the PDF) ---
-var report = new JObject
+var report = new
 {
-    ["Name"] = "m_picktickets",
-    ["UseCodeValues"] = true,  // m_picktickets REQUIRES code values; false returns HTTP 500
-    ["Transactions"] = new JArray
+    Name = "m_picktickets",
+    // m_picktickets REQUIRES code values; false returns HTTP 500
+    UseCodeValues = true,
+    Transactions = new object[]
     {
-        new JObject
+        new
         {
-            ["Status"] = 0,    // reports use numeric 0, not "New"
-            ["DataElements"] = new JArray
+            Status = 0,    // reports use numeric 0, not "New"
+            DataElements = new object[]
             {
-                new JObject
+                new
                 {
-                    ["Keys"] = new JArray(),
-                    ["Type"] = 0,
-                    ["Name"] = "TABPAGE_1.tp_1_dw_1",
-                    ["Rows"] = new JArray
+                    Keys = Array.Empty<string>(),
+                    Type = 0,
+                    Name = "TABPAGE_1.tp_1_dw_1",
+                    Rows = new object[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "create_pick_ticket_type", ["Value"] = "P" },
-                                new JObject { ["Name"] = "beg_prod_order", ["Value"] = prodOrder },
-                                new JObject { ["Name"] = "end_prod_order", ["Value"] = prodOrder },
-                                new JObject { ["Name"] = "location_id", ["Value"] = stockLocation }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+                                // code "P" = Production Order
+                                new { Name = "create_pick_ticket_type", Value = "P" },
+                                new { Name = "beg_prod_order", Value = ProdOrder },
+                                new { Name = "end_prod_order", Value = ProdOrder },
+                                new { Name = "location_id", Value = StockLocation },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 };
 
 // NOT /api/v2/transaction (silent no-op there)
-var reportResp = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/process/pdfreport",
-    new StringContent(report.ToString(), Encoding.UTF8, "application/json"));
+using var reportResp = await client.PostAsync(
+    $"{uiServer}/api/v2/process/pdfreport",
+    new StringContent(JsonSerializer.Serialize(report), Encoding.UTF8, "application/json"));
 reportResp.EnsureSuccessStatusCode();
-var reportBody = JToken.Parse(await reportResp.Content.ReadAsStringAsync());
+using var reportBody = JsonDocument.Parse(await reportResp.Content.ReadAsStringAsync());
 
-if (reportBody.Type != JTokenType.Array)  // errors come back as an envelope, not an array
-    throw new Exception($"Report failed: {reportBody["ErrorMessage"]}");
+// errors come back as an envelope, not an array
+if (reportBody.RootElement.ValueKind != JsonValueKind.Array)
+{
+    throw new InvalidOperationException(
+        $"Report failed: {reportBody.RootElement.GetProperty("ErrorMessage")}");
+}
 
-var doc = (JObject)((JArray)reportBody)[0];
-if (doc["ResponseStatus"]?["StatusCode"]?.ToString() != "Success")
-    throw new Exception($"Report failed: {doc["ResponseStatus"]?["Message"]}");
+var doc = reportBody.RootElement[0];
+var responseStatus = doc.GetProperty("ResponseStatus");
+var documentData = doc.TryGetProperty("DocumentData", out var d) ? d.GetString() : null;
+if (responseStatus.GetProperty("StatusCode").GetString() != "Success" ||
+    string.IsNullOrEmpty(documentData))
+{
+    throw new InvalidOperationException(
+        $"Report failed: {responseStatus.GetProperty("Message")}");
+}
 
-var fileName = doc["FileName"]!.ToString(); // e.g. "PPT123456 PRODUCTION_PICK_TICKET.pdf"
-await File.WriteAllBytesAsync(fileName, Convert.FromBase64String(doc["DocumentData"]!.ToString()));
-Console.WriteLine($"Saved {fileName}");
+// e.g. "PPT123456 PRODUCTION_PICK_TICKET.pdf"
+var fileName = doc.GetProperty("FileName").GetString()!;
+var path = Path.Combine(OutputDir, fileName);
+await File.WriteAllBytesAsync(path, Convert.FromBase64String(documentData));
+Console.WriteLine($"Saved {path}");
 
 // --- 2. Read the new ticket back (ticket number comes from the FileName) ---
 var ticketNo = Regex.Match(fileName, @"PPT(\d+)").Groups[1].Value;
-var getPayload = new JObject
+var getPayload = new
 {
-    ["ServiceName"] = "ProductionOrderPicking",
-    ["TransactionStates"] = new JArray
+    ServiceName = "ProductionOrderPicking",
+    TransactionStates = new[]
     {
-        new JObject
+        new
         {
-            ["DataElementName"] = "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
-            ["Keys"] = new JArray
-            {
-                new JObject { ["Name"] = "prod_pick_ticket_number", ["Value"] = ticketNo }
-            }
-        }
-    }
+            DataElementName = "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
+            Keys = new[] { new { Name = "prod_pick_ticket_number", Value = ticketNo } },
+        },
+    },
 };
 
-var getResp = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/transaction/get",
-    new StringContent(getPayload.ToString(), Encoding.UTF8, "application/json"));
+using var getResp = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(JsonSerializer.Serialize(getPayload), Encoding.UTF8, "application/json"));
 getResp.EnsureSuccessStatusCode();
-var getResult = JObject.Parse(await getResp.Content.ReadAsStringAsync());
+using var getResult = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync());
 
-foreach (var txn in getResult["Transactions"] as JArray ?? new JArray())
-foreach (var de in txn["DataElements"] as JArray ?? new JArray())
-foreach (var row in de["Rows"] as JArray ?? new JArray())
+foreach (var txn in getResult.RootElement.GetProperty("Transactions").EnumerateArray())
 {
-    var fields = new Dictionary<string, string>();
-    foreach (var edit in row["Edits"] as JArray ?? new JArray())
-        fields[edit["Name"]!.ToString()] = edit["Value"]?.ToString() ?? "";
-    if (fields.ContainsKey("row_status_flag"))
-        // 702 = Open, 1962 = Confirmed, 1268 = Completed
-        Console.WriteLine($"Ticket {fields.GetValueOrDefault("prod_pick_ticket_number")} " +
-                          $"for prod order {fields.GetValueOrDefault("prod_order_number")}: " +
-                          $"status {fields.GetValueOrDefault("row_status_flag")}");
+    foreach (var de in txn.GetProperty("DataElements").EnumerateArray())
+    {
+        foreach (var row in de.GetProperty("Rows").EnumerateArray())
+        {
+            var fields = new Dictionary<string, string?>();
+            foreach (var edit in row.GetProperty("Edits").EnumerateArray())
+            {
+                fields[edit.GetProperty("Name").GetString()!] =
+                    edit.GetProperty("Value").GetString();
+            }
+            if (!fields.ContainsKey("row_status_flag")) continue;
+            // 702 = Open, 1962 = Confirmed, 1268 = Completed
+            Console.WriteLine(
+                $"Ticket {fields.GetValueOrDefault("prod_pick_ticket_number")} " +
+                $"for prod order {fields.GetValueOrDefault("prod_order_number")}: " +
+                $"status {fields.GetValueOrDefault("row_status_flag")}");
+        }
+    }
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->

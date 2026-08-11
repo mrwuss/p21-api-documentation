@@ -20,8 +20,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
 > practice: the line upsert this recipe documents below still works, as long as the
 > payload carries no `VALUES.values` element — the moment you add break tiers, the
 > whole transaction is refused and the line does not land either.** Full write-up:
-> [`../03-Transaction-API.md`](../03-Transaction-API.md) (being added there separately
-> — no anchor yet, link the bare file).
+> [VALUES Writes Are Refused on 26.1](../03-Transaction-API.md#values-writes-are-refused-on-261).
 
 ## Prerequisites
 
@@ -33,7 +32,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
     "ServiceName": "JobContractPricing",
     "TransactionStates": [{
       "DataElementName": "FORM.d_dw_job_price_hdr",
-      "Keys": [{"Name": "contract_no", "Value": "A120-12"}]
+      "Keys": [{"Name": "contract_no", "Value": "JOB-1001"}]
     }]
   }
   ```
@@ -60,7 +59,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
                 "Rows": [{
                     "Edits": [
                         {"Name": "company_id",  "Value": "ACME"},
-                        {"Name": "contract_no", "Value": "A120-12"},
+                        {"Name": "contract_no", "Value": "JOB-1001"},
                         {"Name": "job_no",      "Value": "31"},        // unique across renewals
                         {"Name": "end_date",    "Value": "2030-01-01"} // required on EVERY submit, must be >= today
                     ],
@@ -100,19 +99,63 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
 }
 ```
 
-**Break-line variant:** for quantity-break lines set `pricing_method` to `"Source"`, `source_price` to `"Supplier List Price"` (or other source), and `multiplier` — do **not** send `price`. See [JobContractPricing Service](../03-Transaction-API.md#jobcontractpricing-service) for the VALUES break-tier structure. See the warning above before using `VALUES.values` edits.
+**Break-line variant:** for quantity-break lines set `pricing_method` to `"Source"`, `source_price` to `"Supplier List Price"` (or other source), and `multiplier` — do **not** send `price`. See [JobContractPricing Service](../03-Transaction-API.md#jobcontractpricing-service) for the VALUES break-tier structure.
 
 ## Complete example
 
 <!-- tabs -->
 ```python
-import httpx  # p21_auth() from recipes/README.md
+"""Upsert job-contract lines (price + optional commission cost), then verify."""
+import re
 
-BASE_URL = "https://play.p21server.com"
-token, ui_server, headers = p21_auth(BASE_URL, "api_user", "api_pass")
+import httpx
 
-CONTRACT = {"company_id": "ACME", "contract_no": "A120-12",
-            "job_no": "31", "end_date": "2030-01-01"}
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CONTRACT = {"company_id": "ACME", "contract_no": "JOB-1001",
+            "job_no": "31", "end_date": "2030-01-01"}   # end_date must be >= today
+# One POST per line: inserts re-save the shared header and collide when batched.
+LINES = [
+    ("WIDGET-001", "EA", 36.58, 17.19),  # already on contract -> updated
+    ("WIDGET-002", "EA", 12.40, None),   # not on contract     -> inserted (upsert)
+]
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
 
 
 def line_payload(contract: dict, item_id: str, uom: str, price: float,
@@ -148,142 +191,193 @@ def line_payload(contract: dict, item_id: str, uom: str, price: float,
     return payload
 
 
-def post_line(payload: dict) -> bool:
-    """POST one transaction; True only if the Summary says it landed."""
-    resp = httpx.post(f"{ui_server}/api/v2/transaction",
-                      headers=headers, json=payload, verify=False, timeout=60)
-    resp.raise_for_status()  # HTTP 200 even when the transaction failed
-    result = resp.json()
-    summary = result["Summary"]
-    if summary["Failed"] or not summary["Succeeded"]:
-        for msg in result.get("Messages", []):
-            print(f"  FAILED: {msg}")
-        return False
-    return True
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
 
+    def post_line(payload: dict) -> bool:
+        """POST one transaction; True only if the Summary says it landed."""
+        resp = client.post(f"{ui_server}/api/v2/transaction",
+                           headers=headers, json=payload)
+        resp.raise_for_status()  # HTTP 200 even when the transaction failed
+        result = resp.json()
+        summary = result["Summary"]
+        if summary["Failed"] or not summary["Succeeded"]:
+            for msg in result.get("Messages", []):
+                print(f"  FAILED: {msg}")
+            return False
+        return True
 
-# One POST per line: inserts re-save the shared header and collide when batched.
-lines = [
-    ("WIDGET-001", "EA", 36.58, 17.19),  # already on contract -> updated
-    ("WIDGET-002", "EA", 12.40, None),   # not on contract     -> inserted (upsert)
-]
-for item_id, uom, price, commission in lines:
-    ok = post_line(line_payload(CONTRACT, item_id, uom, price, commission))
-    print(f"{item_id}: {'OK' if ok else 'failed'}")
+    def odata(table: str, filter_expr: str) -> list[dict]:
+        resp = client.get(f"{BASE_URL}/odataservice/odata/table/{table}",
+                          params={"$filter": filter_expr}, headers=headers)
+        resp.raise_for_status()
+        return resp.json()["value"]
 
-# --- Verify via OData (no joins: chain the uid columns) ---
-def odata(table: str, filter_expr: str) -> list[dict]:
-    resp = httpx.get(f"{BASE_URL}/odataservice/odata/table/{table}",
-                     params={"$filter": filter_expr},
-                     headers=headers, verify=False)
-    resp.raise_for_status()
-    return resp.json()["value"]
+    for item_id, uom, price, commission in LINES:
+        ok = post_line(line_payload(CONTRACT, item_id, uom, price, commission))
+        print(f"{item_id}: {'OK' if ok else 'failed'}")
 
-# Renewals can return two headers for one contract_no — match job_no too.
-hdr = odata("job_price_hdr",
-            f"contract_no eq '{CONTRACT['contract_no']}' "
-            f"and job_no eq '{CONTRACT['job_no']}'")[0]
-for item_id, _uom, price, _c in lines:
-    im_uid = odata("inv_mast", f"item_id eq '{item_id}'")[0]["inv_mast_uid"]
-    line = odata("job_price_line",
-                 f"job_price_hdr_uid eq {hdr['job_price_hdr_uid']} "
-                 f"and inv_mast_uid eq {im_uid}")[0]
-    match = "OK" if float(line["price"]) == price else "MISMATCH"
-    print(f"{item_id}: price={line['price']} expected={price} -> {match}")
+    # --- Verify via OData (no joins: chain the uid columns) ---
+    # Renewals can return two headers for one contract_no — match job_no too.
+    hdr = odata("job_price_hdr",
+                f"contract_no eq '{CONTRACT['contract_no']}' "
+                f"and job_no eq '{CONTRACT['job_no']}'")[0]
+    for item_id, _uom, price, _c in LINES:
+        im_uid = odata("inv_mast", f"item_id eq '{item_id}'")[0]["inv_mast_uid"]
+        line = odata("job_price_line",
+                     f"job_price_hdr_uid eq {hdr['job_price_hdr_uid']} "
+                     f"and inv_mast_uid eq {im_uid}")[0]
+        match = "OK" if float(line["price"]) == price else "MISMATCH"
+        print(f"{item_id}: price={line['price']} expected={price} -> {match}")
 ```
 
 ```csharp
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "api_pass");
-const string BaseUrl = "https://play.p21server.com";
-
-var contract = new { CompanyId = "ACME", ContractNo = "A120-12",
-                     JobNo = "31", EndDate = "2030-01-01" };
-
-JObject Edit(string name, string value) =>
-    new JObject { ["Name"] = name, ["Value"] = value };
-
-JObject LinePayload(string itemId, string uom, decimal price, decimal? commissionCost)
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+var contract = new
 {
-    var elements = new JArray
-    {
-        new JObject
-        {
-            ["Name"] = "FORM.d_dw_job_price_hdr", ["Type"] = "Form",
-            ["Keys"] = new JArray(),
-            ["Rows"] = new JArray { new JObject {
-                ["Edits"] = new JArray {
-                    Edit("company_id",  contract.CompanyId),
-                    Edit("contract_no", contract.ContractNo),
-                    Edit("job_no",      contract.JobNo),
-                    Edit("end_date",    contract.EndDate),
-                },
-                ["RelativeDateEdits"] = new JArray() } }
-        },
-        new JObject
-        {
-            ["Name"] = "JOBPRICELINE.jobpriceline", ["Type"] = "List",
-            ["Keys"] = new JArray { "item_id" },
-            ["Rows"] = new JArray { new JObject {
-                ["Edits"] = new JArray {
-                    Edit("item_id",        itemId),
-                    Edit("uom",            uom),
-                    Edit("pricing_method", "Price"),          // before price!
-                    Edit("price",          price.ToString()),
-                },
-                ["RelativeDateEdits"] = new JArray() } }
-        },
-    };
-    var payload = new JObject
-    {
-        ["Name"] = "JobContractPricing", ["UseCodeValues"] = false,
-        ["Transactions"] = new JArray {
-            new JObject { ["Status"] = "New", ["DataElements"] = elements } }
-    };
-    if (commissionCost is not null)
-    {
-        payload["IgnoreDisabled"] = true;  // top level, NOT inside the Transaction
-        elements.Add(new JObject
-        {
-            ["Name"] = "JOBPRICECOST.jobpricecost", ["Type"] = "Form",
-            ["Keys"] = new JArray { "item_id" },
-            ["Rows"] = new JArray { new JObject { ["Edits"] = new JArray {
-                Edit("item_id",                 itemId),
-                Edit("commission_cost_type_cd", "Value"),     // type before value
-                Edit("commission_cost_value",   commissionCost.ToString()!),
-            } } }
-        });
-    }
-    return payload;
-}
-
-async Task<bool> PostLineAsync(JObject payload)
-{
-    var resp = await session.Http.PostAsync(
-        $"{session.UiServer}/api/v2/transaction",
-        new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
-    resp.EnsureSuccessStatusCode();  // HTTP 200 even when the transaction failed
-    var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
-    var summary = result["Summary"]!;
-    if ((int)summary["Failed"]! > 0 || (int)summary["Succeeded"]! == 0)
-    {
-        foreach (var msg in result["Messages"] as JArray ?? new JArray())
-            Console.WriteLine($"  FAILED: {msg}");
-        return false;
-    }
-    return true;
-}
-
+    CompanyId = "ACME",
+    ContractNo = "JOB-1001",
+    JobNo = "31",
+    EndDate = "2030-01-01",   // must be >= today
+};
 // One POST per line: inserts re-save the shared header and collide when batched.
 var lines = new (string ItemId, string Uom, decimal Price, decimal? Commission)[]
 {
     ("WIDGET-001", "EA", 36.58m, 17.19m),  // already on contract -> updated
     ("WIDGET-002", "EA", 12.40m, null),    // not on contract     -> inserted (upsert)
 };
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+static object Edit(string name, string value) => new { Name = name, Value = value };
+
+// The payload is a Dictionary so IgnoreDisabled can be added at the TOP LEVEL only
+// when it is needed — inside a Transaction object it is silently ignored.
+Dictionary<string, object> LinePayload(
+    string itemId, string uom, decimal price, decimal? commissionCost)
+{
+    var elements = new List<object>
+    {
+        new
+        {
+            Name = "FORM.d_dw_job_price_hdr",
+            Type = "Form",
+            Keys = Array.Empty<string>(),
+            Rows = new object[]
+            {
+                new
+                {
+                    Edits = new[]
+                    {
+                        Edit("company_id", contract.CompanyId),
+                        Edit("contract_no", contract.ContractNo),
+                        Edit("job_no", contract.JobNo),
+                        Edit("end_date", contract.EndDate),
+                    },
+                    RelativeDateEdits = Array.Empty<object>(),
+                },
+            },
+        },
+        new
+        {
+            Name = "JOBPRICELINE.jobpriceline",
+            Type = "List",
+            Keys = new[] { "item_id" },
+            Rows = new object[]
+            {
+                new
+                {
+                    Edits = new[]
+                    {
+                        Edit("item_id", itemId),
+                        Edit("uom", uom),
+                        Edit("pricing_method", "Price"),          // before price!
+                        Edit("price", price.ToString()),
+                    },
+                    RelativeDateEdits = Array.Empty<object>(),
+                },
+            },
+        },
+    };
+    var payload = new Dictionary<string, object>
+    {
+        ["Name"] = "JobContractPricing",
+        ["UseCodeValues"] = false,
+        ["Transactions"] = new object[]
+        {
+            new { Status = "New", DataElements = elements },
+        },
+    };
+    if (commissionCost is not null)
+    {
+        payload["IgnoreDisabled"] = true;  // top level, NOT inside the Transaction
+        elements.Add(new
+        {
+            Name = "JOBPRICECOST.jobpricecost",
+            Type = "Form",
+            Keys = new[] { "item_id" },
+            Rows = new object[]
+            {
+                new
+                {
+                    Edits = new[]
+                    {
+                        Edit("item_id", itemId),
+                        Edit("commission_cost_type_cd", "Value"),   // type before value
+                        Edit("commission_cost_value", commissionCost.Value.ToString()),
+                    },
+                },
+            },
+        });
+    }
+    return payload;
+}
+
+async Task<bool> PostLineAsync(Dictionary<string, object> payload)
+{
+    using var resp = await client.PostAsync(
+        $"{uiServer}/api/v2/transaction",
+        new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+    resp.EnsureSuccessStatusCode();  // HTTP 200 even when the transaction failed
+    using var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+    var summary = result.RootElement.GetProperty("Summary");
+    if (summary.GetProperty("Failed").GetInt32() > 0 ||
+        summary.GetProperty("Succeeded").GetInt32() == 0)
+    {
+        if (result.RootElement.TryGetProperty("Messages", out var messages))
+        {
+            Console.WriteLine($"  FAILED: {messages}");
+        }
+        return false;
+    }
+    return true;
+}
+
 foreach (var l in lines)
 {
     var ok = await PostLineAsync(LinePayload(l.ItemId, l.Uom, l.Price, l.Commission));
@@ -291,25 +385,70 @@ foreach (var l in lines)
 }
 
 // --- Verify via OData (no joins: chain the uid columns) ---
-async Task<JArray> ODataAsync(string table, string filter)
-{
-    var url = $"{BaseUrl}/odataservice/odata/table/{table}" +
-              $"?$filter={Uri.EscapeDataString(filter)}";
-    var resp = await session.Http.GetAsync(url);
-    resp.EnsureSuccessStatusCode();
-    return (JArray)JObject.Parse(await resp.Content.ReadAsStringAsync())["value"]!;
-}
-
 // Renewals can return two headers for one contract_no — match job_no too.
-var hdr = (JObject)(await ODataAsync("job_price_hdr",
+var hdr = (await ODataAsync(client, "job_price_hdr",
     $"contract_no eq '{contract.ContractNo}' and job_no eq '{contract.JobNo}'"))[0];
 foreach (var l in lines)
 {
-    var imUid = (await ODataAsync("inv_mast", $"item_id eq '{l.ItemId}'"))[0]["inv_mast_uid"];
-    var line = (await ODataAsync("job_price_line",
-        $"job_price_hdr_uid eq {hdr["job_price_hdr_uid"]} and inv_mast_uid eq {imUid}"))[0];
-    var match = (decimal)line["price"]! == l.Price ? "OK" : "MISMATCH";
-    Console.WriteLine($"{l.ItemId}: price={line["price"]} expected={l.Price} -> {match}");
+    var imUid = (await ODataAsync(client, "inv_mast", $"item_id eq '{l.ItemId}'"))[0]
+        .GetProperty("inv_mast_uid");
+    var line = (await ODataAsync(client, "job_price_line",
+        $"job_price_hdr_uid eq {hdr.GetProperty("job_price_hdr_uid")} " +
+        $"and inv_mast_uid eq {imUid}"))[0];
+    var actual = line.GetProperty("price").GetDecimal();
+    Console.WriteLine($"{l.ItemId}: price={actual} expected={l.Price} -> " +
+                      $"{(actual == l.Price ? "OK" : "MISMATCH")}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+static async Task<List<JsonElement>> ODataAsync(HttpClient client, string table, string filter)
+{
+    using var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/{table}?$filter=" + Uri.EscapeDataString(filter));
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray()
+        .Select(x => x.Clone()).ToList();
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->

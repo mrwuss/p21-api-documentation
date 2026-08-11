@@ -42,202 +42,339 @@ Time is stored per line at minute granularity and **accumulates across entries**
 
 ## Complete example
 
-Posts 4 hours against the labor component, then reads the labor grid back. Auth comes from the [shared helper](README.md#shared-conventions-recipes-dont-repeat-these).
+Posts 4 hours against the labor component, then reads the labor grid back.
 
 <!-- tabs -->
 ```python
+"""Post labor hours to a production order, then read the labor grid back."""
+import re
+
 import httpx
 
-BASE_URL = "https://play.p21server.com"
-token, ui_server, headers = p21_auth(BASE_URL, "api_user", "api_pass")
-
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"
+TECHNICIAN_ID = "300"                     # a CONTACT id, not a P21 user id
+ENTRY_DATE = "2030-01-05"                 # its accounting period must be OPEN
 PROD_ORDER = "1000123"
+ASSEMBLY_ITEM_ID = "ASSY-100"             # the assembly LINE's item
+COMPONENT_LABOR_ID = "LABOR-SHOP"         # the labor component on that line
+START_TIME = "2030-01-05T08:00:00"
+END_TIME = "2030-01-05T12:00:00"
+LABOR_TYPE_CD = "Rate"                    # Rate | OT Rate | Prem Rate
+# ---------------------------------------------------------------------------
 
-payload = {
-    "Name": "TimeEntry",
-    "UseCodeValues": False,
-    "Transactions": [{
-        "Status": "New",
-        "DataElements": [
-            {
-                "Name": "TP_TECHNICIAN.tp_technician",
-                "Type": "Form",
-                "Keys": [],
-                "Rows": [{
-                    "Edits": [
-                        {"Name": "company_id", "Value": "ACME"},
-                        {"Name": "technician_id", "Value": "300"},  # CONTACT id
-                        {"Name": "entry_date", "Value": "2030-01-05"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-            {
-                "Name": "TP_LABORRECORDING.prod_order_line_comp_labor",
-                "Type": "List",
-                "Keys": ["prod_order_number"],
-                "Rows": [{
-                    # Strict order: prod_order_number -> item_id ->
-                    # component_labor_id -> start_time -> end_time
-                    "Edits": [
-                        {"Name": "prod_order_number", "Value": PROD_ORDER},
-                        {"Name": "item_id", "Value": "ASSY-100"},
-                        {"Name": "component_labor_id", "Value": "LABOR-SHOP"},
-                        {"Name": "start_time", "Value": "2030-01-05T08:00:00"},
-                        {"Name": "end_time", "Value": "2030-01-05T12:00:00"},
-                        {"Name": "labor_type_cd", "Value": "Rate"},
-                    ],
-                    "RelativeDateEdits": [],
-                }],
-            },
-        ],
-    }],
-}
 
-resp = httpx.post(f"{ui_server}/api/v2/transaction",
-                  headers=headers, json=payload, verify=False, timeout=120)
-resp.raise_for_status()  # HTTP 200 even on failure -- check the Summary
-result = resp.json()
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-summary = result["Summary"]
-print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
-if summary["Failed"] > 0:
-    for msg in result.get("Messages", []):
-        print(f"  {msg}")
-    raise SystemExit("Time entry failed")
 
-# --- Read back the labor grid for the order ---
-get_payload = {
-    "ServiceName": "TimeEntry",
-    "TransactionStates": [{
-        "DataElementName": "TP_LABORRECORDING.prod_order_line_comp_labor",
-        "Keys": [{"Name": "prod_order_number", "Value": PROD_ORDER}],
-    }],
-}
-resp = httpx.post(f"{ui_server}/api/v2/transaction/get",
-                  headers=headers, json=get_payload, verify=False)
-resp.raise_for_status()
-for txn in resp.json().get("Transactions", []):
-    for de in txn.get("DataElements", []):
-        for row in de.get("Rows", []):
-            fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
-            if fields.get("prod_order_number"):
-                print(f"  {fields.get('component_labor_id') or fields.get('service_labor_id')}: "
-                      f"time_worked={fields.get('time_worked')}")
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "Name": "TimeEntry",
+        "UseCodeValues": False,
+        "Transactions": [{
+            "Status": "New",
+            "DataElements": [
+                {
+                    "Name": "TP_TECHNICIAN.tp_technician",
+                    "Type": "Form",
+                    "Keys": [],
+                    "Rows": [{
+                        "Edits": [
+                            {"Name": "company_id", "Value": COMPANY_ID},
+                            {"Name": "technician_id", "Value": TECHNICIAN_ID},
+                            {"Name": "entry_date", "Value": ENTRY_DATE},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+                {
+                    "Name": "TP_LABORRECORDING.prod_order_line_comp_labor",
+                    "Type": "List",
+                    "Keys": ["prod_order_number"],
+                    "Rows": [{
+                        # Strict order: prod_order_number -> item_id ->
+                        # component_labor_id -> start_time -> end_time
+                        "Edits": [
+                            {"Name": "prod_order_number", "Value": PROD_ORDER},
+                            {"Name": "item_id", "Value": ASSEMBLY_ITEM_ID},
+                            {"Name": "component_labor_id", "Value": COMPONENT_LABOR_ID},
+                            {"Name": "start_time", "Value": START_TIME},
+                            {"Name": "end_time", "Value": END_TIME},
+                            {"Name": "labor_type_cd", "Value": LABOR_TYPE_CD},
+                        ],
+                        "RelativeDateEdits": [],
+                    }],
+                },
+            ],
+        }],
+    }
+
+    resp = client.post(f"{ui_server}/api/v2/transaction",
+                       headers=headers, json=payload)
+    resp.raise_for_status()  # HTTP 200 even on failure -- check the Summary
+    result = resp.json()
+
+    summary = result["Summary"]
+    print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
+    if summary["Failed"] > 0:
+        for msg in result.get("Messages", []):
+            print(f"  {msg}")
+        raise SystemExit("Time entry failed")
+
+    # --- Read back the labor grid for the order ---
+    # time_worked is the ACCUMULATED total, not just this entry.
+    get_payload = {
+        "ServiceName": "TimeEntry",
+        "TransactionStates": [{
+            "DataElementName": "TP_LABORRECORDING.prod_order_line_comp_labor",
+            "Keys": [{"Name": "prod_order_number", "Value": PROD_ORDER}],
+        }],
+    }
+    resp = client.post(f"{ui_server}/api/v2/transaction/get",
+                       headers=headers, json=get_payload)
+    resp.raise_for_status()
+    for txn in resp.json().get("Transactions", []):
+        for de in txn.get("DataElements", []):
+            for row in de.get("Rows", []):
+                fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
+                if fields.get("prod_order_number"):
+                    labor_id = (fields.get("component_labor_id")
+                                or fields.get("service_labor_id"))
+                    print(f"  {labor_id}: time_worked={fields.get('time_worked')}")
 ```
 
 ```csharp
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "api_pass");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-const string prodOrder = "1000123";
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const string TechnicianId = "300";       // a CONTACT id, not a P21 user id
+const string EntryDate = "2030-01-05";   // its accounting period must be OPEN
+const string ProdOrder = "1000123";
+const string AssemblyItemId = "ASSY-100";        // the assembly LINE's item
+const string ComponentLaborId = "LABOR-SHOP";    // the labor component on that line
+const string StartTime = "2030-01-05T08:00:00";
+const string EndTime = "2030-01-05T12:00:00";
+const string LaborTypeCd = "Rate";       // Rate | OT Rate | Prem Rate
+// ---------------------------------------------------------------------------
 
-var payload = new JObject
+var handler = new HttpClientHandler
 {
-    ["Name"] = "TimeEntry",
-    ["UseCodeValues"] = false,
-    ["Transactions"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    Name = "TimeEntry",
+    UseCodeValues = false,
+    Transactions = new[]
     {
-        new JObject
+        new
         {
-            ["Status"] = "New",
-            ["DataElements"] = new JArray
+            Status = "New",
+            DataElements = new object[]
             {
-                new JObject
+                new
                 {
-                    ["Name"] = "TP_TECHNICIAN.tp_technician",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "TP_TECHNICIAN.tp_technician",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                new JObject { ["Name"] = "technician_id", ["Value"] = "300" }, // CONTACT id
-                                new JObject { ["Name"] = "entry_date", ["Value"] = "2030-01-05" }
+                                new { Name = "company_id", Value = CompanyId },
+                                new { Name = "technician_id", Value = TechnicianId },
+                                new { Name = "entry_date", Value = EntryDate },
                             },
-                            ["RelativeDateEdits"] = new JArray()
-                        }
-                    }
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
                 },
-                new JObject
+                new
                 {
-                    ["Name"] = "TP_LABORRECORDING.prod_order_line_comp_labor",
-                    ["Type"] = "List",
-                    ["Keys"] = new JArray { "prod_order_number" },
-                    ["Rows"] = new JArray
+                    Name = "TP_LABORRECORDING.prod_order_line_comp_labor",
+                    Type = "List",
+                    Keys = new[] { "prod_order_number" },
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
                             // Strict order: prod_order_number -> item_id ->
                             // component_labor_id -> start_time -> end_time
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "prod_order_number", ["Value"] = prodOrder },
-                                new JObject { ["Name"] = "item_id", ["Value"] = "ASSY-100" },
-                                new JObject { ["Name"] = "component_labor_id", ["Value"] = "LABOR-SHOP" },
-                                new JObject { ["Name"] = "start_time", ["Value"] = "2030-01-05T08:00:00" },
-                                new JObject { ["Name"] = "end_time", ["Value"] = "2030-01-05T12:00:00" },
-                                new JObject { ["Name"] = "labor_type_cd", ["Value"] = "Rate" }
+                                new { Name = "prod_order_number", Value = ProdOrder },
+                                new { Name = "item_id", Value = AssemblyItemId },
+                                new { Name = "component_labor_id", Value = ComponentLaborId },
+                                new { Name = "start_time", Value = StartTime },
+                                new { Name = "end_time", Value = EndTime },
+                                new { Name = "labor_type_cd", Value = LaborTypeCd },
                             },
-                            ["RelativeDateEdits"] = new JArray()
-                        }
-                    }
-                }
-            }
-        }
-    }
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+            },
+        },
+    },
 };
 
-var resp = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/transaction",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
+using var resp = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 resp.EnsureSuccessStatusCode();  // HTTP 200 even on failure -- check the Summary
-var result = JObject.Parse(await resp.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
 
-var summary = result["Summary"]!;
-Console.WriteLine($"Succeeded: {summary["Succeeded"]}, Failed: {summary["Failed"]}");
-if ((int)summary["Failed"]! > 0)
+var summary = result.RootElement.GetProperty("Summary");
+Console.WriteLine($"Succeeded: {summary.GetProperty("Succeeded")}, " +
+                  $"Failed: {summary.GetProperty("Failed")}");
+if (summary.GetProperty("Failed").GetInt32() > 0)
 {
-    foreach (var msg in result["Messages"] as JArray ?? new JArray())
-        Console.WriteLine($"  {msg}");
-    throw new Exception("Time entry failed");
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
+    {
+        Console.Error.WriteLine($"  {messages}");
+    }
+    throw new InvalidOperationException("Time entry failed");
 }
 
 // --- Read back the labor grid for the order ---
-var getPayload = new JObject
+// time_worked is the ACCUMULATED total, not just this entry.
+var getPayload = new
 {
-    ["ServiceName"] = "TimeEntry",
-    ["TransactionStates"] = new JArray
+    ServiceName = "TimeEntry",
+    TransactionStates = new[]
     {
-        new JObject
+        new
         {
-            ["DataElementName"] = "TP_LABORRECORDING.prod_order_line_comp_labor",
-            ["Keys"] = new JArray
+            DataElementName = "TP_LABORRECORDING.prod_order_line_comp_labor",
+            Keys = new[] { new { Name = "prod_order_number", Value = ProdOrder } },
+        },
+    },
+};
+using var getResp = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction/get",
+    new StringContent(JsonSerializer.Serialize(getPayload), Encoding.UTF8, "application/json"));
+getResp.EnsureSuccessStatusCode();
+using var getResult = JsonDocument.Parse(await getResp.Content.ReadAsStringAsync());
+
+foreach (var txn in getResult.RootElement.GetProperty("Transactions").EnumerateArray())
+{
+    foreach (var de in txn.GetProperty("DataElements").EnumerateArray())
+    {
+        foreach (var row in de.GetProperty("Rows").EnumerateArray())
+        {
+            var fields = new Dictionary<string, string?>();
+            foreach (var edit in row.GetProperty("Edits").EnumerateArray())
             {
-                new JObject { ["Name"] = "prod_order_number", ["Value"] = prodOrder }
+                fields[edit.GetProperty("Name").GetString()!] =
+                    edit.GetProperty("Value").GetString();
             }
+            if (string.IsNullOrEmpty(fields.GetValueOrDefault("prod_order_number"))) continue;
+            var laborId = fields.GetValueOrDefault("component_labor_id")
+                          ?? fields.GetValueOrDefault("service_labor_id");
+            Console.WriteLine($"  {laborId}: " +
+                              $"time_worked={fields.GetValueOrDefault("time_worked")}");
         }
     }
-};
-var getResp = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/transaction/get",
-    new StringContent(getPayload.ToString(), Encoding.UTF8, "application/json"));
-getResp.EnsureSuccessStatusCode();
-var getResult = JObject.Parse(await getResp.Content.ReadAsStringAsync());
+}
 
-foreach (var txn in getResult["Transactions"] as JArray ?? new JArray())
-foreach (var de in txn["DataElements"] as JArray ?? new JArray())
-foreach (var row in de["Rows"] as JArray ?? new JArray())
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
 {
-    var fields = new Dictionary<string, string>();
-    foreach (var edit in row["Edits"] as JArray ?? new JArray())
-        fields[edit["Name"]!.ToString()] = edit["Value"]?.ToString() ?? "";
-    if (!string.IsNullOrEmpty(fields.GetValueOrDefault("prod_order_number")))
-        Console.WriteLine($"  {fields.GetValueOrDefault("component_labor_id")}: " +
-                          $"time_worked={fields.GetValueOrDefault("time_worked")}");
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->

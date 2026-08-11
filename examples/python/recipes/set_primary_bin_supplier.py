@@ -33,7 +33,7 @@ warnings.filterwarnings("ignore")
 # --- Configuration (generic placeholders -- substitute your own) ------------
 ITEM_ID = "WIDGET-001"
 LOCATION_ID = "10"
-SUPPLIER_ID = "20000"   # --target supplier: must already have an
+SUPPLIER_ID = "10050"   # --target supplier: must already have an
                         # inventory_supplier_x_loc row at LOCATION_ID
 PRIMARY_BIN = "A01-02"  # --target bin
 

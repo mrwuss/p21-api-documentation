@@ -6,7 +6,7 @@ Generate or reprint pick tickets and purchase orders as base64-encoded PDFs via 
 
 ## Prerequisites
 
-- Token + UI server URL (shared auth helper — see the [recipes README](README.md)).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
 - **For `m_picktickets` against a production order**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
 - The `m_*` report services are **hidden from `GET /api/v2/services`** (`?type=report` returns an empty list), but `GET /api/v2/definition/{service_name}` and `GET /api/v2/defaults/{service_name}` both work for them — use those for criteria field names and defaults. On a 25.2 test system, probing candidates from the `window_x_menu` table yields ~157 callable report services (`m_picktickets`, `m_reprintpicktickets`, `m_productionorders`, `m_orderacknowledgements`, `m_invoices`, `m_packinglists`, `m_customerstatements`, …) — see the Discovery note in the [deep dive](../03-Transaction-API.md#pdf-report-generation).
 
@@ -56,147 +56,374 @@ For any *other* report, swap `Name` and the criteria `Edits` (field names from `
 
 ## Complete example
 
-Generates a production-order pick ticket with `m_picktickets`, decodes the base64 PDF, and handles both failure shapes (document-level `ResponseStatus` and the P21 error envelope).
+Generates a production-order pick ticket with `m_picktickets`, decodes the base64 PDF to `OUTPUT_DIR`, and handles both failure shapes (document-level `ResponseStatus` and the P21 error envelope). Because `m_picktickets` also **creates** the ticket row, the program finishes with the read-back from the Verify section: a `m_reprintpicktickets` run on the new ticket number, whose second PDF proves the record landed.
 
 <!-- tabs -->
 ```python
+"""Generate a production-order pick ticket PDF, save it, and re-read it back."""
 import base64
+import os
+import re
 
-import httpx  # p21_auth() from recipes/README.md
+import httpx
 
-BASE_URL = "https://play.p21server.com"
-USERNAME = "api_user"
-PASSWORD = "api_pass"
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+PROD_ORDER = "1000123"                    # production order number (beg = end)
+LOCATION_ID = "10"                        # location the components pick from
+OUTPUT_DIR = "."                          # where the .pdf files are written
+# ---------------------------------------------------------------------------
 
-token, ui_server, headers = p21_auth(BASE_URL, USERNAME, PASSWORD)
 
-payload = {
-    "Name": "m_picktickets",
-    "UseCodeValues": True,   # required here -- False returns HTTP 500
-    "Transactions": [{
-        "Status": 0,         # numeric 0 for report payloads
-        "DataElements": [{
-            "Keys": [],      # always empty for reports
-            "Type": 0,       # numeric 0 for report payloads
-            "Name": "TABPAGE_1.tp_1_dw_1",
-            "Rows": [{"Edits": [
-                # code "P" = Production Order (the display label is rejected)
-                {"Name": "create_pick_ticket_type", "Value": "P"},
-                {"Name": "beg_prod_order", "Value": "1000123"},
-                {"Name": "end_prod_order", "Value": "1000123"},
-                # location whose inventory the components pick from
-                {"Name": "location_id", "Value": "10"},
-            ]}],
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def save_documents(result: list, prefix: str) -> list[str]:
+    """Write every returned base64 document to OUTPUT_DIR; return the paths."""
+    saved = []
+    for doc in result:
+        status = doc.get("ResponseStatus", {}).get("StatusCode")
+        if status != "Success" or not doc.get("DocumentData"):
+            msg = doc.get("ResponseStatus", {}).get("Message", "Unknown error")
+            print(f"Document failed: {msg}")
+            continue
+        pdf_bytes = base64.b64decode(doc["DocumentData"])
+        # FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf"
+        filename = doc.get("FileName", f"{prefix}.pdf")
+        path = os.path.join(OUTPUT_DIR, filename)
+        with open(path, "wb") as f:
+            f.write(pdf_bytes)
+        # A real PDF starts with the %PDF magic bytes
+        print(f"Saved {path} ({len(pdf_bytes)} bytes, "
+              f"starts with {pdf_bytes[:4]!r})")
+        saved.append(filename)
+    return saved
+
+
+def run_report(client: httpx.Client, ui_server: str, headers: dict,
+               payload: dict) -> list:
+    """POST a report payload and return its document array."""
+    response = client.post(f"{ui_server}/api/v2/process/pdfreport",
+                           headers=headers, json=payload)
+    # Errors come back as the standard P21 error envelope (ErrorType/ErrorMessage),
+    # NOT the Summary/Messages format used by /transaction.
+    if response.status_code >= 400:
+        raise SystemExit(f"HTTP {response.status_code}: {response.text}")
+    result = response.json()
+    if isinstance(result, dict) and "ErrorMessage" in result:
+        raise SystemExit(f"{result.get('ErrorType')}: {result['ErrorMessage']}")
+    # Success is a JSON ARRAY -- even for a single document
+    if not (isinstance(result, list) and result):
+        raise SystemExit(f"No documents returned: {result}")
+    return result
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "Name": "m_picktickets",
+        "UseCodeValues": True,   # required here -- False returns HTTP 500
+        "Transactions": [{
+            "Status": 0,         # numeric 0 for report payloads
+            "DataElements": [{
+                "Keys": [],      # always empty for reports
+                "Type": 0,       # numeric 0 for report payloads
+                "Name": "TABPAGE_1.tp_1_dw_1",
+                "Rows": [{"Edits": [
+                    # code "P" = Production Order (the display label is rejected)
+                    {"Name": "create_pick_ticket_type", "Value": "P"},
+                    {"Name": "beg_prod_order", "Value": PROD_ORDER},
+                    {"Name": "end_prod_order", "Value": PROD_ORDER},
+                    # location whose inventory the components pick from
+                    {"Name": "location_id", "Value": LOCATION_ID},
+                ]}],
+            }],
         }],
-    }],
-}
+    }
+    saved = save_documents(run_report(client, ui_server, headers, payload),
+                           "pick_ticket")
 
-response = httpx.post(
-    f"{ui_server}/api/v2/process/pdfreport",
-    headers=headers, json=payload, verify=False, timeout=120,
-)
-
-# Errors come back as the standard P21 error envelope (ErrorType/ErrorMessage),
-# NOT the Summary/Messages format used by /transaction.
-if response.status_code >= 400:
-    raise SystemExit(f"HTTP {response.status_code}: {response.text}")
-result = response.json()
-if isinstance(result, dict) and "ErrorMessage" in result:
-    raise SystemExit(f"{result.get('ErrorType')}: {result['ErrorMessage']}")
-
-# Success is a JSON ARRAY -- even for a single document
-if not (isinstance(result, list) and result):
-    raise SystemExit(f"No documents returned: {result}")
-
-for doc in result:
-    status = doc.get("ResponseStatus", {}).get("StatusCode")
-    if status != "Success" or not doc.get("DocumentData"):
-        msg = doc.get("ResponseStatus", {}).get("Message", "Unknown error")
-        print(f"Document failed: {msg}")
-        continue
-    pdf_bytes = base64.b64decode(doc["DocumentData"])
-    # FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf"
-    filename = doc.get("FileName", "pick_ticket.pdf")
-    with open(filename, "wb") as f:
-        f.write(pdf_bytes)
-    print(f"Saved {filename} ({len(pdf_bytes)} bytes)")
+    # --- Read-back: m_picktickets CREATED a ticket row, so reprint it. ---
+    # A second PDF proves the pick-ticket record exists in P21.
+    for filename in saved:
+        match = re.match(r"PPT(\d+)", filename)
+        if not match:
+            continue
+        ticket_no = match.group(1)
+        reprint = {
+            "Name": "m_reprintpicktickets",
+            # if this errors on correct criteria, retry with True + code values
+            "UseCodeValues": False,
+            "Transactions": [{
+                "Status": 0,
+                "DataElements": [{
+                    "Keys": [],
+                    "Type": 0,
+                    "Name": "TABPAGE_1.tp_1_dw_1",
+                    "Rows": [{"Edits": [
+                        {"Name": "company_id", "Value": "ACME"},
+                        {"Name": "location_id", "Value": LOCATION_ID},
+                        {"Name": "print_qty", "Value": "1"},
+                        {"Name": "beg_prod_pick_ticket_no", "Value": ticket_no},
+                        {"Name": "end_prod_pick_ticket_no", "Value": ticket_no},
+                    ]}],
+                }],
+            }],
+        }
+        print(f"Reprinting ticket {ticket_no} to prove the record landed:")
+        save_documents(run_report(client, ui_server, headers, reprint),
+                       f"reprint_{ticket_no}")
 ```
 
 ```csharp
-var session = await P21Session.CreateAsync(
-    "https://play.p21server.com", "api_user", "api_pass");
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
-var payload = new JObject
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";
+const string ProdOrder = "1000123";     // production order number (beg = end)
+const string LocationId = "10";         // location the components pick from
+const string OutputDir = ".";           // where the .pdf files are written
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
 {
-    ["Name"] = "m_picktickets",
-    ["UseCodeValues"] = true,   // required here -- false returns HTTP 500
-    ["Transactions"] = new JArray
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var payload = new
+{
+    Name = "m_picktickets",
+    UseCodeValues = true,   // required here -- false returns HTTP 500
+    Transactions = new object[]
     {
-        new JObject
+        new
         {
-            ["Status"] = 0,     // numeric 0 for report payloads
-            ["DataElements"] = new JArray
+            Status = 0,     // numeric 0 for report payloads
+            DataElements = new object[]
             {
-                new JObject
+                new
                 {
-                    ["Keys"] = new JArray(),  // always empty for reports
-                    ["Type"] = 0,             // numeric 0 for report payloads
-                    ["Name"] = "TABPAGE_1.tp_1_dw_1",
-                    ["Rows"] = new JArray
+                    Keys = Array.Empty<string>(),   // always empty for reports
+                    Type = 0,                       // numeric 0 for report payloads
+                    Name = "TABPAGE_1.tp_1_dw_1",
+                    Rows = new object[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
                                 // code "P" = Production Order (label is rejected)
-                                new JObject { ["Name"] = "create_pick_ticket_type", ["Value"] = "P" },
-                                new JObject { ["Name"] = "beg_prod_order", ["Value"] = "1000123" },
-                                new JObject { ["Name"] = "end_prod_order", ["Value"] = "1000123" },
+                                new { Name = "create_pick_ticket_type", Value = "P" },
+                                new { Name = "beg_prod_order", Value = ProdOrder },
+                                new { Name = "end_prod_order", Value = ProdOrder },
                                 // location whose inventory the components pick from
-                                new JObject { ["Name"] = "location_id", ["Value"] = "10" },
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+                                new { Name = "location_id", Value = LocationId },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 };
 
-var response = await session.Http.PostAsync(
-    $"{session.UiServer}/api/v2/process/pdfreport",
-    new StringContent(payload.ToString(), Encoding.UTF8, "application/json"));
-var bodyText = await response.Content.ReadAsStringAsync();
+var saved = SaveDocuments(await RunReportAsync(client, uiServer, payload), "pick_ticket");
 
-// Errors come back as the standard P21 error envelope (ErrorType/ErrorMessage),
-// NOT the Summary/Messages format used by /transaction.
-if (!response.IsSuccessStatusCode)
-    throw new InvalidOperationException($"HTTP {(int)response.StatusCode}: {bodyText}");
-
-var parsed = JToken.Parse(bodyText);
-if (parsed is JObject envelope && envelope["ErrorMessage"] != null)
-    throw new InvalidOperationException(
-        $"{envelope["ErrorType"]}: {envelope["ErrorMessage"]}");
-
-// Success is a JSON ARRAY -- even for a single document
-if (parsed is not JArray documents || documents.Count == 0)
-    throw new InvalidOperationException($"No documents returned: {parsed}");
-
-foreach (var doc in documents.OfType<JObject>())
+// --- Read-back: m_picktickets CREATED a ticket row, so reprint it. ---
+// A second PDF proves the pick-ticket record exists in P21.
+foreach (var filename in saved)
 {
-    var status = doc["ResponseStatus"]?["StatusCode"]?.ToString();
-    var documentData = doc["DocumentData"]?.ToString();
-    if (status != "Success" || string.IsNullOrEmpty(documentData))
+    var match = System.Text.RegularExpressions.Regex.Match(filename, @"^PPT(\d+)");
+    if (!match.Success) continue;
+    var ticketNo = match.Groups[1].Value;
+    var reprint = new
     {
-        var msg = doc["ResponseStatus"]?["Message"]?.ToString() ?? "Unknown error";
-        Console.WriteLine($"Document failed: {msg}");
-        continue;
+        Name = "m_reprintpicktickets",
+        // if this errors on correct criteria, retry with true + code values
+        UseCodeValues = false,
+        Transactions = new object[]
+        {
+            new
+            {
+                Status = 0,
+                DataElements = new object[]
+                {
+                    new
+                    {
+                        Keys = Array.Empty<string>(),
+                        Type = 0,
+                        Name = "TABPAGE_1.tp_1_dw_1",
+                        Rows = new object[]
+                        {
+                            new
+                            {
+                                Edits = new[]
+                                {
+                                    new { Name = "company_id", Value = CompanyId },
+                                    new { Name = "location_id", Value = LocationId },
+                                    new { Name = "print_qty", Value = "1" },
+                                    new { Name = "beg_prod_pick_ticket_no", Value = ticketNo },
+                                    new { Name = "end_prod_pick_ticket_no", Value = ticketNo },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    };
+    Console.WriteLine($"Reprinting ticket {ticketNo} to prove the record landed:");
+    SaveDocuments(await RunReportAsync(client, uiServer, reprint), $"reprint_{ticketNo}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// POST a report payload and return its document array.
+static async Task<List<JsonElement>> RunReportAsync(
+    HttpClient client, string uiServer, object payload)
+{
+    using var response = await client.PostAsync(
+        $"{uiServer}/api/v2/process/pdfreport",
+        new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+    var bodyText = await response.Content.ReadAsStringAsync();
+
+    // Errors come back as the standard P21 error envelope (ErrorType/ErrorMessage),
+    // NOT the Summary/Messages format used by /transaction.
+    if (!response.IsSuccessStatusCode)
+        throw new InvalidOperationException($"HTTP {(int)response.StatusCode}: {bodyText}");
+
+    using var parsed = JsonDocument.Parse(bodyText);
+    var root = parsed.RootElement;
+    if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("ErrorMessage", out var err))
+        throw new InvalidOperationException($"{root.GetProperty("ErrorType")}: {err}");
+
+    // Success is a JSON ARRAY -- even for a single document
+    if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0)
+        throw new InvalidOperationException($"No documents returned: {bodyText}");
+
+    return root.EnumerateArray().Select(x => x.Clone()).ToList();
+}
+
+// Write every returned base64 document to OutputDir; return the file names.
+static List<string> SaveDocuments(List<JsonElement> documents, string prefix)
+{
+    var saved = new List<string>();
+    foreach (var doc in documents)
+    {
+        var responseStatus = doc.GetProperty("ResponseStatus");
+        var status = responseStatus.GetProperty("StatusCode").GetString();
+        var documentData = doc.TryGetProperty("DocumentData", out var d) ? d.GetString() : null;
+        if (status != "Success" || string.IsNullOrEmpty(documentData))
+        {
+            var message = responseStatus.TryGetProperty("Message", out var m)
+                ? m.GetString() : "Unknown error";
+            Console.WriteLine($"Document failed: {message}");
+            continue;
+        }
+        var pdfBytes = Convert.FromBase64String(documentData);
+        // FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf"
+        var filename = doc.TryGetProperty("FileName", out var f)
+            ? f.GetString()! : $"{prefix}.pdf";
+        var path = Path.Combine(OutputDir, filename);
+        File.WriteAllBytes(path, pdfBytes);
+        // A real PDF starts with the %PDF magic bytes
+        Console.WriteLine($"Saved {path} ({pdfBytes.Length} bytes, starts with " +
+                          $"{Encoding.ASCII.GetString(pdfBytes, 0, 4)})");
+        saved.Add(filename);
     }
-    var pdfBytes = Convert.FromBase64String(documentData);
-    // FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf"
-    var filename = doc["FileName"]?.ToString() ?? "pick_ticket.pdf";
-    await File.WriteAllBytesAsync(filename, pdfBytes);
-    Console.WriteLine($"Saved {filename} ({pdfBytes.Length} bytes)");
+    return saved;
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 <!-- /tabs -->

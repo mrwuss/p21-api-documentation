@@ -49,7 +49,7 @@ public static class ComplexQueries
         var data = await odata.QueryAsync(
             "price_page",
             select: "price_page_uid,description,effective_date,expiration_date,calculation_value1",
-            filter: "supplier_id eq 20000 and row_status_flag eq 704",
+            filter: "supplier_id eq 10050 and row_status_flag eq 704",
             orderby: "effective_date desc",
             top: 5);
 
@@ -72,7 +72,7 @@ public static class ComplexQueries
         data = await odata.QueryAsync(
             "price_page",
             select: "price_page_uid,supplier_id,description",
-            filter: "(supplier_id eq 10 or supplier_id eq 20000) and row_status_flag eq 704",
+            filter: "(supplier_id eq 10 or supplier_id eq 10050) and row_status_flag eq 704",
             top: 10,
             count: true);
 

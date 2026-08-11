@@ -80,13 +80,13 @@ public static class Pagination
         // -----------------------------------------------------------------
         // Example 3: Automatic pagination with filter
         // -----------------------------------------------------------------
-        Console.WriteLine("\n3. Fetch all active price pages for supplier 20000:");
+        Console.WriteLine("\n3. Fetch all active price pages for supplier 10050:");
         Console.WriteLine(new string('-', 40));
 
         var allRecords = await GetAllRecordsAsync(
             odata,
             "price_page",
-            filter: "supplier_id eq 20000 and row_status_flag eq 704",
+            filter: "supplier_id eq 10050 and row_status_flag eq 704",
             pageSize: 50);
 
         Console.WriteLine($"\n  Total records fetched: {allRecords.Count}");

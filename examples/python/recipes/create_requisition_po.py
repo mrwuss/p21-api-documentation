@@ -32,8 +32,8 @@ warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
 LOCATION_ID = "10"
-VENDOR_ID = "21445"            # vendor_id != supplier_id -- different records
-VENDOR_SUPPLIER_ID = "22132"   # goes on the HEADER (omitting it fails at the line)
+VENDOR_ID = "99001"            # vendor_id != supplier_id -- different records
+VENDOR_SUPPLIER_ID = "10050"   # goes on the HEADER (omitting it fails at the line)
 
 # (item_id, quantity) -- item must have inv_loc.requisition = 'Y' at LOCATION_ID
 PO_LINES = [

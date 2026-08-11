@@ -29,13 +29,13 @@ def main():
     headers = get_auth_headers(token_data["AccessToken"])
 
     # Example 1: Equality filter
-    print("\n1. Equality filter (supplier_id eq 20000):")
+    print("\n1. Equality filter (supplier_id eq 10050):")
     print("-" * 40)
 
     response = httpx.get(
         f"{config.odata_url}/table/price_page",
         params={
-            "$filter": "supplier_id eq 20000",
+            "$filter": "supplier_id eq 10050",
             "$select": "price_page_uid,description,supplier_id",
             "$top": 5
         },
@@ -57,7 +57,7 @@ def main():
     response = httpx.get(
         f"{config.odata_url}/table/price_page",
         params={
-            "$filter": "supplier_id eq 20000 and row_status_flag eq 704",
+            "$filter": "supplier_id eq 10050 and row_status_flag eq 704",
             "$select": "price_page_uid,description,row_status_flag",
             "$top": 5
         },
@@ -68,7 +68,7 @@ def main():
     response.raise_for_status()
     data = response.json()
 
-    print(f"  Active pages for supplier 20000: {len(data['value'])} found")
+    print(f"  Active pages for supplier 10050: {len(data['value'])} found")
     for page in data["value"]:
         print(f"    {page['price_page_uid']}: {page.get('description', 'N/A')[:40]}")
 

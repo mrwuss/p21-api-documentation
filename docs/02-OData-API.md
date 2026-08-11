@@ -42,17 +42,54 @@ https://play.p21server.com/odataservice/odata/table/supplier
 The document is **JSON CSDL**, not the XML EDMX you may expect, and it is large — roughly 4 MB and ~3,400 tables on a stock tenant. Exposed tables are the keys of `ns.container`:
 
 ```python
+"""Check what tables are exposed via OData $metadata."""
+import re
+
 import httpx
 
-response = httpx.get(
-    f"{base_url}/odataservice/odata/table/$metadata",
-    headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
-    timeout=300,
-)
-metadata = response.json()
-tables = [name for name in metadata["ns"]["container"] if not name.startswith("$")]
-print(f"{len(tables)} tables exposed")           # e.g. 3394
-print("po_hdr exposed?", "po_hdr" in tables)
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    response = client.get(
+        f"{BASE_URL}/odataservice/odata/table/$metadata",
+        headers=headers,
+        timeout=300,  # ~4 MB payload; the shared client's 120s default is tight
+    )
+    response.raise_for_status()
+    metadata = response.json()
+    tables = [name for name in metadata["ns"]["container"] if not name.startswith("$")]
+    print(f"{len(tables)} tables exposed")           # e.g. 3394
+    print("po_hdr exposed?", "po_hdr" in tables)
 ```
 
 This is the quickest way to answer "is this table actually exposed to Data Services?" before debugging a 404 — and to find the real name of a table you're guessing at.
@@ -164,6 +201,8 @@ Include total count in response:
 |----------|---------|
 | `and` | `$filter=supplier_id eq 10050 and row_status_flag eq 704` |
 | `or` | `$filter=status eq 'A' or status eq 'B'` |
+
+> ⚠️ **`in` is accepted and silently ignored.** `$filter=id in (2,3,4)` returns HTTP 200 with **every row in the table** — the filter is discarded without a warning, unlike a genuine syntax error, which 404s. Match multiple values with an `or` chain instead. Verified on 26.1.5910.3 — see [Avoiding N+1 Query Patterns](#avoiding-n1-query-patterns).
 | `not` | `$filter=not endswith(name,'Inc')` |
 
 ### String Functions
@@ -219,6 +258,8 @@ $filter=expiration_date ge 2025-12-28
 
 For date-relative queries, calculate the date in your application code:
 
+> Full runnable version: [Code Examples](#code-examples) — the same `params`/`filter` pattern shown below is used in a complete, authenticated query in the Filtered Query example.
+
 <!-- tabs -->
 
 **Python**
@@ -244,7 +285,7 @@ var filterExpr = $"expiration_date ge {tomorrow}";
 P21 OData has **no joins**: each request hits a single table or view. To traverse relationships, chain queries on the `_uid` key columns — every child table carries its parent's uid. Example, walking a job contract down to its bins and item IDs:
 
 ```text
-job_price_hdr    $filter=contract_no eq 'A120-12'          → job_price_hdr_uid
+job_price_hdr    $filter=contract_no eq 'JOB-1001'          → job_price_hdr_uid
 job_price_line   $filter=job_price_hdr_uid eq {uid}        → job_price_line_uid, inv_mast_uid
 job_price_bin    $filter=job_price_line_uid eq {line_uid}  → min_qty / max_qty / reorder_qty ...
 inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
@@ -288,7 +329,36 @@ P21 item IDs commonly contain characters that need URL encoding in OData filters
 **Python**
 
 ```python
-from urllib.parse import quote
+"""Build an OData filter for an item ID with special characters, then query it."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ITEM_ID = "1/2-FITTING"                   # item ID containing characters that need escaping
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
 
 def safe_item_filter(item_id: str) -> str:
     """Build a safe OData filter for item IDs with special characters.
@@ -318,18 +388,81 @@ def safe_item_filter(item_id: str) -> str:
 # "PART #3"         -> item_id eq 'PART #3'          (# and space need URL encoding)
 # "O'RING-204"      -> item_id eq 'O''RING-204'     (quote doubled)
 
-# Using with httpx (handles URL encoding automatically):
-headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
-params = {"$filter": safe_item_filter("1/2-FITTING")}
-response = httpx.get(f"{base_url}/table/inv_mast", params=params, headers=headers)
-response.raise_for_status()
-# httpx encodes the filter value in the query string automatically
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # httpx encodes the filter value in the query string automatically
+    params = {"$filter": safe_item_filter(ITEM_ID)}
+    response = client.get(
+        f"{BASE_URL}/odataservice/odata/table/inv_mast",
+        params=params,
+        headers=headers,
+    )
+    response.raise_for_status()
+
+    data = response.json()
+    print(f"{len(data['value'])} matching rows for {ITEM_ID!r}")
+    for row in data["value"]:
+        print(row.get("item_id"), row.get("item_desc"))
 ```
 
 **C#**
 
 ```csharp
-using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string ItemId = "1/2-FITTING";                    // item ID containing characters that need escaping
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Examples of item IDs that need escaping:
+// "1/2-FITTING"     -> item_id eq '1/2-FITTING'     (/ needs URL encoding)
+// "ITEM+SIZE"       -> item_id eq 'ITEM+SIZE'       (+ needs URL encoding)
+// "PART #3"         -> item_id eq 'PART #3'          (# and space need URL encoding)
+// "O'RING-204"      -> item_id eq 'O''RING-204'     (quote doubled)
+
+// Using with HttpClient (URL encoding via Uri.EscapeDataString):
+var filter = Uri.EscapeDataString(SafeItemFilter(ItemId));
+var url = $"{BaseUrl}/odataservice/odata/table/inv_mast?$filter={filter}";
+var response = await client.GetAsync(url);
+response.EnsureSuccessStatusCode();
+// HttpClient sends the properly encoded query string
+
+var json = await response.Content.ReadAsStringAsync();
+var data = JsonDocument.Parse(json).RootElement;
+var rows = data.GetProperty("value");
+Console.WriteLine($"{rows.GetArrayLength()} matching rows for '{ItemId}'");
+foreach (var row in rows.EnumerateArray())
+{
+    var itemId = row.TryGetProperty("item_id", out var idProp) ? idProp.ToString() : "";
+    var itemDesc = row.TryGetProperty("item_desc", out var descProp) ? descProp.ToString() : "";
+    Console.WriteLine($"{itemId} {itemDesc}");
+}
+
+// --- helpers ---------------------------------------------------------------
 
 /// <summary>
 /// Build a safe OData filter for item IDs with special characters.
@@ -344,17 +477,33 @@ static string SafeItemFilter(string itemId)
     return $"item_id eq '{escaped}'";
 }
 
-// Examples of item IDs that need escaping:
-// "1/2-FITTING"     -> item_id eq '1/2-FITTING'     (/ needs URL encoding)
-// "ITEM+SIZE"       -> item_id eq 'ITEM+SIZE'       (+ needs URL encoding)
-// "PART #3"         -> item_id eq 'PART #3'          (# and space need URL encoding)
-// "O'RING-204"      -> item_id eq 'O''RING-204'     (quote doubled)
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
 
-// Using with HttpClient (URL encoding via Uri.EscapeDataString):
-var filter = Uri.EscapeDataString(SafeItemFilter("1/2-FITTING"));
-var url = $"{baseUrl}/table/inv_mast?$filter={filter}";
-var response = await client.GetAsync(url);
-// HttpClient sends the properly encoded query string
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -496,54 +645,125 @@ GET /odataservice/odata/table/inv_mast
 **Python**
 
 ```python
+"""Query suppliers with $top and $select."""
+import re
+
 import httpx
 
-# Helper modules live at examples/python/common — run from examples/python/
-# or add that directory to sys.path (see examples/python/odata/01_basic_query.py)
-from common.auth import get_token, get_auth_headers
-from common.config import load_config
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
 
-config = load_config()
-token_data = get_token(config)
-headers = get_auth_headers(token_data["AccessToken"])
 
-# Query suppliers
-response = httpx.get(
-    f"{config.odata_url}/table/supplier",
-    params={"$top": 10, "$select": "supplier_id,supplier_name"},
-    headers=headers,
-    verify=False  # dev/test only -- verify certificates in production
-)
-response.raise_for_status()
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
 
-data = response.json()
-for supplier in data["value"]:
-    print(f"{supplier['supplier_id']}: {supplier['supplier_name']}")
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Query suppliers
+    response = client.get(
+        f"{BASE_URL}/odataservice/odata/table/supplier",
+        params={"$top": 10, "$select": "supplier_id,supplier_name"},
+        headers=headers,
+    )
+    response.raise_for_status()
+
+    data = response.json()
+    for supplier in data["value"]:
+        print(f"{supplier['supplier_id']}: {supplier['supplier_name']}")
 ```
 
 **C#**
 
 ```csharp
-using System.Net.Http;
 using System.Net.Http.Headers;
-using Newtonsoft.Json.Linq;
+using System.Text;
+using System.Text.Json;
 
-// Assumes token and baseUrl are already configured (see Authentication docs)
-var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization =
-    new AuthenticationHeaderValue("Bearer", accessToken);
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 // Query suppliers
 var select = Uri.EscapeDataString("supplier_id,supplier_name");
-var url = $"{odataUrl}/table/supplier?$top=10&$select={select}";
+var url = $"{BaseUrl}/odataservice/odata/table/supplier?$top=10&$select={select}";
 var response = await client.GetAsync(url);
 response.EnsureSuccessStatusCode();
 
 var json = await response.Content.ReadAsStringAsync();
-var data = JObject.Parse(json);
-foreach (var supplier in data["value"]!)
+var data = JsonDocument.Parse(json).RootElement;
+foreach (var supplier in data.GetProperty("value").EnumerateArray())
 {
-    Console.WriteLine($"{supplier["supplier_id"]}: {supplier["supplier_name"]}");
+    var supplierId = supplier.GetProperty("supplier_id");
+    var supplierName = supplier.GetProperty("supplier_name");
+    Console.WriteLine($"{supplierId}: {supplierName}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -556,33 +776,138 @@ foreach (var supplier in data["value"]!)
 **Python**
 
 ```python
-# Get price pages for supplier
-params = {
-    "$filter": "supplier_id eq 10050 and row_status_flag eq 704",
-    "$select": "price_page_uid,description,calculation_value1",
-    "$orderby": "description"
-}
+"""Query active price pages for a supplier."""
+import re
 
-response = httpx.get(
-    f"{config.odata_url}/table/price_page",
-    params=params,
-    headers=headers,
-    verify=False
-)
-response.raise_for_status()
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SUPPLIER_ID = 10050                       # supplier to look up price pages for
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # Get price pages for supplier
+    params = {
+        "$filter": f"supplier_id eq {SUPPLIER_ID} and row_status_flag eq 704",
+        "$select": "price_page_uid,description,calculation_value1",
+        "$orderby": "description",
+    }
+
+    response = client.get(
+        f"{BASE_URL}/odataservice/odata/table/price_page",
+        params=params,
+        headers=headers,
+    )
+    response.raise_for_status()
+
+    data = response.json()
+    for page in data["value"]:
+        print(page["price_page_uid"], page["description"], page["calculation_value1"])
 ```
 
 **C#**
 
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const int SupplierId = 10050;                            // supplier to look up price pages for
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
 // Get price pages for supplier
-var filter = Uri.EscapeDataString("supplier_id eq 10050 and row_status_flag eq 704");
+var filter = Uri.EscapeDataString($"supplier_id eq {SupplierId} and row_status_flag eq 704");
 var select = Uri.EscapeDataString("price_page_uid,description,calculation_value1");
 var orderby = Uri.EscapeDataString("description");
 
-var url = $"{odataUrl}/table/price_page?$filter={filter}&$select={select}&$orderby={orderby}";
+var url = $"{BaseUrl}/odataservice/odata/table/price_page?$filter={filter}&$select={select}&$orderby={orderby}";
 var response = await client.GetAsync(url);
 response.EnsureSuccessStatusCode();
+
+var json = await response.Content.ReadAsStringAsync();
+var data = JsonDocument.Parse(json).RootElement;
+foreach (var page in data.GetProperty("value").EnumerateArray())
+{
+    var uid = page.GetProperty("price_page_uid");
+    var description = page.GetProperty("description");
+    var calcValue = page.GetProperty("calculation_value1");
+    Console.WriteLine($"{uid} {description} {calcValue}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
 ```
 
 <!-- /tabs -->
@@ -594,10 +919,44 @@ response.EnsureSuccessStatusCode();
 **Python**
 
 ```python
-def get_all_records(base_url, table, filter_expr=None, page_size=5000):
+"""Fetch all records from a table via $skip/$top pagination."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+TABLE = "supplier"                        # table to page through
+FILTER_EXPR = "row_status_flag eq 704"    # optional; set to None for no filter
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_all_records(client, headers, base_url, table, filter_expr=None, page_size=5000):
     """Fetch all records with automatic pagination.
 
     Args:
+        client: An authenticated httpx.Client.
+        headers: Request headers, including the Authorization bearer token.
         base_url: OData service base URL.
         table: Table name to query.
         filter_expr: Optional OData $filter expression.
@@ -607,7 +966,6 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
             when paginating for a UI. There is no documented server-side
             maximum -- 25,000 has been verified in production.
     """
-    headers = {"Authorization": "Bearer <token>", "Content-Type": "application/json", "Accept": "application/json"}
     records = []
     skip = 0
 
@@ -616,11 +974,10 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
         if filter_expr:
             params["$filter"] = filter_expr
 
-        response = httpx.get(
+        response = client.get(
             f"{base_url}/table/{table}",
             params=params,
             headers=headers,
-            verify=False
         )
         response.raise_for_status()
         data = response.json()
@@ -633,14 +990,64 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
         skip += page_size
 
     return records
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    all_records = get_all_records(
+        client,
+        headers,
+        f"{BASE_URL}/odataservice/odata",
+        TABLE,
+        filter_expr=FILTER_EXPR,
+        page_size=200,
+    )
+    print(f"{len(all_records)} records fetched from {TABLE}")
 ```
 
 **C#**
 
 ```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string Table = "supplier";                        // table to page through
+const string FilterExpr = "row_status_flag eq 704";     // optional; pass null for no filter
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var records = await GetAllRecordsAsync(
+    client, $"{BaseUrl}/odataservice/odata", Table, FilterExpr, pageSize: 200);
+Console.WriteLine($"{records.Count} records fetched from {Table}");
+
+// --- helpers ---------------------------------------------------------------
+
 /// <summary>
 /// Fetch all records with automatic pagination.
 /// </summary>
+/// <param name="client">An authenticated HttpClient.</param>
 /// <param name="baseUrl">OData service base URL.</param>
 /// <param name="table">Table name to query.</param>
 /// <param name="filterExpr">Optional OData $filter expression.</param>
@@ -651,11 +1058,11 @@ def get_all_records(base_url, table, filter_expr=None, page_size=5000):
 /// when paginating for a UI. There is no documented server-side
 /// maximum -- 25,000 has been verified in production.
 /// </param>
-async Task<List<JObject>> GetAllRecordsAsync(
+static async Task<List<JsonElement>> GetAllRecordsAsync(
     HttpClient client, string baseUrl, string table,
     string? filterExpr = null, int pageSize = 5000)
 {
-    var records = new List<JObject>();
+    var records = new List<JsonElement>();
     var skip = 0;
 
     while (true)
@@ -669,12 +1076,14 @@ async Task<List<JObject>> GetAllRecordsAsync(
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
-        var data = JObject.Parse(json);
+        var data = JsonDocument.Parse(json).RootElement;
 
-        foreach (var item in data["value"]!)
-            records.Add((JObject)item);
+        foreach (var item in data.GetProperty("value").EnumerateArray())
+            records.Add(item.Clone());
 
-        var total = data["@odata.count"]?.Value<int>() ?? records.Count;
+        var total = data.TryGetProperty("@odata.count", out var countProp)
+            ? countProp.GetInt32()
+            : records.Count;
 
         if (records.Count >= total)
             break;
@@ -682,6 +1091,34 @@ async Task<List<JObject>> GetAllRecordsAsync(
     }
 
     return records;
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
 
@@ -713,6 +1150,8 @@ async Task<List<JObject>> GetAllRecordsAsync(
 ### now() Function Not Supported
 
 The standard OData `now()` function returns 404 in P21. Use explicit date values instead:
+
+> Full runnable version: [Code Examples](#code-examples) — the Filtered Query example is a complete, authenticated program using the same `params` pattern.
 
 <!-- tabs -->
 
@@ -790,6 +1229,8 @@ The 10x improvement comes entirely from eliminating round-trip overhead.
 
 When working with related entities (e.g., pages → books → libraries), avoid fetching related data in a loop:
 
+> Full runnable version: [Pagination Helper](#pagination-helper) — fetch each related set with a single paged query instead of one call per row.
+
 <!-- tabs -->
 
 **Python**
@@ -816,35 +1257,58 @@ foreach (var page in pages)
 
 **Solution 1: Batch queries**
 
-Fetch all related data upfront with IN clauses or multiple conditions:
+Collapse the N follow-up queries into one by joining the ids with `or`. This is the real fix for the N+1 above — the loop below is what it replaces.
+
+> ### The `in` operator is silently ignored — do not use it
+>
+> The obvious way to batch is `$filter=price_page_uid in (2,3,4)`. **It returns HTTP 200 and the entire table.** Verified on 26.1.5910.3 (2026-08-11) against a view holding 50,077 rows:
+>
+> | Filter | Result |
+> |---|---|
+> | *(none)* | 200 — **50,077 rows** |
+> | `price_page_uid in (2,3,4)` | 200 — **50,077 rows** (filter dropped) |
+> | `price_page_uid eq 2 or price_page_uid eq 3` | 200 — **2 rows** (correct) |
+> | `price_page_uid zz 2` (deliberate garbage) | 404 — `Syntax error at position 17` |
+>
+> The service *does* validate filter syntax — garbage is rejected loudly. `in` parses and is then discarded, so you get a successful-looking response, no warning, and every row in the table. On a large view that is a silent full-table scan feeding whatever you do next. **Use an `or` chain.**
+>
+> Keep the chain to a sane length — URLs have limits. Batch ids in groups of ~50 and issue one request per group; that is still an enormous improvement over one request per id.
 
 <!-- tabs -->
 
 **Python**
 
 ```python
-# Get all pages first
+# Get all pages first -- one query
 pages = await odata.query("price_page", filter_expr="supplier_id eq 10050")
-page_uids = [p['price_page_uid'] for p in pages]
+page_uids = [p["price_page_uid"] for p in pages]
 
-# Get all links in fewer queries
-for page_uid in page_uids:
-    links = await odata.query("price_page_x_book",
-                               filter_expr=f"price_page_uid eq {page_uid}")
+# Then ONE query per batch of ids instead of one per id.
+# `in` is silently ignored on this service -- join with `or`.
+BATCH = 50
+links = []
+for i in range(0, len(page_uids), BATCH):
+    chunk = page_uids[i:i + BATCH]
+    or_chain = " or ".join(f"price_page_uid eq {uid}" for uid in chunk)
+    links += await odata.query("price_page_x_book", filter_expr=or_chain)
 ```
 
 **C#**
 
 ```csharp
-// Get all pages first
+// Get all pages first -- one query
 var pages = await odata.QueryAsync("price_page", filterExpr: "supplier_id eq 10050");
 var pageUids = pages.Select(p => p["price_page_uid"]!.ToString()).ToList();
 
-// Get all links in fewer queries
-foreach (var pageUid in pageUids)
+// Then ONE query per batch of ids instead of one per id.
+// `in` is silently ignored on this service -- join with `or`.
+const int Batch = 50;
+var links = new List<JsonElement>();
+for (var i = 0; i < pageUids.Count; i += Batch)
 {
-    var links = await odata.QueryAsync("price_page_x_book",
-                                        filterExpr: $"price_page_uid eq {pageUid}");
+    var chunk = pageUids.Skip(i).Take(Batch);
+    var orChain = string.Join(" or ", chunk.Select(uid => $"price_page_uid eq {uid}"));
+    links.AddRange(await odata.QueryAsync("price_page_x_book", filterExpr: orChain));
 }
 ```
 
@@ -853,6 +1317,8 @@ foreach (var pageUid in pageUids)
 **Solution 2: Cache lookups**
 
 For repeated lookups (like library-to-book mapping), cache results:
+
+> Full runnable version: [Code Examples](#code-examples) — no full program in this doc wraps caching directly; combine the cache pattern below with the authenticated request/response handling shown in Basic Query.
 
 <!-- tabs -->
 
