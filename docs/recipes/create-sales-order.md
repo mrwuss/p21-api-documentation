@@ -4,6 +4,8 @@ Create a sales order — header plus line items — in one stateless Transaction
 
 **API:** Transaction · **Service:** `Order` · **Deep dive:** [Create Order](../03-Transaction-API.md#create-order) · [Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas) · **Full schema:** [Order.json](../../definitions/Order.json)
 
+> **There is a second path.** `POST /api/sales/orders/` creates an order from plain domain JSON — no `DataElements`, no string-typed values — contributed and tested on 25.2 ([05 § Creating an Order](../05-Entity-API.md#creating-an-order-post-apisalesorders)). It is the lighter payload; this Transaction recipe is the one verified here, reports errors in a documented envelope, and creates many orders per call. The [side-by-side comparison](../05-Entity-API.md#rest-vs-the-transaction-api-for-order-creation) picks between them.
+
 ## Prerequisites
 
 - P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).

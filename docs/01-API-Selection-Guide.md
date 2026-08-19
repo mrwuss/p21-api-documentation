@@ -198,7 +198,7 @@ Some P21 servers only support v2 Interactive API endpoints. If you receive 404 e
 - You prefer stateless REST over Interactive API session management
 
 ### Don't Use When
-- You need orders — those live in the same REST API at `/api/sales/orders` (see [Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families))
+- You need orders — those live in the same REST API at `/api/sales/orders`, which reads *and* creates ([Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families) · [Creating an Order](05-Entity-API.md#creating-an-order-post-apisalesorders))
 - You need inventory items — use the [Inventory REST API](11-Inventory-REST-API.md) (`/api/inventory/parts`)
 - You need invoices, POs, or other business objects (no endpoint family found)
 - You need bulk operations (use Transaction API)

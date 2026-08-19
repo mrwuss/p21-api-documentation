@@ -926,7 +926,7 @@
 </ul>
 <h3 id="dont-use-when_3">Don't Use When</h3>
 <ul>
-<li>You need orders — those live in the same REST API at <code>/api/sales/orders</code> (see <a href="05-Entity-API.html#other-rest-endpoint-families">Other REST Endpoint Families</a>)</li>
+<li>You need orders — those live in the same REST API at <code>/api/sales/orders</code>, which reads <em>and</em> creates (<a href="05-Entity-API.html#other-rest-endpoint-families">Other REST Endpoint Families</a> · <a href="05-Entity-API.html#creating-an-order-post-apisalesorders">Creating an Order</a>)</li>
 <li>You need inventory items — use the <a href="11-Inventory-REST-API.html">Inventory REST API</a> (<code>/api/inventory/parts</code>)</li>
 <li>You need invoices, POs, or other business objects (no endpoint family found)</li>
 <li>You need bulk operations (use Transaction API)</li>

@@ -17,6 +17,14 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-19 — v1.5.1
+
+Community contribution: the `/api/sales/orders` family creates orders as well as reading them.
+
+- **feat:** **`POST /api/sales/orders/` creates a sales order** — documented from a community contribution tested on **25.2**, with the two shape rules that decide whether the call works at all: the **trailing slash is required** (without it the request is not routed to the API — and on a POST you cannot lean on a redirect-following client the way the read-side 307 lets you), and **`Lines` is an object, not an array** — the lines go in `Lines.list`, which the `/new` template shows without explaining. Adds the header and line field tables, an example body, a complete runnable Python/C# program, and a REST-vs-Transaction comparison for choosing between the two order-creation paths. The section states plainly what the contribution does **not** settle — the success response shape and where the order number comes back, which fields are strictly required versus optional, whether the inline ship-to fields are required alongside `ShipToId` or only a fallback, the validation-error status codes, and whether the `/new` template's other collections (`Notes`, `Salesreps`, …) use the same `list` nesting — so nobody mistakes one working payload for a specification. Doc 05's "writes are untested" note, the selection guide and the task index are updated accordingly. → [05 § Creating an Order](05-Entity-API.md#creating-an-order-post-apisalesorders) — *Rob Landham ([@roblandham](https://github.com/roblandham)), documented by @mrwuss* — Fixes #108
+
+---
+
 ## 2026-08-11 — v1.5.0
 
 Cleared issues #103 and #105–#107, converted every API-calling code example in the docs into a complete runnable program, and re-verified a batch of long-standing claims against a live tenant. Verification build: **26.1.5910.3**. The checks turned up several errors in our own documentation; those are listed first.
@@ -306,6 +314,7 @@ First tagged release. This wave cross-checked the docs against a community proce
 | Claude Jones | [@RadAJones](https://github.com/RadAJones) | Reusable P21 API client with sync/async support ([PR #16](https://github.com/mrwuss/p21-api-documentation/pull/16)) |
 | Sibin Francis | [@sibinfrancisaj](https://github.com/sibinfrancisaj) | Inventory REST API documentation ([PR #23](https://github.com/mrwuss/p21-api-documentation/pull/23)) |
 | NextTWis | [@NextTWis](https://github.com/NextTWis) | Postman Collection for P21 API verification ([PR #24](https://github.com/mrwuss/p21-api-documentation/pull/24)) |
+| Rob Landham | [@roblandham](https://github.com/roblandham) | `POST /api/sales/orders/` order creation — payload shape, required trailing slash, `Lines.list` nesting ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) |
 | Alex Westemeier | [@AWestemeier](https://github.com/AWestemeier) | Report-service discovery, Transaction upsert + IgnoreDisabled findings, production lifecycle verification |
 | Jeff Poss | | PDF Report Generation endpoint discovery |
 | Felipe Maurer | | Entity API taxonomy correction, UDT Service API discovery and testing, Inventory pricing endpoints, Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI |

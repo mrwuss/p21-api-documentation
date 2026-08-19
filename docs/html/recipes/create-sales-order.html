@@ -532,6 +532,9 @@
 <h1 id="create-a-sales-order">Create a Sales Order</h1>
 <p>Create a sales order — header plus line items — in one stateless Transaction API call.</p>
 <p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>Order</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#create-order">Create Order</a> · <a href="../03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/Order.json">Order.json</a></p>
+<blockquote>
+<p><strong>There is a second path.</strong> <code>POST /api/sales/orders/</code> creates an order from plain domain JSON — no <code>DataElements</code>, no string-typed values — contributed and tested on 25.2 (<a href="../05-Entity-API.html#creating-an-order-post-apisalesorders">05 § Creating an Order</a>). It is the lighter payload; this Transaction recipe is the one verified here, reports errors in a documented envelope, and creates many orders per call. The <a href="../05-Entity-API.html#rest-vs-the-transaction-api-for-order-creation">side-by-side comparison</a> picks between them.</p>
+</blockquote>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net9.0</code> console project (C#).</li>

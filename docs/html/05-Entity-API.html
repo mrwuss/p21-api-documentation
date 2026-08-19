@@ -602,6 +602,7 @@
 </li>
 <li><a href="#other-rest-endpoint-families">Other REST Endpoint Families</a><ul>
 <li><a href="#apisalesorders-exists-and-responds">/api/sales/orders — exists and responds</a></li>
+<li><a href="#creating-an-order-post-apisalesorders">Creating an Order (POST /api/sales/orders/)</a></li>
 <li><a href="#families-that-404-on-the-tested-tenant">Families that 404 on the tested tenant</a></li>
 </ul>
 </li>
@@ -3875,12 +3876,492 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <td><code>GET /api/sales/orders/?$query=...</code></td>
 <td>500 with an unrecognized field name — list query syntax not yet discovered</td>
 </tr>
+<tr>
+<td><code>POST /api/sales/orders/</code></td>
+<td>Creates an order — <strong>trailing slash required</strong>, lines nest under <code>Lines.list</code>. See <a href="#creating-an-order-post-apisalesorders">Creating an Order</a> (community-verified on 25.2)</td>
+</tr>
 </tbody>
 </table></div>
-<p>Writes and the approve action are <strong>untested</strong> — treat this family as read-verified only until documented further.</p>
+<p>The approve action and every other write on this family remain <strong>untested</strong>; order creation is the one write with a reported working payload, below.</p>
+<h3 id="creating-an-order-post-apisalesorders">Creating an Order (<code>POST /api/sales/orders/</code>)</h3>
+<p><code>/api/sales/orders/</code> is not read-only: the same URL accepts a <strong>POST</strong> whose body is a single order — header fields at the top level, lines nested inside. <code>GET /api/sales/orders/new</code> shows you the object's shape but says nothing about how to submit one, which is why this went undocumented for so long.</p>
+<blockquote>
+<p><strong>Contributed and tested on P21 25.2 by <a href="https://github.com/roblandham">Rob Landham</a> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/108">issue #108</a>)</strong> — the payload shape and both rules below are their findings, reproduced here as reported. They have <strong>not</strong> been re-verified on this repo's tenant, and the <a href="#what-is-not-pinned-down-yet">open questions</a> at the end of this section list exactly what nobody has pinned down yet. Treat the field list as an example header, not a required-field spec: which fields your environment demands depends on its configuration.</p>
+</blockquote>
+<p>Two shape rules decide whether the call works at all.</p>
+<p><strong>1. The trailing slash is required.</strong> <code>POST /api/sales/orders/</code> routes correctly; drop the slash and the request is not routed to the API. This is the write-side face of the <a href="#trailing-slash-on-list-endpoints">307 on list endpoints</a> — except that on a POST you cannot paper over it with a redirect-following client and call it handled, because whether the body and method survive the hop is up to the client. Send the slash.</p>
+<p><strong>2. <code>Lines</code> is an object, not an array.</strong> The lines go in an array under <code>Lines.list</code>. A top-level <code>Lines</code> array <strong>fails</strong> — this is the mistake the <code>/new</code> template does not protect you from, since it shows the container without explaining the nesting.</p>
+<h4 id="header-fields">Header fields</h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CustomerId</code></td>
+<td>string</td>
+<td>P21 customer ID the order is placed against</td>
+</tr>
+<tr>
+<td><code>CompanyId</code></td>
+<td>string</td>
+<td>Company/branch code</td>
+</tr>
+<tr>
+<td><code>LocationId</code></td>
+<td>string</td>
+<td>Fulfilling location ID</td>
+</tr>
+<tr>
+<td><code>Taker</code></td>
+<td>string</td>
+<td>User/service account identifier that "took" the order</td>
+</tr>
+<tr>
+<td><code>PromiseDate</code></td>
+<td>string (<code>YYYY-MM-DD</code>)</td>
+<td>Promised ship/delivery date</td>
+</tr>
+<tr>
+<td><code>TermsId</code></td>
+<td>string</td>
+<td>Payment terms code (e.g. <code>NET30</code>)</td>
+</tr>
+<tr>
+<td><code>ShipToId</code></td>
+<td>string</td>
+<td>Ship-to record ID</td>
+</tr>
+<tr>
+<td><code>ShipToName</code>, <code>ShipToAddress1</code>, <code>ShipToAddress2</code>, <code>ShipToCity</code>, <code>ShipToState</code>, <code>ZipCode</code>, <code>ShipToCountry</code></td>
+<td>string</td>
+<td>Ship-to address fields — sent inline when <code>ShipToId</code> alone doesn't resolve the full address</td>
+</tr>
+<tr>
+<td><code>ShipToEmail</code>, <code>ShipToPhone</code></td>
+<td>string</td>
+<td>Ship-to contact details</td>
+</tr>
+<tr>
+<td><code>SourceLocId</code></td>
+<td>string</td>
+<td>Source location for the order</td>
+</tr>
+<tr>
+<td><code>PoNo</code></td>
+<td>string</td>
+<td>Customer PO number reference</td>
+</tr>
+<tr>
+<td><code>Quote</code></td>
+<td>string (<code>"Y"</code>/<code>"N"</code>)</td>
+<td>Whether this is a quote rather than a firm order</td>
+</tr>
+<tr>
+<td><code>DeletedFlag</code></td>
+<td>string (<code>"Y"</code>/<code>"N"</code>)</td>
+<td>Soft-delete flag — <code>"N"</code> for new orders</td>
+</tr>
+<tr>
+<td><code>Lines</code></td>
+<td>object</td>
+<td>Container wrapping the lines — <strong>not</strong> an array</td>
+</tr>
+<tr>
+<td><code>Lines.list</code></td>
+<td>array</td>
+<td>The line objects</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="line-fields-lineslist">Line fields (<code>Lines.list[]</code>)</h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ItemId</code></td>
+<td>string</td>
+<td>Item being ordered</td>
+</tr>
+<tr>
+<td><code>UnitQuantity</code></td>
+<td>number</td>
+<td>Quantity in <code>UnitOfMeasure</code></td>
+</tr>
+<tr>
+<td><code>UnitOfMeasure</code></td>
+<td>string</td>
+<td>e.g. <code>EA</code></td>
+</tr>
+<tr>
+<td><code>UnitPrice</code></td>
+<td>number</td>
+<td>Price per unit</td>
+</tr>
+<tr>
+<td><code>TaxItem</code></td>
+<td>string (<code>"Y"</code>/<code>"N"</code>)</td>
+<td>Whether the line is taxable</td>
+</tr>
+<tr>
+<td><code>Delete</code></td>
+<td>string (<code>"Y"</code>/<code>"N"</code>)</td>
+<td><code>"N"</code> on a new line</td>
+</tr>
+</tbody>
+</table></div>
+<p>Note the type split: quantities and prices are <strong>JSON numbers</strong> here, while the flags are <code>"Y"</code>/<code>"N"</code> <strong>strings</strong> — unlike the Transaction API, where every <code>Value</code> is a string.</p>
+<h4 id="example-request-body">Example request body</h4>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="p">{</span><span class="err">base_url</span><span class="p">}</span><span class="err">/api/sales/orders/</span>
+
+<span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;LocationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Taker&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JSMITH&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PromiseDate&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2030-01-06&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;TermsId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NET30&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Acme Fulfillment Co&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Example Street&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToAddress2&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Ste 100&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToCity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Atlanta&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToState&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GA&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ZipCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;30000&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToCountry&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;US&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToEmail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;orders@example.com&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ShipToPhone&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;000-000-0000&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;SourceLocId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;PoNo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PO-TEST-001&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Quote&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DeletedFlag&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Lines&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;list&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;UnitQuantity&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;UnitOfMeasure&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EA&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;UnitPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.99</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;TaxItem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nt">&quot;Delete&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h4 id="complete-example">Complete example</h4>
+<p>The create response shape is unconfirmed (see <a href="#what-is-not-pinned-down-yet">below</a>), so this program <strong>prints the raw body</strong> before trying to find an order number in it, and reads the order back when it finds one. Run it against a play tenant first — it writes a real order.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Create a sales order through the REST API, then read it back.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">CUSTOMER_ID</span> <span class="o">=</span> <span class="s2">&quot;100198&quot;</span>
+<span class="n">COMPANY_ID</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>
+<span class="n">LOCATION_ID</span> <span class="o">=</span> <span class="s2">&quot;10&quot;</span>
+<span class="n">TAKER</span> <span class="o">=</span> <span class="s2">&quot;JSMITH&quot;</span>
+<span class="n">PROMISE_DATE</span> <span class="o">=</span> <span class="s2">&quot;2030-01-06&quot;</span>
+<span class="n">TERMS_ID</span> <span class="o">=</span> <span class="s2">&quot;NET30&quot;</span>
+<span class="n">SHIP_TO_ID</span> <span class="o">=</span> <span class="s2">&quot;200&quot;</span>
+<span class="n">ITEM_ID</span> <span class="o">=</span> <span class="s2">&quot;WIDGET-001&quot;</span>
+<span class="n">QUANTITY</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">UNIT_PRICE</span> <span class="o">=</span> <span class="mf">0.99</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">ORDER</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;CustomerId&quot;</span><span class="p">:</span> <span class="n">CUSTOMER_ID</span><span class="p">,</span>
+    <span class="s2">&quot;CompanyId&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">,</span>
+    <span class="s2">&quot;LocationId&quot;</span><span class="p">:</span> <span class="n">LOCATION_ID</span><span class="p">,</span>
+    <span class="s2">&quot;Taker&quot;</span><span class="p">:</span> <span class="n">TAKER</span><span class="p">,</span>
+    <span class="s2">&quot;PromiseDate&quot;</span><span class="p">:</span> <span class="n">PROMISE_DATE</span><span class="p">,</span>
+    <span class="s2">&quot;TermsId&quot;</span><span class="p">:</span> <span class="n">TERMS_ID</span><span class="p">,</span>
+    <span class="s2">&quot;ShipToId&quot;</span><span class="p">:</span> <span class="n">SHIP_TO_ID</span><span class="p">,</span>
+    <span class="s2">&quot;SourceLocId&quot;</span><span class="p">:</span> <span class="n">LOCATION_ID</span><span class="p">,</span>
+    <span class="s2">&quot;PoNo&quot;</span><span class="p">:</span> <span class="s2">&quot;PO-TEST-001&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Quote&quot;</span><span class="p">:</span> <span class="s2">&quot;N&quot;</span><span class="p">,</span>                          <span class="c1"># &quot;Y&quot; makes it a quote, not an order</span>
+    <span class="s2">&quot;DeletedFlag&quot;</span><span class="p">:</span> <span class="s2">&quot;N&quot;</span><span class="p">,</span>
+    <span class="c1"># Lines is an OBJECT wrapping a list -- a top-level array fails.</span>
+    <span class="s2">&quot;Lines&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;list&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;ItemId&quot;</span><span class="p">:</span> <span class="n">ITEM_ID</span><span class="p">,</span>
+                <span class="s2">&quot;UnitQuantity&quot;</span><span class="p">:</span> <span class="n">QUANTITY</span><span class="p">,</span>
+                <span class="s2">&quot;UnitOfMeasure&quot;</span><span class="p">:</span> <span class="s2">&quot;EA&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;UnitPrice&quot;</span><span class="p">:</span> <span class="n">UNIT_PRICE</span><span class="p">,</span>
+                <span class="s2">&quot;TaxItem&quot;</span><span class="p">:</span> <span class="s2">&quot;N&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;Delete&quot;</span><span class="p">:</span> <span class="s2">&quot;N&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>  <span class="c1"># some middleware answers in XML</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="c1"># The trailing slash is required -- without it the request isn&#39;t routed here.</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/sales/orders/&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">ORDER</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HTTP </span><span class="si">{</span><span class="n">resp</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">1000</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">&quot;(empty body)&quot;</span><span class="p">)</span>   <span class="c1"># success shape is unconfirmed -- read it raw</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+    <span class="c1"># Find the new order number. The response key is not confirmed, so try the</span>
+    <span class="c1"># plausible spellings rather than assuming one.</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;{&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+    <span class="n">order_no</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+        <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">body</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;OrderNo&quot;</span><span class="p">,</span> <span class="s2">&quot;OrderNumber&quot;</span><span class="p">,</span> <span class="s2">&quot;Id&quot;</span><span class="p">,</span> <span class="s2">&quot;OrderId&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)),</span>
+        <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">order_no</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s2">&quot;No order number in the create response -- see the body printed above&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Read back -- HTTP 200 on the POST doesn&#39;t confirm what actually landed.</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/sales/orders/</span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">(</span><span class="n">order</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Lines&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;list&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Order </span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">: customer </span><span class="si">{</span><span class="n">order</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;CustomerId&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="si">}</span><span class="s2"> line(s)&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">LocationId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Taker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;JSMITH&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PromiseDate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2030-01-06&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">TermsId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;NET30&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ShipToId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;200&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">decimal</span><span class="w"> </span><span class="n">Quantity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1m</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">decimal</span><span class="w"> </span><span class="n">UnitPrice</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.99m</span><span class="p">;</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">order</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object?</span><span class="o">&gt;</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="na">[&quot;CustomerId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CustomerId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;CompanyId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CompanyId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;LocationId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LocationId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;Taker&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Taker</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;PromiseDate&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PromiseDate</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;TermsId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TermsId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;ShipToId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ShipToId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;SourceLocId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LocationId</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;PoNo&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;PO-TEST-001&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">[&quot;Quote&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">,</span><span class="w">                                    </span><span class="c1">// &quot;Y&quot; makes it a quote, not an order</span>
+<span class="w">    </span><span class="na">[&quot;DeletedFlag&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="c1">// Lines is an OBJECT wrapping a list -- a top-level array fails.</span>
+<span class="w">    </span><span class="na">[&quot;Lines&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object?</span><span class="o">&gt;</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="na">[&quot;list&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object?</span><span class="o">&gt;</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;ItemId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ItemId</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;UnitQuantity&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Quantity</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;UnitOfMeasure&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;EA&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;UnitPrice&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">UnitPrice</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;TaxItem&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;Delete&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Test tenants often present a self-signed cert. Delete this line in production.</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="w">    </span><span class="n">AllowAutoRedirect</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="c1">// The trailing slash is required -- without it the request isn&#39;t routed here.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="s">$&quot;{BaseUrl}/api/sales/orders/&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">order</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">responseBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;HTTP {(int)resp.StatusCode}&quot;</span><span class="p">);</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="n">responseBody</span><span class="p">.</span><span class="n">Length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="o">?</span><span class="w"> </span><span class="n">responseBody</span><span class="p">[..</span><span class="n">Math</span><span class="p">.</span><span class="n">Min</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="n">responseBody</span><span class="p">.</span><span class="n">Length</span><span class="p">)]</span><span class="w">   </span><span class="c1">// success shape is unconfirmed</span>
+<span class="w">    </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;(empty body)&quot;</span><span class="p">);</span>
+<span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="c1">// Find the new order number. The response key is not confirmed, so try the</span>
+<span class="c1">// plausible spellings rather than assuming one.</span>
+<span class="kt">string?</span><span class="w"> </span><span class="n">orderNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">responseBody</span><span class="p">.</span><span class="n">TrimStart</span><span class="p">().</span><span class="n">StartsWith</span><span class="p">(</span><span class="s">&quot;{&quot;</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">responseBody</span><span class="p">);</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;OrderNo&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;OrderNumber&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;OrderId&quot;</span><span class="w"> </span><span class="p">})</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">created</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">            </span><span class="k">value</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="p">(</span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Null</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Undefined</span><span class="p">))</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">orderNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrWhiteSpace</span><span class="p">(</span><span class="n">orderNo</span><span class="p">))</span><span class="w"> </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrWhiteSpace</span><span class="p">(</span><span class="n">orderNo</span><span class="p">))</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;No order number in the create response -- see the body printed above&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// Read back -- HTTP 200 on the POST doesn&#39;t confirm what actually landed.</span>
+<span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/api/sales/orders/{orderNo}&quot;</span><span class="p">);</span>
+<span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">readBack</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">lineCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">readBack</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Lines&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">lines</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">                </span><span class="n">lines</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;list&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">list</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+<span class="w">                </span><span class="n">list</span><span class="p">.</span><span class="n">ValueKind</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">JsonValueKind</span><span class="p">.</span><span class="n">Array</span>
+<span class="w">    </span><span class="o">?</span><span class="w"> </span><span class="n">list</span><span class="p">.</span><span class="n">GetArrayLength</span><span class="p">()</span>
+<span class="w">    </span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">customer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">readBack</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;CustomerId&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">ToString</span><span class="p">()</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;?&quot;</span><span class="p">;</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;Order {orderNo}: customer {customer}, {lineCount} line(s)&quot;</span><span class="p">);</span>
+
+<span class="c1">// --- helpers ---------------------------------------------------------------</span>
+
+<span class="c1">// v2 token endpoint — credentials go in the body, never in headers.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers this endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">payload</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">field</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="k">value</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="k">value</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{field}&gt;([^&lt;]+)&lt;/{field}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">match</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {field} in response: {payload[..Math.Min(200, payload.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">match</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<h4 id="what-is-not-pinned-down-yet">What is not pinned down yet</h4>
+<p>Stated as unknowns rather than guessed at — if you settle one against your tenant, <a href="https://github.com/mrwuss/p21-api-documentation/issues/new/choose">open an issue</a> and it gets documented:</p>
+<ul>
+<li><strong>The success response shape</strong>, including where the generated order number comes back. The example above prints the raw body and probes four plausible key spellings for exactly this reason.</li>
+<li><strong>Which fields are strictly required</strong> versus optional. The header above is one working example from one 25.2 tenant, not a minimum payload — configuration (taxes, terms, ship-to defaults) decides what your server insists on.</li>
+<li><strong>Whether the inline ship-to fields are required alongside <code>ShipToId</code></strong> or only act as a fallback when the ship-to record doesn't resolve a full address.</li>
+<li><strong>HTTP status codes and body for validation failures</strong> — the write-side error vocabulary of this family is undocumented.</li>
+<li><strong>The other collections in the <code>/new</code> template</strong> (<code>Notes</code>, <code>Salesreps</code>, <code>BuilderSelectionSheets</code>, <code>Samples</code>) — presumably the same <code>{"list": [...]}</code> nesting as <code>Lines</code>, but untested.</li>
+</ul>
+<h4 id="rest-vs-the-transaction-api-for-order-creation">REST vs the Transaction API for order creation</h4>
+<p>Both create orders. Pick by what you need:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><code>POST /api/sales/orders/</code></th>
+<th>Transaction API <code>Order</code> service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Payload</td>
+<td>Plain domain JSON, lines under <code>Lines.list</code></td>
+<td><code>DataElements</code> / <code>Rows</code> / <code>Edits</code>, every value a string</td>
+</tr>
+<tr>
+<td>Verified by</td>
+<td>Contributor, 25.2 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/108">issue #108</a>)</td>
+<td>This repo, against a live tenant</td>
+</tr>
+<tr>
+<td>Error reporting</td>
+<td>Undocumented (see above)</td>
+<td><code>Summary.Succeeded</code> / <code>Failed</code> envelope, <a href="06-Error-Handling.html">documented traps</a></td>
+</tr>
+<tr>
+<td>Bulk</td>
+<td>One order per call</td>
+<td>Many orders per call</td>
+</tr>
+<tr>
+<td>Assembly lines</td>
+<td>Untested</td>
+<td>Auto-answers the explode prompt <strong>No</strong> — use the <a href="recipes/order-with-assembly.html">order-with-assembly</a> recipe instead</td>
+</tr>
+</tbody>
+</table></div>
+<p>For a walk-through of the Transaction path, see the <a href="recipes/create-sales-order.html">create-sales-order recipe</a>.</p>
 <h3 id="families-that-404-on-the-tested-tenant">Families that 404 on the tested tenant</h3>
 <p><code>sales/customers</code>, <code>sales/quotes</code>, <code>sales/invoices</code>, <code>sales/shipments</code>, <code>sales/payments</code>, <code>purchasing/*</code>, <code>ar/*</code>, <code>inventory/items</code>, <code>inventory/lots</code> — all returned 404 on ping. Availability may vary by version; the SOA middleware admin site lists the endpoint families your server actually exposes.</p>
 <p><em>Credit: Felipe Maurer (<a href="https://forums.p21ww.org/UserInfo10045.aspx">P21WWUG profile</a>) — surfaced <code>/api/sales/orders</code> and the middleware endpoint listing in <a href="https://forums.p21ww.org/Topic245514-3.aspx">this forum topic</a>.</em></p>
+<p><em>Credit: <a href="https://github.com/roblandham">Rob Landham</a> — documented <code>POST /api/sales/orders/</code>, the required trailing slash and the <code>Lines.list</code> nesting, tested on 25.2 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/108">issue #108</a>).</em></p>
 <hr />
 <h2 id="common-errors">Common Errors</h2>
 <div class="table-wrap"><table>
