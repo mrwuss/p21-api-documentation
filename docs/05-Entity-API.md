@@ -1915,14 +1915,379 @@ The REST API exposes more than `/api/entity/` and `/api/inventory/parts`. Verifi
 | `GET /api/sales/orders/{order_no}` | 200 — ~70 top-level fields |
 | `GET /api/sales/orders/{order_no}/approve` | 405 — route exists; the middleware documents PUT for this action (PUT untested) |
 | `GET /api/sales/orders/?$query=...` | 500 with an unrecognized field name — list query syntax not yet discovered |
+| `POST /api/sales/orders/` | Creates an order — **trailing slash required**, lines nest under `Lines.list`. See [Creating an Order](#creating-an-order-post-apisalesorders) (community-verified on 25.2) |
 
-Writes and the approve action are **untested** — treat this family as read-verified only until documented further.
+The approve action and every other write on this family remain **untested**; order creation is the one write with a reported working payload, below.
+
+### Creating an Order (`POST /api/sales/orders/`)
+
+`/api/sales/orders/` is not read-only: the same URL accepts a **POST** whose body is a single order — header fields at the top level, lines nested inside. `GET /api/sales/orders/new` shows you the object's shape but says nothing about how to submit one, which is why this went undocumented for so long.
+
+> **Contributed and tested on P21 25.2 by [Rob Landham](https://github.com/roblandham) ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108))** — the payload shape and both rules below are their findings, reproduced here as reported. They have **not** been re-verified on this repo's tenant, and the [open questions](#what-is-not-pinned-down-yet) at the end of this section list exactly what nobody has pinned down yet. Treat the field list as an example header, not a required-field spec: which fields your environment demands depends on its configuration.
+
+Two shape rules decide whether the call works at all.
+
+**1. The trailing slash is required.** `POST /api/sales/orders/` routes correctly; drop the slash and the request is not routed to the API. This is the write-side face of the [307 on list endpoints](#trailing-slash-on-list-endpoints) — except that on a POST you cannot paper over it with a redirect-following client and call it handled, because whether the body and method survive the hop is up to the client. Send the slash.
+
+**2. `Lines` is an object, not an array.** The lines go in an array under `Lines.list`. A top-level `Lines` array **fails** — this is the mistake the `/new` template does not protect you from, since it shows the container without explaining the nesting.
+
+#### Header fields
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `CustomerId` | string | P21 customer ID the order is placed against |
+| `CompanyId` | string | Company/branch code |
+| `LocationId` | string | Fulfilling location ID |
+| `Taker` | string | User/service account identifier that "took" the order |
+| `PromiseDate` | string (`YYYY-MM-DD`) | Promised ship/delivery date |
+| `TermsId` | string | Payment terms code (e.g. `NET30`) |
+| `ShipToId` | string | Ship-to record ID |
+| `ShipToName`, `ShipToAddress1`, `ShipToAddress2`, `ShipToCity`, `ShipToState`, `ZipCode`, `ShipToCountry` | string | Ship-to address fields — sent inline when `ShipToId` alone doesn't resolve the full address |
+| `ShipToEmail`, `ShipToPhone` | string | Ship-to contact details |
+| `SourceLocId` | string | Source location for the order |
+| `PoNo` | string | Customer PO number reference |
+| `Quote` | string (`"Y"`/`"N"`) | Whether this is a quote rather than a firm order |
+| `DeletedFlag` | string (`"Y"`/`"N"`) | Soft-delete flag — `"N"` for new orders |
+| `Lines` | object | Container wrapping the lines — **not** an array |
+| `Lines.list` | array | The line objects |
+
+#### Line fields (`Lines.list[]`)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `ItemId` | string | Item being ordered |
+| `UnitQuantity` | number | Quantity in `UnitOfMeasure` |
+| `UnitOfMeasure` | string | e.g. `EA` |
+| `UnitPrice` | number | Price per unit |
+| `TaxItem` | string (`"Y"`/`"N"`) | Whether the line is taxable |
+| `Delete` | string (`"Y"`/`"N"`) | `"N"` on a new line |
+
+Note the type split: quantities and prices are **JSON numbers** here, while the flags are `"Y"`/`"N"` **strings** — unlike the Transaction API, where every `Value` is a string.
+
+#### Example request body
+
+```json
+POST {base_url}/api/sales/orders/
+
+{
+    "CustomerId": "100198",
+    "CompanyId": "ACME",
+    "LocationId": "10",
+    "Taker": "JSMITH",
+    "PromiseDate": "2030-01-06",
+    "TermsId": "NET30",
+    "ShipToId": "200",
+    "ShipToName": "Acme Fulfillment Co",
+    "ShipToAddress1": "123 Example Street",
+    "ShipToAddress2": "Ste 100",
+    "ShipToCity": "Atlanta",
+    "ShipToState": "GA",
+    "ZipCode": "30000",
+    "ShipToCountry": "US",
+    "ShipToEmail": "orders@example.com",
+    "ShipToPhone": "000-000-0000",
+    "SourceLocId": "10",
+    "PoNo": "PO-TEST-001",
+    "Quote": "N",
+    "DeletedFlag": "N",
+    "Lines": {
+        "list": [
+            {
+                "ItemId": "WIDGET-001",
+                "UnitQuantity": 1,
+                "UnitOfMeasure": "EA",
+                "UnitPrice": 0.99,
+                "TaxItem": "N",
+                "Delete": "N"
+            }
+        ]
+    }
+}
+```
+
+#### Complete example
+
+The create response shape is unconfirmed (see [below](#what-is-not-pinned-down-yet)), so this program **prints the raw body** before trying to find an order number in it, and reads the order back when it finds one. Run it against a play tenant first — it writes a real order.
+
+<!-- tabs -->
+
+**Python:**
+```python
+"""Create a sales order through the REST API, then read it back."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+CUSTOMER_ID = "100198"
+COMPANY_ID = "ACME"
+LOCATION_ID = "10"
+TAKER = "JSMITH"
+PROMISE_DATE = "2030-01-06"
+TERMS_ID = "NET30"
+SHIP_TO_ID = "200"
+ITEM_ID = "WIDGET-001"
+QUANTITY = 1
+UNIT_PRICE = 0.99
+# ---------------------------------------------------------------------------
+
+ORDER = {
+    "CustomerId": CUSTOMER_ID,
+    "CompanyId": COMPANY_ID,
+    "LocationId": LOCATION_ID,
+    "Taker": TAKER,
+    "PromiseDate": PROMISE_DATE,
+    "TermsId": TERMS_ID,
+    "ShipToId": SHIP_TO_ID,
+    "SourceLocId": LOCATION_ID,
+    "PoNo": "PO-TEST-001",
+    "Quote": "N",                          # "Y" makes it a quote, not an order
+    "DeletedFlag": "N",
+    # Lines is an OBJECT wrapping a list -- a top-level array fails.
+    "Lines": {
+        "list": [
+            {
+                "ItemId": ITEM_ID,
+                "UnitQuantity": QUANTITY,
+                "UnitOfMeasure": "EA",
+                "UnitPrice": UNIT_PRICE,
+                "TaxItem": "N",
+                "Delete": "N",
+            }
+        ]
+    },
+}
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Content-Type": "application/json",
+    }
+
+    # The trailing slash is required -- without it the request isn't routed here.
+    resp = client.post(f"{BASE_URL}/api/sales/orders/", headers=headers, json=ORDER)
+    print(f"HTTP {resp.status_code}")
+    print(resp.text[:1000] or "(empty body)")   # success shape is unconfirmed -- read it raw
+    resp.raise_for_status()
+
+    # Find the new order number. The response key is not confirmed, so try the
+    # plausible spellings rather than assuming one.
+    body = resp.json() if resp.text.strip().startswith("{") else {}
+    order_no = next(
+        (str(body[key]) for key in ("OrderNo", "OrderNumber", "Id", "OrderId") if body.get(key)),
+        None,
+    )
+    if not order_no:
+        raise SystemExit("No order number in the create response -- see the body printed above")
+
+    # Read back -- HTTP 200 on the POST doesn't confirm what actually landed.
+    resp = client.get(f"{BASE_URL}/api/sales/orders/{order_no}", headers=headers)
+    resp.raise_for_status()
+    order = resp.json()
+    lines = (order.get("Lines") or {}).get("list") or []
+    print(f"Order {order_no}: customer {order.get('CustomerId')}, {len(lines)} line(s)")
+```
+
+**C#:**
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CustomerId = "100198";
+const string CompanyId = "ACME";
+const string LocationId = "10";
+const string Taker = "JSMITH";
+const string PromiseDate = "2030-01-06";
+const string TermsId = "NET30";
+const string ShipToId = "200";
+const string ItemId = "WIDGET-001";
+const decimal Quantity = 1m;
+const decimal UnitPrice = 0.99m;
+// ---------------------------------------------------------------------------
+
+var order = new Dictionary<string, object?>
+{
+    ["CustomerId"] = CustomerId,
+    ["CompanyId"] = CompanyId,
+    ["LocationId"] = LocationId,
+    ["Taker"] = Taker,
+    ["PromiseDate"] = PromiseDate,
+    ["TermsId"] = TermsId,
+    ["ShipToId"] = ShipToId,
+    ["SourceLocId"] = LocationId,
+    ["PoNo"] = "PO-TEST-001",
+    ["Quote"] = "N",                                    // "Y" makes it a quote, not an order
+    ["DeletedFlag"] = "N",
+    // Lines is an OBJECT wrapping a list -- a top-level array fails.
+    ["Lines"] = new Dictionary<string, object?>
+    {
+        ["list"] = new[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["ItemId"] = ItemId,
+                ["UnitQuantity"] = Quantity,
+                ["UnitOfMeasure"] = "EA",
+                ["UnitPrice"] = UnitPrice,
+                ["TaxItem"] = "N",
+                ["Delete"] = "N",
+            },
+        },
+    },
+};
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    AllowAutoRedirect = true,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// The trailing slash is required -- without it the request isn't routed here.
+var resp = await client.PostAsync(
+    $"{BaseUrl}/api/sales/orders/",
+    new StringContent(JsonSerializer.Serialize(order), Encoding.UTF8, "application/json"));
+var responseBody = await resp.Content.ReadAsStringAsync();
+Console.WriteLine($"HTTP {(int)resp.StatusCode}");
+Console.WriteLine(responseBody.Length > 0
+    ? responseBody[..Math.Min(1000, responseBody.Length)]   // success shape is unconfirmed
+    : "(empty body)");
+resp.EnsureSuccessStatusCode();
+
+// Find the new order number. The response key is not confirmed, so try the
+// plausible spellings rather than assuming one.
+string? orderNo = null;
+if (responseBody.TrimStart().StartsWith("{"))
+{
+    using var created = JsonDocument.Parse(responseBody);
+    foreach (var key in new[] { "OrderNo", "OrderNumber", "Id", "OrderId" })
+    {
+        if (created.RootElement.TryGetProperty(key, out var value) &&
+            value.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined))
+        {
+            orderNo = value.ToString();
+            if (!string.IsNullOrWhiteSpace(orderNo)) break;
+        }
+    }
+}
+
+if (string.IsNullOrWhiteSpace(orderNo))
+{
+    Console.WriteLine("No order number in the create response -- see the body printed above");
+    return;
+}
+
+// Read back -- HTTP 200 on the POST doesn't confirm what actually landed.
+resp = await client.GetAsync($"{BaseUrl}/api/sales/orders/{orderNo}");
+resp.EnsureSuccessStatusCode();
+using var readBack = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+var lineCount = readBack.RootElement.TryGetProperty("Lines", out var lines) &&
+                lines.TryGetProperty("list", out var list) &&
+                list.ValueKind == JsonValueKind.Array
+    ? list.GetArrayLength()
+    : 0;
+var customer = readBack.RootElement.TryGetProperty("CustomerId", out var c) ? c.ToString() : "?";
+Console.WriteLine($"Order {orderNo}: customer {customer}, {lineCount} line(s)");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+#### What is not pinned down yet
+
+Stated as unknowns rather than guessed at — if you settle one against your tenant, [open an issue](https://github.com/mrwuss/p21-api-documentation/issues/new/choose) and it gets documented:
+
+- **The success response shape**, including where the generated order number comes back. The example above prints the raw body and probes four plausible key spellings for exactly this reason.
+- **Which fields are strictly required** versus optional. The header above is one working example from one 25.2 tenant, not a minimum payload — configuration (taxes, terms, ship-to defaults) decides what your server insists on.
+- **Whether the inline ship-to fields are required alongside `ShipToId`** or only act as a fallback when the ship-to record doesn't resolve a full address.
+- **HTTP status codes and body for validation failures** — the write-side error vocabulary of this family is undocumented.
+- **The other collections in the `/new` template** (`Notes`, `Salesreps`, `BuilderSelectionSheets`, `Samples`) — presumably the same `{"list": [...]}` nesting as `Lines`, but untested.
+
+#### REST vs the Transaction API for order creation
+
+Both create orders. Pick by what you need:
+
+| | `POST /api/sales/orders/` | Transaction API `Order` service |
+|---|---|---|
+| Payload | Plain domain JSON, lines under `Lines.list` | `DataElements` / `Rows` / `Edits`, every value a string |
+| Verified by | Contributor, 25.2 ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) | This repo, against a live tenant |
+| Error reporting | Undocumented (see above) | `Summary.Succeeded` / `Failed` envelope, [documented traps](06-Error-Handling.md) |
+| Bulk | One order per call | Many orders per call |
+| Assembly lines | Untested | Auto-answers the explode prompt **No** — use the [order-with-assembly](recipes/order-with-assembly.md) recipe instead |
+
+For a walk-through of the Transaction path, see the [create-sales-order recipe](recipes/create-sales-order.md).
 
 ### Families that 404 on the tested tenant
 
 `sales/customers`, `sales/quotes`, `sales/invoices`, `sales/shipments`, `sales/payments`, `purchasing/*`, `ar/*`, `inventory/items`, `inventory/lots` — all returned 404 on ping. Availability may vary by version; the SOA middleware admin site lists the endpoint families your server actually exposes.
 
 *Credit: Felipe Maurer ([P21WWUG profile](https://forums.p21ww.org/UserInfo10045.aspx)) — surfaced `/api/sales/orders` and the middleware endpoint listing in [this forum topic](https://forums.p21ww.org/Topic245514-3.aspx).*
+
+*Credit: [Rob Landham](https://github.com/roblandham) — documented `POST /api/sales/orders/`, the required trailing slash and the `Lines.list` nesting, tested on 25.2 ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)).*
 
 ---
 

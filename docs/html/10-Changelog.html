@@ -516,6 +516,7 @@
                 <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-19-v151">2026-08-19 — v1.5.1</a></li>
 <li><a href="#2026-08-11-v150">2026-08-11 — v1.5.0</a><ul>
 <li><a href="#first-pass-claims-checked-while-resolving-the-issues">First pass — claims checked while resolving the issues</a></li>
 <li><a href="#second-verification-pass-every-remaining-unproven-claim-chased">Second verification pass — every remaining unproven claim chased</a></li>
@@ -577,6 +578,12 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-19-v151">2026-08-19 — v1.5.1</h2>
+<p>Community contribution: the <code>/api/sales/orders</code> family creates orders as well as reading them.</p>
+<ul>
+<li><strong>feat:</strong> <strong><code>POST /api/sales/orders/</code> creates a sales order</strong> — documented from a community contribution tested on <strong>25.2</strong>, with the two shape rules that decide whether the call works at all: the <strong>trailing slash is required</strong> (without it the request is not routed to the API — and on a POST you cannot lean on a redirect-following client the way the read-side 307 lets you), and <strong><code>Lines</code> is an object, not an array</strong> — the lines go in <code>Lines.list</code>, which the <code>/new</code> template shows without explaining. Adds the header and line field tables, an example body, a complete runnable Python/C# program, and a REST-vs-Transaction comparison for choosing between the two order-creation paths. The section states plainly what the contribution does <strong>not</strong> settle — the success response shape and where the order number comes back, which fields are strictly required versus optional, whether the inline ship-to fields are required alongside <code>ShipToId</code> or only a fallback, the validation-error status codes, and whether the <code>/new</code> template's other collections (<code>Notes</code>, <code>Salesreps</code>, …) use the same <code>list</code> nesting — so nobody mistakes one working payload for a specification. Doc 05's "writes are untested" note, the selection guide and the task index are updated accordingly. → <a href="05-Entity-API.html#creating-an-order-post-apisalesorders">05 § Creating an Order</a> — <em>Rob Landham (<a href="https://github.com/roblandham">@roblandham</a>), documented by @mrwuss</em> — Fixes #108</li>
+</ul>
 <hr />
 <h2 id="2026-08-11-v150">2026-08-11 — v1.5.0</h2>
 <p>Cleared issues #103 and #105–#107, converted every API-calling code example in the docs into a complete runnable program, and re-verified a batch of long-standing claims against a live tenant. Verification build: <strong>26.1.5910.3</strong>. The checks turned up several errors in our own documentation; those are listed first.</p>
@@ -881,6 +888,11 @@
 <td>NextTWis</td>
 <td><a href="https://github.com/NextTWis">@NextTWis</a></td>
 <td>Postman Collection for P21 API verification (<a href="https://github.com/mrwuss/p21-api-documentation/pull/24">PR #24</a>)</td>
+</tr>
+<tr>
+<td>Rob Landham</td>
+<td><a href="https://github.com/roblandham">@roblandham</a></td>
+<td><code>POST /api/sales/orders/</code> order creation — payload shape, required trailing slash, <code>Lines.list</code> nesting (<a href="https://github.com/mrwuss/p21-api-documentation/issues/108">issue #108</a>)</td>
 </tr>
 <tr>
 <td>Alex Westemeier</td>
