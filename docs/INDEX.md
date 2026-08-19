@@ -50,6 +50,9 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Pick the right `Keys` for an element (and what over-keying breaks) | [03 § Choosing a key](03-Transaction-API.md#choosing-a-key) · [03 § What the definition already tells you](03-Transaction-API.md#what-the-definition-already-tells-you) |
 | Child rows all attached to the last parent (extended info, lots, breaks) | [03 § The general rule: repeat the element pair](03-Transaction-API.md#the-general-rule-repeat-the-element-pair-dont-batch-it) |
 | Read one record whole / **clone** an existing record | [03 § Reading One Record](03-Transaction-API.md#reading-one-record-post-transactionget) |
+| Read **several** records in one `/transaction/get` call | [03 § Reading several records in one call](03-Transaction-API.md#reading-several-records-in-one-call) |
+| `Sequence contains no matching element` / `Invalid column name` on a keyed write | [03 § Choosing a key](03-Transaction-API.md#choosing-a-key) — every `Keys` field must be a real column **and** be sent in `Edits` |
+| Write a **note** on an order line or header | [03 § Limitations](03-Transaction-API.md#limitations) — `Order`'s note elements are published but disabled; use [04 § PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line) |
 | Which discovery endpoint — `definition` vs `defaults` vs `basics` | [03 § Endpoints](03-Transaction-API.md#endpoints) |
 | Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) — **not a universal unlock; it can report success and write nothing** |
 | Contract break tiers refuse to save / "Tab page is disabled" | [03 § VALUES Writes Are Refused on 26.1](03-Transaction-API.md#values-writes-are-refused-on-261) · [14 § entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) |
