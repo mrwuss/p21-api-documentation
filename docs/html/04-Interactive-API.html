@@ -40,17 +40,58 @@
             border-bottom: 1px solid #2c3e50;
         }
 
-        .sidebar-section {
-            padding: 12px 0 4px;
+        .sidebar-header a {
+            color: inherit;
+            text-decoration: none;
         }
 
-        .sidebar-section-title {
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .nav-group {
+            padding: 10px 0 2px;
+        }
+
+        .nav-group > summary {
             padding: 0 16px 6px;
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #6b7f95;
             font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }
+
+        .nav-group > summary::-webkit-details-marker { display: none; }
+
+        .nav-group > summary::before {
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }
+
+        .nav-group[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .nav-group > summary:hover {
+            color: #a0b4c8;
+        }
+
+        .nav-count {
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
         }
 
         .nav-pages {
@@ -80,7 +121,48 @@
             font-weight: 600;
         }
 
-        /* Page ToC in sidebar */
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }
+
+        .toc-rail-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }
+
+        .toc-inline {
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .toc-inline > summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }
+
+        .toc-inline .page-toc {
+            padding: 0 8px 10px;
+        }
+
         .page-toc {
             padding: 0 8px;
         }
@@ -98,20 +180,21 @@
         .page-toc a {
             display: block;
             padding: 3px 8px;
-            color: #8a9bb5;
+            color: #5f7183;
             text-decoration: none;
             font-size: 0.82rem;
-            border-left: 2px solid transparent;
-            transition: color 0.15s;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
         }
 
         .page-toc a:hover {
-            color: #e8eef4;
+            color: #1a5276;
         }
 
         .page-toc a.active {
-            color: #3498db;
-            border-left-color: #3498db;
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
         }
 
         /* Indent h3 items */
@@ -120,9 +203,6 @@
             font-size: 0.78rem;
         }
 
-        .page-toc-section {
-            border-top: 1px solid #2c3e50;
-        }
 
         /* ===== Main Content ===== */
         .content {
@@ -280,7 +360,9 @@
                 display: block;
                 background: #fff;
             }
-            .sidebar {
+            .sidebar,
+            .toc-rail,
+            .toc-inline {
                 display: none;
             }
             .content {
@@ -310,6 +392,17 @@
             }
         }
 
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {
+            .toc-rail {
+                display: none;
+            }
+            .toc-inline {
+                display: block;
+            }
+        }
+
         /* ===== Mobile ===== */
         @media (max-width: 1100px) {
             body {
@@ -320,6 +413,11 @@
                 min-width: unset;
                 height: auto;
                 position: relative;
+            }
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {
+                display: block;
             }
             .content {
                 padding: 20px;
@@ -467,53 +565,75 @@
 <body>
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+            <a href="index.html"><strong>P21 API Docs</strong></a>
         </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Pages</div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+        <details class="nav-group" open>
+            <summary>Start Here</summary>
             <ul class="nav-pages">
-        <li><a href="00-Authentication.html">P21 API Authentication</a></li>
-        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
-        <li><a href="02-OData-API.html">OData API</a></li>
-        <li><a href="03-Transaction-API.html">Transaction API</a></li>
-        <li class="active"><a href="04-Interactive-API.html">Interactive API</a></li>
-        <li><a href="05-Entity-API.html">Entity API</a></li>
-        <li><a href="06-Error-Handling.html">Error Handling</a></li>
-        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
-        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
-        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
-        <li><a href="10-Changelog.html">Changelog</a></li>
-        <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
-        <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
-        <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
-        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
-        <li><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
+            <li><a href="task-index.html">Task Index</a></li>
+            <li><a href="00-Authentication.html">Authentication</a></li>
+            <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
             </ul>
-        </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Recipes</div>
+        </details>
+        <details class="nav-group" open>
+            <summary>API Reference</summary>
             <ul class="nav-pages">
-        <li><a href="recipes/README.html">Recipes Overview</a></li>
-        <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
-        <li><a href="recipes/create-customer.html">Create a Customer</a></li>
-        <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
-        <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
-        <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
-        <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
-        <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
-        <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
-        <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
-        <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
-        <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
-        <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
-        <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
-        <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            <li><a href="02-OData-API.html">OData API</a></li>
+            <li><a href="03-Transaction-API.html">Transaction API</a></li>
+            <li class="active"><a href="04-Interactive-API.html">Interactive API</a></li>
+            <li><a href="05-Entity-API.html">Entity API</a></li>
+            <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+            <li><a href="12-Production-Labor-API.html">Production & Labor</a></li>
+            <li><a href="13-UDT-Service-API.html">UDT Service API</a></li>
             </ul>
-        </div>
-        <div class="sidebar-section page-toc-section">
-            <div class="sidebar-section-title">On This Page</div>
-            <div class="page-toc" id="page-toc">
-                <div class="toc">
+        </details>
+        <details class="nav-group" open>
+            <summary>Guides & Troubleshooting</summary>
+            <ul class="nav-pages">
+            <li><a href="14-Breaking-Changes.html">Breaking Changes</a></li>
+            <li><a href="06-Error-Handling.html">Error Handling</a></li>
+            <li><a href="07-Session-Pool-Troubleshooting.html">Session Pool Issues</a></li>
+            <li><a href="08-SalesPricePage-Codes.html">SalesPricePage Codes</a></li>
+            <li><a href="09-Batch-Processing-Patterns.html">Batch Processing</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Project</summary>
+            <ul class="nav-pages">
+            <li><a href="10-Changelog.html">Changelog</a></li>
+            </ul>
+        </details>
+        <details class="nav-group">
+            <summary>Recipes <span class="nav-count">15</span></summary>
+            <ul class="nav-pages">
+            <li><a href="recipes/README.html">Recipes Overview</a></li>
+            <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+            <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+            <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+            <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+            <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+            <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+            <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            </ul>
+        </details>
+        </details>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        <div class="toc">
 <ul>
 <li><a href="#overview">Overview</a><ul>
 <li><a href="#key-characteristics">Key Characteristics</a></li>
@@ -625,12 +745,8 @@
 </ul>
 </div>
 
-            </div>
-        </div>
-    </nav>
-
-    <main class="content">
-        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+</details>
 <h1 id="interactive-api">Interactive API</h1>
 <blockquote>
 <p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
@@ -1650,6 +1766,7 @@
 </ol>
 <blockquote>
 <p><strong>The popup's id lives in <code>Events</code> — not in the top-level <code>ResponseWindowId</code>.</strong> That field exists in the response and is <strong>empty on real 26.1 responses</strong>, so a client that reads it gets <code>""</code> and concludes there is no popup to answer. A production integration had <em>every</em> blocked save fail this way before switching to the event. Read <code>Events[] → windowopened → Data[] → windowid</code>; check the top-level field first only as forward-compatibility, never as the primary source.</p>
+<p><strong>There is no dedicated "answer this dialog" endpoint</strong> — message boxes (<code>w_message</code>) cannot be answered programmatically. Probed and dead (January 2026): <code>PUT /api/ui/interactive/v2/responsewindow</code> → 404, <code>PUT /api/ui/interactive/v2/responsewindows</code> → 404, <code>POST /api/ui/interactive/v2/button</code> → 404, <code>DELETE /api/ui/interactive/v2/window?button=No</code> → 400. With <code>ResponseWindowHandlingEnabled: false</code> a <code>w_message</code> is auto-answered with its default (usually "Yes") — e.g. changing <code>product_group_id</code> on <code>inv_loc</code> triggers a "update GL accounts?" dialog whose default <strong>overwrites the location's GL, revenue, and COS accounts</strong>. Non-message-box popups ARE drivable: discover buttons via <code>GET /tools?windowId={id}</code> and click via <code>POST /tools</code> (see <a href="#response-window-types">Response Window Types</a>).</p>
 <p><strong>Status codes</strong> match the <code>ResultStatus</code> enum in <code>P21.UI.Service.Model.Interactive.V2.ResultWrapper</code>:
 <code>None=0, Success=1, Failure=2, Blocked=3</code>.
 The API returns Status as an integer. String values (<code>"Success"</code>, <code>"Failure"</code>, <code>"Blocked"</code>) may appear in some contexts — handle both.</p>
@@ -4890,6 +5007,124 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </ul>
     </main>
 
+    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a><ul>
+<li><a href="#key-characteristics">Key Characteristics</a></li>
+<li><a href="#when-to-use">When to Use</a></li>
+</ul>
+</li>
+<li><a href="#endpoints">Endpoints</a><ul>
+<li><a href="#session-management">Session Management</a></li>
+<li><a href="#window-operations-v2">Window Operations (v2)</a></li>
+<li><a href="#data-operations-v2-recommended">Data Operations (v2, Recommended)</a></li>
+<li><a href="#data-operations-v1-legacy">Data Operations (v1 - Legacy)</a></li>
+</ul>
+</li>
+<li><a href="#authentication">Authentication</a></li>
+<li><a href="#session-lifecycle">Session Lifecycle</a><ul>
+<li><a href="#1-start-session">1. Start Session</a></li>
+<li><a href="#2-open-window">2. Open Window</a></li>
+<li><a href="#3-change-data">3. Change Data</a></li>
+<li><a href="#4-save-data">4. Save Data</a></li>
+<li><a href="#5-close-window">5. Close Window</a></li>
+<li><a href="#6-end-session">6. End Session</a></li>
+</ul>
+</li>
+<li><a href="#finding-field-names">Finding Field Names</a></li>
+<li><a href="#window-discovery-techniques">Window Discovery Techniques</a><ul>
+<li><a href="#1-get-window-state">1. Get Window State</a></li>
+<li><a href="#2-get-available-tools">2. Get Available Tools</a></li>
+<li><a href="#3-get-current-data">3. Get Current Data</a></li>
+<li><a href="#4-check-result-events">4. Check Result Events</a></li>
+<li><a href="#5-p21-sql-information">5. P21 SQL Information</a></li>
+<li><a href="#6-browser-devtools">6. Browser DevTools</a></li>
+<li><a href="#7-transaction-api-service-definition">7. Transaction API Service Definition</a></li>
+<li><a href="#8-window-to-service-discovery-frame_menu">8. Window-to-Service Discovery (frame_menu)</a></li>
+</ul>
+</li>
+<li><a href="#response-windows">Response Windows</a><ul>
+<li><a href="#response-window-handling-tabless-windows">Response Window Handling (Tabless Windows)</a></li>
+<li><a href="#worked-example-item-issues-detected-rule-callback">Worked Example: "Item Issues Detected" (rule callback)</a></li>
+</ul>
+</li>
+<li><a href="#changing-tabs">Changing Tabs</a></li>
+<li><a href="#running-tools-buttons">Running Tools (Buttons)</a><ul>
+<li><a href="#get-available-tools">Get Available Tools</a></li>
+<li><a href="#run-a-tool">Run a Tool</a></li>
+</ul>
+</li>
+<li><a href="#python-and-c-examples">Python and C# Examples</a><ul>
+<li><a href="#basic-client-class">Basic Client Class</a></li>
+<li><a href="#context-manager-disposable-usage-sync">Context Manager / Disposable Usage (Sync)</a></li>
+<li><a href="#async-context-manager-iasyncdisposable-recommended">Async Context Manager / IAsyncDisposable (Recommended)</a></li>
+</ul>
+</li>
+<li><a href="#working-example-scripts">Working Example Scripts</a></li>
+<li><a href="#common-windows">Common Windows</a><ul>
+<li><a href="#production-labor-windows">Production &amp; Labor Windows</a></li>
+</ul>
+</li>
+<li><a href="#example-linking-price-page-to-price-book">Example: Linking Price Page to Price Book</a><ul>
+<li><a href="#price-book-naming-and-lookup-strategies">Price Book Naming and Lookup Strategies</a></li>
+</ul>
+</li>
+<li><a href="#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes (Header vs Line)</a><ul>
+<li><a href="#the-notepad-entry-popup">The Notepad Entry Popup</a></li>
+<li><a href="#recipe-add-a-header-note">Recipe: Add a Header Note</a></li>
+<li><a href="#recipe-add-a-line-note">Recipe: Add a Line Note</a></li>
+</ul>
+</li>
+<li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
+<li><a href="#data-structures-reference">Data Structures Reference</a><ul>
+<li><a href="#result-object">Result Object</a></li>
+<li><a href="#messages">Messages</a></li>
+<li><a href="#events">Events</a></li>
+<li><a href="#window-definition">Window Definition</a></li>
+<li><a href="#window-data">Window Data</a></li>
+</ul>
+</li>
+<li><a href="#self-documenting-help-endpoints">Self-Documenting Help Endpoints</a></li>
+<li><a href="#v1-rest-endpoint-reference-sdk-internal">V1 REST Endpoint Reference (SDK Internal)</a></li>
+<li><a href="#verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</a></li>
+<li><a href="#best-practices">Best Practices</a></li>
+<li><a href="#common-errors">Common Errors</a></li>
+<li><a href="#session-vs-transaction-api">Session vs Transaction API</a></li>
+<li><a href="#known-issues-and-workarounds">Known Issues and Workarounds</a><ul>
+<li><a href="#row-selection-synchronization-bug-list-detail">Row Selection Synchronization Bug (List → Detail)</a></li>
+<li><a href="#row-0-auto-selection-quirk">Row 0 Auto-Selection Quirk</a></li>
+<li><a href="#key-fields-commit-the-cursor-later-fields-silently-ignored">Key Fields Commit the Cursor (Later Fields Silently Ignored)</a></li>
+<li><a href="#numeric-values-send-integer-strings-for-whole-numbers">Numeric Values: Send Integer Strings for Whole Numbers</a></li>
+</ul>
+</li>
+<li><a href="#v1-vs-v2-api-differences">v1 vs v2 API Differences</a><ul>
+<li><a href="#summary-table">Summary Table</a></li>
+<li><a href="#change-request-format">Change Request Format</a></li>
+<li><a href="#save-format">Save Format</a></li>
+<li><a href="#tab-change-format">Tab Change Format</a></li>
+<li><a href="#row-change-format">Row Change Format</a></li>
+<li><a href="#get-window-data-close-window">Get Window Data / Close Window</a></li>
+</ul>
+</li>
+<li><a href="#troubleshooting-v2-issues">Troubleshooting v2 Issues</a></li>
+<li><a href="#operational-patterns">Operational Patterns</a><ul>
+<li><a href="#tab-unlock-sequences">Tab Unlock Sequences</a></li>
+<li><a href="#add_row-with-status2-failure">add_row with Status=2 (Failure)</a></li>
+<li><a href="#response-window-types">Response Window Types</a></li>
+<li><a href="#uom-auto-population">UOM Auto-Population</a></li>
+<li><a href="#timeout-recommendations">Timeout Recommendations</a></li>
+</ul>
+</li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
+
+        </div>
+    </aside>
+
     <script>
         // Add IDs to headers for linking
         document.querySelectorAll('h2, h3, h4').forEach(function(header) {
@@ -4899,6 +5134,22 @@ Row 5 selected → Detail shows row 4 (1 behind)
                     .replace(/(^-|-$)/g, '');
             }
         });
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {
+                if (mq.matches) { fold.removeAttribute('open'); }
+                else { fold.setAttribute('open', ''); }
+            }
+            if (mq.addEventListener) { mq.addEventListener('change', apply); }
+            else if (mq.addListener) { mq.addListener(apply); }
+            apply();
+        })();
 
         // Highlight current ToC item on scroll
         (function() {

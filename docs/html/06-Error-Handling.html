@@ -40,17 +40,58 @@
             border-bottom: 1px solid #2c3e50;
         }
 
-        .sidebar-section {
-            padding: 12px 0 4px;
+        .sidebar-header a {
+            color: inherit;
+            text-decoration: none;
         }
 
-        .sidebar-section-title {
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .nav-group {
+            padding: 10px 0 2px;
+        }
+
+        .nav-group > summary {
             padding: 0 16px 6px;
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #6b7f95;
             font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }
+
+        .nav-group > summary::-webkit-details-marker { display: none; }
+
+        .nav-group > summary::before {
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }
+
+        .nav-group[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .nav-group > summary:hover {
+            color: #a0b4c8;
+        }
+
+        .nav-count {
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
         }
 
         .nav-pages {
@@ -80,7 +121,48 @@
             font-weight: 600;
         }
 
-        /* Page ToC in sidebar */
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }
+
+        .toc-rail-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }
+
+        .toc-inline {
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .toc-inline > summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }
+
+        .toc-inline .page-toc {
+            padding: 0 8px 10px;
+        }
+
         .page-toc {
             padding: 0 8px;
         }
@@ -98,20 +180,21 @@
         .page-toc a {
             display: block;
             padding: 3px 8px;
-            color: #8a9bb5;
+            color: #5f7183;
             text-decoration: none;
             font-size: 0.82rem;
-            border-left: 2px solid transparent;
-            transition: color 0.15s;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
         }
 
         .page-toc a:hover {
-            color: #e8eef4;
+            color: #1a5276;
         }
 
         .page-toc a.active {
-            color: #3498db;
-            border-left-color: #3498db;
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
         }
 
         /* Indent h3 items */
@@ -120,9 +203,6 @@
             font-size: 0.78rem;
         }
 
-        .page-toc-section {
-            border-top: 1px solid #2c3e50;
-        }
 
         /* ===== Main Content ===== */
         .content {
@@ -280,7 +360,9 @@
                 display: block;
                 background: #fff;
             }
-            .sidebar {
+            .sidebar,
+            .toc-rail,
+            .toc-inline {
                 display: none;
             }
             .content {
@@ -310,6 +392,17 @@
             }
         }
 
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {
+            .toc-rail {
+                display: none;
+            }
+            .toc-inline {
+                display: block;
+            }
+        }
+
         /* ===== Mobile ===== */
         @media (max-width: 1100px) {
             body {
@@ -320,6 +413,11 @@
                 min-width: unset;
                 height: auto;
                 position: relative;
+            }
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {
+                display: block;
             }
             .content {
                 padding: 20px;
@@ -467,53 +565,75 @@
 <body>
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+            <a href="index.html"><strong>P21 API Docs</strong></a>
         </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Pages</div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+        <details class="nav-group" open>
+            <summary>Start Here</summary>
             <ul class="nav-pages">
-        <li><a href="00-Authentication.html">P21 API Authentication</a></li>
-        <li><a href="01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
-        <li><a href="02-OData-API.html">OData API</a></li>
-        <li><a href="03-Transaction-API.html">Transaction API</a></li>
-        <li><a href="04-Interactive-API.html">Interactive API</a></li>
-        <li><a href="05-Entity-API.html">Entity API</a></li>
-        <li class="active"><a href="06-Error-Handling.html">Error Handling</a></li>
-        <li><a href="07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
-        <li><a href="08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
-        <li><a href="09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
-        <li><a href="10-Changelog.html">Changelog</a></li>
-        <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
-        <li><a href="12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
-        <li><a href="13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
-        <li><a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
-        <li><a href="task-index.html">Task Index — Find the Right Section Fast</a></li>
+            <li><a href="task-index.html">Task Index</a></li>
+            <li><a href="00-Authentication.html">Authentication</a></li>
+            <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
             </ul>
-        </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Recipes</div>
+        </details>
+        <details class="nav-group" open>
+            <summary>API Reference</summary>
             <ul class="nav-pages">
-        <li><a href="recipes/README.html">Recipes Overview</a></li>
-        <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
-        <li><a href="recipes/create-customer.html">Create a Customer</a></li>
-        <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
-        <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
-        <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
-        <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
-        <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
-        <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
-        <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
-        <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
-        <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
-        <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
-        <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
-        <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            <li><a href="02-OData-API.html">OData API</a></li>
+            <li><a href="03-Transaction-API.html">Transaction API</a></li>
+            <li><a href="04-Interactive-API.html">Interactive API</a></li>
+            <li><a href="05-Entity-API.html">Entity API</a></li>
+            <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+            <li><a href="12-Production-Labor-API.html">Production & Labor</a></li>
+            <li><a href="13-UDT-Service-API.html">UDT Service API</a></li>
             </ul>
-        </div>
-        <div class="sidebar-section page-toc-section">
-            <div class="sidebar-section-title">On This Page</div>
-            <div class="page-toc" id="page-toc">
-                <div class="toc">
+        </details>
+        <details class="nav-group" open>
+            <summary>Guides & Troubleshooting</summary>
+            <ul class="nav-pages">
+            <li><a href="14-Breaking-Changes.html">Breaking Changes</a></li>
+            <li class="active"><a href="06-Error-Handling.html">Error Handling</a></li>
+            <li><a href="07-Session-Pool-Troubleshooting.html">Session Pool Issues</a></li>
+            <li><a href="08-SalesPricePage-Codes.html">SalesPricePage Codes</a></li>
+            <li><a href="09-Batch-Processing-Patterns.html">Batch Processing</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Project</summary>
+            <ul class="nav-pages">
+            <li><a href="10-Changelog.html">Changelog</a></li>
+            </ul>
+        </details>
+        <details class="nav-group">
+            <summary>Recipes <span class="nav-count">15</span></summary>
+            <ul class="nav-pages">
+            <li><a href="recipes/README.html">Recipes Overview</a></li>
+            <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+            <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+            <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+            <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+            <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+            <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+            <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            </ul>
+        </details>
+        </details>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        <div class="toc">
 <ul>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#http-status-codes">HTTP Status Codes</a><ul>
@@ -587,12 +707,8 @@
 </ul>
 </div>
 
-            </div>
-        </div>
-    </nav>
-
-    <main class="content">
-        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+</details>
 <h1 id="error-handling">Error Handling</h1>
 <blockquote>
 <p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
@@ -846,6 +962,12 @@
 </code></pre></div>
 
 <p><strong>Solution</strong>: Check the service definition for required fields and order.</p>
+<p><strong><code>Sequence contains no matching element</code> (General Exception)</strong></p>
+<p>A field named in a <code>List</code> element's <code>Keys</code> array is missing from that row's <code>Edits</code>. Opaque but mechanical: every key field must be a real column <strong>and</strong> be sent in every row. A key naming a column that does not exist at all fails as <code>Invalid column name: {name}</code> instead. See <a href="03-Transaction-API.html#choosing-a-key">Transaction API - Choosing a key</a>.</p>
+<p><strong><code>This column is required.</code> (no column named)</strong></p>
+<p>A required field is absent from the payload, and the message does not say which. Diff your header against a working example or the full <code>definition</code> — on <code>Order</code>, the trigger is omitting <code>ship_to_id</code> (a field the abbreviated <a href="03-Transaction-API.html#endpoints"><code>basics</code></a> skeleton doesn't even list).</p>
+<p><strong>Write reported <code>Succeeded: 1</code> but the data is wrong (a line missing, a value on the wrong line)</strong></p>
+<p>Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a <code>List</code> element that agree on the element's key fields are folded into one, last value wins. See <a href="03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">Transaction API - Keys</a> for the debugging loop.</p>
 <p><strong>HTTP 500 on <code>Status: "Existing"</code></strong></p>
 <p><code>POST /api/v2/transaction</code> with <code>Status: "Existing"</code> returns HTTP 500 <code>NullReferenceException</code> (at <code>ToInternalBeSpecification</code>) — a platform-wide bug, not a payload problem, confirmed across multiple services.</p>
 <p><strong>Solution</strong>: Use <code>Status: "New"</code> with key fields identifying the existing record — keyed <code>"New"</code> rows act as an upsert (update on key match, insert when absent). See <a href="03-Transaction-API.html#updating-an-existing-contract">Transaction API - Updating an Existing Contract</a>.</p>
@@ -1884,6 +2006,86 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 </ul>
     </main>
 
+    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#http-status-codes">HTTP Status Codes</a><ul>
+<li><a href="#success-codes">Success Codes</a></li>
+<li><a href="#client-error-codes">Client Error Codes</a></li>
+<li><a href="#server-error-codes">Server Error Codes</a></li>
+</ul>
+</li>
+<li><a href="#authentication-errors">Authentication Errors</a><ul>
+<li><a href="#token-endpoint-errors">Token Endpoint Errors</a></li>
+<li><a href="#token-troubleshooting">Token Troubleshooting</a></li>
+</ul>
+</li>
+<li><a href="#odata-api-errors">OData API Errors</a><ul>
+<li><a href="#400-invalid-filter-expression">400 - Invalid Filter Expression</a></li>
+<li><a href="#404-table-not-found">404 - Table Not Found</a></li>
+<li><a href="#query-too-complex">Query Too Complex</a></li>
+</ul>
+</li>
+<li><a href="#transaction-api-errors">Transaction API Errors</a><ul>
+<li><a href="#summary-object">Summary Object</a></li>
+<li><a href="#common-transaction-errors">Common Transaction Errors</a></li>
+<li><a href="#session-pool-contamination">Session Pool Contamination</a></li>
+</ul>
+</li>
+<li><a href="#interactive-api-errors">Interactive API Errors</a><ul>
+<li><a href="#empty-http-500-on-every-interactive-call-20261">Empty HTTP 500 on Every Interactive Call (2026.1)</a></li>
+<li><a href="#alternating-500-409-session-already-exists-20261">Alternating 500 / 409 "Session already exists" (2026.1)</a></li>
+<li><a href="#batched-v2change-partially-applied-after-a-400-20261">Batched /v2/change Partially Applied After a 400 (2026.1)</a></li>
+<li><a href="#session-errors">Session Errors</a></li>
+<li><a href="#window-errors">Window Errors</a></li>
+<li><a href="#422-400-wrong-query-parameter">422 / 400 - Wrong Query Parameter</a></li>
+<li><a href="#field-not-found">Field Not Found</a></li>
+</ul>
+</li>
+<li><a href="#entity-api-errors">Entity API Errors</a><ul>
+<li><a href="#404-endpoint-not-found">404 - Endpoint Not Found</a></li>
+<li><a href="#405-method-not-allowed-address-updates">405 - Method Not Allowed (Address Updates)</a></li>
+<li><a href="#500-address-template-not-available">500 - Address Template Not Available</a></li>
+<li><a href="#validation-errors">Validation Errors</a></li>
+</ul>
+</li>
+<li><a href="#udt-service-errors">UDT Service Errors</a><ul>
+<li><a href="#invalid-row-uid-on-every-update-20261">"Invalid Row Uid!" on Every Update (2026.1)</a></li>
+<li><a href="#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">"[0] rows deleted ... successfully!" — a Delete That Deletes Nothing (2026.1)</a></li>
+<li><a href="#conditions-cannot-be-blank-or-none-on-delete-20261">"Conditions cannot be blank or none!" on Delete (2026.1)</a></li>
+<li><a href="#invalid-udt-table-incompatible-table-for-bulk-insert">"Invalid UDT table" / "Incompatible table for bulk insert"</a></li>
+</ul>
+</li>
+<li><a href="#field-length-limits-a-write-that-fails-on-size">Field Length Limits — a Write That Fails on Size</a><ul>
+<li><a href="#the-api-will-not-tell-you-the-limit">The API will not tell you the limit</a></li>
+<li><a href="#measured-limits">Measured limits</a></li>
+<li><a href="#measuring-one-yourself-two-traps-that-produce-a-confident-wrong-answer">Measuring one yourself — two traps that produce a confident wrong answer</a></li>
+<li><a href="#truncate-or-reject">Truncate or reject</a></li>
+</ul>
+</li>
+<li><a href="#python-error-handling">Python Error Handling</a><ul>
+<li><a href="#httpx-error-handling">httpx Error Handling</a></li>
+<li><a href="#transaction-api-error-handling">Transaction API Error Handling</a></li>
+<li><a href="#retry-logic">Retry Logic</a></li>
+</ul>
+</li>
+<li><a href="#debugging-tips">Debugging Tips</a><ul>
+<li><a href="#enable-verbose-logging">Enable Verbose Logging</a></li>
+<li><a href="#log-requestresponse">Log Request/Response</a></li>
+<li><a href="#check-token-expiration">Check Token Expiration</a></li>
+</ul>
+</li>
+<li><a href="#common-issues-quick-reference">Common Issues Quick Reference</a></li>
+<li><a href="#related">Related</a></li>
+</ul>
+</div>
+
+        </div>
+    </aside>
+
     <script>
         // Add IDs to headers for linking
         document.querySelectorAll('h2, h3, h4').forEach(function(header) {
@@ -1893,6 +2095,22 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
                     .replace(/(^-|-$)/g, '');
             }
         });
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {
+                if (mq.matches) { fold.removeAttribute('open'); }
+                else { fold.setAttribute('open', ''); }
+            }
+            if (mq.addEventListener) { mq.addEventListener('change', apply); }
+            else if (mq.addListener) { mq.addListener(apply); }
+            apply();
+        })();
 
         // Highlight current ToC item on scroll
         (function() {

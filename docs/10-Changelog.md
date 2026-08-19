@@ -340,7 +340,7 @@ First tagged release. This wave cross-checked the docs against a community proce
 | Rob Landham | [@roblandham](https://github.com/roblandham) | `POST /api/sales/orders/` order creation — payload shape, required trailing slash, `Lines.list` nesting ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) |
 | Alex Westemeier | [@AWestemeier](https://github.com/AWestemeier) | Report-service discovery, Transaction upsert + IgnoreDisabled findings, production lifecycle verification |
 | Jeff Poss | | PDF Report Generation endpoint discovery |
-| Felipe Maurer | | Entity API taxonomy correction, UDT Service API discovery and testing, Inventory pricing endpoints, Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI |
+| Felipe Maurer | | Entity API taxonomy correction, UDT Service API discovery and testing, Inventory pricing endpoints, Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI, Keys/row-collapse and `/transaction/get` session material (v1.6.0) |
 | Kevin Landry | | Stored Procedure Executor execution via Interactive API |
 | Brad Vandenbogaerde | | UDT database tables and SaaS hostname fix, SP Executor database tables, Visual Rule response/callback TAPI limitation |
 | Justin Cassidy | | DynaChange as root cause for "Column is disabled" errors |

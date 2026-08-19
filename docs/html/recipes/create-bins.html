@@ -40,17 +40,58 @@
             border-bottom: 1px solid #2c3e50;
         }
 
-        .sidebar-section {
-            padding: 12px 0 4px;
+        .sidebar-header a {
+            color: inherit;
+            text-decoration: none;
         }
 
-        .sidebar-section-title {
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .nav-group {
+            padding: 10px 0 2px;
+        }
+
+        .nav-group > summary {
             padding: 0 16px 6px;
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #6b7f95;
             font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }
+
+        .nav-group > summary::-webkit-details-marker { display: none; }
+
+        .nav-group > summary::before {
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }
+
+        .nav-group[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .nav-group > summary:hover {
+            color: #a0b4c8;
+        }
+
+        .nav-count {
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
         }
 
         .nav-pages {
@@ -80,7 +121,48 @@
             font-weight: 600;
         }
 
-        /* Page ToC in sidebar */
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }
+
+        .toc-rail-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }
+
+        .toc-inline {
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .toc-inline > summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }
+
+        .toc-inline .page-toc {
+            padding: 0 8px 10px;
+        }
+
         .page-toc {
             padding: 0 8px;
         }
@@ -98,20 +180,21 @@
         .page-toc a {
             display: block;
             padding: 3px 8px;
-            color: #8a9bb5;
+            color: #5f7183;
             text-decoration: none;
             font-size: 0.82rem;
-            border-left: 2px solid transparent;
-            transition: color 0.15s;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
         }
 
         .page-toc a:hover {
-            color: #e8eef4;
+            color: #1a5276;
         }
 
         .page-toc a.active {
-            color: #3498db;
-            border-left-color: #3498db;
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
         }
 
         /* Indent h3 items */
@@ -120,9 +203,6 @@
             font-size: 0.78rem;
         }
 
-        .page-toc-section {
-            border-top: 1px solid #2c3e50;
-        }
 
         /* ===== Main Content ===== */
         .content {
@@ -280,7 +360,9 @@
                 display: block;
                 background: #fff;
             }
-            .sidebar {
+            .sidebar,
+            .toc-rail,
+            .toc-inline {
                 display: none;
             }
             .content {
@@ -310,6 +392,17 @@
             }
         }
 
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {
+            .toc-rail {
+                display: none;
+            }
+            .toc-inline {
+                display: block;
+            }
+        }
+
         /* ===== Mobile ===== */
         @media (max-width: 1100px) {
             body {
@@ -320,6 +413,11 @@
                 min-width: unset;
                 height: auto;
                 position: relative;
+            }
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {
+                display: block;
             }
             .content {
                 padding: 20px;
@@ -467,53 +565,75 @@
 <body>
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="../index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+            <a href="../index.html"><strong>P21 API Docs</strong></a>
         </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Pages</div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+        <details class="nav-group" open>
+            <summary>Start Here</summary>
             <ul class="nav-pages">
-        <li><a href="../00-Authentication.html">P21 API Authentication</a></li>
-        <li><a href="../01-API-Selection-Guide.html">P21 API Selection Guide</a></li>
-        <li><a href="../02-OData-API.html">OData API</a></li>
-        <li><a href="../03-Transaction-API.html">Transaction API</a></li>
-        <li><a href="../04-Interactive-API.html">Interactive API</a></li>
-        <li><a href="../05-Entity-API.html">Entity API</a></li>
-        <li><a href="../06-Error-Handling.html">Error Handling</a></li>
-        <li><a href="../07-Session-Pool-Troubleshooting.html">P21 Transaction API Troubleshooting Guide</a></li>
-        <li><a href="../08-SalesPricePage-Codes.html">Sales Price Page Dropdown Codes</a></li>
-        <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing Patterns</a></li>
-        <li><a href="../10-Changelog.html">Changelog</a></li>
-        <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
-        <li><a href="../12-Production-Labor-API.html">Production Order & Labor Hour APIs</a></li>
-        <li><a href="../13-UDT-Service-API.html">User Defined Tables (UDT) Service API</a></li>
-        <li><a href="../14-Breaking-Changes.html">P21 Breaking Changes by Version</a></li>
-        <li><a href="../task-index.html">Task Index — Find the Right Section Fast</a></li>
+            <li><a href="../task-index.html">Task Index</a></li>
+            <li><a href="../00-Authentication.html">Authentication</a></li>
+            <li><a href="../01-API-Selection-Guide.html">API Selection Guide</a></li>
             </ul>
-        </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Recipes</div>
+        </details>
+        <details class="nav-group" open>
+            <summary>API Reference</summary>
             <ul class="nav-pages">
-        <li><a href="../recipes/README.html">Recipes Overview</a></li>
-        <li class="active"><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
-        <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
-        <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
-        <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
-        <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
-        <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
-        <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
-        <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
-        <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
-        <li><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
-        <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
-        <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
-        <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
-        <li><a href="../recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            <li><a href="../02-OData-API.html">OData API</a></li>
+            <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+            <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+            <li><a href="../05-Entity-API.html">Entity API</a></li>
+            <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+            <li><a href="../12-Production-Labor-API.html">Production & Labor</a></li>
+            <li><a href="../13-UDT-Service-API.html">UDT Service API</a></li>
             </ul>
-        </div>
-        <div class="sidebar-section page-toc-section">
-            <div class="sidebar-section-title">On This Page</div>
-            <div class="page-toc" id="page-toc">
-                <div class="toc">
+        </details>
+        <details class="nav-group" open>
+            <summary>Guides & Troubleshooting</summary>
+            <ul class="nav-pages">
+            <li><a href="../14-Breaking-Changes.html">Breaking Changes</a></li>
+            <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+            <li><a href="../07-Session-Pool-Troubleshooting.html">Session Pool Issues</a></li>
+            <li><a href="../08-SalesPricePage-Codes.html">SalesPricePage Codes</a></li>
+            <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Project</summary>
+            <ul class="nav-pages">
+            <li><a href="../10-Changelog.html">Changelog</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Recipes <span class="nav-count">15</span></summary>
+            <ul class="nav-pages">
+            <li><a href="../recipes/README.html">Recipes Overview</a></li>
+            <li class="active"><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+            <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+            <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+            <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+            <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+            <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+            <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="../recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            </ul>
+        </details>
+        </details>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        <div class="toc">
 <ul>
 <li><a href="#prerequisites">Prerequisites</a></li>
 <li><a href="#payload">Payload</a></li>
@@ -523,12 +643,8 @@
 </ul>
 </div>
 
-            </div>
-        </div>
-    </nav>
-
-    <main class="content">
-        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+</details>
 <h1 id="create-bins-bulk">Create Bins (Bulk)</h1>
 <p>Bulk-create warehouse bins with the <code>BinLocation</code> service — one transaction per bin, tens per POST, verified in production at hundreds of bins per run.</p>
 <p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>BinLocation</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#binlocation-service-creating-bins">BinLocation Service — Creating Bins</a>, <a href="../03-Transaction-API.html#ignoredisabled">IgnoreDisabled</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/BinLocation.json"><code>definitions/BinLocation.json</code></a></p>
@@ -927,6 +1043,22 @@
 </blockquote>
     </main>
 
+    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            <div class="toc">
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#payload">Payload</a></li>
+<li><a href="#complete-example">Complete example</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+<li><a href="#verify">Verify</a></li>
+</ul>
+</div>
+
+        </div>
+    </aside>
+
     <script>
         // Add IDs to headers for linking
         document.querySelectorAll('h2, h3, h4').forEach(function(header) {
@@ -936,6 +1068,22 @@
                     .replace(/(^-|-$)/g, '');
             }
         });
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {
+                if (mq.matches) { fold.removeAttribute('open'); }
+                else { fold.setAttribute('open', ''); }
+            }
+            if (mq.addEventListener) { mq.addEventListener('change', apply); }
+            else if (mq.addListener) { mq.addListener(apply); }
+            apply();
+        })();
 
         // Highlight current ToC item on scroll
         (function() {

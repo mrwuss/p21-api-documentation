@@ -648,6 +648,8 @@ The GET -> Modify -> PUT pattern also works for **updating fields on existing `i
 
 **Verified writable fields:** `Sellable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`
 
+This API is the recommended path for `inv_loc` modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) **read-only**, so they cannot be edited there either.
+
 P21 validates changed values through business logic. For example, setting an invalid `ProductGroupId` returns:
 
 ```json

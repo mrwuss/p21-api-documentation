@@ -780,6 +780,8 @@ Response windows (dialogs) can pop up during operations. When this happens:
 
 > **The popup's id lives in `Events` — not in the top-level `ResponseWindowId`.** That field exists in the response and is **empty on real 26.1 responses**, so a client that reads it gets `""` and concludes there is no popup to answer. A production integration had *every* blocked save fail this way before switching to the event. Read `Events[] → windowopened → Data[] → windowid`; check the top-level field first only as forward-compatibility, never as the primary source.
 
+> **There is no dedicated "answer this dialog" endpoint** — message boxes (`w_message`) cannot be answered programmatically. Probed and dead (January 2026): `PUT /api/ui/interactive/v2/responsewindow` → 404, `PUT /api/ui/interactive/v2/responsewindows` → 404, `POST /api/ui/interactive/v2/button` → 404, `DELETE /api/ui/interactive/v2/window?button=No` → 400. With `ResponseWindowHandlingEnabled: false` a `w_message` is auto-answered with its default (usually "Yes") — e.g. changing `product_group_id` on `inv_loc` triggers a "update GL accounts?" dialog whose default **overwrites the location's GL, revenue, and COS accounts**. Non-message-box popups ARE drivable: discover buttons via `GET /tools?windowId={id}` and click via `POST /tools` (see [Response Window Types](#response-window-types)).
+
 > **Status codes** match the `ResultStatus` enum in `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
 > `None=0, Success=1, Failure=2, Blocked=3`.
 > The API returns Status as an integer. String values (`"Success"`, `"Failure"`, `"Blocked"`) may appear in some contexts — handle both.

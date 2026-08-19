@@ -185,6 +185,18 @@ Always check `Summary.Failed` even on HTTP 200 responses.
 
 **Solution**: Check the service definition for required fields and order.
 
+**`Sequence contains no matching element` (General Exception)**
+
+A field named in a `List` element's `Keys` array is missing from that row's `Edits`. Opaque but mechanical: every key field must be a real column **and** be sent in every row. A key naming a column that does not exist at all fails as `Invalid column name: {name}` instead. See [Transaction API - Choosing a key](03-Transaction-API.md#choosing-a-key).
+
+**`This column is required.` (no column named)**
+
+A required field is absent from the payload, and the message does not say which. Diff your header against a working example or the full `definition` — on `Order`, the trigger is omitting `ship_to_id` (a field the abbreviated [`basics`](03-Transaction-API.md#endpoints) skeleton doesn't even list).
+
+**Write reported `Succeeded: 1` but the data is wrong (a line missing, a value on the wrong line)**
+
+Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a `List` element that agree on the element's key fields are folded into one, last value wins. See [Transaction API - Keys](03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) for the debugging loop.
+
 **HTTP 500 on `Status: "Existing"`**
 
 `POST /api/v2/transaction` with `Status: "Existing"` returns HTTP 500 `NullReferenceException` (at `ToInternalBeSpecification`) — a platform-wide bug, not a payload problem, confirmed across multiple services.

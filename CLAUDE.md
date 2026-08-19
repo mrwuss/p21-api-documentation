@@ -133,99 +133,25 @@ All documentation is derived from:
 
 ---
 
-## Known Issues
+## Known Issues & Verified Hazards — routed, not stored
 
-### Interactive API - Response Window Limitation (January 2026)
+> **API behavior facts live in `docs/`, never in this file** — one source of truth prevents drift. This table only routes. When you verify something new, write it into the linked doc (and add an INDEX.md row); do not restate it here.
 
-**Problem**: There is no documented endpoint to respond to message box dialogs (w_message windows) programmatically.
-
-**Impact**: When an operation triggers a dialog (like changing `product_group_id`), you cannot answer "No" via the API. With `ResponseWindowHandlingEnabled: false`, dialogs are auto-answered with the default (usually "Yes").
-
-**Specific Case**: Changing `product_group_id` on `inv_loc` triggers a dialog asking to update GL accounts. The default "Yes" response overwrites location-specific GL, revenue, and COS account fields.
-
-**Tested endpoints that do NOT work**:
-- `PUT /api/ui/interactive/v2/responsewindow` → 404
-- `PUT /api/ui/interactive/v2/responsewindows` → 404
-- `DELETE /api/ui/interactive/v2/window?button=No` → 400
-- `POST /api/ui/interactive/v2/button` → 404
-
-**Workaround (February 2026)**: For non-message-box response windows (e.g., `w_inventory_scan_lookup`, `w_popup_processing_msg`), discover available buttons via `GET /api/ui/interactive/v2/tools?windowId={id}` and click them via `POST /api/ui/interactive/v2/tools`. Verified working on `w_inventory_scan_lookup` (returns `cb_ok`, `cb_cancel`, etc.). Message box dialogs (`w_message`) remain unresolved.
-
-**Editable response windows (July 2026)**: Form-style response windows are fully drivable when the session has `ResponseWindowHandlingEnabled: true` — the triggering call returns `Status: 3` with a `windowopened` event carrying the popup's window ID; edit its fields with `TabName: null` and click its tools. Verified end-to-end on `w_notepad_response_lite` (PurchaseOrder notepad — see [Interactive API guide](docs/04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line)). With `ResponseWindowHandlingEnabled: false`, tools that open such windows fail with HTTP 400 "Unexpected response window".
-
-### Interactive API - ResultStatus Enum (February 2026)
-
-**Official status codes** from `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
-```text
-None=0, Success=1, Failure=2, Blocked=3
-```
-
-**Important**: Status `2` is **Failure**, not Blocked. Earlier versions of `09-Batch-Processing-Patterns.md` incorrectly mapped `2=Blocked, 3=Dialog` — this has been corrected.
-
-The API returns Status as integers. String values (`"Success"`, `"Failure"`, `"Blocked"`) may appear in some serialization contexts — handle both.
-
-### Interactive API - DatawindowName Required in 25.2+ (February 2026)
-
-**Breaking Change**: P21 25.2 changed window data structures so that `DatawindowName` is now **required** in change requests. The 3-parameter form (TabName + FieldName + Value) no longer works — you must include `DatawindowName`.
-
-**Affected windows** (reported): Item, PO Receiving Group, Delivery List, Group Pick Ticket. Likely affects other windows as well.
-
-**C# SDK impact**:
-```text
-// Broken in 25.2+:
-window.ChangeData("Criteria", "po_criteria_id", "20");
-
-// Fixed — include DatawindowName:
-window.ChangeData("Criteria", "tp_1_dw_1", "po_criteria_id", "20");
-```
-
-**REST API impact**: Always include `DatawindowName` in v2 change request payloads:
-```json
-{"TabName": "FORM", "DatawindowName": "form", "FieldName": "field", "Value": "value"}
-```
-
-**Source**: Community forum reports confirmed by multiple users after 25.2 upgrade.
+| Hazard / behavior | Where it lives |
+|---|---|
+| **2026.1 breaking changes** — Accept-header empty 500, ghost sessions, `SessionId`→`Id`, non-atomic `/v2/change`, silent-false-success loads, UDT delete no-op, `IgnoreDisabled` false success | [docs/14-Breaking-Changes.md](docs/14-Breaking-Changes.md) (version-indexed registry; check before touching Interactive code) |
+| **25.2** — `DatawindowName` required in change requests | [docs/14 § 25.2](docs/14-Breaking-Changes.md#p21-252) |
+| `IgnoreDisabled: true` reports success on writes that write nothing (3 services confirmed) — never trust a `Passed` under this flag, read the record back | [docs/14 entry 8](docs/14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) · [docs/03 § IgnoreDisabled](docs/03-Transaction-API.md#ignoredisabled) |
+| Transaction `Status: "Existing"` HTTP 500 (platform-wide); updates go through keyed `Status: "New"` upserts | [docs/03 § Upsert Semantics](docs/03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) · [§ Updating an Existing Contract](docs/03-Transaction-API.md#updating-an-existing-contract) |
+| `Keys` row collapse (same-key rows fold, last value wins, `Succeeded: 1`) and over-keying turning updates into inserts | [docs/03 § Keys — Row Identity and the Collapse Trap](docs/03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) |
+| Reading records / cloning via `POST /transaction/get`; the three discovery endpoints (`definition` / `defaults` / `basics`) | [docs/03 § Reading One Record](docs/03-Transaction-API.md#reading-one-record-post-transactionget) · [§ Endpoints](docs/03-Transaction-API.md#endpoints) |
+| **Notes have no Transaction API path — Interactive only** (Order note elements disabled; `*Notepad` services blocked by drag-and-drop area picker) | [docs/03 § Limitations](docs/03-Transaction-API.md#limitations) · [docs/04 § PurchaseOrder Notepad Writes](docs/04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line) |
+| Lowercase `item_id` accepted by TAPI, crashes the client on open — uppercase in code, never reproduce to test | [docs/03 § Item Service Gotchas](docs/03-Transaction-API.md#item-service-gotchas) |
+| Response windows: no answer-a-dialog endpoint, `w_message` auto-answered (GL-overwrite trap), drivable popups via `/tools`, editable popups via `TabName: null` | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) · [§ Response Window Types](docs/04-Interactive-API.md#response-window-types) |
+| `ResultStatus` enum (`None=0, Success=1, Failure=2, Blocked=3` — 2 is Failure, not Blocked) | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) |
+| `inv_loc` read/append/update paths (all resolved); Item-window GL fields stay read-only | [docs/11 § Updating Existing Location Fields](docs/11-Inventory-REST-API.md#updating-existing-location-fields) |
+| UDT Service quirks (errorMessage/errorNo, SQL-keyword filter, row_uid conditions) and the 2026.1 Bulk Data API (headerless-CSV silent zero-insert, scale rounding) | [docs/13-UDT-Service-API.md](docs/13-UDT-Service-API.md) · [§ Bulk Data API](docs/13-UDT-Service-API.md#bulk-data-api-20261) |
 
 ---
 
-### inv_loc Write Access — Resolved (April 2026)
-
-**All three operations now have verified API paths:**
-
-| Operation | API | Status |
-|-----------|-----|--------|
-| **Appending new `inv_loc` records** | Inventory REST API `PUT /api/inventory/parts/{ItemId}` — GET → Append → PUT pattern | Resolved (Feb 2026) |
-| **Reading `inv_loc` data** | Inventory REST API `GET /api/inventory/parts/{ItemId}?extendedproperties=*` or OData | Resolved (Feb 2026) |
-| **Updating existing `inv_loc` fields** | Inventory REST API `PUT /api/inventory/parts/{ItemId}` — GET → Modify → PUT pattern | **Resolved (Apr 2026)** |
-
-**Updating existing fields** — verified working: Sellable, ProductGroupId, PurchaseDiscountGroup, SalesDiscountGroup. P21 validates changed values (e.g., invalid ProductGroupId returns "Product group ID does not exist for this company ID"). See [Inventory REST API docs](docs/11-Inventory-REST-API.md) for details.
-
-**Remaining limitation**: Interactive API Item window GL account fields on TABPAGE_24 are still read-only. The Inventory REST API is the recommended path for `inv_loc` modifications.
-
-### Transaction API — Status "Existing" Platform Bug (April 2026)
-
-`POST /api/v2/transaction` with `Status: "Existing"` returns HTTP 500 `NullReferenceException` at `ToInternalBeSpecification`. This is a **platform-wide bug**, not service-specific — confirmed on JobContractPricing, Assembly, SalesPricePage, and TimeEntry.
-
-**Retrieval**: Use `POST /api/v2/transaction/get` with `TransactionStates` to read existing records.
-
-**Updates**: `Status: "Existing"` is *unused*, not a write ban. For JobContractPricing the verified update path is `Status: "New"` with FORM key fields (`company_id`, `contract_no`, `job_no`, `end_date`) in `Edits` and List `Keys` identifying the row by `item_id` — see [JobContractPricing > Updating an Existing Contract](docs/03-Transaction-API.md#updating-an-existing-contract) (Fixes #44, May 2026). Other services (Assembly, SalesPricePage, TimeEntry) are untested but likely follow the same pattern; the Interactive API remains a fallback.
-
-**Upserts (July 2026)**: keyed `Status: "New"` List rows are an upsert — update when the key matches, **insert a new row when it doesn't** (verified: 81 new JobContractPricing lines in one run, DB-confirmed; credit Alex Westemeier). Gotchas: order `pricing_method` before `price` in Edits (cascade silently zeroes the price); one transaction per POST when inserts re-save a shared FORM header (optimistic-concurrency collisions + duplicate `line_no`); header saves validate `end_date` ≥ today. `IgnoreDisabled: true` (payload top level ONLY — silently ignored inside a Transaction object) unlocks *some* disabled columns and tabs, e.g. contract BINS quantities and JOBPRICECOST commission fields. **It is not a reliable unlock, and its two outcomes are indistinguishable in the response (26.1, Aug 2026):** it either genuinely unlocks the write, or it swallows the refusal and writes nothing while returning `Succeeded: 1` / `Status: "Passed"`. Verified silent no-ops: `JobContractPricing` `VALUES.values` on every path (update a line, insert a line, create a contract — all refuse with `Tab page is disabled`; the same create with `VALUES` omitted succeeds, isolating it to that element), and the disabled header column `corp_address_id` (refused loudly as `Column is disabled: corp_address_id` without the flag; silent no-op with it). **Never trust a `Passed` under this flag — read the record back.** See [docs/14](docs/14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
-
----
-
-### P21 2026.1 Breaking Changes (found 2026.1.5873.1 vs 2025.2.5855.0; re-verified on production 26.1.5894.1, July 2026)
-
-Interactive endpoints return an **empty HTTP 500 unless `Accept` includes `application/json`** — the rule is "json must be present", not "`*/*` is rejected" (`application/json, */*` → 200; `*/*`, `application/xml`, `text/html`, and no header all → empty 500). The failed create leaves a **ghost session** (409 "Session already exists") that also **masks the header experiment**; **`DELETE /sessions` clears it instantly** — don't wait out `SessionCleanupExpiration`. Contract changes: session-create response `SessionId` → `Id`; `/v2/tab` binds `PageName` only (`TabName` → 400). Data-integrity hazards: nonexistent record loads return `Status: 2` with an empty window (was `Status: 0`) **plus `Messages: [{"Text": "Enter a valid ID or leave ID blank."}]`**; and batched `/v2/change` is **non-atomic** — a rejected field returns an HTTP 400 envelope with no `Status` while its neighbours in the batch are already applied.
-
-**Corrected July 2026:** the "non-active-tab fields are silently dropped while returning `Status: 1`" mechanism **does not reproduce** on 5894.1 (8 configurations tested; the field applied every time). 5873.1 is gone, so "fixed later" vs "misattributed" is undecidable — the non-atomic batch produces the same partial-application outcome anyway. Mitigations unchanged: force the Accept header in one shared builder; read `Id` or `SessionId`; existence pre-read before window writes; one field per change call + read-back.
-
-Also verified on 26.1: **no version endpoint** — the build rides the session-create response (`Properties[0].Properties.fullversion`). **`GET /v2/data` returns only a varying subset** of a window's datawindows (absence proves nothing; not a reliable field-level read-back). A **nonexistent `DatawindowName` 400s loudly**; `DatawindowName` is **optional for header fields on 26.1** but still required on 25.2 — keep sending it. Reported to Epicor (defect pending). Full registry: [docs/14-Breaking-Changes.md](docs/14-Breaking-Changes.md).
-
-### UDT Bulk Data API — new in 2026.1 (July 2026)
-
-`POST /udtservice/api/bulkupload/{table}` — `multipart/form-data`, form field **`file`**, comma-delimited **CSV with a mandatory header row** (exact, case-sensitive names). All-or-nothing per file; **insert-only** (no `/bulkupdate`, `/bulkdelete`); 1,000 rows/call verified. **Hazards:** a headerless CSV returns `{"isSuccessful": true}` and inserts **zero rows**; values are **silently rounded to column scale** (`1.66` → `1.7`). `NULL` only via **omitting the column**. Announced in Epicor's 2026.1 release guide with no endpoint named; undocumented in the in-middleware SDK (`/docs/p21sdk`). Creating a UDT is **UI-only** (no API path). See [docs/13](docs/13-UDT-Service-API.md#bulk-data-api-20261).
-
----
-
-*Last updated: 2026-07-14*
+*Last updated: 2026-08-19*

@@ -502,62 +502,154 @@ def build_recipe_index() -> list[tuple[str, str]]:
     return pages
 
 
-def build_sidebar_html(current_stem: str, toc_html: str, prefix: str = "") -> str:
-    """Build the sidebar HTML with page index and on-page ToC.
+# Left-nav grouping: section title -> ordered doc stems. Any doc stem not
+# named here lands in a trailing "More" group so new files never vanish.
+NAV_GROUPS: list[tuple[str, list[str]]] = [
+    ("Start Here", ["INDEX", "00-Authentication", "01-API-Selection-Guide"]),
+    ("API Reference", [
+        "02-OData-API", "03-Transaction-API", "04-Interactive-API",
+        "05-Entity-API", "11-Inventory-REST-API", "12-Production-Labor-API",
+        "13-UDT-Service-API",
+    ]),
+    ("Guides & Troubleshooting", [
+        "14-Breaking-Changes", "06-Error-Handling",
+        "07-Session-Pool-Troubleshooting", "08-SalesPricePage-Codes",
+        "09-Batch-Processing-Patterns",
+    ]),
+    ("Project", ["10-Changelog"]),
+]
+
+# Short nav labels: the sidebar is 260px, the H1 titles are sentence-long.
+NAV_LABELS = {
+    "INDEX": "Task Index",
+    "00-Authentication": "Authentication",
+    "01-API-Selection-Guide": "API Selection Guide",
+    "02-OData-API": "OData API",
+    "03-Transaction-API": "Transaction API",
+    "04-Interactive-API": "Interactive API",
+    "05-Entity-API": "Entity API",
+    "06-Error-Handling": "Error Handling",
+    "07-Session-Pool-Troubleshooting": "Session Pool Issues",
+    "08-SalesPricePage-Codes": "SalesPricePage Codes",
+    "09-Batch-Processing-Patterns": "Batch Processing",
+    "10-Changelog": "Changelog",
+    "11-Inventory-REST-API": "Inventory REST API",
+    "12-Production-Labor-API": "Production & Labor",
+    "13-UDT-Service-API": "UDT Service API",
+    "14-Breaking-Changes": "Breaking Changes",
+}
+
+
+def build_sidebar_html(current_stem: str, prefix: str = "") -> str:
+    """Build the left sidebar: site navigation ONLY, grouped and collapsible.
+
+    The on-page ToC does NOT live here -- it renders in its own right-hand
+    rail (see build_toc_rail_html), so page links and page content never
+    interleave.
 
     Args:
         current_stem: Stem of the page being rendered ("recipes/<stem>" for
-            recipe pages) -- used to mark the active nav item.
-        toc_html: On-page table of contents HTML.
+            recipe pages) -- marks the active item and opens its group.
         prefix: Relative prefix back to the html root ("" for root pages,
             "../" for pages in html/recipes/).
     """
-    nav_items = []
-    for stem, title in PAGE_INDEX:
-        active = ' class="active"' if stem == current_stem else ""
-        nav_items.append(
-            f'        <li{active}><a href="{prefix}{out_stem(stem)}.html">{title}</a></li>')
-    nav_list = "\n".join(nav_items)
+    titles = dict(PAGE_INDEX)
+    grouped = {stem for _, stems in NAV_GROUPS for stem in stems}
+    groups = list(NAV_GROUPS)
+    leftovers = [stem for stem, _ in PAGE_INDEX if stem not in grouped]
+    if leftovers:
+        groups.append(("More", leftovers))
 
-    recipe_items = []
-    for stem, title in RECIPE_INDEX:
-        active = ' class="active"' if f"recipes/{stem}" == current_stem else ""
-        recipe_items.append(
-            f'        <li{active}><a href="{prefix}recipes/{stem}.html">{title}</a></li>')
-    recipe_section = ""
-    if recipe_items:
-        recipe_list = "\n".join(recipe_items)
-        recipe_section = f"""
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Recipes</div>
+    sections = []
+    for group_title, stems in groups:
+        items = []
+        group_active = False
+        for stem in stems:
+            if stem not in titles:
+                continue  # listed but file absent -- skip silently
+            active = stem == current_stem
+            group_active = group_active or active
+            cls = ' class="active"' if active else ""
+            label = NAV_LABELS.get(stem, titles[stem])
+            items.append(
+                f'            <li{cls}><a href="{prefix}{out_stem(stem)}.html">{label}</a></li>')
+        if not items:
+            continue
+        # Doc groups are short (1-7 links) -- keep them all open.
+        sections.append(f"""        <details class="nav-group" open>
+            <summary>{group_title}</summary>
             <ul class="nav-pages">
-{recipe_list}
+{chr(10).join(items)}
             </ul>
-        </div>"""
+        </details>""")
 
+    # Recipes: 14 links -- collapsed unless the reader is ON a recipe page.
+    recipe_items = []
+    recipes_active = False
+    for stem, title in RECIPE_INDEX:
+        active = f"recipes/{stem}" == current_stem
+        recipes_active = recipes_active or active
+        cls = ' class="active"' if active else ""
+        label = "Recipes Overview" if stem == "README" else title
+        recipe_items.append(
+            f'            <li{cls}><a href="{prefix}recipes/{stem}.html">{label}</a></li>')
+    if recipe_items:
+        open_attr = " open" if recipes_active else ""
+        sections.append(f"""        <details class="nav-group"{open_attr}>
+            <summary>Recipes <span class="nav-count">{len(recipe_items)}</span></summary>
+            <ul class="nav-pages">
+{chr(10).join(recipe_items)}
+            </ul>
+        </details>""")
+
+    body = chr(10).join(sections)
     return f"""    <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="{prefix}index.html" style="color: inherit; text-decoration: none;"><strong>P21 API Docs</strong></a>
+            <a href="{prefix}index.html"><strong>P21 API Docs</strong></a>
         </div>
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">Pages</div>
-            <ul class="nav-pages">
-{nav_list}
-            </ul>
-        </div>{recipe_section}
-        <div class="sidebar-section page-toc-section">
-            <div class="sidebar-section-title">On This Page</div>
-            <div class="page-toc" id="page-toc">
-                {toc_html}
-            </div>
-        </div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+{body}
+        </details>
     </nav>"""
+
+
+def build_toc_rail_html(toc_html: str) -> str:
+    """Build the right-hand "On this page" rail from the page ToC.
+
+    Returns an empty string when the page has no headings worth listing, so
+    the rail (and its grid column) collapses cleanly.
+    """
+    if not toc_html or "<a " not in toc_html:
+        return ""
+    return f"""    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            {toc_html}
+        </div>
+    </aside>"""
+
+
+def build_toc_inline_html(toc_html: str) -> str:
+    """Collapsible in-content ToC, shown only where the right rail is hidden
+    (narrow screens). Same links, same scrollspy classes."""
+    if not toc_html or "<a " not in toc_html:
+        return ""
+    return f"""<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        {toc_html}
+    </div>
+</details>
+"""
 
 
 def get_html_template(
     title: str,
     sidebar_html: str,
     content: str,
+    toc_rail: str = "",
+    toc_inline: str = "",
     page_url: str = "",
     copy_sections: bool = False,
 ) -> str:
@@ -565,8 +657,10 @@ def get_html_template(
 
     Args:
         title: Page title.
-        sidebar_html: Rendered sidebar markup.
+        sidebar_html: Rendered left sidebar (site navigation only).
         content: Rendered page body.
+        toc_rail: Right-hand "On this page" rail markup ("" for none).
+        toc_inline: Collapsible in-content ToC for narrow screens ("" for none).
         page_url: This page's absolute URL on the published site. Copied
             sections resolve their links against it, so a section pasted
             elsewhere still points back here.
@@ -620,17 +714,58 @@ def get_html_template(
             border-bottom: 1px solid #2c3e50;
         }}
 
-        .sidebar-section {{
-            padding: 12px 0 4px;
+        .sidebar-header a {{
+            color: inherit;
+            text-decoration: none;
         }}
 
-        .sidebar-section-title {{
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {{
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }}
+
+        .nav-group {{
+            padding: 10px 0 2px;
+        }}
+
+        .nav-group > summary {{
             padding: 0 16px 6px;
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #6b7f95;
             font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }}
+
+        .nav-group > summary::-webkit-details-marker {{ display: none; }}
+
+        .nav-group > summary::before {{
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }}
+
+        .nav-group[open] > summary::before {{
+            transform: rotate(90deg);
+        }}
+
+        .nav-group > summary:hover {{
+            color: #a0b4c8;
+        }}
+
+        .nav-count {{
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
         }}
 
         .nav-pages {{
@@ -660,7 +795,48 @@ def get_html_template(
             font-weight: 600;
         }}
 
-        /* Page ToC in sidebar */
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {{
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }}
+
+        .toc-rail-title {{
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }}
+
+        .toc-inline {{
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }}
+
+        .toc-inline > summary {{
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }}
+
+        .toc-inline .page-toc {{
+            padding: 0 8px 10px;
+        }}
+
         .page-toc {{
             padding: 0 8px;
         }}
@@ -678,20 +854,21 @@ def get_html_template(
         .page-toc a {{
             display: block;
             padding: 3px 8px;
-            color: #8a9bb5;
+            color: #5f7183;
             text-decoration: none;
             font-size: 0.82rem;
-            border-left: 2px solid transparent;
-            transition: color 0.15s;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
         }}
 
         .page-toc a:hover {{
-            color: #e8eef4;
+            color: #1a5276;
         }}
 
         .page-toc a.active {{
-            color: #3498db;
-            border-left-color: #3498db;
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
         }}
 
         /* Indent h3 items */
@@ -700,9 +877,6 @@ def get_html_template(
             font-size: 0.78rem;
         }}
 
-        .page-toc-section {{
-            border-top: 1px solid #2c3e50;
-        }}
 
         /* ===== Main Content ===== */
         .content {{
@@ -860,7 +1034,9 @@ def get_html_template(
                 display: block;
                 background: #fff;
             }}
-            .sidebar {{
+            .sidebar,
+            .toc-rail,
+            .toc-inline {{
                 display: none;
             }}
             .content {{
@@ -890,6 +1066,17 @@ def get_html_template(
             }}
         }}
 
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {{
+            .toc-rail {{
+                display: none;
+            }}
+            .toc-inline {{
+                display: block;
+            }}
+        }}
+
         /* ===== Mobile ===== */
         @media (max-width: 1100px) {{
             body {{
@@ -900,6 +1087,11 @@ def get_html_template(
                 min-width: unset;
                 height: auto;
                 position: relative;
+            }}
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {{
+                display: block;
             }}
             .content {{
                 padding: 20px;
@@ -1049,8 +1241,10 @@ def get_html_template(
 
     <main class="content">
         <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
-{content}
+{toc_inline}{content}
     </main>
+
+{toc_rail}
 
     <script>
         // Add IDs to headers for linking
@@ -1061,6 +1255,22 @@ def get_html_template(
                     .replace(/(^-|-$)/g, '');
             }}
         }});
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {{
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {{
+                if (mq.matches) {{ fold.removeAttribute('open'); }}
+                else {{ fold.setAttribute('open', ''); }}
+            }}
+            if (mq.addEventListener) {{ mq.addEventListener('change', apply); }}
+            else if (mq.addListener) {{ mq.addListener(apply); }}
+            apply();
+        }})();
 
         // Highlight current ToC item on scroll
         (function() {{
@@ -1237,11 +1447,14 @@ def convert_md_to_html(md_file: Path) -> Path:
         flags=re.DOTALL,
     )
 
-    # Build sidebar (recipe pages sit one level down from the html root)
+    # Build sidebar (site nav only; recipe pages sit one level down from the
+    # html root) and the two on-page ToC surfaces (right rail + inline fold).
     if is_recipe:
-        sidebar_html = build_sidebar_html(f"recipes/{md_file.stem}", toc_html, prefix="../")
+        sidebar_html = build_sidebar_html(f"recipes/{md_file.stem}", prefix="../")
     else:
-        sidebar_html = build_sidebar_html(md_file.stem, toc_html)
+        sidebar_html = build_sidebar_html(md_file.stem)
+    toc_rail = build_toc_rail_html(toc_html)
+    toc_inline = build_toc_inline_html(toc_html)
 
     # Output name first -- the page's own URL is baked into the template so
     # copied sections can resolve their links against it.
@@ -1255,6 +1468,8 @@ def convert_md_to_html(md_file: Path) -> Path:
         title,
         sidebar_html,
         html_content,
+        toc_rail=toc_rail,
+        toc_inline=toc_inline,
         page_url=page_url,
         copy_sections=not is_recipe and md_file.stem in COPY_SECTION_PAGES,
     )
@@ -1415,15 +1630,7 @@ All trademarks are property of their respective owners. Use at your own risk.
 </style>
 """
 
-    # Build ToC for the index page
-    toc_html = """<ul>
-<li><a href="#getting-started">Getting Started</a></li>
-<li><a href="#api-reference">API Reference</a></li>
-<li><a href="#recipes">Recipes</a></li>
-<li><a href="#troubleshooting-reference">Troubleshooting &amp; Reference</a></li>
-</ul>"""
-
-    sidebar_html = build_sidebar_html("__index__", toc_html)
+    sidebar_html = build_sidebar_html("__index__")
     full_html = get_html_template("Home", sidebar_html, content)
 
     index_file = HTML_DIR / "index.html"

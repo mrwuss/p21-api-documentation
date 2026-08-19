@@ -562,7 +562,7 @@ Two placement rules:
 >
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) for mapping the placement failure mode and the disabled-tab unlock behavior.
 
-> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261).
+> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column `corp_address_id` and on `Order`'s `LINE_NOTE.line_note` — three unrelated surfaces, marking it as platform behavior. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
 
 ---
 
@@ -1333,6 +1333,7 @@ All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 - **`company_id` is a disabled column** on the Order window — don't send it.
 - **DynaChange prompts are auto-answered with the default** (usually "No"), which silently discards the affected line — e.g. *"order line does not have a PO Cost… proceed? [No]"*. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see [DynaChange and Popup Handling](#dynachange-and-popup-handling).
 - **Assembly items cannot be entered via the Transaction API** when they should explode or spawn a production order — the *"add as assembly?"* prompt is auto-answered **No**, killing the explode. Use the Interactive API for those lines: see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
+- **The same item on two lines collapses to one** with `Keys: []` — `TP_ITEMS.items` folds rows on its declared key (`oe_order_item_id`), last value wins, `Succeeded: 1`, no warning. Add `Keys: ["unit_quantity"]` (or another differing column) when an order legitimately repeats an item — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap).
 - The created `order_no` comes back in the result rows; check `Summary.Succeeded`, not the HTTP status.
 
 ---
