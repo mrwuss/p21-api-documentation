@@ -1,0 +1,63 @@
+# Flags issues and pull requests opened by people outside the repo team, so
+# community contributions stand out from the maintainer's own activity.
+#
+# As the repo owner you already get a notification for *every* issue and PR by
+# watching the repo. What this adds is a way to tell external ones apart: each
+# gets the `external-contribution` label (filterable in the issue list) and is
+# assigned to the owner, which lands the notification in the "Participating"
+# bucket — the one GitHub emails by default.
+#
+# Security: `pull_request_target` runs with a write token in the *base* repo's
+# context, so this workflow deliberately never checks out or executes the PR's
+# code. Do not add `actions/checkout` here.
+
+name: Flag external contributions
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  flag:
+    # OWNER / MEMBER / COLLABORATOR are the repo's own team; everyone else is
+    # external, including a CONTRIBUTOR who has had a patch merged before.
+    # Bots (dependabot and friends) are not people and are skipped.
+    if: >-
+      !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                github.event.issue.author_association || github.event.pull_request.author_association)
+      && (github.event.issue.user.type || github.event.pull_request.user.type) != 'Bot'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label and assign
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          KIND: ${{ github.event.issue.number && 'issue' || 'pull request' }}
+          AUTHOR: ${{ github.event.issue.user.login || github.event.pull_request.user.login }}
+          ASSOCIATION: ${{ github.event.issue.author_association || github.event.pull_request.author_association }}
+          ASSIGNEE: ${{ github.repository_owner }}
+          LABEL: external-contribution
+        run: |
+          set -euo pipefail
+
+          # Create the label on first use so a fresh clone of this workflow works.
+          gh api "repos/$REPO/labels/$LABEL" --silent 2>/dev/null \
+            || gh api "repos/$REPO/labels" --silent \
+                 -f name="$LABEL" \
+                 -f color=0E8A16 \
+                 -f description="Opened by someone outside the repo team" 2>/dev/null \
+            || true
+
+          # Both endpoints are the issues API -- pull requests are issues here.
+          gh api "repos/$REPO/issues/$NUMBER/labels" --silent -f "labels[]=$LABEL"
+          gh api "repos/$REPO/issues/$NUMBER/assignees" --silent -f "assignees[]=$ASSIGNEE"
+
+          echo "Flagged $KIND #$NUMBER by @$AUTHOR ($ASSOCIATION):" >> "$GITHUB_STEP_SUMMARY"
+          echo "labeled \`$LABEL\`, assigned to @$ASSIGNEE." >> "$GITHUB_STEP_SUMMARY"
