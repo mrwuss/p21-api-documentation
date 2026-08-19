@@ -42,6 +42,7 @@ Then use the returned URL as base:
 | `/api/v2/services` | GET | List available services (transaction business objects only — all `m_*` services, reports and `m_storedprocedureexecutor` alike, are hidden from the list but still callable via `definition`/`defaults`; see [PDF Report Generation](#pdf-report-generation)) |
 | `/api/v2/definition/{name}` | GET | Get service schema and template |
 | `/api/v2/defaults/{name}` | GET | Get default values for a service |
+| `/api/v2/basics/{name}` | GET | Abbreviated field list for a service, as a ready-to-fill payload skeleton (see note below) |
 | `/api/v2/transaction/get` | POST | Retrieve existing records |
 | `/api/v2/transaction` | POST | Create or update records (sync) |
 | `/api/v2/transaction/async` | POST | Async create/update (returns RequestId) |
@@ -49,6 +50,16 @@ Then use the returned URL as base:
 | `/api/v2/transaction/async?id={id}` | GET | Check async request status |
 | `/api/v2/commands` | POST | Process special commands (see [Commands Endpoint](#commands-endpoint)) |
 | `/api/v2/process/pdfreport` | POST | Generate PDF reports (see [PDF Report Generation](#pdf-report-generation)) |
+
+> **The three discovery endpoints, and which one answers your question.** `definition`, `defaults` and `basics` take the same `{service_name}` path segment and are the routine way to learn a window's shape without opening P21. Between them: **`definition`** returns the full schema — every DataElement, field, `DataType`, `KeyFields`, and the accepted values for dropdown/code fields, which is where valid values for site-specific fields such as `carrier_id` come from (see [Get Service Definition](#get-service-definition)); **`defaults`** returns the service's default values and a payload template you can fill in and post back; **`basics`** returns the same element list carrying only each element's headline fields, already shaped as a `Status: "New"` TransactionSet with `Keys` prefilled from the element's `KeyFields` and `IgnoreIfEmpty: true` on every edit — fill in the values and POST it. The abbreviation is severe and that is the point: on `Order` all three return the same **102** elements, but `basics` carries **103** fields against `definition`/`defaults`' **1,266**.
+>
+> The community session's warning about `basics` holds in both directions, so treat it as a starting point rather than a contract — verified on 26.1 with `Order`:
+>
+> - **It omits fields you need.** Its header element lists `order_no`, `sales_loc_id`, `contact_id`, `po_no`, `order_date`, `company_id`, `taker`, `requested_date` — but a create also needs `customer_id`, `source_loc_id` and `ship_to_id`, none of which appear. Omitting `ship_to_id` fails the save with the unattributed message `This column is required.` (no column named).
+>
+> - **It includes fields you cannot write.** `company_id` is in that same list and is refused on save with `Column is disabled: company_id`.
+>
+> An unknown service name returns an **empty HTTP 500**, the same shape `definition` and `defaults` give. *(Endpoint and behavior verified against a 26.1 tenant, August 2026; originally surfaced in a community session, Felipe Maurer, 2026.)*
 
 > **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
@@ -211,6 +222,113 @@ Two tools take the guesswork out:
   python scripts/validate_payload.py my_payload.json
   python scripts/validate_payload.py my_payload.xml
   ```
+
+---
+
+## Keys -- Row Identity and the Collapse Trap
+
+The `Keys` array on a DataElement is **not** an authentication key, a consumer key, or a database primary key. It is how the Transaction API decides **which rows in a `List` element are the same row**. Most payloads never need it, which is why it goes unnoticed — but when it matters, the failure is silent: the API returns `Succeeded`, and the record is simply not what you sent.
+
+> **Provenance:** first described in a community conference session on the P21 APIs (*Felipe Maurer*, 2026), then **verified end-to-end against a 26.1 tenant** (August 2026) — the collapse, the `Keys` fix, the over-keying failure and the stable-key update below are each a live `Order` create or update with a `/transaction/get` read-back. It is the same rule as the independently verified [Upsert Semantics](#upsert-semantics-keyed-rows-insert-when-absent) and [contract bin](#editing-bin-quantities-on-an-existing-contract) behavior, seen from the row-identity side.
+
+### The collapse: two rows in, one row out
+
+Send an order with the same item twice at different quantities and no `Keys`:
+
+```json
+{
+    "Name": "TP_ITEMS.items",
+    "Type": "List",
+    "Keys": [],
+    "Rows": [
+        {"Edits": [{"Name": "oe_order_item_id", "Value": "WIDGET-001"},
+                   {"Name": "unit_quantity",    "Value": "5"}]},
+        {"Edits": [{"Name": "oe_order_item_id", "Value": "WIDGET-001"},
+                   {"Name": "unit_quantity",    "Value": "10"}]}
+    ]
+}
+```
+
+You do not get two lines of `WIDGET-001`. You get **one line, quantity 10** — the two rows were treated as one row and the **last** value written for each field won. No error, no warning, `Succeeded: 1`.
+
+Two *different* item IDs in the same payload behave exactly as you expect, which is why this trap stays hidden until the day a real order legitimately carries the same item on more than one line (different lengths cut from one stock item, separate scheduled releases, split shipping dates).
+
+### Keys are a `GROUP BY`
+
+If you know SQL, the model is straightforward: the API is grouping the rows you send, and `Keys` is the `GROUP BY` list. Rows that agree on every key field are one row; name a field whose value **differs** between the rows and they split apart.
+
+For the payload above, the field that actually differs is the quantity:
+
+```json
+    "Keys": ["unit_quantity"],
+```
+
+Now the same two rows produce two lines — quantity 5 as `user_line_no` 001 and quantity 10 as 002. Two *different* item IDs need no `Keys` at all: with `Keys: []` they already come back as two lines.
+
+### Choosing a key
+
+- **You cannot invent one, and you must send it.** A key must be a real column on that element *and* appear in every row's `Edits` — there is no synthetic row-id or ascending-integer you can supply. Both failures are hard, not silent, and their messages are worth recognizing: naming a column you did not put in `Edits` fails the transaction with the opaque `General Exception: Sequence contains no matching element`; naming something that is not a column at all fails with the clearer `Invalid column name: {name}`. Either way `Failed: 1`, nothing is written.
+- **Pick the column that differs.** On an order line, `oe_order_item_id` is a *bad* key for this problem precisely because it is the value that is the same. Fields that commonly work: quantity, a customer/user line number (`user_line_no` on `TP_ITEMS.items`), or a date field where the rows genuinely differ.
+- **Timestamp columns are a last resort.** Some elements have no natural discriminator, leaving `date_created`-style columns as the only option. They usually differ, but rows written in the same operation — or loaded by an import — can share a timestamp, and then the collapse comes back.
+- **Compound keys are allowed** — as many columns as it takes to make the rows unique.
+- **Surplus keys are accepted silently.** A key that is real and sent but doesn't discriminate is not an error — `Keys: ["unit_quantity", "oe_order_item_id"]` splits the two rows above exactly as `["unit_quantity"]` alone does, with no warning that the second key separated nothing. Adding keys until the behavior changes is a legitimate debugging tactic, but it means a wrong key set looks exactly like a right one.
+- **Deleted rows are still rows.** Keying on a positional or UID-style line identifier read from the UI can miss soft-deleted lines that the window doesn't show, so the key you send points at a different row than the one you counted.
+
+### Over-keying breaks updates
+
+Keys make rows unique in **both** directions. Because a keyed `Status: "New"` row is an [upsert](#upsert-semantics-keyed-rows-insert-when-absent) — update when the key matches, insert when it doesn't — a key set that is *too* specific stops matching the row you meant to change, and the "update" silently becomes a new line.
+
+The classic case: keying on the quantity (the fix above) and then trying to change that quantity from 10 to 20. The new value doesn't match the existing row's key, so P21 appends a line instead of editing one. Verified against the two-line order created above:
+
+```json
+{"Name": "TP_ITEMS.items", "Type": "List",
+ "Keys": ["unit_quantity"],
+ "Rows": [{"Edits": [{"Name": "oe_order_item_id", "Value": "WIDGET-001"},
+                     {"Name": "unit_quantity",    "Value": "20"}]}]}
+```
+
+`Succeeded: 1`, no messages — and the order now has **three** lines (5, 10, 20) instead of two. Key on something **stable** when updating: the same edit keyed on `user_line_no`, with `user_line_no` sent in `Edits`, changes that line in place and leaves the line count alone.
+
+```json
+{"Name": "TP_ITEMS.items", "Type": "List",
+ "Keys": ["user_line_no"],
+ "Rows": [{"Edits": [{"Name": "user_line_no",     "Value": "003"},
+                     {"Name": "oe_order_item_id", "Value": "WIDGET-001"},
+                     {"Name": "unit_quantity",    "Value": "33"}]}]}
+```
+
+Key on the discriminator when creating; key on something stable when updating.
+
+### What the definition already tells you
+
+Every element in [`definitions/{Service}.json`](../definitions/README.md) carries a `KeyFields` array — the key fields P21 declares for that element. Read it before sending repeated rows: in the cases below the declared fields line up exactly with the behavior described above, which makes `KeyFields` the best available predictor of what your rows will be folded on. (Confirm with a read-back on a service you haven't tried — the correspondence is consistent across the services documented here, but the collapse itself was exercised live only on `Order`.) Across the committed definitions, **214 of 335 `List` elements declare key fields**; the remaining third declare none.
+
+| Service | Element | Declared `KeyFields` |
+|---------|---------|----------------------|
+| `Order` | `TP_ITEMS.items` | `["oe_order_item_id"]` |
+| `JobContractPricing` | `JOBPRICELINE.jobpriceline` | `["item_id", "line_no"]` |
+| `Item` | `TABPAGE_17.invloclist` | `["location_id"]` |
+| `ConvertPOToVoucher` | `TABPAGE_17.tp_17_dw_17` | `["receipt_number", "line_number", "po_no"]` |
+
+`Order`'s item grid declaring `oe_order_item_id` is exactly why the collapse above happens on the item ID. And `JOBPRICELINE` declaring `["item_id", "line_no"]` is the same rule from the other side — which is why the verified contract-line guidance says to select by `item_id` and to **add `line_no` as a second key when the same item appears on multiple lines** (see [Editing Bin Quantities](#editing-bin-quantities-on-an-existing-contract)).
+
+Read them straight out of the JSON:
+
+```bash
+python -c "import json;d=json.load(open('definitions/Order.json'));[print(e['Name'],e.get('KeyFields')) for e in d['TransactionDefinition']['DataElementDefinitions'] if e['Type']=='List']"
+```
+
+The live endpoint carries the same field — see [Get Service Definition](#get-service-definition), which prints `KeyFields` per element.
+
+### Debugging a key problem
+
+The symptom is always the same shape: **the write succeeded and the data is wrong** — a line missing, a quantity belonging to a different line, or an update that appeared as a new row. When that happens:
+
+1. Read the record back with [`POST /api/v2/transaction/get`](#endpoints) and compare it to what you sent, row for row.
+2. Look up the element's `KeyFields` in its definition — that is what your rows were folded on.
+3. Add the column that genuinely differs between your rows to `Keys`, resend, read back again.
+
+Do this deliberately on a test system before you need it: send ten rows of the same item at ten quantities, predict the result, then compare. It is a fast way to build the instinct, and it is the one Transaction-API behavior that reads as the API being broken when it is doing exactly what it was told.
 
 ---
 
@@ -481,6 +599,55 @@ Verified examples (JobContractPricing cost/pricing enums):
 
 ---
 
+## Reading One Record -- POST /transaction/get
+
+`POST /api/v2/transaction/get` is the Transaction API's read side. It is a **POST despite being called "get"** — the key you are looking up travels in the body, not the query string, so a GET against this path is not the call you want.
+
+Give it a service name and the key identifying one record, and it returns **that record as a complete TransactionSet** — every populated field across every tab of the window, in the same shape you would POST back to `/transaction`. Examples throughout this doc use it as the read-back after a write; the same call is also the fastest way to see what a window actually holds.
+
+### When this, and when OData
+
+Both read data and neither writes. They differ in shape, and the choice is usually obvious once stated:
+
+| | `POST /transaction/get` | OData |
+|---|---|---|
+| **Scope** | One record | Many records |
+| **Breadth** | The whole window — every tab assembled for you | One table or view per query |
+| **Joins** | Already done, exactly as the window does them | Yours to do — chain queries by `_uid` or build a view |
+| **Use it for** | Inspecting or cloning a single order/item/customer, verifying a write | Reporting, exports, bulk lookups, dashboards |
+
+The practical difference is the assembly. Pulling one item's full picture over OData means knowing that `inv_mast`, `inv_loc`, `inventory_supplier` and friends go together and querying each; `/transaction/get` returns what the window shows, already joined. Past one record, that advantage inverts and OData wins outright.
+
+### Clone an existing record
+
+Because the response is shaped like a request, the read output is a ready-made template: **read one record, change the key field, POST the result to `/transaction`.** It is the practical way to duplicate a well-configured record rather than reconstructing it field by field — a "standard CSR" user copied to a new hire, a customer or location modeled on an existing one, an item cloned from its nearest sibling.
+
+Expect to edit the payload rather than replaying it verbatim, and budget for these:
+
+- **Disabled and auto-generated fields come back in the response** even though you cannot write them. On `Order` the replay stops one field at a time — `Column is disabled: customer_name`, then `Column is disabled: company_id` — because the read returns display columns the window computes rather than accepts. `IgnoreDisabled: true` is the usual reach, but it is **not a reliable unlock** and it can report success while writing nothing; see [IgnoreDisabled](#ignoredisabled) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing). Deleting the offending fields is the cleaner fix, and **[`GET /api/v2/basics/{name}`](#endpoints) is a good filter to delete them by** — intersecting the read-back with the `basics` field list (then adding back the keys `basics` omits) turned a failing verbatim replay of a two-line order into a clean clone in one pass.
+- **Popups, locked tabs and stale references** (a location that no longer exists, say) stop the replay the same way they would stop any other transaction. So does ordinary cross-field validation on values that were fine on the original record: a verbatim replay of a same-day order failed on `The Expedite Date must be on or before the Required Date`, because the read hands back both dates and the window re-validates them on the way in.
+- **Read the clone back** before treating it as done. A partially-applied clone reports success like any other transaction.
+
+### Reading several records in one call
+
+`TransactionStates` is a list, and it behaves like one: give it *N* key sets and the response carries *N* `Transactions`, each a complete record.
+
+```json
+{
+  "ServiceName": "Order",
+  "TransactionStates": [
+    {"DataElementName": "TABPAGE_1.order", "Keys": [{"Name": "order_no", "Value": "1000001"}]},
+    {"DataElementName": "TABPAGE_1.order", "Keys": [{"Name": "order_no", "Value": "1000002"}]}
+  ]
+}
+```
+
+Size the request with that in mind — one `Order` record is a few hundred KB of JSON, so this is a way to fetch a handful of records, not a bulk export. For anything wider, use OData.
+
+*(Section contributed from a community session, Felipe Maurer, 2026; verified against a 26.1 tenant, August 2026 — 102 elements returned for one `Order`, and two `TransactionStates` returning two `Transactions`.)*
+
+---
+
 ## Async Operations
 
 For long-running operations, use the async endpoint. Async requests run in a dedicated session (avoiding session pool contamination) but have a limited queue.
@@ -522,6 +689,10 @@ Response:
 Status values: `Active`, `Complete`, `Failed`
 
 > **Note:** The async POST returns HTTP **202 Accepted** (not 200) to indicate the request was queued successfully.
+
+**What the immediate response does and does not tell you.** The submit returns in milliseconds with a request ID, and that is an acknowledgement of *queueing only* — not of validation, and not of success. A transaction that the synchronous endpoint would have rejected returns a perfectly normal request ID here. The status GET is where the outcome lives, and it carries the same `Messages` the synchronous call would have returned — a request that failed shows its `Failed` count and the business-rule text (*"You cannot cancel an order that is fully invoiced"*, for instance) only once you go and read it. Treat the request ID as something you must persist and follow up on; work submitted and never checked is work whose outcome nobody knows.
+
+> **There is no cancel.** Once transactions are queued there is no endpoint to stop them — probed on a 26.1 tenant, every cancel-shaped route 404s (`DELETE /api/v2/transaction/async/{id}`, `DELETE /api/v2/transaction/{id}`, `POST /api/v2/transaction/async/cancel`), and `DELETE /api/v2/transaction/async` returns 405: the route exists, for POST only — a loop that submits 50,000 wrong requests will run all 50,000, and every one fires the same DynaChange rules, alerts and event rules a synchronous call would. This is the endpoint's real hazard: it removes the natural backpressure of waiting for each response, so a payload bug that a synchronous run would have surfaced on record one instead surfaces after the whole batch has landed. Validate the payload synchronously against a single record before submitting a batch async. *(Community session, Felipe Maurer, 2026.)*
 
 ### With Callback
 
@@ -579,6 +750,17 @@ POST /api/v2/commands
 ### Field and DataElement Ordering
 
 Some services require specific ordering of DataElements or Edits within a request. The API processes them sequentially, and some fields trigger validation or auto-population of other fields.
+
+#### The general rule: repeat the element pair, don't batch it
+
+The Transaction API replays a payload the way an operator would work the window: it applies elements top to bottom, and a child element attaches to **whichever parent row is current at that point in the sequence**. So when several parent rows each need child data on another tab, repeat the pair per row rather than sending all the parents and then all the children:
+
+```text
+Correct:  item A → its detail A → item B → its detail B
+Wrong:    item A → item B → detail A → detail B
+```
+
+The second form doesn't error — it applies both details to whatever row was current, which is the last one. Verified on a 26.1 tenant with a two-line order and `TP_EXTDINFO.extd_info`: sending `item A → item B → extd "EXT-FOR-A" → extd "EXT-FOR-B"` returns `Succeeded: 1` with no messages and lands **both** descriptions on line 2, last one winning, leaving line 1's `extended_desc` null. The interleaved sequence puts each description on its own line. An element may appear **as many times as you need** in a single transaction; a ten-line order that also sets extended info per line is ten repetitions of the pair, in order. This is the same rule the lot-item and break-line cases below are specific instances of. *(General statement of the rule: community session, Felipe Maurer, 2026; verified August 2026.)*
 
 **Credit Card Payment Orders:**
 DataElements must appear in this order:
@@ -2754,6 +2936,7 @@ What this writes, and the cascade (verified on a 68-item production run):
 
 - **Silent no-op — the big one.** The target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the transaction still returns `Succeeded = 1` but **nothing flips** — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) **Always verify `inv_loc.primary_supplier_id` after writing** — do not trust `Succeeded`. Fix: add the location supplier row first, then set the flag.
 - **"Item Issues Detected" popup — a data defect you can fix, not an API limitation.** Affected items return an `Unexpected response window: Item Issues Detected` (`w_rule_callback_response`) in the response `Messages`. The Transaction API cannot answer the popup, so the transaction aborts and the edit is discarded. The popup comes from a **site-configured DynaChange business rule with `apply_during_save_flag = 'Y'`**, which fires on *every* save of the Item window — so it blocks **all** Item-service writes, not just `product_group_id` changes. The behavior is **deterministic, not per-run session state**: retries fail every time until the underlying data is corrected, and once it is corrected the identical transaction succeeds. Identify the rule and its trigger, fix the data, re-run — see [Item Issues Detected Popup Root Cause and Data Fix](#item-issues-detected-popup-root-cause-and-data-fix). For items you cannot data-fix, fall back to the Interactive API and answer the popup with `cb_1` ("Yes, Proceed Anyway") — see [Item window popups](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback).
+- **Uppercase your `item_id` yourself — the API will not.** The P21 client folds a typed item ID to uppercase before it saves, so lowercase item IDs cannot be created through the UI. **The Transaction API applies no such conversion**: a lowercase `item_id` is accepted and the item is created successfully. The resulting record is then effectively unusable — opening it in **Item Maintenance / Item Master Inquiry crashes the client** (reported by maintainers as crashing the browser in the web client), and it is not clear that item-repair tooling detects it. Normalize `item_id` to uppercase in your own code before every create; there is no API-side guard. This is the one place where the Transaction API is known to accept input the application itself would reject. *(Community session, Felipe Maurer, 2026; independently confirmed from production experience. Deliberately **not** re-tested for this documentation — the item it creates cannot be cleaned up through the UI, so do not reproduce it to check, on production or anywhere else.)*
 - `SUPPLIER_X_LOCATION` is keyed by `supplier_id` scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent *interactive* flow must match rows on both `location_id` and `supplier_id` — the grid holds every location's rows.)
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July 2026).
@@ -3187,6 +3370,14 @@ The Transaction API includes a dedicated endpoint for generating PDF documents -
 > Probe each candidate with `GET /api/v2/definition/{name}` — the ones that return 200 are callable. On a 25.2 test system this yields ~157 callable report services, including `m_picktickets`, `m_reprintpicktickets`, `m_productionorders`, `m_orderacknowledgements`, `m_invoices`, `m_packinglists`, and `m_customerstatements`.
 >
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) identified that report services are hidden from the services list and worked out the `window_x_menu` discovery path.
+
+> **Third discovery path — ask P21 for the window name.** If you can open the report in the desktop client, you don't need to probe for its name at all: **right-click any field in the report window and choose *SQL Help***, which names the window (the `m_*` string) along with the field you clicked. Feed that name to `definition`/`defaults` for the field list, or straight to `pdfreport`. Because report windows carry only a handful of criteria fields, reading the criteria names out of SQL Help is often faster than pulling the whole definition — unlike a transaction window such as Order, where hand-collecting field names is not practical. *(Community session, Felipe Maurer, 2026.)*
+
+**Report windows are still windows.** The endpoint runs the same PowerBuilder report window a user runs, with the same gates:
+
+- **The API user needs access to that report window.** No permission, no report.
+- **DynaChange data-change rules apply.** Sites commonly restrict these windows — capping date ranges so nobody runs a report wide open, for instance — and a `pdfreport` call hits those same restrictions. That is usually what you want; it also means a payload that works for one user can fail for another.
+- **A wide-open report can run for days.** Criteria that would be reckless in the client are equally reckless here: an unbounded inventory-valuation run has been reported executing for three days before exhausting server memory. **Cancelling the HTTP request does not stop it** — the server keeps generating until it finishes or dies. Bound your criteria before the first call, and test new report payloads against a narrow date/company range. *(Community session, Felipe Maurer, 2026.)*
 
 ### Request Structure
 
@@ -3897,6 +4088,17 @@ Key characteristics:
 | Visual Rules with response/callback attributes | (Community-reported) These break TAPI -- cause "Column is disabled" errors. Remove or disable these rules for the API user's profile. *(Credit: Brad Vandenbogaerde)* |
 | Wizard-type popups requiring user input | (Verified) Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input |
 | "Column is disabled" errors | (Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. *(Credit: Justin Cassidy)* |
+| In-window **wizards** launched from another window — the PO wizard and assembly decoder from Order Entry, credit-card entry (an embedded merchant-gateway form, not a P21 window) | (Community-reported) Not drivable from TAPI. Use the Interactive API. For credit cards, the documented TAPI path takes a **token you generated elsewhere** — the entry form itself is out of reach. *(Community session, Felipe Maurer, 2026)* |
+| Drag-and-drop windows | No TAPI path. Verified on the standalone `*Notepad` services (26.1, Aug 2026): their mandatory **area selector** is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with `You must select at least one area where this note will display.`; send a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`) and it fails with `Column is disabled: area`. `IgnoreDisabled: true` changes neither. *(Community session, Felipe Maurer, 2026; verified August 2026)* |
+| **Mandatory notes** blocking a save | (Community-reported) A mandatory note diverts the window to the notes tab and strands the transaction. A **user setting** on the API user's profile — the option to receive mandatory notes as prompts/alerts rather than as a hard stop (bottom-left of the login/user settings) — lets the transaction proceed. Weigh this before enabling it: mandatory notes usually exist for a reason, and this suppresses them for that user. *(Community session, Felipe Maurer, 2026)* |
+
+> **Order notes: the elements are published, and they are all disabled.** The `Order` definition looks encouraging — it publishes **`LINE_NOTE.line_note`** and **`HDR_NOTE.hdr_note`** as ordinary `List` DataElements keyed on `note_id`, each with `note`, `topic` and `notepad_class_desc` fields, plus `TP_ITEMNOTES.tp_itemnotes` keyed on `note_uid`. None of it is writable. Tested against a 26.1 tenant on a live order (August 2026), **every column of both note elements is refused**, one at a time, whichever you send: `Column is disabled: topic`, `Column is disabled: notepad_class_desc`, `Column is disabled: note`. `TP_ITEMNOTES` refuses a step earlier still, with `Tab page is disabled and cannot be selected`.
+>
+> **And `IgnoreDisabled: true` makes it worse, not better.** The same `LINE_NOTE` write that fails loudly without the flag returns `Succeeded: 1` with it — and the note is still empty on read-back. That is [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) exactly: the flag swallows the refusal and reports success on a write that wrote nothing.
+>
+> The standalone notepad services close the loop the same way. `ItemNotepad`, `CustomerNotepad`, `SupplierNotepad` and `VendorNotepad` (see [Common Services](#common-services)) each publish a perfectly ordinary header form — `note_id`, `topic`, `note`, `mandatory`, activation/expiration dates, a `notepad_class` with `ValidValues` — and every create dies on the same wall (tested on the first three, 26.1, August 2026): the mandatory **"where does this note display" area selector is a drag-and-drop control**. Omit it and the save fails with `You must select at least one area where this note will display.`; send the area as a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`, declared `KeyFields: ["area"]`) and it fails with `Column is disabled: area`; the Available Areas side (`tp_17_dw_dragdrop`) accepts the row and then fails the save on the same missing selection. `IgnoreDisabled: true` changes none of it. This is the [drag-and-drop limitation](#limitations) with a paper trail.
+>
+> So **"the Transaction API can't do notes" is simply true — notes are Interactive API territory.** Not for the reason usually given (the *Add Line Note* wizard — true, but incidental): every path is independently closed. `Order`'s embedded note elements are disabled columns; the standalone `*Notepad` services stall on a drag-and-drop area picker. Use the Interactive API's verified path: [PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line). *(Community session, Felipe Maurer, 2026, for the wizard claim; both closures verified live, August 2026.)*
 
 ### Item Issues Detected Popup Root Cause and Data Fix
 

@@ -670,6 +670,38 @@
 <td><a href="03-Transaction-API.html#upsert-semantics-keyed-rows-insert-when-absent">03 § Upsert Semantics</a></td>
 </tr>
 <tr>
+<td><strong>Two lines came back as one</strong> — same item twice, only the last quantity landed</td>
+<td><a href="03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">03 § Keys — Row Identity and the Collapse Trap</a></td>
+</tr>
+<tr>
+<td>Pick the right <code>Keys</code> for an element (and what over-keying breaks)</td>
+<td><a href="03-Transaction-API.html#choosing-a-key">03 § Choosing a key</a> · <a href="03-Transaction-API.html#what-the-definition-already-tells-you">03 § What the definition already tells you</a></td>
+</tr>
+<tr>
+<td>Child rows all attached to the last parent (extended info, lots, breaks)</td>
+<td><a href="03-Transaction-API.html#the-general-rule-repeat-the-element-pair-dont-batch-it">03 § The general rule: repeat the element pair</a></td>
+</tr>
+<tr>
+<td>Read one record whole / <strong>clone</strong> an existing record</td>
+<td><a href="03-Transaction-API.html#reading-one-record-post-transactionget">03 § Reading One Record</a></td>
+</tr>
+<tr>
+<td>Read <strong>several</strong> records in one <code>/transaction/get</code> call</td>
+<td><a href="03-Transaction-API.html#reading-several-records-in-one-call">03 § Reading several records in one call</a></td>
+</tr>
+<tr>
+<td><code>Sequence contains no matching element</code> / <code>Invalid column name</code> on a keyed write</td>
+<td><a href="03-Transaction-API.html#choosing-a-key">03 § Choosing a key</a> — every <code>Keys</code> field must be a real column <strong>and</strong> be sent in <code>Edits</code></td>
+</tr>
+<tr>
+<td>Write a <strong>note</strong> (order line/header, item, customer, supplier)</td>
+<td><a href="03-Transaction-API.html#limitations">03 § Limitations</a> — no TAPI path: <code>Order</code>'s note elements are disabled, and the standalone <code>*Notepad</code> services stall on a drag-and-drop area picker; use <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a></td>
+</tr>
+<tr>
+<td>Which discovery endpoint — <code>definition</code> vs <code>defaults</code> vs <code>basics</code></td>
+<td><a href="03-Transaction-API.html#endpoints">03 § Endpoints</a></td>
+</tr>
+<tr>
 <td>Write through disabled columns/tabs (<code>IgnoreDisabled</code>)</td>
 <td><a href="03-Transaction-API.html#ignoredisabled">03 § IgnoreDisabled</a> — <strong>not a universal unlock; it can report success and write nothing</strong></td>
 </tr>
@@ -694,7 +726,7 @@
 <td><a href="03-Transaction-API.html#endpoints">03 § Endpoints — <code>/transaction/get</code></a></td>
 </tr>
 <tr>
-<td>Long-running / async transactions</td>
+<td>Long-running / async transactions (<strong>no cancel path</strong> once queued)</td>
 <td><a href="03-Transaction-API.html#async-operations">03 § Async Operations</a></td>
 </tr>
 <tr>
@@ -971,7 +1003,11 @@
 </tr>
 <tr>
 <td>Discover callable report names (hidden from /services)</td>
-<td><a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a> (Discovery note)</td>
+<td><a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a> (Discovery note — includes the right-click <em>SQL Help</em> path)</td>
+</tr>
+<tr>
+<td>Report returns nothing / runs forever / works for one user only</td>
+<td><a href="03-Transaction-API.html#pdf-report-generation">03 § Report windows are still windows</a> — permissions, DynaChange date caps, <strong>cancelling the request does not stop the run</strong></td>
 </tr>
 <tr>
 <td>Production pick ticket at a specific location</td>

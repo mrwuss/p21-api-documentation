@@ -46,13 +46,21 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Get a service's schema, template, defaults | [03 § Endpoints](03-Transaction-API.md#endpoints) · committed full-field JSON in [`definitions/`](../definitions/README.md) |
 | **Update an existing record** (Status `"New"` + keys; `"Existing"` is broken) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) |
 | **Insert new keyed rows (upsert)** + one-tx-per-POST rule | [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) |
+| **Two lines came back as one** — same item twice, only the last quantity landed | [03 § Keys — Row Identity and the Collapse Trap](03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) |
+| Pick the right `Keys` for an element (and what over-keying breaks) | [03 § Choosing a key](03-Transaction-API.md#choosing-a-key) · [03 § What the definition already tells you](03-Transaction-API.md#what-the-definition-already-tells-you) |
+| Child rows all attached to the last parent (extended info, lots, breaks) | [03 § The general rule: repeat the element pair](03-Transaction-API.md#the-general-rule-repeat-the-element-pair-dont-batch-it) |
+| Read one record whole / **clone** an existing record | [03 § Reading One Record](03-Transaction-API.md#reading-one-record-post-transactionget) |
+| Read **several** records in one `/transaction/get` call | [03 § Reading several records in one call](03-Transaction-API.md#reading-several-records-in-one-call) |
+| `Sequence contains no matching element` / `Invalid column name` on a keyed write | [03 § Choosing a key](03-Transaction-API.md#choosing-a-key) — every `Keys` field must be a real column **and** be sent in `Edits` |
+| Write a **note** (order line/header, item, customer, supplier) | [03 § Limitations](03-Transaction-API.md#limitations) — no TAPI path: `Order`'s note elements are disabled, and the standalone `*Notepad` services stall on a drag-and-drop area picker; use [04 § PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line) |
+| Which discovery endpoint — `definition` vs `defaults` vs `basics` | [03 § Endpoints](03-Transaction-API.md#endpoints) |
 | Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) — **not a universal unlock; it can report success and write nothing** |
 | Contract break tiers refuse to save / "Tab page is disabled" | [03 § VALUES Writes Are Refused on 26.1](03-Transaction-API.md#values-writes-are-refused-on-261) · [14 § entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) |
 | Field order silently changing values | [03 § Field Order Matters](03-Transaction-API.md#field-order-matters) |
 | Labels vs code_no (`UseCodeValues`, `code_p21`) | [03 § UseCodeValues](03-Transaction-API.md#usecodevalues) |
 | Check success properly (HTTP 200 lies; per-tx pass/fail) | [03 § Response Format](03-Transaction-API.md#response-format) · [06 § Transaction API Errors](06-Error-Handling.md#transaction-api-errors) |
 | Read a record back / verify a write | [03 § Endpoints — `/transaction/get`](03-Transaction-API.md#endpoints) |
-| Long-running / async transactions | [03 § Async Operations](03-Transaction-API.md#async-operations) |
+| Long-running / async transactions (**no cancel path** once queued) | [03 § Async Operations](03-Transaction-API.md#async-operations) |
 | DynaChange rules & popup suppression for the API user | [03 § DynaChange and Popup Handling](03-Transaction-API.md#dynachange-and-popup-handling) |
 | Run a stored procedure via API | [03 § Stored Procedure Executor](03-Transaction-API.md#stored-procedure-executor) |
 
@@ -124,7 +132,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Task | Where |
 |------|-------|
 | Generate any `m_*` report as PDF | [recipe: generate-pick-ticket-pdf](recipes/generate-pick-ticket-pdf.md) · [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) |
-| Discover callable report names (hidden from /services) | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) (Discovery note) |
+| Discover callable report names (hidden from /services) | [03 § PDF Report Generation](03-Transaction-API.md#pdf-report-generation) (Discovery note — includes the right-click *SQL Help* path) |
+| Report returns nothing / runs forever / works for one user only | [03 § Report windows are still windows](03-Transaction-API.md#pdf-report-generation) — permissions, DynaChange date caps, **cancelling the request does not stop the run** |
 | Production pick ticket at a specific location | [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
 | PDFs from print flags on a normal transaction | [03 § PDFs from the /transaction endpoint](03-Transaction-API.md#pdfs-from-the-transaction-endpoint-print-flags) |
 

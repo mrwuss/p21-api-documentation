@@ -534,6 +534,15 @@
 <li><a href="#common-mistakes-and-their-symptoms">Common mistakes and their symptoms</a></li>
 </ul>
 </li>
+<li><a href="#keys-row-identity-and-the-collapse-trap">Keys -- Row Identity and the Collapse Trap</a><ul>
+<li><a href="#the-collapse-two-rows-in-one-row-out">The collapse: two rows in, one row out</a></li>
+<li><a href="#keys-are-a-group-by">Keys are a GROUP BY</a></li>
+<li><a href="#choosing-a-key">Choosing a key</a></li>
+<li><a href="#over-keying-breaks-updates">Over-keying breaks updates</a></li>
+<li><a href="#what-the-definition-already-tells-you">What the definition already tells you</a></li>
+<li><a href="#debugging-a-key-problem">Debugging a key problem</a></li>
+</ul>
+</li>
 <li><a href="#xml-payloads-content-negotiation">XML Payloads (Content Negotiation)</a><ul>
 <li><a href="#the-xml-request-shape-datacontract">The XML request shape (DataContract)</a></li>
 </ul>
@@ -557,6 +566,12 @@
 <li><a href="#ignoredisabled">IgnoreDisabled</a></li>
 <li><a href="#usecodevalues">UseCodeValues</a><ul>
 <li><a href="#labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores (code_p21)</a></li>
+</ul>
+</li>
+<li><a href="#reading-one-record-post-transactionget">Reading One Record -- POST /transaction/get</a><ul>
+<li><a href="#when-this-and-when-odata">When this, and when OData</a></li>
+<li><a href="#clone-an-existing-record">Clone an existing record</a></li>
+<li><a href="#reading-several-records-in-one-call">Reading several records in one call</a></li>
 </ul>
 </li>
 <li><a href="#async-operations">Async Operations</a><ul>
@@ -683,6 +698,11 @@
 <td>Get default values for a service</td>
 </tr>
 <tr>
+<td><code>/api/v2/basics/{name}</code></td>
+<td>GET</td>
+<td>Abbreviated field list for a service, as a ready-to-fill payload skeleton (see note below)</td>
+</tr>
+<tr>
 <td><code>/api/v2/transaction/get</code></td>
 <td>POST</td>
 <td>Retrieve existing records</td>
@@ -720,6 +740,17 @@
 </tbody>
 </table></div>
 <blockquote>
+<p><strong>The three discovery endpoints, and which one answers your question.</strong> <code>definition</code>, <code>defaults</code> and <code>basics</code> take the same <code>{service_name}</code> path segment and are the routine way to learn a window's shape without opening P21. Between them: <strong><code>definition</code></strong> returns the full schema — every DataElement, field, <code>DataType</code>, <code>KeyFields</code>, and the accepted values for dropdown/code fields, which is where valid values for site-specific fields such as <code>carrier_id</code> come from (see <a href="#get-service-definition">Get Service Definition</a>); <strong><code>defaults</code></strong> returns the service's default values and a payload template you can fill in and post back; <strong><code>basics</code></strong> returns the same element list carrying only each element's headline fields, already shaped as a <code>Status: "New"</code> TransactionSet with <code>Keys</code> prefilled from the element's <code>KeyFields</code> and <code>IgnoreIfEmpty: true</code> on every edit — fill in the values and POST it. The abbreviation is severe and that is the point: on <code>Order</code> all three return the same <strong>102</strong> elements, but <code>basics</code> carries <strong>103</strong> fields against <code>definition</code>/<code>defaults</code>' <strong>1,266</strong>.</p>
+<p>The community session's warning about <code>basics</code> holds in both directions, so treat it as a starting point rather than a contract — verified on 26.1 with <code>Order</code>:</p>
+<ul>
+<li>
+<p><strong>It omits fields you need.</strong> Its header element lists <code>order_no</code>, <code>sales_loc_id</code>, <code>contact_id</code>, <code>po_no</code>, <code>order_date</code>, <code>company_id</code>, <code>taker</code>, <code>requested_date</code> — but a create also needs <code>customer_id</code>, <code>source_loc_id</code> and <code>ship_to_id</code>, none of which appear. Omitting <code>ship_to_id</code> fails the save with the unattributed message <code>This column is required.</code> (no column named).</p>
+</li>
+<li>
+<p><strong>It includes fields you cannot write.</strong> <code>company_id</code> is in that same list and is refused on save with <code>Column is disabled: company_id</code>.</p>
+</li>
+</ul>
+<p>An unknown service name returns an <strong>empty HTTP 500</strong>, the same shape <code>definition</code> and <code>defaults</code> give. <em>(Endpoint and behavior verified against a 26.1 tenant, August 2026; originally surfaced in a community session, Felipe Maurer, 2026.)</em></p>
 <p><strong>Service Explorer:</strong> The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.</p>
 <p><strong>Definition endpoint 500s for unavailable windows:</strong> <code>GET /api/v2/definition/{name}</code> can return HTTP 500 with <em>"Window &lt;&lt;X&gt;&gt; is not available or user does not have permission to open it"</em> for a service that <code>/api/v2/services</code> lists. Despite the wording, this is usually <strong>not a grantable permission problem</strong> — the same window fails for fully-privileged users in the Service Explorer. It means the window isn't available in that environment (unlicensed or undeployed module), and which services fail differs per environment. On one 25.2 test system, 238 of the 299 listed services had fetchable definitions. <em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>)</em></p>
 <p><strong>Read-after-write verification:</strong> <code>POST /api/v2/transaction/get</code> is also the recommended way to verify that an Interactive API write actually persisted — a save can report success without persisting a sub-record, and the read-back is the only way to recover a server-generated key. See <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> in the Interactive API guide.</p>
@@ -1021,6 +1052,110 @@
 <p><code>bash
   python scripts/validate_payload.py my_payload.json
   python scripts/validate_payload.py my_payload.xml</code></p>
+<hr />
+<h2 id="keys-row-identity-and-the-collapse-trap">Keys -- Row Identity and the Collapse Trap</h2>
+<p>The <code>Keys</code> array on a DataElement is <strong>not</strong> an authentication key, a consumer key, or a database primary key. It is how the Transaction API decides <strong>which rows in a <code>List</code> element are the same row</strong>. Most payloads never need it, which is why it goes unnoticed — but when it matters, the failure is silent: the API returns <code>Succeeded</code>, and the record is simply not what you sent.</p>
+<blockquote>
+<p><strong>Provenance:</strong> first described in a community conference session on the P21 APIs (<em>Felipe Maurer</em>, 2026), then <strong>verified end-to-end against a 26.1 tenant</strong> (August 2026) — the collapse, the <code>Keys</code> fix, the over-keying failure and the stable-key update below are each a live <code>Order</code> create or update with a <code>/transaction/get</code> read-back. It is the same rule as the independently verified <a href="#upsert-semantics-keyed-rows-insert-when-absent">Upsert Semantics</a> and <a href="#editing-bin-quantities-on-an-existing-contract">contract bin</a> behavior, seen from the row-identity side.</p>
+</blockquote>
+<h3 id="the-collapse-two-rows-in-one-row-out">The collapse: two rows in, one row out</h3>
+<p>Send an order with the same item twice at different quantities and no <code>Keys</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">    </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">                   </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5&quot;</span><span class="p">}]},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">                   </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">}]}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>You do not get two lines of <code>WIDGET-001</code>. You get <strong>one line, quantity 10</strong> — the two rows were treated as one row and the <strong>last</strong> value written for each field won. No error, no warning, <code>Succeeded: 1</code>.</p>
+<p>Two <em>different</em> item IDs in the same payload behave exactly as you expect, which is why this trap stays hidden until the day a real order legitimately carries the same item on more than one line (different lengths cut from one stock item, separate scheduled releases, split shipping dates).</p>
+<h3 id="keys-are-a-group-by">Keys are a <code>GROUP BY</code></h3>
+<p>If you know SQL, the model is straightforward: the API is grouping the rows you send, and <code>Keys</code> is the <code>GROUP BY</code> list. Rows that agree on every key field are one row; name a field whose value <strong>differs</strong> between the rows and they split apart.</p>
+<p>For the payload above, the field that actually differs is the quantity:</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">],</span>
+</code></pre></div>
+
+<p>Now the same two rows produce two lines — quantity 5 as <code>user_line_no</code> 001 and quantity 10 as 002. Two <em>different</em> item IDs need no <code>Keys</code> at all: with <code>Keys: []</code> they already come back as two lines.</p>
+<h3 id="choosing-a-key">Choosing a key</h3>
+<ul>
+<li><strong>You cannot invent one, and you must send it.</strong> A key must be a real column on that element <em>and</em> appear in every row's <code>Edits</code> — there is no synthetic row-id or ascending-integer you can supply. Both failures are hard, not silent, and their messages are worth recognizing: naming a column you did not put in <code>Edits</code> fails the transaction with the opaque <code>General Exception: Sequence contains no matching element</code>; naming something that is not a column at all fails with the clearer <code>Invalid column name: {name}</code>. Either way <code>Failed: 1</code>, nothing is written.</li>
+<li><strong>Pick the column that differs.</strong> On an order line, <code>oe_order_item_id</code> is a <em>bad</em> key for this problem precisely because it is the value that is the same. Fields that commonly work: quantity, a customer/user line number (<code>user_line_no</code> on <code>TP_ITEMS.items</code>), or a date field where the rows genuinely differ.</li>
+<li><strong>Timestamp columns are a last resort.</strong> Some elements have no natural discriminator, leaving <code>date_created</code>-style columns as the only option. They usually differ, but rows written in the same operation — or loaded by an import — can share a timestamp, and then the collapse comes back.</li>
+<li><strong>Compound keys are allowed</strong> — as many columns as it takes to make the rows unique.</li>
+<li><strong>Surplus keys are accepted silently.</strong> A key that is real and sent but doesn't discriminate is not an error — <code>Keys: ["unit_quantity", "oe_order_item_id"]</code> splits the two rows above exactly as <code>["unit_quantity"]</code> alone does, with no warning that the second key separated nothing. Adding keys until the behavior changes is a legitimate debugging tactic, but it means a wrong key set looks exactly like a right one.</li>
+<li><strong>Deleted rows are still rows.</strong> Keying on a positional or UID-style line identifier read from the UI can miss soft-deleted lines that the window doesn't show, so the key you send points at a different row than the one you counted.</li>
+</ul>
+<h3 id="over-keying-breaks-updates">Over-keying breaks updates</h3>
+<p>Keys make rows unique in <strong>both</strong> directions. Because a keyed <code>Status: "New"</code> row is an <a href="#upsert-semantics-keyed-rows-insert-when-absent">upsert</a> — update when the key matches, insert when it doesn't — a key set that is <em>too</em> specific stops matching the row you meant to change, and the "update" silently becomes a new line.</p>
+<p>The classic case: keying on the quantity (the fix above) and then trying to change that quantity from 10 to 20. The new value doesn't match the existing row's key, so P21 appends a line instead of editing one. Verified against the two-line order created above:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">],</span>
+<span class="w"> </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">                     </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;20&quot;</span><span class="p">}]}]}</span>
+</code></pre></div>
+
+<p><code>Succeeded: 1</code>, no messages — and the order now has <strong>three</strong> lines (5, 10, 20) instead of two. Key on something <strong>stable</strong> when updating: the same edit keyed on <code>user_line_no</code>, with <code>user_line_no</code> sent in <code>Edits</code>, changes that line in place and leaves the line count alone.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;user_line_no&quot;</span><span class="p">],</span>
+<span class="w"> </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user_line_no&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;003&quot;</span><span class="p">},</span>
+<span class="w">                     </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">                     </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;33&quot;</span><span class="p">}]}]}</span>
+</code></pre></div>
+
+<p>Key on the discriminator when creating; key on something stable when updating.</p>
+<h3 id="what-the-definition-already-tells-you">What the definition already tells you</h3>
+<p>Every element in <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/{Service}.json</code></a> carries a <code>KeyFields</code> array — the key fields P21 declares for that element. Read it before sending repeated rows: in the cases below the declared fields line up exactly with the behavior described above, which makes <code>KeyFields</code> the best available predictor of what your rows will be folded on. (Confirm with a read-back on a service you haven't tried — the correspondence is consistent across the services documented here, but the collapse itself was exercised live only on <code>Order</code>.) Across the committed definitions, <strong>214 of 335 <code>List</code> elements declare key fields</strong>; the remaining third declare none.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Element</th>
+<th>Declared <code>KeyFields</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Order</code></td>
+<td><code>TP_ITEMS.items</code></td>
+<td><code>["oe_order_item_id"]</code></td>
+</tr>
+<tr>
+<td><code>JobContractPricing</code></td>
+<td><code>JOBPRICELINE.jobpriceline</code></td>
+<td><code>["item_id", "line_no"]</code></td>
+</tr>
+<tr>
+<td><code>Item</code></td>
+<td><code>TABPAGE_17.invloclist</code></td>
+<td><code>["location_id"]</code></td>
+</tr>
+<tr>
+<td><code>ConvertPOToVoucher</code></td>
+<td><code>TABPAGE_17.tp_17_dw_17</code></td>
+<td><code>["receipt_number", "line_number", "po_no"]</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>Order</code>'s item grid declaring <code>oe_order_item_id</code> is exactly why the collapse above happens on the item ID. And <code>JOBPRICELINE</code> declaring <code>["item_id", "line_no"]</code> is the same rule from the other side — which is why the verified contract-line guidance says to select by <code>item_id</code> and to <strong>add <code>line_no</code> as a second key when the same item appears on multiple lines</strong> (see <a href="#editing-bin-quantities-on-an-existing-contract">Editing Bin Quantities</a>).</p>
+<p>Read them straight out of the JSON:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import json;d=json.load(open(&#39;definitions/Order.json&#39;));[print(e[&#39;Name&#39;],e.get(&#39;KeyFields&#39;)) for e in d[&#39;TransactionDefinition&#39;][&#39;DataElementDefinitions&#39;] if e[&#39;Type&#39;]==&#39;List&#39;]&quot;</span>
+</code></pre></div>
+
+<p>The live endpoint carries the same field — see <a href="#get-service-definition">Get Service Definition</a>, which prints <code>KeyFields</code> per element.</p>
+<h3 id="debugging-a-key-problem">Debugging a key problem</h3>
+<p>The symptom is always the same shape: <strong>the write succeeded and the data is wrong</strong> — a line missing, a quantity belonging to a different line, or an update that appeared as a new row. When that happens:</p>
+<ol>
+<li>Read the record back with <a href="#endpoints"><code>POST /api/v2/transaction/get</code></a> and compare it to what you sent, row for row.</li>
+<li>Look up the element's <code>KeyFields</code> in its definition — that is what your rows were folded on.</li>
+<li>Add the column that genuinely differs between your rows to <code>Keys</code>, resend, read back again.</li>
+</ol>
+<p>Do this deliberately on a test system before you need it: send ten rows of the same item at ten quantities, predict the result, then compare. It is a fast way to build the instinct, and it is the one Transaction-API behavior that reads as the API being broken when it is doing exactly what it was told.</p>
 <hr />
 <h2 id="xml-payloads-content-negotiation">XML Payloads (Content Negotiation)</h2>
 <p>The Transaction API endpoints speak <strong>XML as well as JSON</strong>, in both directions, negotiated per-request with standard headers (verified live on 25.2, July 2026):</p>
@@ -1464,6 +1599,65 @@
 </table></div>
 <p><em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a> — maps verified against <code>code_p21</code>.)</em></p>
 <hr />
+<h2 id="reading-one-record-post-transactionget">Reading One Record -- POST /transaction/get</h2>
+<p><code>POST /api/v2/transaction/get</code> is the Transaction API's read side. It is a <strong>POST despite being called "get"</strong> — the key you are looking up travels in the body, not the query string, so a GET against this path is not the call you want.</p>
+<p>Give it a service name and the key identifying one record, and it returns <strong>that record as a complete TransactionSet</strong> — every populated field across every tab of the window, in the same shape you would POST back to <code>/transaction</code>. Examples throughout this doc use it as the read-back after a write; the same call is also the fastest way to see what a window actually holds.</p>
+<h3 id="when-this-and-when-odata">When this, and when OData</h3>
+<p>Both read data and neither writes. They differ in shape, and the choice is usually obvious once stated:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><code>POST /transaction/get</code></th>
+<th>OData</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scope</strong></td>
+<td>One record</td>
+<td>Many records</td>
+</tr>
+<tr>
+<td><strong>Breadth</strong></td>
+<td>The whole window — every tab assembled for you</td>
+<td>One table or view per query</td>
+</tr>
+<tr>
+<td><strong>Joins</strong></td>
+<td>Already done, exactly as the window does them</td>
+<td>Yours to do — chain queries by <code>_uid</code> or build a view</td>
+</tr>
+<tr>
+<td><strong>Use it for</strong></td>
+<td>Inspecting or cloning a single order/item/customer, verifying a write</td>
+<td>Reporting, exports, bulk lookups, dashboards</td>
+</tr>
+</tbody>
+</table></div>
+<p>The practical difference is the assembly. Pulling one item's full picture over OData means knowing that <code>inv_mast</code>, <code>inv_loc</code>, <code>inventory_supplier</code> and friends go together and querying each; <code>/transaction/get</code> returns what the window shows, already joined. Past one record, that advantage inverts and OData wins outright.</p>
+<h3 id="clone-an-existing-record">Clone an existing record</h3>
+<p>Because the response is shaped like a request, the read output is a ready-made template: <strong>read one record, change the key field, POST the result to <code>/transaction</code>.</strong> It is the practical way to duplicate a well-configured record rather than reconstructing it field by field — a "standard CSR" user copied to a new hire, a customer or location modeled on an existing one, an item cloned from its nearest sibling.</p>
+<p>Expect to edit the payload rather than replaying it verbatim, and budget for these:</p>
+<ul>
+<li><strong>Disabled and auto-generated fields come back in the response</strong> even though you cannot write them. On <code>Order</code> the replay stops one field at a time — <code>Column is disabled: customer_name</code>, then <code>Column is disabled: company_id</code> — because the read returns display columns the window computes rather than accepts. <code>IgnoreDisabled: true</code> is the usual reach, but it is <strong>not a reliable unlock</strong> and it can report success while writing nothing; see <a href="#ignoredisabled">IgnoreDisabled</a> and <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a>. Deleting the offending fields is the cleaner fix, and <strong><a href="#endpoints"><code>GET /api/v2/basics/{name}</code></a> is a good filter to delete them by</strong> — intersecting the read-back with the <code>basics</code> field list (then adding back the keys <code>basics</code> omits) turned a failing verbatim replay of a two-line order into a clean clone in one pass.</li>
+<li><strong>Popups, locked tabs and stale references</strong> (a location that no longer exists, say) stop the replay the same way they would stop any other transaction. So does ordinary cross-field validation on values that were fine on the original record: a verbatim replay of a same-day order failed on <code>The Expedite Date must be on or before the Required Date</code>, because the read hands back both dates and the window re-validates them on the way in.</li>
+<li><strong>Read the clone back</strong> before treating it as done. A partially-applied clone reports success like any other transaction.</li>
+</ul>
+<h3 id="reading-several-records-in-one-call">Reading several records in one call</h3>
+<p><code>TransactionStates</code> is a list, and it behaves like one: give it <em>N</em> key sets and the response carries <em>N</em> <code>Transactions</code>, each a complete record.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ServiceName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;TransactionStates&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;DataElementName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;order_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1000001&quot;</span><span class="p">}]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;DataElementName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;order_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1000002&quot;</span><span class="p">}]}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Size the request with that in mind — one <code>Order</code> record is a few hundred KB of JSON, so this is a way to fetch a handful of records, not a bulk export. For anything wider, use OData.</p>
+<p><em>(Section contributed from a community session, Felipe Maurer, 2026; verified against a 26.1 tenant, August 2026 — 102 elements returned for one <code>Order</code>, and two <code>TransactionStates</code> returning two <code>Transactions</code>.)</em></p>
+<hr />
 <h2 id="async-operations">Async Operations</h2>
 <p>For long-running operations, use the async endpoint. Async requests run in a dedicated session (avoiding session pool contamination) but have a limited queue.</p>
 <blockquote>
@@ -1496,6 +1690,10 @@
 <p>Status values: <code>Active</code>, <code>Complete</code>, <code>Failed</code></p>
 <blockquote>
 <p><strong>Note:</strong> The async POST returns HTTP <strong>202 Accepted</strong> (not 200) to indicate the request was queued successfully.</p>
+</blockquote>
+<p><strong>What the immediate response does and does not tell you.</strong> The submit returns in milliseconds with a request ID, and that is an acknowledgement of <em>queueing only</em> — not of validation, and not of success. A transaction that the synchronous endpoint would have rejected returns a perfectly normal request ID here. The status GET is where the outcome lives, and it carries the same <code>Messages</code> the synchronous call would have returned — a request that failed shows its <code>Failed</code> count and the business-rule text (<em>"You cannot cancel an order that is fully invoiced"</em>, for instance) only once you go and read it. Treat the request ID as something you must persist and follow up on; work submitted and never checked is work whose outcome nobody knows.</p>
+<blockquote>
+<p><strong>There is no cancel.</strong> Once transactions are queued there is no endpoint to stop them — probed on a 26.1 tenant, every cancel-shaped route 404s (<code>DELETE /api/v2/transaction/async/{id}</code>, <code>DELETE /api/v2/transaction/{id}</code>, <code>POST /api/v2/transaction/async/cancel</code>), and <code>DELETE /api/v2/transaction/async</code> returns 405: the route exists, for POST only — a loop that submits 50,000 wrong requests will run all 50,000, and every one fires the same DynaChange rules, alerts and event rules a synchronous call would. This is the endpoint's real hazard: it removes the natural backpressure of waiting for each response, so a payload bug that a synchronous run would have surfaced on record one instead surfaces after the whole batch has landed. Validate the payload synchronously against a single record before submitting a batch async. <em>(Community session, Felipe Maurer, 2026.)</em></p>
 </blockquote>
 <h3 id="with-callback">With Callback</h3>
 <p>Use the callback endpoint to receive notification when complete:</p>
@@ -1583,6 +1781,13 @@
 <h2 id="special-scenarios">Special Scenarios</h2>
 <h3 id="field-and-dataelement-ordering">Field and DataElement Ordering</h3>
 <p>Some services require specific ordering of DataElements or Edits within a request. The API processes them sequentially, and some fields trigger validation or auto-population of other fields.</p>
+<h4 id="the-general-rule-repeat-the-element-pair-dont-batch-it">The general rule: repeat the element pair, don't batch it</h4>
+<p>The Transaction API replays a payload the way an operator would work the window: it applies elements top to bottom, and a child element attaches to <strong>whichever parent row is current at that point in the sequence</strong>. So when several parent rows each need child data on another tab, repeat the pair per row rather than sending all the parents and then all the children:</p>
+<div class="highlight"><pre><span></span><code>Correct:  item A → its detail A → item B → its detail B
+Wrong:    item A → item B → detail A → detail B
+</code></pre></div>
+
+<p>The second form doesn't error — it applies both details to whatever row was current, which is the last one. Verified on a 26.1 tenant with a two-line order and <code>TP_EXTDINFO.extd_info</code>: sending <code>item A → item B → extd "EXT-FOR-A" → extd "EXT-FOR-B"</code> returns <code>Succeeded: 1</code> with no messages and lands <strong>both</strong> descriptions on line 2, last one winning, leaving line 1's <code>extended_desc</code> null. The interleaved sequence puts each description on its own line. An element may appear <strong>as many times as you need</strong> in a single transaction; a ten-line order that also sets extended info per line is ten repetitions of the pair, in order. This is the same rule the lot-item and break-line cases below are specific instances of. <em>(General statement of the rule: community session, Felipe Maurer, 2026; verified August 2026.)</em></p>
 <p><strong>Credit Card Payment Orders:</strong>
 DataElements must appear in this order:
 1. Order header
@@ -4076,6 +4281,7 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <ul>
 <li><strong>Silent no-op — the big one.</strong> The target supplier must already have a <em>location-level</em> row (<code>inventory_supplier_x_loc</code>) at that location. If it doesn't, the transaction still returns <code>Succeeded = 1</code> but <strong>nothing flips</strong> — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) <strong>Always verify <code>inv_loc.primary_supplier_id</code> after writing</strong> — do not trust <code>Succeeded</code>. Fix: add the location supplier row first, then set the flag.</li>
 <li><strong>"Item Issues Detected" popup — a data defect you can fix, not an API limitation.</strong> Affected items return an <code>Unexpected response window: Item Issues Detected</code> (<code>w_rule_callback_response</code>) in the response <code>Messages</code>. The Transaction API cannot answer the popup, so the transaction aborts and the edit is discarded. The popup comes from a <strong>site-configured DynaChange business rule with <code>apply_during_save_flag = 'Y'</code></strong>, which fires on <em>every</em> save of the Item window — so it blocks <strong>all</strong> Item-service writes, not just <code>product_group_id</code> changes. The behavior is <strong>deterministic, not per-run session state</strong>: retries fail every time until the underlying data is corrected, and once it is corrected the identical transaction succeeds. Identify the rule and its trigger, fix the data, re-run — see <a href="#item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</a>. For items you cannot data-fix, fall back to the Interactive API and answer the popup with <code>cb_1</code> ("Yes, Proceed Anyway") — see <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Item window popups</a>.</li>
+<li><strong>Uppercase your <code>item_id</code> yourself — the API will not.</strong> The P21 client folds a typed item ID to uppercase before it saves, so lowercase item IDs cannot be created through the UI. <strong>The Transaction API applies no such conversion</strong>: a lowercase <code>item_id</code> is accepted and the item is created successfully. The resulting record is then effectively unusable — opening it in <strong>Item Maintenance / Item Master Inquiry crashes the client</strong> (reported by maintainers as crashing the browser in the web client), and it is not clear that item-repair tooling detects it. Normalize <code>item_id</code> to uppercase in your own code before every create; there is no API-side guard. This is the one place where the Transaction API is known to accept input the application itself would reject. <em>(Community session, Felipe Maurer, 2026; independently confirmed from production experience. Deliberately </em><em>not</em><em> re-tested for this documentation — the item it creates cannot be cleaned up through the UI, so do not reproduce it to check, on production or anywhere else.)</em></li>
 <li><code>SUPPLIER_X_LOCATION</code> is keyed by <code>supplier_id</code> scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent <em>interactive</em> flow must match rows on both <code>location_id</code> and <code>supplier_id</code> — the grid holds every location's rows.)</li>
 </ul>
 <blockquote>
@@ -4551,7 +4757,14 @@ FROM window_x_menu
 WHERE menu_name LIKE 'm[_]%';</code></p>
 <p>Probe each candidate with <code>GET /api/v2/definition/{name}</code> — the ones that return 200 are callable. On a 25.2 test system this yields ~157 callable report services, including <code>m_picktickets</code>, <code>m_reprintpicktickets</code>, <code>m_productionorders</code>, <code>m_orderacknowledgements</code>, <code>m_invoices</code>, <code>m_packinglists</code>, and <code>m_customerstatements</code>.</p>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> identified that report services are hidden from the services list and worked out the <code>window_x_menu</code> discovery path.</p>
+<p><strong>Third discovery path — ask P21 for the window name.</strong> If you can open the report in the desktop client, you don't need to probe for its name at all: <strong>right-click any field in the report window and choose <em>SQL Help</em></strong>, which names the window (the <code>m_*</code> string) along with the field you clicked. Feed that name to <code>definition</code>/<code>defaults</code> for the field list, or straight to <code>pdfreport</code>. Because report windows carry only a handful of criteria fields, reading the criteria names out of SQL Help is often faster than pulling the whole definition — unlike a transaction window such as Order, where hand-collecting field names is not practical. <em>(Community session, Felipe Maurer, 2026.)</em></p>
 </blockquote>
+<p><strong>Report windows are still windows.</strong> The endpoint runs the same PowerBuilder report window a user runs, with the same gates:</p>
+<ul>
+<li><strong>The API user needs access to that report window.</strong> No permission, no report.</li>
+<li><strong>DynaChange data-change rules apply.</strong> Sites commonly restrict these windows — capping date ranges so nobody runs a report wide open, for instance — and a <code>pdfreport</code> call hits those same restrictions. That is usually what you want; it also means a payload that works for one user can fail for another.</li>
+<li><strong>A wide-open report can run for days.</strong> Criteria that would be reckless in the client are equally reckless here: an unbounded inventory-valuation run has been reported executing for three days before exhausting server memory. <strong>Cancelling the HTTP request does not stop it</strong> — the server keeps generating until it finishes or dies. Bound your criteria before the first call, and test new report payloads against a narrow date/company range. <em>(Community session, Felipe Maurer, 2026.)</em></li>
+</ul>
 <h3 id="request-structure_1">Request Structure</h3>
 <p>The payload follows the standard TransactionSet format. Report-specific criteria go in the DataElement's <code>Edits</code> array:</p>
 <blockquote>
@@ -5327,8 +5540,26 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <td>"Column is disabled" errors</td>
 <td>(Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. <em>(Credit: Justin Cassidy)</em></td>
 </tr>
+<tr>
+<td>In-window <strong>wizards</strong> launched from another window — the PO wizard and assembly decoder from Order Entry, credit-card entry (an embedded merchant-gateway form, not a P21 window)</td>
+<td>(Community-reported) Not drivable from TAPI. Use the Interactive API. For credit cards, the documented TAPI path takes a <strong>token you generated elsewhere</strong> — the entry form itself is out of reach. <em>(Community session, Felipe Maurer, 2026)</em></td>
+</tr>
+<tr>
+<td>Drag-and-drop windows</td>
+<td>No TAPI path. Verified on the standalone <code>*Notepad</code> services (26.1, Aug 2026): their mandatory <strong>area selector</strong> is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with <code>You must select at least one area where this note will display.</code>; send a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>) and it fails with <code>Column is disabled: area</code>. <code>IgnoreDisabled: true</code> changes neither. <em>(Community session, Felipe Maurer, 2026; verified August 2026)</em></td>
+</tr>
+<tr>
+<td><strong>Mandatory notes</strong> blocking a save</td>
+<td>(Community-reported) A mandatory note diverts the window to the notes tab and strands the transaction. A <strong>user setting</strong> on the API user's profile — the option to receive mandatory notes as prompts/alerts rather than as a hard stop (bottom-left of the login/user settings) — lets the transaction proceed. Weigh this before enabling it: mandatory notes usually exist for a reason, and this suppresses them for that user. <em>(Community session, Felipe Maurer, 2026)</em></td>
+</tr>
 </tbody>
 </table></div>
+<blockquote>
+<p><strong>Order notes: the elements are published, and they are all disabled.</strong> The <code>Order</code> definition looks encouraging — it publishes <strong><code>LINE_NOTE.line_note</code></strong> and <strong><code>HDR_NOTE.hdr_note</code></strong> as ordinary <code>List</code> DataElements keyed on <code>note_id</code>, each with <code>note</code>, <code>topic</code> and <code>notepad_class_desc</code> fields, plus <code>TP_ITEMNOTES.tp_itemnotes</code> keyed on <code>note_uid</code>. None of it is writable. Tested against a 26.1 tenant on a live order (August 2026), <strong>every column of both note elements is refused</strong>, one at a time, whichever you send: <code>Column is disabled: topic</code>, <code>Column is disabled: notepad_class_desc</code>, <code>Column is disabled: note</code>. <code>TP_ITEMNOTES</code> refuses a step earlier still, with <code>Tab page is disabled and cannot be selected</code>.</p>
+<p><strong>And <code>IgnoreDisabled: true</code> makes it worse, not better.</strong> The same <code>LINE_NOTE</code> write that fails loudly without the flag returns <code>Succeeded: 1</code> with it — and the note is still empty on read-back. That is <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a> exactly: the flag swallows the refusal and reports success on a write that wrote nothing.</p>
+<p>The standalone notepad services close the loop the same way. <code>ItemNotepad</code>, <code>CustomerNotepad</code>, <code>SupplierNotepad</code> and <code>VendorNotepad</code> (see <a href="#common-services">Common Services</a>) each publish a perfectly ordinary header form — <code>note_id</code>, <code>topic</code>, <code>note</code>, <code>mandatory</code>, activation/expiration dates, a <code>notepad_class</code> with <code>ValidValues</code> — and every create dies on the same wall (tested on the first three, 26.1, August 2026): the mandatory <strong>"where does this note display" area selector is a drag-and-drop control</strong>. Omit it and the save fails with <code>You must select at least one area where this note will display.</code>; send the area as a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>, declared <code>KeyFields: ["area"]</code>) and it fails with <code>Column is disabled: area</code>; the Available Areas side (<code>tp_17_dw_dragdrop</code>) accepts the row and then fails the save on the same missing selection. <code>IgnoreDisabled: true</code> changes none of it. This is the <a href="#limitations">drag-and-drop limitation</a> with a paper trail.</p>
+<p>So <strong>"the Transaction API can't do notes" is simply true — notes are Interactive API territory.</strong> Not for the reason usually given (the <em>Add Line Note</em> wizard — true, but incidental): every path is independently closed. <code>Order</code>'s embedded note elements are disabled columns; the standalone <code>*Notepad</code> services stall on a drag-and-drop area picker. Use the Interactive API's verified path: <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes</a>. <em>(Community session, Felipe Maurer, 2026, for the wizard claim; both closures verified live, August 2026.)</em></p>
+</blockquote>
 <h3 id="item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</h3>
 <p><em>Verified on production P21, 2026-08-10.</em></p>
 <p>The <code>Unexpected response window: Item Issues Detected</code> abort that kills <code>Item</code>-service transactions (see <a href="#item-service-gotchas">Item Service Gotchas</a>) is not random and not environment luck. It is a <strong>DynaChange business rule with <code>apply_during_save_flag = 'Y'</code></strong>, which fires on <strong>every save of the Item window</strong> — including the save the Transaction API performs internally. The rule raises a <code>w_rule_callback_response</code> modal, the Transaction API has no way to answer it, and the transaction aborts with the edit discarded.</p>

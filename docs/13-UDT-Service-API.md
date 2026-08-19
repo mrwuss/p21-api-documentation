@@ -1506,6 +1506,8 @@ The API returns success messages in the `errorMessage` field (e.g., `"[1] row in
 
 Values containing SQL keywords like `"drop"`, `"insert"`, `"delete"`, `"update"`, or `"select"` may be blocked by the API's SQL injection filter, even when they appear in legitimate data. For example, a product description containing `"drop tube"` or `"insert fitting"` could be rejected. Credit: John Kennedy.
 
+**Quote characters are part of the same filter, and the behavior is version-dependent.** The protection is reported to be a simplistic string replacement rather than real parameterization, which also catches **quote characters** (`'` and `"`) inside otherwise ordinary values. The everyday casualty is dimensional data: `6" hose`, `1/2" fitting`, `3' section` — feet-and-inches notation is exactly the punctuation the filter objects to. A community session in 2026 reported that Epicor has since relaxed this logic to accept more characters, so **which characters your version rejects is not something to take on faith from any document, including this one**: if your UDT values can contain quotes, insert one row carrying the real punctuation on your own version and read it back before building on it. Testing published on the community forum was done on ~25.1 and may not describe current behavior. *(Community session, Felipe Maurer, 2026.)*
+
 ### 3. Update/Delete Only Accept UIDs as Conditions
 
 | | |

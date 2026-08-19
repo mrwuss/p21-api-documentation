@@ -227,9 +227,17 @@ General Exception: Column is disabled: corp_address_id
 
 Add `IgnoreDisabled: true` and the identical payload returns `Summary: {"Failed": 0, "Succeeded": 1}` — and a read-back shows the value unchanged (verified 26.1.5910.3, 2026-08-11, on a throwaway contract).
 
+**And it is not limited to `JobContractPricing`.** The same shape reproduces on `Order` (26.1, 2026-08-19). `LINE_NOTE.line_note` is published in the `Order` definition as an ordinary keyed `List`, but every one of its columns is disabled; without the flag the write is refused loudly:
+
+```text
+General Exception: Column is disabled: note
+```
+
+Add `IgnoreDisabled: true` — payload otherwise byte-identical — and it returns `Summary: {"Failed": 0, "Succeeded": 1}` with no messages, while a `/transaction/get` read-back shows the note still empty. That makes three unrelated services showing the same false success, which is what marks this as a platform behavior rather than a `JobContractPricing` quirk.
+
 So `IgnoreDisabled` has two outcomes that are **indistinguishable in the response**: it genuinely unlocks the write (as it does for contract BINS quantities and JOBPRICECOST commission fields), or it swallows the refusal and writes nothing. You cannot tell which you got without reading the record back.
 
-**Mitigation:** always read back after any write that used `IgnoreDisabled: true` on `JobContractPricing` `VALUES.values` — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat `Status: "Passed"` under `IgnoreDisabled` as **unverified** until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write `VALUES.values` at all, on any of the three paths. See [Transaction API § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) and [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) for the same read-back discipline applied elsewhere in this repo.
+**Mitigation:** always read back after any write that used `IgnoreDisabled: true`, on any service — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat `Status: "Passed"` under `IgnoreDisabled` as **unverified** until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write `VALUES.values` at all, on any of the three paths. See [Transaction API § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) and [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) for the same read-back discipline applied elsewhere in this repo.
 
 ### Related 2026.1 observations (not breaking changes)
 
