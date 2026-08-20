@@ -2781,7 +2781,7 @@ static string ReadField(string payload, string field)
 
 The Transaction API [cannot drive wizards](03-Transaction-API.md#limitations) — that limitation is real, and this is the worked example of the escape hatch. The Order window's **PO/RFQ generation wizard** creates a purchase order linked to a sales order (a *direct ship*), and it is reachable through the Interactive API.
 
-> **Prerequisite: the API user needs a Buyer ID.** Without one, setting the trigger returns `Status: 2` with `To create a PO, you must have a valid Buyer ID.` — verified on 26.1 (August 2026). It is set in User Maintenance and is a **P21 configuration change**, not something the API can do for you. Check it before writing any of the rest.
+> **Prerequisite: the API user needs a Buyer ID.** Without one, setting the trigger returns `Status: 2` with `To create a PO, you must have a valid Buyer ID.`; with one it returns `Status: 1`. Both verified on 26.1 (August 2026). The Buyer ID is set per user in **User Maintenance** — a P21 configuration change, not something the API can do for you. Check it before writing any of the rest, because every other step works right up until the save.
 
 ### Why this cannot start in the Transaction API
 
@@ -2792,7 +2792,8 @@ The line's `disposition` field is the trigger for a direct-ship line, and it is 
 1. Create and save the sales order with its `D` line **first**. Requesting the PO in the same save does not work — a new order's save stacks other prompts ahead of the wizard and the sequence derails.
 2. Re-open the saved order and set the header checkbox **`c_create_po = 'ON'`** (`TABPAGE_1.order`, valid values `ON`/`OFF`).
 3. `save()` → **`Status: 3`** with a `windowopened` event carrying the wizard's window id. Buttons: `cb_back`, `cb_next`, `cb_finish`, `cb_cancel`.
-   - **Identify the wizard by its buttons before pressing anything** (`GET /v2/tools?windowId={popupId}`; `cb_finish` present). Never blind-answer a response window here — the first one may not be the wizard.
+   - **Identify the wizard by its buttons before pressing anything** (`GET /v2/tools?windowId={popupId}`; `cb_finish` present). Never blind-answer a response window here — the first one may not be the wizard. Saving a *new* order first raises a different `cb_1`/`cb_2`/`cb_3` rule dialog, which is exactly why the two-phase order matters.
+   - ⚠️ **The tool list for a popup also contains the parent window's ribbon** (`Quick.Save`, `inquiry.*`, `help.*`, and any tab-scoped tools). Search it for the specific button names — don't read the first few entries and conclude you have the wrong window.
    - Page 1 is an `items` grid, one row per `D` line: `purchase_item='Y'`, `qty_to_purchase`, `supplier_id`/`supplier_name`.
    - `cb_next` → page 2 shows the assigned `po_no`.
    - `cb_finish` to close cleanly.
@@ -2808,7 +2809,31 @@ The line's `disposition` field is the trigger for a direct-ship line, and it is 
 - **`PurchaseOrder` TAPI cannot build a `D`-type PO** — `po_hdr_po_type` is system-disabled, and the Backorders link tab is invisible to TAPI.
 - **Direct-ship POs are not received** via [PurchaseOrderReceipt](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) — the window refuses because the linked sales-order lines are `'T'` status. Their receipt is created by the sales-side confirmation instead (`DirectShipConfirmation`, keyed on `po_no`), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice.
 
-*(Flow, wizard mechanics and dead ends verified by [Alex Westemeier](https://github.com/AWestemeier) across two full cycles with SQL confirmation. Verified independently here: the `c_create_po` Buyer-ID prerequisite and its exact message, the `disposition` disabled-column behavior, and the field/valid-value definitions. The wizard itself was not re-driven — our API user has no Buyer ID, and granting one is an operator decision.)*
+### Setting `disposition` — only at line entry
+
+`disposition` behaves as a **disabled column everywhere except a line being entered**. Verified three ways on 26.1:
+
+| Attempt | Result |
+|---|---|
+| `POST /transaction` with `disposition` on `TP_ITEMS.items` | `Column is disabled: disposition` |
+| Interactive change on an **existing** saved line | `Column is disabled: disposition` |
+| Interactive change on the line **as it is entered** | **`Status: 1`** — accepted |
+
+So there is no way to convert an existing order line to direct ship through either API, and no stateless path at all. The line must be created in the window with `disposition = 'D'` set during entry.
+
+### Verified run
+
+Driven end-to-end on a 26.1 play tenant (August 2026):
+
+1. Order **1519097** created interactively — one line, `disposition = 'D'`, saved.
+   - Setting `requested_date` fired the **date-cascade popup** (`Status: 3`) even on a brand-new order, exactly as documented below; the sequence stalls with `400`s on every later call until it is answered.
+2. Re-opened, `c_create_po = 'ON'` → `Status: 1`, then `save()` → `Status: 3` with the wizard (`cb_finish` present in its tool list).
+3. `cb_next` → page 2 carried PO **998303**.
+4. `cb_finish` → closed.
+
+Confirmed in the database: `po_hdr` 998303 with **`po_type = 'D'`, `approved = 'Y'`**, and an `oe_line_po` row linking order 1519097 line 1 ↔ PO 998303 line 1 with **`connection_type = 'P'`** — matching the reported shape field for field.
+
+*(Flow and dead ends originally verified by [Alex Westemeier](https://github.com/AWestemeier) across two cycles; re-driven and confirmed independently here.)*
 
 ## Sales Order Notepad Writes (Header vs Line)
 

@@ -17,6 +17,17 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.7
+
+The direct-ship wizard, driven end-to-end here rather than taken on report.
+
+- **feat:** **[Driving an In-Window Wizard](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) upgraded from "reported" to verified.** Order **1519097** created with a `D` line, re-opened with `c_create_po = 'ON'`, save → the wizard, `cb_next` → PO **998303** on page 2, `cb_finish`. Confirmed in the database: `po_hdr` `po_type='D'`, `approved='Y'`, plus an `oe_line_po` row linking order line ↔ PO line with `connection_type='P'`. Matches the reported shape field for field — *@mrwuss, flow originally verified by [Alex Westemeier](https://github.com/AWestemeier)*
+- **feat:** **`disposition` is settable only at line entry** — new table showing all three attempts: `/transaction` → `Column is disabled`; interactive change on an **existing** line → `Column is disabled`; interactive change on the line **as it is entered** → `Status: 1`. So an existing order line **cannot be converted** to direct ship through either API, and there is no stateless path at all — *@mrwuss*
+- **docs:** **The popup tool list also contains the parent window's ribbon.** `GET /v2/tools?windowId={popupId}` returns `Quick.Save`, `inquiry.*`, `help.*` and tab-scoped tools alongside the popup's own buttons — search it for the specific names rather than reading the first few entries and concluding you have the wrong window. Also records that saving a *new* order raises a different `cb_1`/`cb_2`/`cb_3` rule dialog, which is precisely why the two-phase sequence matters — *@mrwuss*
+- **docs:** Buyer-ID prerequisite now shows **both** sides — `Status: 2` with the error when the user has none, `Status: 1` when they do. Every other step works right up until the save, so it's worth checking first — *@mrwuss*
+
+---
+
 ## 2026-08-20 — v1.8.6
 
 Closes the cross-check. The wizard limitation now has a worked escape hatch.

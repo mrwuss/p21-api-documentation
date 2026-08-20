@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>
 <li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
 <li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>
 <li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
@@ -709,6 +710,15 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v187">2026-08-20 — v1.8.7</h2>
+<p>The direct-ship wizard, driven end-to-end here rather than taken on report.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard</a> upgraded from "reported" to verified.</strong> Order <strong>1519097</strong> created with a <code>D</code> line, re-opened with <code>c_create_po = 'ON'</code>, save → the wizard, <code>cb_next</code> → PO <strong>998303</strong> on page 2, <code>cb_finish</code>. Confirmed in the database: <code>po_hdr</code> <code>po_type='D'</code>, <code>approved='Y'</code>, plus an <code>oe_line_po</code> row linking order line ↔ PO line with <code>connection_type='P'</code>. Matches the reported shape field for field — <em>@mrwuss, flow originally verified by <a href="https://github.com/AWestemeier">Alex Westemeier</a></em></li>
+<li><strong>feat:</strong> <strong><code>disposition</code> is settable only at line entry</strong> — new table showing all three attempts: <code>/transaction</code> → <code>Column is disabled</code>; interactive change on an <strong>existing</strong> line → <code>Column is disabled</code>; interactive change on the line <strong>as it is entered</strong> → <code>Status: 1</code>. So an existing order line <strong>cannot be converted</strong> to direct ship through either API, and there is no stateless path at all — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>The popup tool list also contains the parent window's ribbon.</strong> <code>GET /v2/tools?windowId={popupId}</code> returns <code>Quick.Save</code>, <code>inquiry.*</code>, <code>help.*</code> and tab-scoped tools alongside the popup's own buttons — search it for the specific names rather than reading the first few entries and concluding you have the wrong window. Also records that saving a <em>new</em> order raises a different <code>cb_1</code>/<code>cb_2</code>/<code>cb_3</code> rule dialog, which is precisely why the two-phase sequence matters — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> Buyer-ID prerequisite now shows <strong>both</strong> sides — <code>Status: 2</code> with the error when the user has none, <code>Status: 1</code> when they do. Every other step works right up until the save, so it's worth checking first — <em>@mrwuss</em></li>
+</ul>
 <hr />
 <h2 id="2026-08-20-v186">2026-08-20 — v1.8.6</h2>
 <p>Closes the cross-check. The wizard limitation now has a worked escape hatch.</p>
@@ -1218,6 +1228,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>
 <li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
 <li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>
 <li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
