@@ -1443,6 +1443,7 @@ All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 - **`company_id` is a disabled column** on the Order window — don't send it.
 - **DynaChange prompts are auto-answered with the default** (usually "No"), which silently discards the affected line — e.g. *"order line does not have a PO Cost… proceed? [No]"*. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see [DynaChange and Popup Handling](#dynachange-and-popup-handling).
 - **Assembly items cannot be entered via the Transaction API** when they should explode or spawn a production order — the *"add as assembly?"* prompt is auto-answered **No**, killing the explode. Use the Interactive API for those lines: see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
+- **RMAs are not `Order` records.** An order with `rma_flag = 'Y'` is refused outright: `General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.` Use the [`RMA` service](#rma-service-orders-the-order-service-refuses).
 - **The same item on two lines collapses to one** with `Keys: []` — `TP_ITEMS.items` folds rows on its declared key (`oe_order_item_id`), last value wins, `Succeeded: 1`, no warning. Add `Keys: ["unit_quantity"]` (or another differing column) when an order legitimately repeats an item — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap).
 - The created `order_no` comes back in the result rows; check `Summary.Succeeded`, not the HTTP status.
 
@@ -3485,6 +3486,29 @@ static string ReadField(string payload, string field)
 <!-- /tabs -->
 
 ---
+
+### RMA Service — Orders the `Order` Service Refuses
+
+Return Merchandise Authorizations live in `oe_hdr` alongside ordinary sales orders, but the **`Order` service will not touch them**. Loading one by `order_no` fails immediately:
+
+```text
+General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.
+DataElement: order, Column: order_no
+```
+
+The **`RMA`** service is the same window for the return side. It publishes an **identical `TABPAGE_1.order` Form keyed on `order_no`**, carrying the same header fields (`taker`, `po_no`, dates, and so on), so a payload written for `Order` generally works against `RMA` unchanged — you swap the service name.
+
+Verified on a 26.1 tenant (August 2026) against the same RMA order: `Order` refused it with the message above; `RMA` loaded the record and proceeded to ordinary validation.
+
+**Detect before you dispatch.** There is no way to tell from the order number alone. Read `oe_hdr.rma_flag` over OData and route:
+
+```http
+GET {base}/odataservice/odata/view/p21_view_oe_hdr?$filter=rma_flag eq 'Y'&$select=order_no,rma_flag
+```
+
+This matters most for **bulk header maintenance** — reassigning `taker` when a salesperson leaves, retagging orders, any sweep over open orders. RMAs are a normal part of such a set, and the failure message doesn't obviously mean *"use a different service"*, so a batch job hits it as an unexplained per-record error.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — found while reassigning takers at scale, where the RMA rows in an open-order set failed as a group.
 
 ### Salesrep Service — Editing a Rep's Name and Email
 

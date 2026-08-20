@@ -9,7 +9,7 @@ Everything here was verified live on 26.1 (August 2026) with `/transaction/get` 
 ## Prerequisites
 
 - P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
-- An existing, editable order (not fully invoiced/closed).
+- An existing, editable order (not fully invoiced/closed) that is **not an RMA** — see the RMA gotcha below.
 - **Know each target line's `user_line_no`.** It is the stable update key. If your integration created the order, you ideally [assigned handles at create time](../03-Transaction-API.md#design-for-updates-assign-your-own-line-handles); otherwise read them back first (see [Finding the handles](#finding-the-handles)).
 
 ## How it works
@@ -382,6 +382,7 @@ All verified live on 26.1 — details in [Keys — Row Identity and the Collapse
 - **`user_line_no` must be in each row's `Edits`.** A key field that isn't sent fails the transaction with the opaque `General Exception: Sequence contains no matching element`.
 - **A new handle inserts; that's the feature and the risk.** A typo'd handle doesn't error — it quietly adds a line. The read-back below catches it.
 - **DynaChange prompts are auto-answered with the default** — same as order creation; a dropped change still reports `Succeeded`. See [create-sales-order § Gotchas](create-sales-order.md#gotchas).
+- **RMAs need a different service.** An order with `oe_hdr.rma_flag = 'Y'` cannot be loaded through `Order` at all — it fails with `You cannot retrieve an RMA from the Order Entry/Front Counter window.` Use the **`RMA`** service instead: identical `TABPAGE_1.order` form, keyed the same way, same fields. Bulk jobs over open orders hit this routinely, so route per order on `rma_flag` rather than discovering it as a failure. See [03 § RMA Service](../03-Transaction-API.md#rma-service-orders-the-order-service-refuses).
 - **HTTP 200 ≠ success.** Check `Summary` and `Results.Transactions[].Status == "Passed"`.
 
 ## Verify

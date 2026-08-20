@@ -17,6 +17,16 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.3
+
+Cross-check against [Alex Westemeier](https://github.com/AWestemeier)'s verified process work — 17 new commits since the July pass. This entry ships the one finding that breaks something published earlier today; the rest are filed as [#130](https://github.com/mrwuss/p21-api-documentation/issues/130)–[#133](https://github.com/mrwuss/p21-api-documentation/issues/133).
+
+- **fix:** **The `Order` service refuses RMAs — use the `RMA` service.** An order with `oe_hdr.rma_flag = 'Y'` fails to load at all: `You cannot retrieve an RMA from the Order Entry/Front Counter window.` The **`RMA`** service is the same window for the return side, publishing an identical `TABPAGE_1.order` form keyed on `order_no` with the same fields — swap the service name and the payload works unchanged. **Verified on our own tenant:** the same RMA order refused by `Order`, loaded by `RMA`.
+
+  This shipped immediately rather than waiting because the [update-order-lines recipe](recipes/update-order-lines.md) went out earlier today telling readers to key `TABPAGE_1.order` and sweep open orders — exactly the bulk pattern that hits RMAs. Adds an [RMA Service](03-Transaction-API.md#rma-service-orders-the-order-service-refuses) reference entry, a gotcha in the recipe and in [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas), and an INDEX row for the error text. Detect with `oe_hdr.rma_flag` and route per order rather than discovering it as a failure — *found by [Alex Westemeier](https://github.com/AWestemeier) while reassigning takers at scale; verified and documented by @mrwuss*
+
+---
+
 ## 2026-08-20 — v1.8.2
 
 Completes the 26.2 help sweep — every one of the 1,251 articles scored for API relevance, 17 candidates triaged, two findings worth keeping.
