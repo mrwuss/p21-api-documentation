@@ -701,6 +701,7 @@
 <li><a href="#recipe-add-a-line-note">Recipe: Add a Line Note</a></li>
 </ul>
 </li>
+<li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>
@@ -3877,6 +3878,58 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li>Complete the Notepad Entry popup exactly as in the header recipe (<code>topic</code>/<code>note</code> on <code>_dw_hdr</code> with <code>TabName: null</code>, then <code>cb_select_all</code>, <code>cb_ok</code>) — the popup's <code>_dw_hdr</code> shows which <code>line_no</code>/<code>item_id</code> the note will attach to. Save and verify.</li>
 </ol>
 <hr />
+<h2 id="sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</h2>
+<p>The <strong>Order window has the same two notepad surfaces</strong> as PurchaseOrder, drivable with the same Notepad Entry popup mechanics (<a href="#the-notepad-entry-popup">above</a>) — verified end-to-end on 26.1 (August 2026), both notes confirmed in the database. This matters doubly because the Transaction API's note surface on <code>Order</code> is <strong>entirely closed</strong> (<a href="03-Transaction-API.html#limitations">03 § Limitations</a>): this is the working path.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Header note</th>
+<th>Line note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Table</strong></td>
+<td><code>oe_hdr_notepad</code></td>
+<td><code>oe_line_notepad</code></td>
+</tr>
+<tr>
+<td><strong>Tab (<code>PageName</code>)</strong></td>
+<td><code>HDR_NOTE</code></td>
+<td><code>LINE_NOTE</code></td>
+</tr>
+<tr>
+<td><strong>Add tool</strong></td>
+<td><code>hdr_note&amp;&amp;cb_addnote</code></td>
+<td><code>line_note&amp;&amp;cb_addnote</code></td>
+</tr>
+<tr>
+<td><strong>Before the tool</strong></td>
+<td>nothing extra</td>
+<td>select the target line row first</td>
+</tr>
+</tbody>
+</table></div>
+<p>Two Order-window differences from the PurchaseOrder recipe:</p>
+<ul>
+<li><strong>Tool names are namespaced</strong> — <code>{datawindow}&amp;&amp;{button}</code> (<code>hdr_note&amp;&amp;cb_addnote</code>), not the bare <code>cb_add</code>/<code>cb_add_line</code> of the PO window. Same silent-misfile warning applies: both tools are labelled "Add Note".</li>
+<li><strong>The tool list is tab-scoped and accumulates.</strong> <code>GET /v2/tools</code> right after loading the order does <strong>not</strong> list the note tools — they appear only once their tab has been selected (the list grows as tabs are visited). Select the tab first, then look for the tool; a missing tool usually means a missing tab-select, not a missing feature.</li>
+</ul>
+<p>Verified sequence (session created with <code>"ResponseWindowHandlingEnabled": true</code>):</p>
+<ol>
+<li>Open <code>{"ServiceName": "Order"}</code>, load the order (<code>TabName: "TABPAGE_1"</code>, <code>DatawindowName: "order"</code>, <code>order_no</code>). Mandatory customer notes surface as <code>Messages</code> text on this load — they do not block it.</li>
+<li><strong>Header note:</strong> select the tab — <code>PUT /v2/tab</code> <code>{"PageName": "HDR_NOTE"}</code> — then run <code>hdr_note&amp;&amp;cb_addnote</code>. Returns <code>Status: 3</code> with the Notepad Entry popup's window ID in the <code>windowopened</code> event.</li>
+<li><strong>Line note instead:</strong> select the items tab (<code>PageName: "TP_ITEMS"</code>), pick the row — <code>PUT /v2/row</code> <code>{"DatawindowName": "items", "Row": 2}</code> — then select <code>LINE_NOTE</code> and run <code>line_note&amp;&amp;cb_addnote</code>. The note attaches to the selected row's line (confirmed: <code>oe_line_notepad.line_no = 2</code>).</li>
+<li>Complete the popup exactly as in the <a href="#the-notepad-entry-popup">PO recipe</a>: <code>topic</code>/<code>note</code> on <code>_dw_hdr</code> with <code>TabName: null</code> and the <strong>popup's</strong> window ID, then <code>cb_select_all</code>, <code>cb_ok</code>.</li>
+<li>Save (<code>PUT /v2/data</code>, bare window-GUID body) — <code>savesucceeded</code> — and read back.</li>
+</ol>
+<blockquote>
+<p><strong>Read notes back through OData, not <code>/transaction/get</code>.</strong> The Transaction API read of the same order returns the header note in <code>HDR_NOTE.hdr_note</code>, but the <strong>line note never appears</strong> in <code>LINE_NOTE.line_note</code> (the element comes back empty). Query the tables directly:</p>
+<p><code>http
+GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1519092'
+GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</code></p>
+</blockquote>
 <h2 id="sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</h2>
 <p>Use the Interactive API to create a sales order when a line is an <strong>assembly</strong> that should explode into components and/or spawn a <strong>production order</strong>. The Transaction API cannot do this: entering an assembly item fires an <em>"add as assembly?"</em> prompt, and the stateless API auto-answers <strong>No</strong>, killing the explode (see <a href="03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a>). Verified end-to-end: interactive order entry created a sales order whose assembly line (<code>oe_line.assembly = 'P'</code>) auto-linked to a new production order.</p>
 <p>The flow (session started with <code>ResponseWindowHandlingEnabled: true</code>):</p>
@@ -5078,6 +5131,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#recipe-add-a-line-note">Recipe: Add a Line Note</a></li>
 </ul>
 </li>
+<li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>

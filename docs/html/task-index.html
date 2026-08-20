@@ -802,7 +802,7 @@
 <td><a href="03-Transaction-API.html#reading-one-record-post-transactionget">03 § Reading One Record</a></td>
 </tr>
 <tr>
-<td>Read <strong>several</strong> records in one <code>/transaction/get</code> call</td>
+<td>Read <strong>several</strong> records in one <code>/transaction/get</code> call (no field/element subsetting exists)</td>
 <td><a href="03-Transaction-API.html#reading-several-records-in-one-call">03 § Reading several records in one call</a></td>
 </tr>
 <tr>
@@ -811,7 +811,15 @@
 </tr>
 <tr>
 <td>Write a <strong>note</strong> (order line/header, item, customer, supplier)</td>
-<td><a href="03-Transaction-API.html#limitations">03 § Limitations</a> — no TAPI path: <code>Order</code>'s note elements are disabled, and the standalone <code>*Notepad</code> services stall on a drag-and-drop area picker; use <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a></td>
+<td><a href="03-Transaction-API.html#limitations">03 § Limitations</a> — no TAPI path; use the Interactive API: <a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> · <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a></td>
+</tr>
+<tr>
+<td>Update a specific order line deterministically (<strong>line handles</strong>)</td>
+<td><a href="03-Transaction-API.html#design-for-updates-assign-your-own-line-handles">03 § Design for updates: assign your own line handles</a></td>
+</tr>
+<tr>
+<td>A tool is missing from <code>GET /v2/tools</code> on a multi-tab window</td>
+<td><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> — tool lists are tab-scoped and accumulate; select the tab first</td>
 </tr>
 <tr>
 <td>Which discovery endpoint — <code>definition</code> vs <code>defaults</code> vs <code>basics</code></td>

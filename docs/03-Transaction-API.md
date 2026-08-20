@@ -59,7 +59,7 @@ Then use the returned URL as base:
 >
 > - **It includes fields you cannot write.** `company_id` is in that same list and is refused on save with `Column is disabled: company_id`.
 >
-> An unknown service name returns an **empty HTTP 500**, the same shape `definition` and `defaults` give. *(Endpoint and behavior verified against a 26.1 tenant, August 2026; originally surfaced in a community session, Felipe Maurer, 2026.)*
+> `basics` also answers for **report services** (`m_*`) — and there it shines: a report window carries only a handful of criteria fields, so `basics` returns a ready-to-fill criteria skeleton in a few hundred bytes (`m_picktickets`: 601 bytes against `definition`'s 15.8 KB), the API-side equivalent of reading the criteria names out of *SQL Help* (see [PDF Report Generation](#pdf-report-generation)). An unknown service name returns an **empty HTTP 500**, the same shape `definition` and `defaults` give. *(Endpoint and behavior verified against a 26.1 tenant, August 2026; originally surfaced in a community session, Felipe Maurer, 2026.)*
 
 > **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
@@ -298,6 +298,20 @@ The classic case: keying on the quantity (the fix above) and then trying to chan
 ```
 
 Key on the discriminator when creating; key on something stable when updating.
+
+### Design for updates: assign your own line handles
+
+`user_line_no` is **caller-assignable at create time**, which turns the stable-key advice from a debugging move into a design: give every line a handle you chose, and every later update is deterministic. Verified on 26.1 — an order created with the same item on handles `010` and `020` (`Keys: ["user_line_no"]`, so it also solves the collapse), then updated by handle:
+
+```json
+{"Name": "TP_ITEMS.items", "Type": "List",
+ "Keys": ["user_line_no"],
+ "Rows": [{"Edits": [{"Name": "user_line_no",     "Value": "020"},
+                     {"Name": "oe_order_item_id", "Value": "WIDGET-001"},
+                     {"Name": "unit_quantity",    "Value": "9"}]}]}
+```
+
+changes exactly that line in place — no phantom inserts, no dependence on P21's own numbering. Integrations that create-then-maintain order lines should assign handles on day one (gapped values like `010`/`020` leave room to insert between).
 
 ### What the definition already tells you
 
@@ -643,6 +657,8 @@ Expect to edit the payload rather than replaying it verbatim, and budget for the
 ```
 
 Size the request with that in mind — one `Order` record is a few hundred KB of JSON, so this is a way to fetch a handful of records, not a bulk export. For anything wider, use OData.
+
+**There is no server-side subsetting** (probed on 26.1): the response envelope's `Query`, `FieldMap` and `TransactionSplitMethod` fields are echo-only on this endpoint — sending them back populated, or adding element-list fields, changes nothing (byte-identical response). Keying a `TransactionState` on a `List` element (`TP_ITEMS.items` by `oe_order_item_id`) fails the read outright. You always get the whole window; filter client-side.
 
 *(Section contributed from a community session, Felipe Maurer, 2026; verified against a 26.1 tenant, August 2026 — 102 elements returned for one `Order`, and two `TransactionStates` returning two `Transactions`.)*
 
@@ -4099,7 +4115,7 @@ Key characteristics:
 >
 > The standalone notepad services close the loop the same way. `ItemNotepad`, `CustomerNotepad`, `SupplierNotepad` and `VendorNotepad` (see [Common Services](#common-services)) each publish a perfectly ordinary header form — `note_id`, `topic`, `note`, `mandatory`, activation/expiration dates, a `notepad_class` with `ValidValues` — and every create dies on the same wall (tested on the first three, 26.1, August 2026): the mandatory **"where does this note display" area selector is a drag-and-drop control**. Omit it and the save fails with `You must select at least one area where this note will display.`; send the area as a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`, declared `KeyFields: ["area"]`) and it fails with `Column is disabled: area`; the Available Areas side (`tp_17_dw_dragdrop`) accepts the row and then fails the save on the same missing selection. `IgnoreDisabled: true` changes none of it. This is the [drag-and-drop limitation](#limitations) with a paper trail.
 >
-> So **"the Transaction API can't do notes" is simply true — notes are Interactive API territory.** Not for the reason usually given (the *Add Line Note* wizard — true, but incidental): every path is independently closed. `Order`'s embedded note elements are disabled columns; the standalone `*Notepad` services stall on a drag-and-drop area picker. Use the Interactive API's verified path: [PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line). *(Community session, Felipe Maurer, 2026, for the wizard claim; both closures verified live, August 2026.)*
+> So **"the Transaction API can't do notes" is simply true — notes are Interactive API territory.** Not for the reason usually given (the *Add Line Note* wizard — true, but incidental): every path is independently closed. `Order`'s embedded note elements are disabled columns; the standalone `*Notepad` services stall on a drag-and-drop area picker. Use the Interactive API's verified paths: [PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line) and [Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) — the Order path is verified end-to-end (header and line notes, DB-confirmed) with the same popup mechanics. *(Community session, Felipe Maurer, 2026, for the wizard claim; both closures and the working Order path verified live, August 2026.)*
 
 ### Item Issues Detected Popup Root Cause and Data Fix
 

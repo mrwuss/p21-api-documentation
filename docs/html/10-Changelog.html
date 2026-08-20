@@ -636,6 +636,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v161">2026-08-20 — v1.6.1</a></li>
 <li><a href="#2026-08-19-v160">2026-08-19 — v1.6.0</a></li>
 <li><a href="#2026-08-19-v151">2026-08-19 — v1.5.1</a></li>
 <li><a href="#2026-08-11-v150">2026-08-11 — v1.5.0</a><ul>
@@ -695,6 +696,15 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v161">2026-08-20 — v1.6.1</h2>
+<p>Follow-the-thread session: each v1.6.0 fact was pushed one step further against the live 26.1 tenant, and every result below is DB-confirmed.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes</a></strong> — the door the notes dead-end points to is now verified open on the Order window itself: header note (<code>oe_hdr_notepad</code>) and line note (<code>oe_line_notepad</code>, attached to the row selected via <code>PUT /v2/row</code>) both written end-to-end with the same Notepad Entry popup mechanics as the PO recipe. Order-window differences documented: tool names are <strong>namespaced</strong> (<code>hdr_note&amp;&amp;cb_addnote</code>, not bare <code>cb_add</code>), the <strong>tool list is tab-scoped and accumulates</strong> as tabs are visited (a missing tool usually means a missing tab-select), mandatory customer notes surface as load <code>Messages</code> without blocking, and <strong>line notes never appear in <code>/transaction/get</code>'s <code>LINE_NOTE</code> element</strong> — read notes back through OData (<code>oe_hdr_notepad</code> / <code>oe_line_notepad</code>) — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#design-for-updates-assign-your-own-line-handles">Design for updates: assign your own line handles</a></strong> — <code>user_line_no</code> is caller-assignable at create time. An order created with the same item on handles <code>010</code>/<code>020</code> (no collapse, no <code>unit_quantity</code> key needed) was then updated by handle, in place, no phantom lines. Turns the stable-key advice from a debugging move into a design rule for integrations that create-then-maintain lines — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><code>/transaction/get</code> has no server-side subsetting</strong> — the envelope's <code>Query</code>/<code>FieldMap</code>/<code>TransactionSplitMethod</code> fields are echo-only (byte-identical response when sent populated), element-list fields are ignored, and keying a <code>TransactionState</code> on a <code>List</code> element fails the read. You always get the whole window; filter client-side. Recorded so nobody chases those fields again — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><code>basics</code> answers for report services too</strong> — and at their size it is the cheapest criteria probe going: <code>m_picktickets</code> returns a ready-to-fill criteria skeleton in 601 bytes against <code>definition</code>'s 15.8 KB. Noted in the discovery-endpoints comparison as the API-side twin of the <em>SQL Help</em> trick. The definition-probe discovery method re-verified on 26.1 (<code>m_picktickets</code>/<code>m_reprintpurchaseorders</code> 200; absent names 500 on all three endpoints alike) — <em>@mrwuss</em></li>
+</ul>
 <hr />
 <h2 id="2026-08-19-v160">2026-08-19 — v1.6.0</h2>
 <p>Documented from a recorded community conference session on intermediate P21 API development (<em>Felipe Maurer</em>, 2026), then <strong>live-tested against a 26.1 tenant</strong>. The session covered ground this repo had used correctly in specific recipes without ever explaining generally — most importantly <code>Keys</code>. The testing confirmed the session's central claims exactly, corrected two, and settled two the session left open. Claims that were <strong>not</strong> re-tested say so inline and give the reason.</p>
@@ -1103,6 +1113,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v161">2026-08-20 — v1.6.1</a></li>
 <li><a href="#2026-08-19-v160">2026-08-19 — v1.6.0</a></li>
 <li><a href="#2026-08-19-v151">2026-08-19 — v1.5.1</a></li>
 <li><a href="#2026-08-11-v150">2026-08-11 — v1.5.0</a><ul>

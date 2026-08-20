@@ -2777,6 +2777,37 @@ static string ReadField(string payload, string field)
 
 ---
 
+## Sales Order Notepad Writes (Header vs Line)
+
+The **Order window has the same two notepad surfaces** as PurchaseOrder, drivable with the same Notepad Entry popup mechanics ([above](#the-notepad-entry-popup)) — verified end-to-end on 26.1 (August 2026), both notes confirmed in the database. This matters doubly because the Transaction API's note surface on `Order` is **entirely closed** ([03 § Limitations](03-Transaction-API.md#limitations)): this is the working path.
+
+| | Header note | Line note |
+|---|---|---|
+| **Table** | `oe_hdr_notepad` | `oe_line_notepad` |
+| **Tab (`PageName`)** | `HDR_NOTE` | `LINE_NOTE` |
+| **Add tool** | `hdr_note&&cb_addnote` | `line_note&&cb_addnote` |
+| **Before the tool** | nothing extra | select the target line row first |
+
+Two Order-window differences from the PurchaseOrder recipe:
+
+- **Tool names are namespaced** — `{datawindow}&&{button}` (`hdr_note&&cb_addnote`), not the bare `cb_add`/`cb_add_line` of the PO window. Same silent-misfile warning applies: both tools are labelled "Add Note".
+- **The tool list is tab-scoped and accumulates.** `GET /v2/tools` right after loading the order does **not** list the note tools — they appear only once their tab has been selected (the list grows as tabs are visited). Select the tab first, then look for the tool; a missing tool usually means a missing tab-select, not a missing feature.
+
+Verified sequence (session created with `"ResponseWindowHandlingEnabled": true`):
+
+1. Open `{"ServiceName": "Order"}`, load the order (`TabName: "TABPAGE_1"`, `DatawindowName: "order"`, `order_no`). Mandatory customer notes surface as `Messages` text on this load — they do not block it.
+2. **Header note:** select the tab — `PUT /v2/tab` `{"PageName": "HDR_NOTE"}` — then run `hdr_note&&cb_addnote`. Returns `Status: 3` with the Notepad Entry popup's window ID in the `windowopened` event.
+3. **Line note instead:** select the items tab (`PageName: "TP_ITEMS"`), pick the row — `PUT /v2/row` `{"DatawindowName": "items", "Row": 2}` — then select `LINE_NOTE` and run `line_note&&cb_addnote`. The note attaches to the selected row's line (confirmed: `oe_line_notepad.line_no = 2`).
+4. Complete the popup exactly as in the [PO recipe](#the-notepad-entry-popup): `topic`/`note` on `_dw_hdr` with `TabName: null` and the **popup's** window ID, then `cb_select_all`, `cb_ok`.
+5. Save (`PUT /v2/data`, bare window-GUID body) — `savesucceeded` — and read back.
+
+> **Read notes back through OData, not `/transaction/get`.** The Transaction API read of the same order returns the header note in `HDR_NOTE.hdr_note`, but the **line note never appears** in `LINE_NOTE.line_note` (the element comes back empty). Query the tables directly:
+>
+> ```http
+> GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1519092'
+> GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'
+> ```
+
 ## Sales Order Entry with Assembly Lines
 
 Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. The Transaction API cannot do this: entering an assembly item fires an *"add as assembly?"* prompt, and the stateless API auto-answers **No**, killing the explode (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.

@@ -17,6 +17,17 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.6.1
+
+Follow-the-thread session: each v1.6.0 fact was pushed one step further against the live 26.1 tenant, and every result below is DB-confirmed.
+
+- **feat:** **[Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line)** — the door the notes dead-end points to is now verified open on the Order window itself: header note (`oe_hdr_notepad`) and line note (`oe_line_notepad`, attached to the row selected via `PUT /v2/row`) both written end-to-end with the same Notepad Entry popup mechanics as the PO recipe. Order-window differences documented: tool names are **namespaced** (`hdr_note&&cb_addnote`, not bare `cb_add`), the **tool list is tab-scoped and accumulates** as tabs are visited (a missing tool usually means a missing tab-select), mandatory customer notes surface as load `Messages` without blocking, and **line notes never appear in `/transaction/get`'s `LINE_NOTE` element** — read notes back through OData (`oe_hdr_notepad` / `oe_line_notepad`) — *@mrwuss*
+- **feat:** **[Design for updates: assign your own line handles](03-Transaction-API.md#design-for-updates-assign-your-own-line-handles)** — `user_line_no` is caller-assignable at create time. An order created with the same item on handles `010`/`020` (no collapse, no `unit_quantity` key needed) was then updated by handle, in place, no phantom lines. Turns the stable-key advice from a debugging move into a design rule for integrations that create-then-maintain lines — *@mrwuss*
+- **docs:** **`/transaction/get` has no server-side subsetting** — the envelope's `Query`/`FieldMap`/`TransactionSplitMethod` fields are echo-only (byte-identical response when sent populated), element-list fields are ignored, and keying a `TransactionState` on a `List` element fails the read. You always get the whole window; filter client-side. Recorded so nobody chases those fields again — *@mrwuss*
+- **docs:** **`basics` answers for report services too** — and at their size it is the cheapest criteria probe going: `m_picktickets` returns a ready-to-fill criteria skeleton in 601 bytes against `definition`'s 15.8 KB. Noted in the discovery-endpoints comparison as the API-side twin of the *SQL Help* trick. The definition-probe discovery method re-verified on 26.1 (`m_picktickets`/`m_reprintpurchaseorders` 200; absent names 500 on all three endpoints alike) — *@mrwuss*
+
+---
+
 ## 2026-08-19 — v1.6.0
 
 Documented from a recorded community conference session on intermediate P21 API development (*Felipe Maurer*, 2026), then **live-tested against a 26.1 tenant**. The session covered ground this repo had used correctly in specific recipes without ever explaining generally — most importantly `Keys`. The testing confirmed the session's central claims exactly, corrected two, and settled two the session left open. Claims that were **not** re-tested say so inline and give the reason.
