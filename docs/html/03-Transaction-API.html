@@ -690,6 +690,7 @@
 <li><a href="#example-jobcontractpricing-pricing_method-before-price">Example: JobContractPricing — pricing_method before price</a></li>
 </ul>
 </li>
+<li><a href="#column-is-disabled-can-mean-disabled-for-you">Column is disabled Can Mean "Disabled For You"</a></li>
 <li><a href="#ignoredisabled">IgnoreDisabled</a></li>
 <li><a href="#usecodevalues">UseCodeValues</a><ul>
 <li><a href="#labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores (code_p21)</a></li>
@@ -1697,6 +1698,40 @@
 <blockquote>
 <p><strong>Rule of thumb:</strong> when a write "succeeds" but a value doesn't stick, suspect a field-order cascade. Order Edits the way a user would fill in the window, and verify written values with OData or <code>POST /api/v2/transaction/get</code> after the first run.</p>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> for the JobContractPricing ordering discovery.</p>
+</blockquote>
+<hr />
+<h2 id="column-is-disabled-can-mean-disabled-for-you"><code>Column is disabled</code> Can Mean "Disabled For You"</h2>
+<p>This is the most-seen error in the whole API surface, and its wording invites the wrong conclusion. <strong><code>Column is disabled: &lt;column&gt;</code> is not always a property of the field.</strong> The same payload, against the same tenant, at the same moment, can be accepted for one user and refused for another.</p>
+<p>Verified on 26.1 (August 2026) with a controlled A/B — identical request sequence, identical field order, two consumer-key tokens differing only in the <code>username</code> they carried:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>User</th>
+<th><code>disposition = 'D'</code> on a line being entered</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A real CSR login</td>
+<td><strong>Accepted</strong> (<code>Status: 1</code>)</td>
+</tr>
+<tr>
+<td>A service account</td>
+<td><strong>Refused</strong> — <code>Column is disabled: disposition</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Both users could open the window, load the order, and set every other field on the line. Only this column differed, and nothing in the response says <em>why</em>.</p>
+<p><strong>What makes a column disabled for a user:</strong> DynaChange data-change rules scoped to a role, Application Security settings, and window-level permissions — the same machinery documented under <a href="#dynachange-and-popup-handling">DynaChange and Popup Handling</a> and <a href="00-Authentication.html#application-security-settings-that-affect-api-access">Application Security settings</a>. The API surfaces all of it as one undifferentiated message.</p>
+<p><strong>What this means in practice:</strong></p>
+<ul>
+<li><strong>A payload that works in development can fail in production</strong> purely because the service account there has a different role. The error will look like a schema problem and send you hunting through definitions.</li>
+<li><strong><code>Required: true</code> in the definition tells you nothing about this</strong> — the definition is static metadata; disabled-ness is evaluated per session (see <a href="#what-required-actually-means">What <code>Required</code> actually means</a>).</li>
+<li><strong>Test with the account that will run the integration</strong>, not with an admin login or your own. This is the single cheapest way to avoid a class of late surprise.</li>
+<li>When a column is refused for your service account and you need it, the fix is a <strong>P21 configuration change</strong> — a role permission or a DynaChange rule exemption — not a payload change. <code>IgnoreDisabled: true</code> is not a substitute and <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">can silently write nothing</a>.</li>
+</ul>
+<blockquote>
+<p><strong>A worked example of the split.</strong> Granting a service account a <strong>Buyer ID</strong> in User Maintenance cleared the <code>To create a PO, you must have a valid Buyer ID.</code> gate on <code>c_create_po</code> — but the <em>same</em> account still could not set <code>disposition</code>, which a CSR login set without trouble. One permission was configuration; the other is a different gate entirely. Do not assume a single setting unlocks a whole workflow — see <a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard</a>.</p>
 </blockquote>
 <hr />
 <h2 id="ignoredisabled">IgnoreDisabled</h2>
@@ -6443,6 +6478,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#example-jobcontractpricing-pricing_method-before-price">Example: JobContractPricing — pricing_method before price</a></li>
 </ul>
 </li>
+<li><a href="#column-is-disabled-can-mean-disabled-for-you">Column is disabled Can Mean "Disabled For You"</a></li>
 <li><a href="#ignoredisabled">IgnoreDisabled</a></li>
 <li><a href="#usecodevalues">UseCodeValues</a><ul>
 <li><a href="#labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores (code_p21)</a></li>

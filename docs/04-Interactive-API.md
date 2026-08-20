@@ -2817,9 +2817,13 @@ The line's `disposition` field is the trigger for a direct-ship line, and it is 
 |---|---|
 | `POST /transaction` with `disposition` on `TP_ITEMS.items` | `Column is disabled: disposition` |
 | Interactive change on an **existing** saved line | `Column is disabled: disposition` |
-| Interactive change on the line **as it is entered** | **`Status: 1`** — accepted |
+| Interactive change on the line **as it is entered** | **`Status: 1`** — accepted *(for a user permitted to set it)* |
 
 So there is no way to convert an existing order line to direct ship through either API, and no stateless path at all. The line must be created in the window with `disposition = 'D'` set during entry.
+
+> **And it is user-gated on top of that.** In a controlled A/B on the same tenant — identical request sequence, two tokens differing only in the user — a CSR login set `disposition` successfully while a **service account was refused with `Column is disabled: disposition`**, even after that account was given a Buyer ID. The Buyer ID clears the `c_create_po` gate; it does not clear this one. See [`Column is disabled` Can Mean "Disabled For You"](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you).
+>
+> **Consequence for automation:** a service account may be able to *trigger* the wizard and still be unable to *create the line that feeds it*. Verify both gates against the account that will actually run the integration before designing around this flow.
 
 ### Verified run
 

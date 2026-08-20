@@ -3941,11 +3941,15 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </tr>
 <tr>
 <td>Interactive change on the line <strong>as it is entered</strong></td>
-<td><strong><code>Status: 1</code></strong> — accepted</td>
+<td><strong><code>Status: 1</code></strong> — accepted <em>(for a user permitted to set it)</em></td>
 </tr>
 </tbody>
 </table></div>
 <p>So there is no way to convert an existing order line to direct ship through either API, and no stateless path at all. The line must be created in the window with <code>disposition = 'D'</code> set during entry.</p>
+<blockquote>
+<p><strong>And it is user-gated on top of that.</strong> In a controlled A/B on the same tenant — identical request sequence, two tokens differing only in the user — a CSR login set <code>disposition</code> successfully while a <strong>service account was refused with <code>Column is disabled: disposition</code></strong>, even after that account was given a Buyer ID. The Buyer ID clears the <code>c_create_po</code> gate; it does not clear this one. See <a href="03-Transaction-API.html#column-is-disabled-can-mean-disabled-for-you"><code>Column is disabled</code> Can Mean "Disabled For You"</a>.</p>
+<p><strong>Consequence for automation:</strong> a service account may be able to <em>trigger</em> the wizard and still be unable to <em>create the line that feeds it</em>. Verify both gates against the account that will actually run the integration before designing around this flow.</p>
+</blockquote>
 <h3 id="verified-run">Verified run</h3>
 <p>Driven end-to-end on a 26.1 play tenant (August 2026):</p>
 <ol>
