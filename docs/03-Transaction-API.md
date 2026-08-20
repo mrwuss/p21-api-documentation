@@ -60,6 +60,12 @@ Then use the returned URL as base:
 > - **It includes fields you cannot write.** `company_id` is in that same list and is refused on save with `Column is disabled: company_id`.
 >
 > `basics` also answers for **report services** (`m_*`) — and there it shines: a report window carries only a handful of criteria fields, so `basics` returns a ready-to-fill criteria skeleton in a few hundred bytes (`m_picktickets`: 601 bytes against `definition`'s 15.8 KB), the API-side equivalent of reading the criteria names out of *SQL Help* (see [PDF Report Generation](#pdf-report-generation)). An unknown service name returns an **empty HTTP 500**, the same shape `definition` and `defaults` give. *(Endpoint and behavior verified against a 26.1 tenant, August 2026; originally surfaced in a community session, Felipe Maurer, 2026.)*
+>
+> **`basics` is computed, not curated — and that explains both of its flaws.** For every element it returns exactly the element's **`KeyFields` ∪ the fields the definition marks `Required: true`**. Verified across **220 elements in four services** (`Order`, `Item`, `JobContractPricing`, `PurchaseOrder`) with zero mismatches.
+>
+> So `basics` inherits the `Required` flag's unreliability wholesale (see [What `Required` actually means](#what-required-actually-means)): it lists `company_id` on `Order` because the definition marks it required — and `company_id` is a **disabled column** that fails the save. It omits `customer_id`, `source_loc_id` and `ship_to_id` because the definition doesn't mark them required, even though a create needs all three. The endpoint isn't wrong; it is faithfully reflecting metadata that is.
+>
+> Practical consequence: **`basics` tells you nothing the definition doesn't** — you can generate it offline from `definitions/*.json` and save the round-trip. Its value is the *shape* (a ready-to-fill skeleton with `Keys` prefilled), not the field selection.
 
 > **Service Explorer:** The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.
 
@@ -528,6 +534,26 @@ The `po_hdr_po_type` `ValidValues` in the definition carry **display names only,
 
 > **Transactions pass/fail independently.** In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and `Summary` tallies the outcomes (`Succeeded`/`Failed`/`Other`). Check `Results.Transactions[].Status` (`"Passed"`/`"Failed"`) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see [Upsert Semantics](#upsert-semantics-keyed-rows-insert-when-absent).)
 
+### What `Failed` actually guarantees
+
+"Check `Summary`" is the rule this documentation repeats everywhere, and it is right — but it is worth being exact about what a failure count does and does not promise, because two different things get conflated. Verified on a 26.1 tenant (August 2026), each with a `/transaction/get` read-back:
+
+| Scope | Behavior | Verified by |
+|---|---|---|
+| **Within one Transaction** | **Atomic.** A failure anywhere rolls the whole Transaction back — including edits that already validated. | A valid line-quantity edit paired with a disabled column, both in the same element and in a later element: `Failed: 1`, and the quantity was **unchanged** both times. |
+| **Across Transactions in one POST** | **Independent.** Earlier Transactions commit and stay committed. | Transaction 1 (valid) + Transaction 2 (poisoned) → `Summary: {"Failed": 1, "Succeeded": 1}` and Transaction 1's quantity change **persisted**. |
+| **Downstream work a service triggers** | **Not covered by either.** Cascading business processes can complete before the Transaction's own validation fails. | See the warning below. |
+
+The practical trap is the second row. **A `Summary` with `Failed ≥ 1` does not mean "nothing happened"** — if `Succeeded` is also non-zero, part of your batch is live. A client that reads only `Failed` and retries the whole POST will re-apply everything that already worked. Branch on `Results.Transactions[].Status` per transaction, not on the tally.
+
+> **⚠️ Atomicity covers the record, not the consequences.** Some services do substantial downstream work on save — writing related records, completing linked documents, generating invoices. Those side effects are **not** rolled back by a later validation failure in the same Transaction.
+>
+> The reported case is `DirectShipConfirmation`, which returned `Summary: {"Failed": 1}` — tripped by a disabled `c_email_invoice` column — **after it had already written** the inventory receipt, completed the purchase-order line, invoiced the sales-order line, and created the customer AR invoice. The failure was real; so was everything it had done first. *(Reported by [Alex Westemeier](https://github.com/AWestemeier); not reproduced here — ordinary `Order` writes are atomic as the table above shows, so this is specific to services that cascade.)*
+>
+> The same shape appears in the Interactive API, where an in-window wizard can commit at an intermediate step: the PO/RFQ generation wizard creates and links the PO at `cb_next`, **before** `cb_finish`, so an abandoned wizard is not a no-op.
+>
+> **On any write that triggers downstream documents, read the record back — `Failed` is a reason to go and look, not proof that nothing landed.**
+
 ---
 
 ## Field Order Matters
@@ -900,6 +926,20 @@ When creating items with lot tracking, interleave item and lot DataElements:
 ## Examples
 
 ### Get Service Definition
+
+#### What `Required` actually means
+
+The definition is the authoritative field map — element names, `DataType`, `KeyFields`, and the `ValidValues` behind dropdowns are all reliable. **`Required` is not.** It reflects the *window's* field metadata, not the API's contract, and it is wrong in both directions:
+
+**Marked required, must be omitted.** `Order`'s `TABPAGE_1.order` marks **`company_id`** as `Required: true` — and `company_id` is a [disabled column](#order-service-gotchas) that fails the whole transaction with `Column is disabled: company_id`. The same pattern is reported on `PurchaseOrder` (`division_id`) and `ConvertPOToVoucher` (`company_id`, `branch_id`, `period`, `year_for_period`), all of which default correctly when left out. Across the committed definitions, **571 of 7,539 fields (7.6%) carry the flag**, so this is not a rare mislabel.
+
+**Marked optional, actually required.** The reverse also happens — `JobContractPricing`'s `contract_no` is marked optional and a create without it fails outright (see [its service entry](#jobcontractpricing-service)).
+
+> **Derive the minimum payload empirically.** Start from a known-good example, add fields until the write passes, and stop. Padding a payload to satisfy `Required` is a reliable way to hit `Column is disabled` — and because a Transaction is [atomic](#what-failed-actually-guarantees), one padded field fails the entire thing.
+>
+> This is also why [`GET /api/v2/basics/{name}`](#endpoints) both omits fields you need and includes fields you cannot write: it is generated as `KeyFields ∪ Required`, so it inherits every one of these errors.
+
+*(Verified on a 26.1 tenant, August 2026. The `PurchaseOrder` / `ConvertPOToVoucher` cases are reported by [Alex Westemeier](https://github.com/AWestemeier); the `Required: true` flag values were confirmed here, though the "column is disabled" refusal did not reproduce in an isolated probe — see the note in his voucher material about full-payload context.)*
 
 <!-- tabs -->
 ```python

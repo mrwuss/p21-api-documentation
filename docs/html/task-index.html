@@ -811,6 +811,14 @@
 <td><a href="03-Transaction-API.html#reading-several-records-in-one-call">03 § Reading several records in one call</a></td>
 </tr>
 <tr>
+<td><strong><code>Failed: 1</code> but part of my batch landed</strong></td>
+<td><a href="03-Transaction-API.html#what-failed-actually-guarantees">03 § What <code>Failed</code> actually guarantees</a> — a Transaction is atomic; Transactions in one POST are not</td>
+</tr>
+<tr>
+<td>Is the definition's <code>Required</code> flag trustworthy?</td>
+<td><a href="03-Transaction-API.html#what-required-actually-means">03 § What <code>Required</code> actually means</a> — <strong>no</strong>, wrong in both directions</td>
+</tr>
+<tr>
 <td><code>Sequence contains no matching element</code> / <code>Invalid column name</code> on a keyed write</td>
 <td><a href="03-Transaction-API.html#choosing-a-key">03 § Choosing a key</a> — every <code>Keys</code> field must be a real column <strong>and</strong> be sent in <code>Edits</code></td>
 </tr>

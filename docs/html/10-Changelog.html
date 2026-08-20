@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
 <li><a href="#2026-08-20-v183">2026-08-20 — v1.8.3</a></li>
 <li><a href="#2026-08-20-v182">2026-08-20 — v1.8.2</a></li>
 <li><a href="#2026-08-20-v181">2026-08-20 — v1.8.1</a></li>
@@ -706,6 +707,24 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v184">2026-08-20 — v1.8.4</h2>
+<p>Investigating the cross-check findings turned two reported claims into precise, verified rules — and answered a question left open in v1.8.0.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#what-failed-actually-guarantees">What <code>Failed</code> actually guarantees</a></strong> — the repo says "check <code>Summary</code>" on every write page without saying what a failure count promises. Now measured, three scopes with read-backs: <strong>within one Transaction it is atomic</strong> (a valid line edit paired with a disabled column rolled back both times, same element and later element); <strong>across Transactions in one POST it is not</strong> (<code>{"Failed": 1, "Succeeded": 1}</code> and transaction 1's write persisted). The trap is the second: <code>Failed ≥ 1</code> does <strong>not</strong> mean nothing happened, and a client that retries the whole POST re-applies everything that already worked. Third scope — <strong>downstream documents a service generates</strong> — is outside both, which is where the reported <code>DirectShipConfirmation</code> case sits — <em>@mrwuss, from a report by <a href="https://github.com/AWestemeier">Alex Westemeier</a></em></li>
+</ul>
+<p>Recorded honestly: the blanket "a transaction can commit while reporting Failed" did <strong>not</strong> reproduce on ordinary <code>Order</code> writes. It is specific to services that cascade into other documents, and to Interactive wizards that commit at intermediate steps. That distinction is the useful part.</p>
+<ul>
+<li>
+<p><strong>feat:</strong> <strong><a href="03-Transaction-API.html#what-required-actually-means">What <code>Required</code> actually means</a></strong> — the definition's <code>Required</code> flag is not a contract and is wrong in <strong>both</strong> directions. The cleanest proof is our own most-used service: <code>Order</code> marks <strong><code>company_id</code> as <code>Required: true</code></strong>, and <code>company_id</code> is the disabled column we have always told readers never to send. <code>JobContractPricing.contract_no</code> is the reverse — marked optional, actually mandatory. <strong>571 of 7,539 fields (7.6%)</strong> across the committed definitions carry the flag, so this is not a rare mislabel. Guidance: derive the minimum payload empirically, because padding to satisfy <code>Required</code> hits <code>Column is disabled</code>, and a Transaction is atomic — one padded field kills the whole write — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>feat:</strong> <strong><code>basics</code> is computed, not curated</strong> — <a href="03-Transaction-API.html#endpoints">03 § Endpoints</a>. v1.8.0 documented <em>that</em> the endpoint omits fields you need and includes fields you can't write; this explains <strong>why</strong>. For every element it returns exactly <strong><code>KeyFields</code> ∪ <code>Required</code></strong> — verified across <strong>220 elements in four services, zero mismatches</strong>. It inherits the <code>Required</code> flag's errors wholesale: it lists <code>company_id</code> on <code>Order</code> because the definition marks it required, and omits <code>customer_id</code>/<code>source_loc_id</code>/<code>ship_to_id</code> because the definition doesn't. Practical upshot: <code>basics</code> tells you nothing the definition doesn't, so generate it offline from <code>definitions/*.json</code> — its value is the ready-to-fill <em>shape</em>, not the field selection — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> INDEX rows for both new sections and an <a href="06-Error-Handling.html">06</a> entry for <em>"<code>Failed: 1</code> — did anything land?"</em> — <em>@mrwuss</em></p>
+</li>
+</ul>
 <hr />
 <h2 id="2026-08-20-v183">2026-08-20 — v1.8.3</h2>
 <p>Cross-check against <a href="https://github.com/AWestemeier">Alex Westemeier</a>'s verified process work — 17 new commits since the July pass. This entry ships the one finding that breaks something published earlier today; the rest are filed as <a href="https://github.com/mrwuss/p21-api-documentation/issues/130">#130</a>–<a href="https://github.com/mrwuss/p21-api-documentation/issues/133">#133</a>.</p>
@@ -1177,6 +1196,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
 <li><a href="#2026-08-20-v183">2026-08-20 — v1.8.3</a></li>
 <li><a href="#2026-08-20-v182">2026-08-20 — v1.8.2</a></li>
 <li><a href="#2026-08-20-v181">2026-08-20 — v1.8.1</a></li>
