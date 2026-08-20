@@ -659,7 +659,7 @@
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net9.0</code> console project (C#).</li>
-<li>An existing, editable order (not fully invoiced/closed).</li>
+<li>An existing, editable order (not fully invoiced/closed) that is <strong>not an RMA</strong> — see the RMA gotcha below.</li>
 <li><strong>Know each target line's <code>user_line_no</code>.</strong> It is the stable update key. If your integration created the order, you ideally <a href="../03-Transaction-API.html#design-for-updates-assign-your-own-line-handles">assigned handles at create time</a>; otherwise read them back first (see <a href="#finding-the-handles">Finding the handles</a>).</li>
 </ul>
 <h2 id="how-it-works">How it works</h2>
@@ -1020,6 +1020,7 @@
 <li><strong><code>user_line_no</code> must be in each row's <code>Edits</code>.</strong> A key field that isn't sent fails the transaction with the opaque <code>General Exception: Sequence contains no matching element</code>.</li>
 <li><strong>A new handle inserts; that's the feature and the risk.</strong> A typo'd handle doesn't error — it quietly adds a line. The read-back below catches it.</li>
 <li><strong>DynaChange prompts are auto-answered with the default</strong> — same as order creation; a dropped change still reports <code>Succeeded</code>. See <a href="create-sales-order.html#gotchas">create-sales-order § Gotchas</a>.</li>
+<li><strong>RMAs need a different service.</strong> An order with <code>oe_hdr.rma_flag = 'Y'</code> cannot be loaded through <code>Order</code> at all — it fails with <code>You cannot retrieve an RMA from the Order Entry/Front Counter window.</code> Use the <strong><code>RMA</code></strong> service instead: identical <code>TABPAGE_1.order</code> form, keyed the same way, same fields. Bulk jobs over open orders hit this routinely, so route per order on <code>rma_flag</code> rather than discovering it as a failure. See <a href="../03-Transaction-API.html#rma-service-orders-the-order-service-refuses">03 § RMA Service</a>.</li>
 <li><strong>HTTP 200 ≠ success.</strong> Check <code>Summary</code> and <code>Results.Transactions[].Status == "Passed"</code>.</li>
 </ul>
 <h2 id="verify">Verify</h2>

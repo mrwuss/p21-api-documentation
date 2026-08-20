@@ -728,6 +728,7 @@
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 </ul>
@@ -2627,6 +2628,7 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <li><strong><code>company_id</code> is a disabled column</strong> on the Order window — don't send it.</li>
 <li><strong>DynaChange prompts are auto-answered with the default</strong> (usually "No"), which silently discards the affected line — e.g. <em>"order line does not have a PO Cost… proceed? [No]"</em>. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see <a href="#dynachange-and-popup-handling">DynaChange and Popup Handling</a>.</li>
 <li><strong>Assembly items cannot be entered via the Transaction API</strong> when they should explode or spawn a production order — the <em>"add as assembly?"</em> prompt is auto-answered <strong>No</strong>, killing the explode. Use the Interactive API for those lines: see <a href="04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a>.</li>
+<li><strong>RMAs are not <code>Order</code> records.</strong> An order with <code>rma_flag = 'Y'</code> is refused outright: <code>General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.</code> Use the <a href="#rma-service-orders-the-order-service-refuses"><code>RMA</code> service</a>.</li>
 <li><strong>The same item on two lines collapses to one</strong> with <code>Keys: []</code> — <code>TP_ITEMS.items</code> folds rows on its declared key (<code>oe_order_item_id</code>), last value wins, <code>Succeeded: 1</code>, no warning. Add <code>Keys: ["unit_quantity"]</code> (or another differing column) when an order legitimately repeats an item — see <a href="#keys-row-identity-and-the-collapse-trap">Keys — Row Identity and the Collapse Trap</a>.</li>
 <li>The created <code>order_no</code> comes back in the result rows; check <code>Summary.Succeeded</code>, not the HTTP status.</li>
 </ul>
@@ -4994,6 +4996,22 @@ General Exception: This pick ticket has already been invoiced.
 </div>
 </div>
 <hr />
+<h3 id="rma-service-orders-the-order-service-refuses">RMA Service — Orders the <code>Order</code> Service Refuses</h3>
+<p>Return Merchandise Authorizations live in <code>oe_hdr</code> alongside ordinary sales orders, but the <strong><code>Order</code> service will not touch them</strong>. Loading one by <code>order_no</code> fails immediately:</p>
+<div class="highlight"><pre><span></span><code>General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.
+DataElement: order, Column: order_no
+</code></pre></div>
+
+<p>The <strong><code>RMA</code></strong> service is the same window for the return side. It publishes an <strong>identical <code>TABPAGE_1.order</code> Form keyed on <code>order_no</code></strong>, carrying the same header fields (<code>taker</code>, <code>po_no</code>, dates, and so on), so a payload written for <code>Order</code> generally works against <code>RMA</code> unchanged — you swap the service name.</p>
+<p>Verified on a 26.1 tenant (August 2026) against the same RMA order: <code>Order</code> refused it with the message above; <code>RMA</code> loaded the record and proceeded to ordinary validation.</p>
+<p><strong>Detect before you dispatch.</strong> There is no way to tell from the order number alone. Read <code>oe_hdr.rma_flag</code> over OData and route:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/view/p21_view_oe_hdr?$filter=rma_flag eq &#39;Y&#39;&amp;$select=order_no,rma_flag</span>
+</code></pre></div>
+
+<p>This matters most for <strong>bulk header maintenance</strong> — reassigning <code>taker</code> when a salesperson leaves, retagging orders, any sweep over open orders. RMAs are a normal part of such a set, and the failure message doesn't obviously mean <em>"use a different service"</em>, so a batch job hits it as an unexplained per-record error.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — found while reassigning takers at scale, where the RMA rows in an open-order set failed as a group.</p>
+</blockquote>
 <h3 id="salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</h3>
 <p>The <code>Salesrep</code> service is the write surface for a salesrep's own contact record (the <code>contacts</code> row where <code>salesrep = 'Y'</code>). Verified against P21 26.1 in production (2026-08-11): a misspelled rep name and its email corrected in one transaction, <code>Status: "Passed"</code>, confirmed by read-after-write against <code>contacts</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -6310,6 +6328,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 </ul>

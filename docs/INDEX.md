@@ -63,6 +63,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Attribute API writes to a **real user**, not the service account | [00 § Attributing writes to a real user](00-Authentication.md#attributing-writes-to-a-real-user) |
 | Who can **read a consumer key's value** (DynaChange rules) | [00 § Method 2: Consumer Key](00-Authentication.md#method-2-consumer-key) — `RuleState.ConsumerKey` exposes it to any rule author |
 | Update a specific order line deterministically (**line handles**) | [03 § Design for updates: assign your own line handles](03-Transaction-API.md#design-for-updates-assign-your-own-line-handles) · [recipe: update-order-lines](recipes/update-order-lines.md) |
+| `You cannot retrieve an RMA from the Order Entry/Front Counter window` | [03 § RMA Service](03-Transaction-API.md#rma-service-orders-the-order-service-refuses) — use the `RMA` service; route on `oe_hdr.rma_flag` |
 | **Modify an existing sales order** (edit a line, add a line) | [recipe: update-order-lines](recipes/update-order-lines.md) |
 | A tool is missing from `GET /v2/tools` on a multi-tab window | [04 § Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) — tool lists are tab-scoped and accumulate; select the tab first |
 | Write an **item / customer / supplier note** (drag-and-drop area picker) | [04 § Standalone Notepad Windows](04-Interactive-API.md#standalone-notepad-windows-itemcustomersupplier) — the picker is `cb_selectall` via `/tools` |
