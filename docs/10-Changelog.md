@@ -17,6 +17,18 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.5
+
+The AP buy-side cycle, verified end-to-end on our own tenant — **PO 998302 → receipt 5706613 → voucher 1775027**, each step SQL-confirmed.
+
+- **feat:** **[PurchaseOrder Service](03-Transaction-API.md#purchaseorder-service-creating-a-po)** — one stateless POST, no session. Field mappings confirmed by read-back: **`unit_price_display` → `po_line.unit_price`** (not `unit_price`; the field is labelled "PO Price"), **`buyer_id` → `po_hdr.requested_by`** (an employee *number*, not a login). `division_id` and `company_id` are both marked `Required: true` and both were **omitted** — they default, and `division_id` mirrored `supplier_id`. `po_type` isn't settable here (ours defaulted to `'B'`) — *@mrwuss*
+- **feat:** **[PurchaseOrderReceipt Service](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po)** — **the Transaction API can receive a PO**, which was an open question in the source notes. Header only: `po_no` + `receive_all='Y'`, plus `external_reference_no` for tagging. Works **when every line's item has a usable primary bin**; when one doesn't, the Bin tab is contextual to the selected grid row, so flat bin rows land on the wrong line — the same [context rule](03-Transaction-API.md#the-general-rule-repeat-the-element-pair-dont-batch-it) as order lines — and you must drive the window interactively. Records the two diagnostic signatures (bin-sum mismatch; put-locked bin `'0'`), the `ufc_inv_loc_primary_bin` column that tells you which path you're on, and that direct-ship POs can't be received here at all — *@mrwuss, bin analysis by [Alex Westemeier](https://github.com/AWestemeier)*
+- **feat:** **[ConvertPOToVoucher Service](03-Transaction-API.md#convertpotovoucher-service-vouching-a-receipt)** — the line list is keyed `["receipt_number", "line_number", "po_no"]`, matching the `KeyFields` triple already in our Keys table. Send five header fields and nothing else: `company_id`, `branch_id`, `period`, `year_for_period` are all marked `Required: true` and all **disabled** — *@mrwuss*
+- **fix:** **Probing a field in isolation gives false negatives on disabled-ness** — a correction to v1.8.4, which reported that the `company_id` refusal "did not reproduce." It does. Whether a column is disabled is decided **after the window loads its record**, so a minimal probe that fails validation earlier never reaches the check: `company_id` on `ConvertPOToVoucher` with no valid PO fails on *"No receipts have been selected"* and looks accepted, while the same field in a complete payload returns `Column is disabled: company_id`. Both observed on the same tenant an hour apart. **Test disabled-ness in context, never in isolation** — now stated in [What `Required` actually means](03-Transaction-API.md#what-required-actually-means) — *@mrwuss*
+- **docs:** INDEX rows for creating, receiving and vouching a PO — *@mrwuss*
+
+---
+
 ## 2026-08-20 — v1.8.4
 
 Investigating the cross-check findings turned two reported claims into precise, verified rules — and answered a question left open in v1.8.0.

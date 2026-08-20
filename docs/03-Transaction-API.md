@@ -939,7 +939,9 @@ The definition is the authoritative field map — element names, `DataType`, `Ke
 >
 > This is also why [`GET /api/v2/basics/{name}`](#endpoints) both omits fields you need and includes fields you cannot write: it is generated as `KeyFields ∪ Required`, so it inherits every one of these errors.
 
-*(Verified on a 26.1 tenant, August 2026. The `PurchaseOrder` / `ConvertPOToVoucher` cases are reported by [Alex Westemeier](https://github.com/AWestemeier); the `Required: true` flag values were confirmed here, though the "column is disabled" refusal did not reproduce in an isolated probe — see the note in his voucher material about full-payload context.)*
+> **Probing a field in isolation can give a false negative.** Whether a column is disabled is decided **after the window loads its record**, so a minimal probe that fails validation earlier never reaches the check. Sending `company_id` to `ConvertPOToVoucher` with no valid PO fails on `No receipts have been selected` — looking, misleadingly, like an accepted field. Send the same field in a *complete, otherwise-valid* payload and you get the truth: `Column is disabled: company_id`. Both observed here on the same tenant an hour apart. **Test disabled-ness in context, never in isolation.**
+
+*(Verified on a 26.1 tenant, August 2026. The `PurchaseOrder` / `ConvertPOToVoucher` cases were reported by [Alex Westemeier](https://github.com/AWestemeier) and are confirmed here — including the `company_id` refusal, once probed in a full voucher payload.)*
 
 <!-- tabs -->
 ```python
@@ -3526,6 +3528,88 @@ static string ReadField(string payload, string field)
 <!-- /tabs -->
 
 ---
+
+### PurchaseOrder Service — Creating a PO
+
+The buy-side counterpart to `Order`, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO **998302**, confirmed in `po_hdr`/`po_line`.
+
+```json
+{
+  "Name": "PurchaseOrder", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
+      "Rows": [{ "Edits": [
+        {"Name": "location_id",    "Value": "40"},
+        {"Name": "vendor_id",      "Value": "22026"},
+        {"Name": "buyer_id",       "Value": "829"},
+        {"Name": "order_date",     "Value": "08/20/2026"},
+        {"Name": "required_date",  "Value": "08/25/2026"},
+        {"Name": "external_po_no", "Value": "TAG-ME"}
+      ], "RelativeDateEdits": [] }] },
+    { "Name": "TABPAGE_17.tp_17_dw_17", "Type": "List", "Keys": ["item_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "item_id",            "Value": "WIDGET-001"},
+        {"Name": "unit_quantity",      "Value": "2"},
+        {"Name": "unit_of_measure",    "Value": "EA"},
+        {"Name": "pricing_unit",       "Value": "EA"},
+        {"Name": "unit_price_display", "Value": "6.55"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+Field mappings, each confirmed by read-back:
+
+| You send | Lands in | Note |
+|---|---|---|
+| `unit_price_display` | `po_line.unit_price` | **Not `unit_price`.** The field is labelled "PO Price" |
+| `buyer_id` | `po_hdr.requested_by` | An employee/user **number** (`829`), not a login name |
+| *(omitted)* `division_id` | defaults — mirrored `supplier_id` | Marked `Required: true`; see [What `Required` actually means](#what-required-actually-means) |
+| *(omitted)* `company_id` | defaults | Also marked required; also omitted |
+| `external_po_no` | `po_hdr.external_po_no` | Useful for tagging test POs |
+
+- **`required_date` genuinely is required** — order date plus a few days.
+- The PO landed **`approved='Y'`** immediately (config-dependent), so it is receivable straight away.
+- **`po_type` is not settable here** — ours defaulted to `'B'`. Direct-ship (`'D'`) POs cannot be built by this service at all; they come from the Order-window wizard.
+
+### PurchaseOrderReceipt Service — Receiving a PO
+
+**The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **5706613** against PO 998302, with nothing but a header:
+
+```json
+{ "Name": "TABPAGE_1.tp_1_dw_po", "Type": "Form", "Keys": [],
+  "Rows": [{ "Edits": [
+    {"Name": "po_no",       "Value": "998302"},
+    {"Name": "receive_all", "Value": "Y"}
+  ], "RelativeDateEdits": [] }] },
+{ "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
+  "Rows": [{ "Edits": [{"Name": "external_reference_no", "Value": "TAG-ME"}], "RelativeDateEdits": [] }] }
+```
+
+`receive_all: "Y"` sets every line to its remaining quantity. The receipt lands in `inventory_receipts_hdr` (`receipt_type 'P'`) with lines in `inventory_receipts_line` — note that table uses **`line_number`**, not `line_no`.
+
+> **It only works when every line's item has a usable primary bin.** The receipt window's Bin tab is **contextual to the selected items-grid row**, so flat `TABPAGE_BIN.tabpage_bin` rows land on whichever line is current rather than the item named in the row — the same [context rule](#the-general-rule-repeat-the-element-pair-dont-batch-it) that governs order lines and extended info. When a line needs an explicit bin, the stateless API cannot address it and you must drive the window through the [Interactive API](04-Interactive-API.md).
+>
+> Two failure signatures tell you that's where you are: `The sum of bin quantity for <item> does not equal the received quantity` — often because the item's `inv_loc.primary_bin` is `'0'`, which is **put-locked** (`bin.put_locked_flag='Y'`) so nothing can be auto-assigned — and, if you try supplying bin rows anyway, the same bin-sum error simply moving to a *different* line. The grid column **`ufc_inv_loc_primary_bin`** shows which rows lack a usable bin, so you can decide per PO which path to take.
+>
+> **Direct-ship POs (`po_type='D'`) cannot be received here at all** — the window refuses because the linked sales-order lines are `'T'` status. That is by design; nothing is physically received on a direct ship.
+
+*(The bin-context analysis and the Interactive fallback are [Alex Westemeier](https://github.com/AWestemeier)'s; the header-only TAPI path was an open question in his notes and is verified here.)*
+
+### ConvertPOToVoucher Service — Vouching a Receipt
+
+Step three of **build → receive → vouch**, and another clean one-POST. Verified on 26.1 (August 2026) — voucher **1775027** against receipt 5706613, with the receipt line flipping to `vouch_complete='Y'`, `qty_vouched=2`.
+
+- **Form `TABPAGE_1.tp_1_dw_1`** (keys `["voucher_no"]`, leave the value empty to create): `po_no`, `invoice_no`, `invoice_date`, `invoice_amount`, `vendor_id`.
+- **List `TABPAGE_17.tp_17_dw_17`** — keyed **`["receipt_number", "line_number", "po_no"]`**, which is exactly the `KeyFields` triple this service publishes (see [What the definition already tells you](#what-the-definition-already-tells-you)). Per row: `unit_qty_invoiced`, `unit_cost_display`.
+- The new `voucher_no` comes back in the response rows.
+
+> **Send the five header fields and nothing else.** `company_id`, `branch_id`, `period` and `year_for_period` are all marked `Required: true` in the definition and are all **disabled columns** — sending `company_id` fails the transaction with `Column is disabled: company_id`, verified. They default correctly (branch from the PO). This is the sharpest example in the repo of why the [`Required` flag is not a contract](#what-required-actually-means).
+
+- `invoice_amount` must equal the sum of the vouched lines, or P21 holds the variance — use the real invoice total.
+- The voucher lands `approved='Y'`, `paid_in_full='N'`, ready for the payment run, and writes `apinv_hdr` + `apinv_line` (with `po_line_uid` links) plus the `apinv_hdr_x_inventory_receipts` cross-reference.
+
+*(Cycle and payload shapes from [Alex Westemeier](https://github.com/AWestemeier); all three steps re-verified end-to-end here.)*
 
 ### RMA Service — Orders the `Order` Service Refuses
 
