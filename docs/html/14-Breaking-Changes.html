@@ -845,6 +845,10 @@
 </code></pre></div>
 
 <p>The delete is the dangerous half. <code>errorNo: 0</code> and the word <em>"successfully"</em> read as a clean delete to any client checking status or <code>errorNo</code> — <strong>only the <code>[0]</code> row count reveals it did nothing.</strong> A purge or retention job built on this reports success indefinitely while the table grows without bound.</p>
+<blockquote>
+<p><strong>This is a naming mismatch, not a missing identifier — which is why it reads as a defect.</strong> P21's own documentation for the maintenance windows this UI generates describes a <strong>Row ID</strong> field at the top of every generated window: <em>"To create a new database entry, populate the fields while leaving Row ID blank and save... To edit an existing entry, enter that row's ID to recall its values... To delete an existing database row, recall it with the Row ID, check Delete Row, and save."</em> It is also <em>"always a searchable field"</em>, unlike the others.</p>
+<p>So the per-row identifier the API says it needs <strong>does exist and the UI uses it for exactly these three operations</strong> — it is simply surfaced as "Row ID" over the <code>udt_{tablename}_uid</code> primary key, while the service accepts only a column named literally <code>row_uid</code>. The window and the service disagree about the name of the same thing. <em>(Source: P21 26.2 help, System Administration &gt; Creating a User-Defined Database Table.)</em></p>
+</blockquote>
 <p>Confirm the column is genuinely absent rather than mis-typed:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/{udt}?$select=row_uid</span>
 <span class="err">→ 404 &quot;Could not find a property named &#39;row_uid&#39; on type &#39;dbo.{udt}&#39;.&quot;</span>

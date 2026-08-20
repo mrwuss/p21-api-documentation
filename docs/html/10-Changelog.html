@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v182">2026-08-20 — v1.8.2</a></li>
 <li><a href="#2026-08-20-v181">2026-08-20 — v1.8.1</a></li>
 <li><a href="#2026-08-20-v180">2026-08-20 — v1.8.0</a></li>
 <li><a href="#2026-08-20-v170">2026-08-20 — v1.7.0</a></li>
@@ -704,6 +705,14 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v182">2026-08-20 — v1.8.2</h2>
+<p>Completes the 26.2 help sweep — every one of the 1,251 articles scored for API relevance, 17 candidates triaged, two findings worth keeping.</p>
+<ul>
+<li><strong>docs:</strong> <strong>⚠ A DynaChange business rule can read a consumer key's value</strong> — <a href="00-Authentication.html#method-2-consumer-key">00 § Method 2: Consumer Key</a>. A rule can be assigned a <strong>Rule Consumer Key</strong> so its code can authenticate to the P21 APIs; Epicor's own wording is that the rule programmer then <em>"has access to the consumer key name and </em><em>value</em><em> in code in the RuleState class (<code>RuleState.ConsumerKey</code>, <code>RuleState.ConsumerName</code>)"</em>, alongside <code>Session.MiddlewareUrl</code>. Read with the impersonation warning already in that section, the consequence is concrete: <strong><code>Allow creation of business rules</code> is admin-equivalent</strong> wherever a key is attached to a rule, because rule code is arbitrary .NET and can exfiltrate the key. Working as designed — documented as a caveat about who you grant it to — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>The UDT <code>row_uid</code> problem is a naming mismatch, not a missing identifier</strong> — <a href="14-Breaking-Changes.html#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">14 § entry 7</a>. P21's generated UDT maintenance windows expose a searchable <strong>Row ID</strong> and use it to recall, edit and delete rows — the exact three operations the service cannot perform. It sits over the <code>udt_{tablename}_uid</code> primary key while the service accepts only a column named literally <code>row_uid</code>. The window and the service disagree about the name of the same thing, which is why this reads as a defect rather than a design choice. Also records the <strong>mass update</strong> path in those windows as the no-API bulk option. Cross-linked from <a href="13-UDT-Service-API.html">13</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>Sweep closed out.</strong> DynaChange documentation never addresses how rules interact with API writes — our documentation of auto-answered prompts and <code>Column is disabled</code> is original work with no vendor counterpart, which is worth knowing before anyone goes looking for it again. <code>Business Rules for Developers</code> and <code>Rule Class API</code> describe a <strong>.NET DLL extension surface</strong> (Visual Studio, compiled rule classes), not a REST API. Recorded in <code>scraped/site-map.md</code> so the next pass starts from what's left, not from zero — <em>@mrwuss</em></li>
+</ul>
 <hr />
 <h2 id="2026-08-20-v181">2026-08-20 — v1.8.1</h2>
 <p>Help-site re-scrape for 26.2 and one correction it produced.</p>
@@ -1160,6 +1169,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v182">2026-08-20 — v1.8.2</a></li>
 <li><a href="#2026-08-20-v181">2026-08-20 — v1.8.1</a></li>
 <li><a href="#2026-08-20-v180">2026-08-20 — v1.8.0</a></li>
 <li><a href="#2026-08-20-v170">2026-08-20 — v1.7.0</a></li>

@@ -17,6 +17,16 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.2
+
+Completes the 26.2 help sweep — every one of the 1,251 articles scored for API relevance, 17 candidates triaged, two findings worth keeping.
+
+- **docs:** **⚠ A DynaChange business rule can read a consumer key's value** — [00 § Method 2: Consumer Key](00-Authentication.md#method-2-consumer-key). A rule can be assigned a **Rule Consumer Key** so its code can authenticate to the P21 APIs; Epicor's own wording is that the rule programmer then *"has access to the consumer key name and **value** in code in the RuleState class (`RuleState.ConsumerKey`, `RuleState.ConsumerName`)"*, alongside `Session.MiddlewareUrl`. Read with the impersonation warning already in that section, the consequence is concrete: **`Allow creation of business rules` is admin-equivalent** wherever a key is attached to a rule, because rule code is arbitrary .NET and can exfiltrate the key. Working as designed — documented as a caveat about who you grant it to — *@mrwuss*
+- **docs:** **The UDT `row_uid` problem is a naming mismatch, not a missing identifier** — [14 § entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261). P21's generated UDT maintenance windows expose a searchable **Row ID** and use it to recall, edit and delete rows — the exact three operations the service cannot perform. It sits over the `udt_{tablename}_uid` primary key while the service accepts only a column named literally `row_uid`. The window and the service disagree about the name of the same thing, which is why this reads as a defect rather than a design choice. Also records the **mass update** path in those windows as the no-API bulk option. Cross-linked from [13](13-UDT-Service-API.md) — *@mrwuss*
+- **docs:** **Sweep closed out.** DynaChange documentation never addresses how rules interact with API writes — our documentation of auto-answered prompts and `Column is disabled` is original work with no vendor counterpart, which is worth knowing before anyone goes looking for it again. `Business Rules for Developers` and `Rule Class API` describe a **.NET DLL extension surface** (Visual Studio, compiled rule classes), not a REST API. Recorded in `scraped/site-map.md` so the next pass starts from what's left, not from zero — *@mrwuss*
+
+---
+
 ## 2026-08-20 — v1.8.1
 
 Help-site re-scrape for 26.2 and one correction it produced.

@@ -166,6 +166,10 @@ A client that treats the 400 as "the change did not happen" is wrong: part of it
 
 The delete is the dangerous half. `errorNo: 0` and the word *"successfully"* read as a clean delete to any client checking status or `errorNo` — **only the `[0]` row count reveals it did nothing.** A purge or retention job built on this reports success indefinitely while the table grows without bound.
 
+> **This is a naming mismatch, not a missing identifier — which is why it reads as a defect.** P21's own documentation for the maintenance windows this UI generates describes a **Row ID** field at the top of every generated window: *"To create a new database entry, populate the fields while leaving Row ID blank and save... To edit an existing entry, enter that row's ID to recall its values... To delete an existing database row, recall it with the Row ID, check Delete Row, and save."* It is also *"always a searchable field"*, unlike the others.
+>
+> So the per-row identifier the API says it needs **does exist and the UI uses it for exactly these three operations** — it is simply surfaced as "Row ID" over the `udt_{tablename}_uid` primary key, while the service accepts only a column named literally `row_uid`. The window and the service disagree about the name of the same thing. *(Source: P21 26.2 help, System Administration > Creating a User-Defined Database Table.)*
+
 Confirm the column is genuinely absent rather than mis-typed:
 
 ```http

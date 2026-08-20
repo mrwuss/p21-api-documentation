@@ -61,6 +61,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Does my server have endpoint X?** | [05 § Discovering what your tenant actually exposes](05-Entity-API.md#discovering-what-your-tenant-actually-exposes) — `apiref.aspx` + per-family `/help` |
 | Valid P21 login **rejected by the middleware admin site** | [00 § Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access) — needs *Access to SOA Admin Page* |
 | Attribute API writes to a **real user**, not the service account | [00 § Attributing writes to a real user](00-Authentication.md#attributing-writes-to-a-real-user) |
+| Who can **read a consumer key's value** (DynaChange rules) | [00 § Method 2: Consumer Key](00-Authentication.md#method-2-consumer-key) — `RuleState.ConsumerKey` exposes it to any rule author |
 | Update a specific order line deterministically (**line handles**) | [03 § Design for updates: assign your own line handles](03-Transaction-API.md#design-for-updates-assign-your-own-line-handles) · [recipe: update-order-lines](recipes/update-order-lines.md) |
 | **Modify an existing sales order** (edit a line, add a line) | [recipe: update-order-lines](recipes/update-order-lines.md) |
 | A tool is missing from `GET /v2/tools` on a multi-tab window | [04 § Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) — tool lists are tab-scoped and accumulate; select the tab first |

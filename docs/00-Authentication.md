@@ -183,6 +183,14 @@ Use for service accounts and automated integrations. Consumer keys bypass P21 us
 > - **Confine keys to environments you control** — your own servers, your own vaults. Never embed one in anything that leaves your network (client apps, spreadsheets, emailed config).
 > - **Never hand a consumer key to a vendor or external party.** If a third party needs API access, insist on a **username/password service account** instead — its access is bounded by P21's own permission system, it can't impersonate anyone, and it can be disabled like any other user.
 > - Rotate any key that has ever been shared beyond its intended environment, and audit for user accounts you don't recognize when you do.
+>
+> **And the key's value is readable by anyone who can author a DynaChange business rule.** A business rule can be assigned a **Rule Consumer Key** (Edit Business Rule → Configuration Options), which exists so rule code can authenticate to the P21 APIs without hardcoding credentials. Epicor's description of what the rule author then gets:
+>
+> > *"the rule programmer has access to the consumer key name and **value** in code in the RuleState class (`RuleState.ConsumerKey`, `RuleState.ConsumerName`)"* — combined with `Session.MiddlewareUrl` (added in 23.2), *"that provides the rule programmer with the needed information to be used for consumer key authentication to the P21 APIs."*
+>
+> Read that alongside the impersonation point above and the consequence is concrete: **`Allow creation of business rules` is an admin-equivalent permission on any system where a consumer key is attached to a rule.** A rule author can read the key's value out of `RuleState` and use it anywhere — the rule is arbitrary .NET code. Grant that setting to the same short list of people you would trust with the key itself, and treat the Rule Consumer Key dropdown as a decision about *who can see this key*, not just *what this rule can call*.
+>
+> *(Source: P21 26.2 help, OPTIONAL - DynaChange Rules - BRE > Managing Business Rules. The feature is working as designed — this is a caveat about who you hand it to, not a defect.)*
 
 ### Creating a Consumer Key
 
@@ -506,7 +514,7 @@ The two settings above are the ones that gate OData. The **Application Security*
 | **Allow OData API Service** | Step 1 of [P21 Permissions](#p21-permissions-user-credential-auth) above. |
 | **Allow overriding audit trail user** | Lets a calling application log **the actual end user** rather than the API service account on transactions sent through the API. See [Attributing writes to a real user](#attributing-writes-to-a-real-user) below. |
 | **Allow access to the API system pool** | **Epicor's own docs contradict each other here.** The Application Security reference calls it *"a technical setting... should only be changed under instruction from Epicor support"*, while the Prism documentation lists *"User Maintenance > Application Security – Enable API System Pool"* as a required prerequisite for approving sales orders in Prism. So it is not untouchable — some features require it — but it is not a setting to flip speculatively either. Ask Epicor which applies to you, and note the connection to [session pool problems](07-Session-Pool-Troubleshooting.md). |
-| **Allow creation of business rules** | Gates authoring of DynaChange Rules — the mechanism behind auto-answered prompts, `Column is disabled` refusals and report date caps that surface as API failures. Useful to know who can change the rules that break your integration. |
+| **Allow creation of business rules** | Gates authoring of DynaChange Rules — the mechanism behind auto-answered prompts, `Column is disabled` refusals and report date caps that surface as API failures. **Also a credential-disclosure surface:** a rule assigned a consumer key can read that key's *value* from `RuleState.ConsumerKey`. See the [consumer key warning](#method-2-consumer-key). |
 
 *(Source: P21 26.2 help, *System Setup > Users > Setting Application Security Settings for a User*.)*
 
