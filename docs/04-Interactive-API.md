@@ -2777,6 +2777,39 @@ static string ReadField(string payload, string field)
 
 ---
 
+## Driving an In-Window Wizard (Direct-Ship PO Generation)
+
+The Transaction API [cannot drive wizards](03-Transaction-API.md#limitations) — that limitation is real, and this is the worked example of the escape hatch. The Order window's **PO/RFQ generation wizard** creates a purchase order linked to a sales order (a *direct ship*), and it is reachable through the Interactive API.
+
+> **Prerequisite: the API user needs a Buyer ID.** Without one, setting the trigger returns `Status: 2` with `To create a PO, you must have a valid Buyer ID.` — verified on 26.1 (August 2026). It is set in User Maintenance and is a **P21 configuration change**, not something the API can do for you. Check it before writing any of the rest.
+
+### Why this cannot start in the Transaction API
+
+The line's `disposition` field is the trigger for a direct-ship line, and it is a **disabled column** — `Column is disabled: disposition`, verified both through `/transaction` and through an interactive change on an existing line. Its valid values are `B`, `C`, `D`, `H`, `M`, `P`, `S`; `D` is direct ship. Set it **as the line is entered**, in the Interactive window — there is no stateless path.
+
+### The flow
+
+1. Create and save the sales order with its `D` line **first**. Requesting the PO in the same save does not work — a new order's save stacks other prompts ahead of the wizard and the sequence derails.
+2. Re-open the saved order and set the header checkbox **`c_create_po = 'ON'`** (`TABPAGE_1.order`, valid values `ON`/`OFF`).
+3. `save()` → **`Status: 3`** with a `windowopened` event carrying the wizard's window id. Buttons: `cb_back`, `cb_next`, `cb_finish`, `cb_cancel`.
+   - **Identify the wizard by its buttons before pressing anything** (`GET /v2/tools?windowId={popupId}`; `cb_finish` present). Never blind-answer a response window here — the first one may not be the wizard.
+   - Page 1 is an `items` grid, one row per `D` line: `purchase_item='Y'`, `qty_to_purchase`, `supplier_id`/`supplier_name`.
+   - `cb_next` → page 2 shows the assigned `po_no`.
+   - `cb_finish` to close cleanly.
+4. Result: a `po_hdr` row with `po_type='D'`, `approved='Y'`, plus an `oe_line_po` row (connection type `'P'`) linking the sales-order line to the PO line.
+
+> **⚠️ The PO is committed at `cb_next`, before you finish.** A session that dies mid-wizard still leaves a real, linked purchase order behind. **An abandoned wizard is not a no-op** — if you bail out, go and look for the PO. This is the same class of hazard as [a service committing downstream work despite a `Failed` summary](03-Transaction-API.md#what-failed-actually-guarantees).
+
+> **`supplier_id` on the wizard page is disabled through the API.** It defaults to the item's primary supplier and could not be overridden (direct change and row-select both refused). In the UI this is where a CSR picks the vendor — so **if supplier choice matters, this flow cannot make it**; accept the default or have a person create the PO.
+
+### Related dead ends
+
+- **There is no PO-generation service.** Not among the 299 transaction services, and window-name guesses (`POGen`, `PurchaseOrderGeneration`, …) all 400. The wizard is the path.
+- **`PurchaseOrder` TAPI cannot build a `D`-type PO** — `po_hdr_po_type` is system-disabled, and the Backorders link tab is invisible to TAPI.
+- **Direct-ship POs are not received** via [PurchaseOrderReceipt](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) — the window refuses because the linked sales-order lines are `'T'` status. Their receipt is created by the sales-side confirmation instead (`DirectShipConfirmation`, keyed on `po_no`), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice.
+
+*(Flow, wizard mechanics and dead ends verified by [Alex Westemeier](https://github.com/AWestemeier) across two full cycles with SQL confirmation. Verified independently here: the `c_create_po` Buyer-ID prerequisite and its exact message, the `disposition` disabled-column behavior, and the field/valid-value definitions. The wizard itself was not re-driven — our API user has no Buyer ID, and granting one is an operator decision.)*
+
 ## Sales Order Notepad Writes (Header vs Line)
 
 The **Order window has the same two notepad surfaces** as PurchaseOrder, drivable with the same Notepad Entry popup mechanics ([above](#the-notepad-entry-popup)) — verified end-to-end on 26.1 (August 2026), both notes confirmed in the database. This matters doubly because the Transaction API's note surface on `Order` is **entirely closed** ([03 § Limitations](03-Transaction-API.md#limitations)): this is the working path.

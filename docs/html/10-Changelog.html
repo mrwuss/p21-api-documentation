@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
 <li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>
 <li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
 <li><a href="#2026-08-20-v183">2026-08-20 — v1.8.3</a></li>
@@ -708,6 +709,15 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v186">2026-08-20 — v1.8.6</h2>
+<p>Closes the cross-check. The wizard limitation now has a worked escape hatch.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard</a></strong> — we have always said the Transaction API cannot drive wizards and pointed at the Interactive API without ever showing it. The Order window's <strong>PO/RFQ generation wizard</strong> (direct-ship PO linked to a sales order) is now documented end to end: the two-phase sequence, identifying the wizard by its buttons before answering, and the result (<code>po_hdr</code> <code>po_type='D'</code> + an <code>oe_line_po</code> link row). The <code>docs/03</code> limitation row now links to it instead of stopping at "use the Interactive API" — <em>@mrwuss, flow verified by <a href="https://github.com/AWestemeier">Alex Westemeier</a></em></li>
+<li><strong>docs:</strong> <strong>Two prerequisites verified here, and both save wasted time.</strong> <code>c_create_po = 'ON'</code> returns <code>Status: 2</code> / <em>"To create a PO, you must have a valid Buyer ID."</em> when the API user has none — a <strong>P21 configuration change</strong>, not an API problem. And <strong><code>disposition</code> is a disabled column</strong>: <code>Column is disabled: disposition</code> through <code>/transaction</code> <em>and</em> through an interactive change on an existing line, so a direct-ship line cannot be started statelessly at all; it must be set as the line is entered in the window — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>⚠️ The wizard commits at <code>cb_next</code>, before <code>cb_finish</code></strong> — a session that dies mid-wizard leaves a real, linked PO behind. An abandoned wizard is not a no-op. Cross-linked to <a href="03-Transaction-API.html#what-failed-actually-guarantees">What <code>Failed</code> actually guarantees</a> as the same class of hazard. Also records that <strong><code>supplier_id</code> on the wizard page is disabled through the API</strong> — it defaults to the item's primary supplier and cannot be overridden, so if vendor choice matters this flow cannot make it — <em>@mrwuss</em></li>
+</ul>
+<p>The wizard itself was <strong>not re-driven here</strong>: our API user has no Buyer ID and granting one is an operator decision. Everything reachable without that change was verified; the rest is credited and marked as such.</p>
 <hr />
 <h2 id="2026-08-20-v185">2026-08-20 — v1.8.5</h2>
 <p>The AP buy-side cycle, verified end-to-end on our own tenant — <strong>PO 998302 → receipt 5706613 → voucher 1775027</strong>, each step SQL-confirmed.</p>
@@ -1208,6 +1218,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
 <li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>
 <li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
 <li><a href="#2026-08-20-v183">2026-08-20 — v1.8.3</a></li>

@@ -706,6 +706,12 @@
 <li><a href="#recipe-add-a-line-note">Recipe: Add a Line Note</a></li>
 </ul>
 </li>
+<li><a href="#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard (Direct-Ship PO Generation)</a><ul>
+<li><a href="#why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</a></li>
+<li><a href="#the-flow">The flow</a></li>
+<li><a href="#related-dead-ends">Related dead ends</a></li>
+</ul>
+</li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
@@ -3884,6 +3890,35 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li>Complete the Notepad Entry popup exactly as in the header recipe (<code>topic</code>/<code>note</code> on <code>_dw_hdr</code> with <code>TabName: null</code>, then <code>cb_select_all</code>, <code>cb_ok</code>) — the popup's <code>_dw_hdr</code> shows which <code>line_no</code>/<code>item_id</code> the note will attach to. Save and verify.</li>
 </ol>
 <hr />
+<h2 id="driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard (Direct-Ship PO Generation)</h2>
+<p>The Transaction API <a href="03-Transaction-API.html#limitations">cannot drive wizards</a> — that limitation is real, and this is the worked example of the escape hatch. The Order window's <strong>PO/RFQ generation wizard</strong> creates a purchase order linked to a sales order (a <em>direct ship</em>), and it is reachable through the Interactive API.</p>
+<blockquote>
+<p><strong>Prerequisite: the API user needs a Buyer ID.</strong> Without one, setting the trigger returns <code>Status: 2</code> with <code>To create a PO, you must have a valid Buyer ID.</code> — verified on 26.1 (August 2026). It is set in User Maintenance and is a <strong>P21 configuration change</strong>, not something the API can do for you. Check it before writing any of the rest.</p>
+</blockquote>
+<h3 id="why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</h3>
+<p>The line's <code>disposition</code> field is the trigger for a direct-ship line, and it is a <strong>disabled column</strong> — <code>Column is disabled: disposition</code>, verified both through <code>/transaction</code> and through an interactive change on an existing line. Its valid values are <code>B</code>, <code>C</code>, <code>D</code>, <code>H</code>, <code>M</code>, <code>P</code>, <code>S</code>; <code>D</code> is direct ship. Set it <strong>as the line is entered</strong>, in the Interactive window — there is no stateless path.</p>
+<h3 id="the-flow">The flow</h3>
+<ol>
+<li>Create and save the sales order with its <code>D</code> line <strong>first</strong>. Requesting the PO in the same save does not work — a new order's save stacks other prompts ahead of the wizard and the sequence derails.</li>
+<li>Re-open the saved order and set the header checkbox <strong><code>c_create_po = 'ON'</code></strong> (<code>TABPAGE_1.order</code>, valid values <code>ON</code>/<code>OFF</code>).</li>
+<li><code>save()</code> → <strong><code>Status: 3</code></strong> with a <code>windowopened</code> event carrying the wizard's window id. Buttons: <code>cb_back</code>, <code>cb_next</code>, <code>cb_finish</code>, <code>cb_cancel</code>.</li>
+<li><strong>Identify the wizard by its buttons before pressing anything</strong> (<code>GET /v2/tools?windowId={popupId}</code>; <code>cb_finish</code> present). Never blind-answer a response window here — the first one may not be the wizard.</li>
+<li>Page 1 is an <code>items</code> grid, one row per <code>D</code> line: <code>purchase_item='Y'</code>, <code>qty_to_purchase</code>, <code>supplier_id</code>/<code>supplier_name</code>.</li>
+<li><code>cb_next</code> → page 2 shows the assigned <code>po_no</code>.</li>
+<li><code>cb_finish</code> to close cleanly.</li>
+<li>Result: a <code>po_hdr</code> row with <code>po_type='D'</code>, <code>approved='Y'</code>, plus an <code>oe_line_po</code> row (connection type <code>'P'</code>) linking the sales-order line to the PO line.</li>
+</ol>
+<blockquote>
+<p><strong>⚠️ The PO is committed at <code>cb_next</code>, before you finish.</strong> A session that dies mid-wizard still leaves a real, linked purchase order behind. <strong>An abandoned wizard is not a no-op</strong> — if you bail out, go and look for the PO. This is the same class of hazard as <a href="03-Transaction-API.html#what-failed-actually-guarantees">a service committing downstream work despite a <code>Failed</code> summary</a>.</p>
+<p><strong><code>supplier_id</code> on the wizard page is disabled through the API.</strong> It defaults to the item's primary supplier and could not be overridden (direct change and row-select both refused). In the UI this is where a CSR picks the vendor — so <strong>if supplier choice matters, this flow cannot make it</strong>; accept the default or have a person create the PO.</p>
+</blockquote>
+<h3 id="related-dead-ends">Related dead ends</h3>
+<ul>
+<li><strong>There is no PO-generation service.</strong> Not among the 299 transaction services, and window-name guesses (<code>POGen</code>, <code>PurchaseOrderGeneration</code>, …) all 400. The wizard is the path.</li>
+<li><strong><code>PurchaseOrder</code> TAPI cannot build a <code>D</code>-type PO</strong> — <code>po_hdr_po_type</code> is system-disabled, and the Backorders link tab is invisible to TAPI.</li>
+<li><strong>Direct-ship POs are not received</strong> via <a href="03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt</a> — the window refuses because the linked sales-order lines are <code>'T'</code> status. Their receipt is created by the sales-side confirmation instead (<code>DirectShipConfirmation</code>, keyed on <code>po_no</code>), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice.</li>
+</ul>
+<p><em>(Flow, wizard mechanics and dead ends verified by <a href="https://github.com/AWestemeier">Alex Westemeier</a> across two full cycles with SQL confirmation. Verified independently here: the <code>c_create_po</code> Buyer-ID prerequisite and its exact message, the <code>disposition</code> disabled-column behavior, and the field/valid-value definitions. The wizard itself was not re-driven — our API user has no Buyer ID, and granting one is an operator decision.)</em></p>
 <h2 id="sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</h2>
 <p>The <strong>Order window has the same two notepad surfaces</strong> as PurchaseOrder, drivable with the same Notepad Entry popup mechanics (<a href="#the-notepad-entry-popup">above</a>) — verified end-to-end on 26.1 (August 2026), both notes confirmed in the database. This matters doubly because the Transaction API's note surface on <code>Order</code> is <strong>entirely closed</strong> (<a href="03-Transaction-API.html#limitations">03 § Limitations</a>): this is the working path.</p>
 <div class="table-wrap"><table>
@@ -5145,6 +5180,12 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#the-notepad-entry-popup">The Notepad Entry Popup</a></li>
 <li><a href="#recipe-add-a-header-note">Recipe: Add a Header Note</a></li>
 <li><a href="#recipe-add-a-line-note">Recipe: Add a Line Note</a></li>
+</ul>
+</li>
+<li><a href="#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard (Direct-Ship PO Generation)</a><ul>
+<li><a href="#why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</a></li>
+<li><a href="#the-flow">The flow</a></li>
+<li><a href="#related-dead-ends">Related dead ends</a></li>
 </ul>
 </li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
