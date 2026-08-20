@@ -287,13 +287,15 @@
             overflow-wrap: anywhere;
         }
 
-        /* Tables FIT their column -- they never scroll sideways.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
-           would otherwise force the table past the content width, so cells are
-           allowed to break inside a token when, and only when, the token
-           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
-           cell's min-content width, which is what lets the table shrink.
-           .table-wrap stays as a last-resort guard for anything pathological. */
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -310,14 +312,16 @@
         }
 
         th, td {
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: normal;
         }
 
-        /* Inline code in a cell must break with the cell, not push past it. */
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
         td code, th code {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -606,7 +610,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">15</span></summary>
+            <summary>Recipes <span class="nav-count">16</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
@@ -622,6 +626,7 @@
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </details>
@@ -664,6 +669,7 @@
 <li><a href="#verified-error-messages">Verified Error Messages</a></li>
 </ul>
 </li>
+<li><a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas (Verified at Scale)</a></li>
 <li><a href="#updating-existing-location-fields">Updating Existing Location Fields</a><ul>
 <li><a href="#example-update-location-fields">Example: Update Location Fields</a></li>
 </ul>
@@ -1577,9 +1583,36 @@
 
 <p>These errors prove the API is actively processing the appended Location records — validating the CompanyId and GL accounts against P21's chart of accounts.</p>
 <hr />
+<h2 id="location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas (Verified at Scale)</h2>
+<p>Findings from a production run appending <strong>138 items × 2 locations</strong> (276 rows) through <code>PUT /api/inventory/parts/{ItemId}</code> with the GET → append → PUT pattern, each verified by SQL read-back (<a href="https://github.com/mrwuss/p21-api-documentation/issues/110">issue #110</a> and <a href="https://github.com/mrwuss/p21-api-documentation/issues/112">#112</a>, 2026-08-14):</p>
+<ol>
+<li><strong><code>LocationSuppliers</code> append works — and sets the location's primary supplier.</strong> Appending an <code>inventory_supplier_x_loc</code> object alongside the appended <code>Locations</code> entry in the <em>same</em> PUT creates the supplier-x-loc row <strong>and</strong> sets <code>inv_loc.primary_supplier_id</code>:</li>
+</ol>
+<p><code>json
+   {"ItemId": "...", "LocationId": 10, "SupplierId": 64284,
+    "PrimarySupplier": "Y", "ObjectName": "inventory_supplier_x_loc"}</code></p>
+<p>This is a simpler alternative to the Transaction API's <code>SUPPLIER_X_LOCATION</code> flag pattern and avoids its silent-no-op gotcha — the same PUT can also append the item-level <code>Suppliers</code> entry when the item–supplier link doesn't exist yet (verified: one call created <code>inventory_supplier</code> + the x_loc row + the primary flag together).</p>
+<ol>
+<li>
+<p><strong>GL accounts are required when the target location has no defaults.</strong> "GL auto-derives" is true only when the location/company has an <code>inventory_defaults</code> row. Appending to a freshly created location without one fails with <code>Required value missing for Revenue Account (for Inventory Location) on row N</code>. Two fixes: create the defaults row first via the <a href="03-Transaction-API.html#itemdefaults-service-per-location-item-defaults">ItemDefaults Transaction service</a>, or always send <code>GlAccountNo</code>/<code>RevenueAccountNo</code>/<code>CosAccountNo</code> copied from a same-branch template row.</p>
+</li>
+<li>
+<p><strong>Kit items reject <code>Buy: "Y"</code> on appended locations</strong> — <code>Error updating inv_mast: A Kit item cannot be marked as a Buy item.</code> — even when the item's older <code>inv_loc</code> rows carry <code>buy = Y</code> (legacy data). Omit <code>Buy</code>/<code>Make</code> for kit/assembly items and let P21 default them.</p>
+</li>
+<li>
+<p><strong><code>ReplenishmentMethod: "OP/OQ"</code> requires a positive order quantity.</strong> Copying an OP/OQ template without <code>order_quantity</code> fails with <code>The order quantity must be greater than zero when using the order point/order quantity inventory method... Invalid datawindow row specified</code>. Fall back to <code>Min/Max</code> on appended rows.</p>
+</li>
+<li>
+<p><strong>Transient 500s happen at scale.</strong> One item of 138 failed with an opaque <code>Exception has been thrown by the target of an invocation</code> and succeeded unchanged on retry. Bulk scripts should retry once before reporting failure.</p>
+</li>
+<li>
+<p><strong><code>PrimaryBin</code> is writable on <code>Locations</code> objects.</strong> GET → modify → PUT of <code>Locations.list[].PrimaryBin</code> (a bin-id string) persists to <code>inv_loc.primary_bin</code> — verified across all 276 rows. This complements the Transaction API primary-bin path and handles both of an item's locations in one PUT. <strong>The bin must already exist at that location</strong> (create bins — and on a fresh location, their zones first — per <a href="03-Transaction-API.html#putawayzone-pickzone-services-creating-bin-zones">PutawayZone/PickZone</a> + <a href="recipes/create-bins.html">create-bins</a>).</p>
+</li>
+</ol>
+<p>Also confirmed on appended <code>Locations</code> entries: <code>Stockable</code>, <code>Sellable</code>, <code>ProductGroupId</code>, <code>SalesDiscountGroup</code>, <code>PurchaseDiscountGroup</code>, <code>TaxGroupId</code>, <code>TrackBins</code>, <code>ReplenishmentMethod</code>, and <code>ReplenishmentLocation</code> are all honored — and <strong>re-PUT with an already-present location is a safe no-op</strong>, so bulk runs are idempotent and re-runnable.</p>
 <h2 id="updating-existing-location-fields">Updating Existing Location Fields</h2>
 <p>The GET -&gt; Modify -&gt; PUT pattern also works for <strong>updating fields on existing <code>inv_loc</code> records</strong>, not just appending new ones.</p>
-<p><strong>Verified writable fields:</strong> <code>Sellable</code>, <code>ProductGroupId</code>, <code>PurchaseDiscountGroup</code>, <code>SalesDiscountGroup</code></p>
+<p><strong>Verified writable fields:</strong> <code>Sellable</code>, <code>ProductGroupId</code>, <code>PurchaseDiscountGroup</code>, <code>SalesDiscountGroup</code>, <code>ReplenishmentLocation</code>, <code>PrimaryBin</code> (see <a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas</a> — <code>PrimaryBin</code> verified across 276 rows; the bin must already exist at that location)</p>
 <p>This API is the recommended path for <code>inv_loc</code> modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) <strong>read-only</strong>, so they cannot be edited there either.</p>
 <p>P21 validates changed values through business logic. For example, setting an invalid <code>ProductGroupId</code> returns:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -2943,6 +2976,7 @@
 <li><a href="#verified-error-messages">Verified Error Messages</a></li>
 </ul>
 </li>
+<li><a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas (Verified at Scale)</a></li>
 <li><a href="#updating-existing-location-fields">Updating Existing Location Fields</a><ul>
 <li><a href="#example-update-location-fields">Example: Update Location Fields</a></li>
 </ul>

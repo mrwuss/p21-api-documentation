@@ -287,13 +287,15 @@
             overflow-wrap: anywhere;
         }
 
-        /* Tables FIT their column -- they never scroll sideways.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
-           would otherwise force the table past the content width, so cells are
-           allowed to break inside a token when, and only when, the token
-           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
-           cell's min-content width, which is what lets the table shrink.
-           .table-wrap stays as a last-resort guard for anything pathological. */
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -310,14 +312,16 @@
         }
 
         th, td {
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: normal;
         }
 
-        /* Inline code in a cell must break with the cell, not push past it. */
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
         td code, th code {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -606,7 +610,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">15</span></summary>
+            <summary>Recipes <span class="nav-count">16</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
@@ -622,6 +626,7 @@
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </details>
@@ -845,6 +850,16 @@
 <hr />
 <h2 id="method-2-consumer-key">Method 2: Consumer Key</h2>
 <p>Use for service accounts and automated integrations. Consumer keys bypass P21 user permission checks (Application Security and Dataservice Permissions) — access is controlled by the consumer key's API scope instead.</p>
+<blockquote>
+<p>⚠️ <strong>A consumer key is a skeleton key — treat it like a domain-admin credential.</strong></p>
+<p>The key authenticates by itself; the <code>username</code> header is <strong>unauthenticated user context</strong>, not a login. That means the holder of a key can impersonate <strong>any P21 user, including an admin</strong> — no password, no consent, no per-user grant. Impersonating an admin confers that admin's access, which includes <strong>creating a brand-new user account with admin rights</strong>: at that point revoking the key no longer revokes the access, because the bad actor now has their own credentials. A leaked key is therefore not "an integration credential" — it is effectively unlimited, self-escalating access to the ERP.</p>
+<p>Handle keys accordingly:</p>
+<ul>
+<li><strong>Confine keys to environments you control</strong> — your own servers, your own vaults. Never embed one in anything that leaves your network (client apps, spreadsheets, emailed config).</li>
+<li><strong>Never hand a consumer key to a vendor or external party.</strong> If a third party needs API access, insist on a <strong>username/password service account</strong> instead — its access is bounded by P21's own permission system, it can't impersonate anyone, and it can be disabled like any other user.</li>
+<li>Rotate any key that has ever been shared beyond its intended environment, and audit for user accounts you don't recognize when you do.</li>
+</ul>
+</blockquote>
 <h3 id="creating-a-consumer-key">Creating a Consumer Key</h3>
 <ol>
 <li>Log in to SOA Admin Page (<code>https://{hostname}/api/admin</code>)</li>
@@ -1032,7 +1047,7 @@
 <h3 id="important-caveats">Important Caveats</h3>
 <ol>
 <li><strong>Token endpoint creates a middleware session</strong> — each call to <code>/api/security/token/v2</code> creates a new middleware session, which may invalidate tokens from previous calls. Get one token and reuse it.</li>
-<li><strong>No password required</strong> — the consumer key replaces password authentication entirely. The username is only for P21 user context, not authentication.</li>
+<li><strong>No password required</strong> — the consumer key replaces password authentication entirely. The username is only for P21 user context, not authentication — which is exactly why a key must never leave a trusted environment (see the warning at the top of this section: the holder can impersonate any user, including admins).</li>
 <li><strong>Scope is locked</strong> — the <code>Scope</code> field in the request is ignored. The consumer key's configured scope in SOA Admin determines access.</li>
 <li><strong><code>/api</code> scope is sufficient</strong> — the <code>/ui</code> scope is not required for Interactive API. The <code>/api</code> scope covers all endpoints including UI server operations.</li>
 </ol>

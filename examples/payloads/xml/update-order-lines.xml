@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <Name>Order</Name>
+  <Transactions>
+    <Transaction>
+      <DataElements>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+            <a:string>order_no</a:string>
+          </Keys>
+          <Name>TABPAGE_1.order</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>order_no</Name>
+                  <Value>1013938</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+            <a:string>user_line_no</a:string>
+          </Keys>
+          <Name>TP_ITEMS.items</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>user_line_no</Name>
+                  <Value>010</Value>
+                </Edit>
+                <Edit>
+                  <Name>oe_order_item_id</Name>
+                  <Value>WIDGET-001</Value>
+                </Edit>
+                <Edit>
+                  <Name>unit_quantity</Name>
+                  <Value>4</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>user_line_no</Name>
+                  <Value>030</Value>
+                </Edit>
+                <Edit>
+                  <Name>oe_order_item_id</Name>
+                  <Value>WIDGET-002</Value>
+                </Edit>
+                <Edit>
+                  <Name>unit_quantity</Name>
+                  <Value>1</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>List</Type>
+        </DataElement>
+      </DataElements>
+      <Status>New</Status>
+    </Transaction>
+  </Transactions>
+  <UseCodeValues>false</UseCodeValues>
+</TransactionSet>

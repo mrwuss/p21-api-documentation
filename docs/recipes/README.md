@@ -9,6 +9,7 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | Recipe | Task | API |
 |--------|------|-----|
 | [update-contract-lines](update-contract-lines.md) | Update or insert job-contract lines, prices, commission costs | Transaction |
+| [update-order-lines](update-order-lines.md) | Modify an existing sales order: edit a line in place, add a line | Transaction (`Order`, `user_line_no` handles) |
 | [edit-contract-bins](edit-contract-bins.md) | Change contract bin min/max/reorder/capacity | Transaction (`IgnoreDisabled`), Interactive fallback |
 | [create-bins](create-bins.md) | Bulk-create warehouse bins | Transaction (`BinLocation`) |
 | [create-sales-order](create-sales-order.md) | Create a sales order | Transaction (`Order`) |
@@ -21,6 +22,7 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | [update-supplier-contact](update-supplier-contact.md) | Write a supplier's email / central phone (shared `address` record) | Transaction (`Address`) |
 | [create-customer](create-customer.md) | Create a customer master record (salesrep + default_branch gotchas) | Transaction (`Customer`) |
 | [create-requisition-po](create-requisition-po.md) | Create a requisition PO (`po_type` 'R'; vendor vs supplier) | Transaction (`RequisitionPurchaseOrder`) |
+| [reassign-salesrep](reassign-salesrep.md) | Reassign a customer's and ship-tos' salesrep | Transaction |
 
 ## Shared conventions (recipes don't repeat these)
 

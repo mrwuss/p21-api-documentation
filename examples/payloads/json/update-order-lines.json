@@ -1,0 +1,72 @@
+{
+  "Name": "Order",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.order",
+          "Type": "Form",
+          "Keys": [
+            "order_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "order_no",
+                  "Value": "1013938"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TP_ITEMS.items",
+          "Type": "List",
+          "Keys": [
+            "user_line_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "user_line_no",
+                  "Value": "010"
+                },
+                {
+                  "Name": "oe_order_item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "4"
+                }
+              ],
+              "RelativeDateEdits": []
+            },
+            {
+              "Edits": [
+                {
+                  "Name": "user_line_no",
+                  "Value": "030"
+                },
+                {
+                  "Name": "oe_order_item_id",
+                  "Value": "WIDGET-002"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

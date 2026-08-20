@@ -174,6 +174,16 @@ static async Task<JsonElement> GetTokenV2Async(
 
 Use for service accounts and automated integrations. Consumer keys bypass P21 user permission checks (Application Security and Dataservice Permissions) — access is controlled by the consumer key's API scope instead.
 
+> ⚠️ **A consumer key is a skeleton key — treat it like a domain-admin credential.**
+>
+> The key authenticates by itself; the `username` header is **unauthenticated user context**, not a login. That means the holder of a key can impersonate **any P21 user, including an admin** — no password, no consent, no per-user grant. Impersonating an admin confers that admin's access, which includes **creating a brand-new user account with admin rights**: at that point revoking the key no longer revokes the access, because the bad actor now has their own credentials. A leaked key is therefore not "an integration credential" — it is effectively unlimited, self-escalating access to the ERP.
+>
+> Handle keys accordingly:
+>
+> - **Confine keys to environments you control** — your own servers, your own vaults. Never embed one in anything that leaves your network (client apps, spreadsheets, emailed config).
+> - **Never hand a consumer key to a vendor or external party.** If a third party needs API access, insist on a **username/password service account** instead — its access is bounded by P21's own permission system, it can't impersonate anyone, and it can be disabled like any other user.
+> - Rotate any key that has ever been shared beyond its intended environment, and audit for user accounts you don't recognize when you do.
+
 ### Creating a Consumer Key
 
 1. Log in to SOA Admin Page (`https://{hostname}/api/admin`)
@@ -282,7 +292,7 @@ Consumer key tokens contain these claims:
 ### Important Caveats
 
 1. **Token endpoint creates a middleware session** — each call to `/api/security/token/v2` creates a new middleware session, which may invalidate tokens from previous calls. Get one token and reuse it.
-2. **No password required** — the consumer key replaces password authentication entirely. The username is only for P21 user context, not authentication.
+2. **No password required** — the consumer key replaces password authentication entirely. The username is only for P21 user context, not authentication — which is exactly why a key must never leave a trusted environment (see the warning at the top of this section: the holder can impersonate any user, including admins).
 3. **Scope is locked** — the `Scope` field in the request is ignored. The consumer key's configured scope in SOA Admin determines access.
 4. **`/api` scope is sufficient** — the `/ui` scope is not required for Interactive API. The `/api` scope covers all endpoints including UI server operations.
 

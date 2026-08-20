@@ -287,13 +287,15 @@
             overflow-wrap: anywhere;
         }
 
-        /* Tables FIT their column -- they never scroll sideways.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
-           would otherwise force the table past the content width, so cells are
-           allowed to break inside a token when, and only when, the token
-           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
-           cell's min-content width, which is what lets the table shrink.
-           .table-wrap stays as a last-resort guard for anything pathological. */
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -310,14 +312,16 @@
         }
 
         th, td {
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: normal;
         }
 
-        /* Inline code in a cell must break with the cell, not push past it. */
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
         td code, th code {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -606,7 +610,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">15</span></summary>
+            <summary>Recipes <span class="nav-count">16</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
@@ -622,6 +626,7 @@
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </details>
@@ -815,11 +820,19 @@
 </tr>
 <tr>
 <td>Update a specific order line deterministically (<strong>line handles</strong>)</td>
-<td><a href="03-Transaction-API.html#design-for-updates-assign-your-own-line-handles">03 § Design for updates: assign your own line handles</a></td>
+<td><a href="03-Transaction-API.html#design-for-updates-assign-your-own-line-handles">03 § Design for updates: assign your own line handles</a> · <a href="recipes/update-order-lines.html">recipe: update-order-lines</a></td>
+</tr>
+<tr>
+<td><strong>Modify an existing sales order</strong> (edit a line, add a line)</td>
+<td><a href="recipes/update-order-lines.html">recipe: update-order-lines</a></td>
 </tr>
 <tr>
 <td>A tool is missing from <code>GET /v2/tools</code> on a multi-tab window</td>
 <td><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> — tool lists are tab-scoped and accumulate; select the tab first</td>
+</tr>
+<tr>
+<td>Write an <strong>item / customer / supplier note</strong> (drag-and-drop area picker)</td>
+<td><a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a> — the picker is <code>cb_selectall</code> via <code>/tools</code></td>
 </tr>
 <tr>
 <td>Which discovery endpoint — <code>definition</code> vs <code>defaults</code> vs <code>basics</code></td>
@@ -850,7 +863,7 @@
 <td><a href="03-Transaction-API.html#endpoints">03 § Endpoints — <code>/transaction/get</code></a></td>
 </tr>
 <tr>
-<td>Long-running / async transactions (<strong>no cancel path</strong> once queued)</td>
+<td>Long-running / async transactions (<strong>no cancel path</strong> once queued; status <code>2</code> ≠ success — outcome is a JSON string inside <code>Messages</code>)</td>
 <td><a href="03-Transaction-API.html#async-operations">03 § Async Operations</a></td>
 </tr>
 <tr>
@@ -939,6 +952,26 @@
 <td><a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
 <tr>
+<td><strong>Edit a salesrep's name/email</strong> (<code>contact_id</code> key; email on TABPAGE_2)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#salesrep-service-editing-a-reps-name-and-email">03 § Salesrep Service</a></td>
+</tr>
+<tr>
+<td><strong>Modify an existing sales order</strong> (edit a line in place, add a line)</td>
+<td><a href="recipes/update-order-lines.html">update-order-lines</a></td>
+<td><a href="03-Transaction-API.html#design-for-updates-assign-your-own-line-handles">03 § Design for updates: line handles</a></td>
+</tr>
+<tr>
+<td><strong>Item Defaults per location</strong> (required before location-appends on fresh locations)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#itemdefaults-service-per-location-item-defaults">03 § ItemDefaults Service</a></td>
+</tr>
+<tr>
+<td><strong>Create bin zones</strong> (fresh-location prereq for bins)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#putawayzone-pickzone-services-creating-bin-zones">03 § PutawayZone / PickZone Services</a></td>
+</tr>
+<tr>
 <td><strong>Create a customer</strong> (salesrep_id + default_branch gotchas, no zip→rep cascade)</td>
 <td><a href="recipes/create-customer.html">create-customer</a></td>
 <td><a href="03-Transaction-API.html#common-services">03 § Common Services</a></td>
@@ -967,6 +1000,11 @@
 <td>Inventory items: read / create / update locations</td>
 <td>—</td>
 <td><a href="11-Inventory-REST-API.html#reading-items">11 § Reading Items</a> · <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a> · <a href="11-Inventory-REST-API.html#updating-existing-location-fields">11 § Updating Existing Location Fields</a></td>
+</tr>
+<tr>
+<td>Append locations <strong>at scale</strong> (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin)</td>
+<td>—</td>
+<td><a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a></td>
 </tr>
 <tr>
 <td>Customer-specific <strong>price + availability</strong> lookup</td>

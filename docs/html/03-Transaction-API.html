@@ -287,13 +287,15 @@
             overflow-wrap: anywhere;
         }
 
-        /* Tables FIT their column -- they never scroll sideways.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
-           would otherwise force the table past the content width, so cells are
-           allowed to break inside a token when, and only when, the token
-           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
-           cell's min-content width, which is what lets the table shrink.
-           .table-wrap stays as a last-resort guard for anything pathological. */
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -310,14 +312,16 @@
         }
 
         th, td {
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: normal;
         }
 
-        /* Inline code in a cell must break with the cell, not push past it. */
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
         td code, th code {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -606,7 +610,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">15</span></summary>
+            <summary>Recipes <span class="nav-count">16</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
@@ -622,6 +626,7 @@
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </details>
@@ -719,7 +724,10 @@
 <li><a href="#assembly-service">Assembly Service</a></li>
 <li><a href="#item-service-nested-location-edits">Item Service -- Nested Location Edits</a></li>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
+<li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
+<li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>
@@ -1275,6 +1283,7 @@
 </code></pre></div>
 
 <p>The live endpoint carries the same field — see <a href="#get-service-definition">Get Service Definition</a>, which prints <code>KeyFields</code> per element.</p>
+<p><strong>Elements that declare no <code>KeyFields</code> never fold.</strong> The collapse runs on the element's <em>declared</em> key fields, so on the ~third of <code>List</code> elements that declare none, repeated rows simply append in order. Verified on <code>Order</code> → <code>TABPAGE_RELEASE.tabpage_release</code> (scheduled releases — declared keys: none): two release rows with <code>Keys: []</code> landed as <strong>two rows</strong>, and re-sending the <em>same</em> row twice was treated as a second new row — it failed business validation (<code>The release date must be after the previous release date</code>) rather than folding into the first. So the collapse trap lives only on keyed elements; on keyless ones the trap inverts — nothing deduplicates for you, and a retried payload appends duplicates instead of matching existing rows.</p>
 <h3 id="debugging-a-key-problem">Debugging a key problem</h3>
 <p>The symptom is always the same shape: <strong>the write succeeded and the data is wrong</strong> — a line missing, a quantity belonging to a different line, or an update that appeared as a new row. When that happens:</p>
 <ol>
@@ -1795,30 +1804,37 @@
 <div class="highlight"><pre><span></span><code><span class="err">POST /api/v2/transaction/async</span>
 </code></pre></div>
 
-<p>Response includes a request ID:</p>
+<p>The body is the same TransactionSet you would POST to <code>/transaction</code>. The response (verified 26.1, August 2026 — HTTP <strong>200</strong>, not the 202 documented for earlier versions) is a <strong>status wrapper</strong>, the same shape the status GET returns:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;11111111-2222-3333-4444-555555555555&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Active&quot;</span>
+<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c27a95d8-4a4e-4183-9d86-7be1dd242f92&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;RequestType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;V2 Transaction&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N/A&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;StartDate&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-08-19T19:55:58.78-05:00&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompletedDate&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CallbackResult&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <h3 id="check-status">Check Status</h3>
-<div class="highlight"><pre><span></span><code><span class="err">GET /api/v2/transaction/async?id=11111111-2222-3333-4444-555555555555</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/v2/transaction/async?id={RequestId}</span>
 </code></pre></div>
 
-<p>Response:</p>
+<p>Once the run finishes, <code>CompletedDate</code> is set and <code>Status</code> flips to <code>2</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;11111111-2222-3333-4444-555555555555&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Complete&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CompletedDate&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-01-15T16:34:53&quot;</span>
+<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c27a95d8-...&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CompletedDate&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-08-19T19:56:00.317&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;Results\&quot;: {...}, \&quot;Messages\&quot;: [], \&quot;Summary\&quot;: {\&quot;Failed\&quot;: 0, \&quot;Succeeded\&quot;: 1, \&quot;Other\&quot;: 0}}&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>Status values: <code>Active</code>, <code>Complete</code>, <code>Failed</code></p>
-<blockquote>
-<p><strong>Note:</strong> The async POST returns HTTP <strong>202 Accepted</strong> (not 200) to indicate the request was queued successfully.</p>
-</blockquote>
+<p>Two traps in this wrapper, both verified by running a valid and an invalid transaction side by side:</p>
+<ul>
+<li><strong><code>Status</code> is queue state, not outcome.</strong> <code>3</code> = queued/running, <code>2</code> = completed — and it is <code>2</code> for a transaction that <strong>failed</strong> exactly as for one that succeeded. Do not branch on it.</li>
+<li><strong>The outcome is double-encoded.</strong> <code>Messages</code> is a <strong>JSON string</strong> containing the complete synchronous-style envelope (<code>Results</code> / <code>Messages</code> / <code>Summary</code>) — parse the wrapper, then <code>json.loads(wrapper["Messages"])</code>, and read <code>Summary.Failed</code> and the inner <code>Messages</code> there. The failed run's business-rule text appears only at that inner level.</li>
+</ul>
 <p><strong>What the immediate response does and does not tell you.</strong> The submit returns in milliseconds with a request ID, and that is an acknowledgement of <em>queueing only</em> — not of validation, and not of success. A transaction that the synchronous endpoint would have rejected returns a perfectly normal request ID here. The status GET is where the outcome lives, and it carries the same <code>Messages</code> the synchronous call would have returned — a request that failed shows its <code>Failed</code> count and the business-rule text (<em>"You cannot cancel an order that is fully invoiced"</em>, for instance) only once you go and read it. Treat the request ID as something you must persist and follow up on; work submitted and never checked is work whose outcome nobody knows.</p>
 <blockquote>
 <p><strong>There is no cancel.</strong> Once transactions are queued there is no endpoint to stop them — probed on a 26.1 tenant, every cancel-shaped route 404s (<code>DELETE /api/v2/transaction/async/{id}</code>, <code>DELETE /api/v2/transaction/{id}</code>, <code>POST /api/v2/transaction/async/cancel</code>), and <code>DELETE /api/v2/transaction/async</code> returns 405: the route exists, for POST only — a loop that submits 50,000 wrong requests will run all 50,000, and every one fires the same DynaChange rules, alerts and event rules a synchronous call would. This is the endpoint's real hazard: it removes the natural backpressure of waiting for each response, so a payload bug that a synchronous run would have surfaced on record one instead surfaces after the whole batch has landed. Validate the payload synchronously against a single record before submitting a batch async. <em>(Community session, Felipe Maurer, 2026.)</em></p>
@@ -4466,6 +4482,34 @@ The <code>target_date</code> edit must appear before <code>start_date</code> in 
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — pattern verified in production (July 2026), including the <code>IgnoreDisabled</code> placement failure mode.</p>
 </blockquote>
+<h3 id="putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</h3>
+<p>A freshly created P21 location has <strong>no bin zones</strong>, and <code>BinLocation</code> (above) requires <code>putaway_zone_id</code>/<code>pick_zone_id</code> codes that resolve within the location — so on a new location the bin recipe fails until zones exist. The <code>PutawayZone</code> and <code>PickZone</code> services create them (verified in production, August 2026).</p>
+<p>Both are single-form services — business object <code>bin_zone</code>, element <code>FORM.form</code>, keys <code>location_id</code> + <code>bin_zone_id</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PutawayZone&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bin_zone_id&quot;</span><span class="p">],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bin_zone_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZONE-A&quot;</span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;zone_desc&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Zone A&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li><strong>The zone type is set by which service you call</strong> — <code>PutawayZone</code> writes <code>zone_type_cd</code> 1406, <code>PickZone</code> writes 1407. The same <code>bin_zone_id</code> code can exist as both types.</li>
+<li><strong>Fresh-location sequence that works end-to-end:</strong> <code>PutawayZone</code> create → <code>PickZone</code> create → <code>BinLocation</code> create (per the recipe above, <code>IgnoreDisabled: true</code> at top level, codes not uids). Verified: zones and bin land with correct <code>zone_type_cd</code> and uid wiring in <code>bin_zone</code>/<code>bin</code>.</li>
+<li>For setting an item's <strong>primary bin</strong>, the Inventory REST API is the lighter path — <code>Locations.list[].PrimaryBin</code> is writable via GET → modify → PUT; see <a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>.</li>
+</ul>
+<p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/112">issue #112</a>, verified in production 2026-08-14.)</em></p>
 <h3 id="shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</h3>
 <p><strong><code>Shipping</code> is the only service that writes <code>oe_pick_ticket.tracking_no</code>.</strong> A scan of all <strong>299</strong> services returned by <code>GET /api/v2/services</code> (240 returned a definition; the rest answer with the unavailable-window HTTP 500) found the column in exactly one writable place. <em>Verified on a P21 26.1 tenant, 2026-08-11.</em></p>
 <h4 id="the-element">The element</h4>
@@ -4849,6 +4893,96 @@ General Exception: This pick ticket has already been invoiced.
 </div>
 </div>
 <hr />
+<h3 id="salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</h3>
+<p>The <code>Salesrep</code> service is the write surface for a salesrep's own contact record (the <code>contacts</code> row where <code>salesrep = 'Y'</code>). Verified against P21 26.1 in production (2026-08-11): a misspelled rep name and its email corrected in one transaction, <code>Status: "Passed"</code>, confirmed by read-after-write against <code>contacts</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Salesrep&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;IgnoreDisabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;contact_id&quot;</span><span class="p">],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;contact_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4431&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;IgnoreIfEmpty&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;first_name&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;John&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;IgnoreIfEmpty&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;last_name&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Smith&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;IgnoreIfEmpty&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_2.tp_2_dw_2&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;contacts_email_address&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jsmith@example.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;IgnoreIfEmpty&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Data element</th>
+<th>Keys</th>
+<th>Notable fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+<td><code>contact_id</code></td>
+<td><code>salutation</code>, <code>first_name</code>, <code>mi</code>, <code>last_name</code>, <code>title</code>, <code>login_id</code>, <code>address_id</code>, <code>commission_class_id</code>, <code>sales_manager_id</code>, <code>inside_salesrep_flag</code>, <code>delete_flag</code></td>
+</tr>
+<tr>
+<td><code>TABPAGE_2.tp_2_dw_2</code></td>
+<td>—</td>
+<td><code>contacts_email_address</code>, <code>direct_phone</code>, <code>cellular</code>, <code>direct_fax</code>, <code>central_phone_number</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Gotchas:</p>
+<ul>
+<li><strong>The key is <code>contact_id</code>, not <code>id</code></strong> — even though the underlying column is <code>contacts.id</code>.</li>
+<li><strong>Email is <code>contacts_email_address</code> on TABPAGE_2</strong>, not <code>email_address</code> on the name tab. (Contrast with the <code>Address</code> service, where the field <em>is</em> <code>email_address</code> — see the <a href="recipes/update-supplier-contact.html">update-supplier-contact recipe</a>.)</li>
+<li><code>Status: "New"</code> is the usual <a href="#upsert-semantics-keyed-rows-insert-when-absent">upsert shape</a> — an existing <code>contact_id</code> updates that record.</li>
+<li><strong><code>login_id</code> is a separate TABPAGE_1 field and is NOT changed by a name/email edit.</strong> After renaming a rep, their P21 login can still carry the old spelling; changing it is a deliberate, separate decision.</li>
+<li>Retiring a rep is <code>delete_flag</code> on TABPAGE_1 of this same service.</li>
+<li>Writes land with <code>last_maintained_by</code> = the API user and are captured in the window's audit trail (<code>TIMESTAMP.timestamp_dw_audittrail</code>).</li>
+</ul>
+<p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/109">issue #109</a>, verified in production 2026-08-11.)</em></p>
+<h3 id="itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</h3>
+<p>The <code>ItemDefaults</code> service is the <strong>Item Defaults Maintenance</strong> window (Inventory &gt; Inventory Management &gt; System), business object <code>inventory_defaults</code>, keyed on <code>company_id</code> + <code>location_id</code>. <code>Status: "New"</code> creates the per-company/location defaults record that new <code>inv_loc</code> rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).</p>
+<p><strong>Why you care:</strong> a location without an <code>inventory_defaults</code> row breaks downstream flows — Inventory REST location-appends demand explicit GL (<code>Required value missing for Revenue Account</code>, see <a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>), and new <code>inv_loc</code> rows land with <code>replenishment_location = NULL</code>. Create the defaults row first and both problems disappear.</p>
+<p>Element map (from <code>GET /api/v2/definition/ItemDefaults</code>):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Data element</th>
+<th>Keys</th>
+<th>Carries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TABPAGE_1.tp_1_dw_1</code> (Form)</td>
+<td><code>company_id</code>, <code>location_id</code></td>
+<td>general: <code>tax_group_id</code>, <code>sales_discount_group_id</code>, <code>purchase_discount_group_id</code>, <code>unit_id</code>/<code>unit_size</code> (sales pricing unit), <code>default_base_unit</code>, <code>stockable</code>/<code>buy</code>/<code>make</code> (ON/OFF), <code>track_bins</code>…</td>
+</tr>
+<tr>
+<td><code>TABPAGE_2.tp_2_dw_2</code> (Form)</td>
+<td>—</td>
+<td>GL: <code>asset_account_no</code>, <code>revenue_account_no</code>, <code>cos_account_no</code></td>
+</tr>
+<tr>
+<td><code>TABPAGE_3.tp_3_dw_3</code> (Form)</td>
+<td><code>company_id</code>, <code>location_id</code></td>
+<td>replenishment: <code>replenishment_location_id</code>, <code>replenishment_method</code> (e.g. <code>"Min/Max"</code>), <code>price_unit_id</code>/<code>price_unit_size</code> (purchase pricing unit)</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>Gotcha — the pricing units are required.</strong> <code>unit_id</code>/<code>unit_size</code> on TABPAGE_1 and <code>price_unit_id</code>/<code>price_unit_size</code> on TABPAGE_3 must be sent — omitting them fails the whole transaction with <code>'Sales Pricing Unit' is a required column</code>, even though the window shows them as ordinary defaults. Send e.g. <code>EA</code> / <code>1</code>.</p>
+</blockquote>
+<p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/111">issue #111</a>, verified 2026-08-14.)</em></p>
 <h2 id="pdf-report-generation">PDF Report Generation</h2>
 <p>The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.</p>
 <p><strong>Endpoint:</strong> <code>POST {ui_server}/api/v2/process/pdfreport</code></p>
@@ -5675,7 +5809,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </tr>
 <tr>
 <td>Drag-and-drop windows</td>
-<td>No TAPI path. Verified on the standalone <code>*Notepad</code> services (26.1, Aug 2026): their mandatory <strong>area selector</strong> is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with <code>You must select at least one area where this note will display.</code>; send a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>) and it fails with <code>Column is disabled: area</code>. <code>IgnoreDisabled: true</code> changes neither. <em>(Community session, Felipe Maurer, 2026; verified August 2026)</em></td>
+<td>No TAPI path. Verified on the standalone <code>*Notepad</code> services (26.1, Aug 2026): their mandatory <strong>area selector</strong> is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with <code>You must select at least one area where this note will display.</code>; send a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>) and it fails with <code>Column is disabled: area</code>. <code>IgnoreDisabled: true</code> changes neither. <strong>The Interactive API drives the same picker</strong> — the window exposes it as <code>cb_select</code>/<code>cb_selectall</code> tools; see <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a>. <em>(Community session, Felipe Maurer, 2026; verified August 2026)</em></td>
 </tr>
 <tr>
 <td><strong>Mandatory notes</strong> blocking a save</td>
@@ -5687,7 +5821,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <p><strong>Order notes: the elements are published, and they are all disabled.</strong> The <code>Order</code> definition looks encouraging — it publishes <strong><code>LINE_NOTE.line_note</code></strong> and <strong><code>HDR_NOTE.hdr_note</code></strong> as ordinary <code>List</code> DataElements keyed on <code>note_id</code>, each with <code>note</code>, <code>topic</code> and <code>notepad_class_desc</code> fields, plus <code>TP_ITEMNOTES.tp_itemnotes</code> keyed on <code>note_uid</code>. None of it is writable. Tested against a 26.1 tenant on a live order (August 2026), <strong>every column of both note elements is refused</strong>, one at a time, whichever you send: <code>Column is disabled: topic</code>, <code>Column is disabled: notepad_class_desc</code>, <code>Column is disabled: note</code>. <code>TP_ITEMNOTES</code> refuses a step earlier still, with <code>Tab page is disabled and cannot be selected</code>.</p>
 <p><strong>And <code>IgnoreDisabled: true</code> makes it worse, not better.</strong> The same <code>LINE_NOTE</code> write that fails loudly without the flag returns <code>Succeeded: 1</code> with it — and the note is still empty on read-back. That is <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a> exactly: the flag swallows the refusal and reports success on a write that wrote nothing.</p>
 <p>The standalone notepad services close the loop the same way. <code>ItemNotepad</code>, <code>CustomerNotepad</code>, <code>SupplierNotepad</code> and <code>VendorNotepad</code> (see <a href="#common-services">Common Services</a>) each publish a perfectly ordinary header form — <code>note_id</code>, <code>topic</code>, <code>note</code>, <code>mandatory</code>, activation/expiration dates, a <code>notepad_class</code> with <code>ValidValues</code> — and every create dies on the same wall (tested on the first three, 26.1, August 2026): the mandatory <strong>"where does this note display" area selector is a drag-and-drop control</strong>. Omit it and the save fails with <code>You must select at least one area where this note will display.</code>; send the area as a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>, declared <code>KeyFields: ["area"]</code>) and it fails with <code>Column is disabled: area</code>; the Available Areas side (<code>tp_17_dw_dragdrop</code>) accepts the row and then fails the save on the same missing selection. <code>IgnoreDisabled: true</code> changes none of it. This is the <a href="#limitations">drag-and-drop limitation</a> with a paper trail.</p>
-<p>So <strong>"the Transaction API can't do notes" is simply true — notes are Interactive API territory.</strong> Not for the reason usually given (the <em>Add Line Note</em> wizard — true, but incidental): every path is independently closed. <code>Order</code>'s embedded note elements are disabled columns; the standalone <code>*Notepad</code> services stall on a drag-and-drop area picker. Use the Interactive API's verified paths: <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes</a> and <a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes</a> — the Order path is verified end-to-end (header and line notes, DB-confirmed) with the same popup mechanics. <em>(Community session, Felipe Maurer, 2026, for the wizard claim; both closures and the working Order path verified live, August 2026.)</em></p>
+<p>So <strong>"the Transaction API can't do notes" is simply true — notes are Interactive API territory.</strong> Not for the reason usually given (the <em>Add Line Note</em> wizard — true, but incidental): every path is independently closed. <code>Order</code>'s embedded note elements are disabled columns; the standalone <code>*Notepad</code> services stall on a drag-and-drop area picker. Use the Interactive API's verified paths: <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes</a>, <a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes</a>, and — for the standalone item/customer/supplier notepads whose drag-and-drop area picker blocks the Transaction API — <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows</a>, where the picker is an ordinary <code>cb_selectall</code> tool. <em>(Community session, Felipe Maurer, 2026, for the wizard claim; both closures and the working Order path verified live, August 2026.)</em></p>
 </blockquote>
 <h3 id="item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</h3>
 <p><em>Verified on production P21, 2026-08-10.</em></p>
@@ -6044,7 +6178,10 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#assembly-service">Assembly Service</a></li>
 <li><a href="#item-service-nested-location-edits">Item Service -- Nested Location Edits</a></li>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
+<li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
+<li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>

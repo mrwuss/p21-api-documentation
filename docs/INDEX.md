@@ -53,8 +53,10 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Read **several** records in one `/transaction/get` call (no field/element subsetting exists) | [03 § Reading several records in one call](03-Transaction-API.md#reading-several-records-in-one-call) |
 | `Sequence contains no matching element` / `Invalid column name` on a keyed write | [03 § Choosing a key](03-Transaction-API.md#choosing-a-key) — every `Keys` field must be a real column **and** be sent in `Edits` |
 | Write a **note** (order line/header, item, customer, supplier) | [03 § Limitations](03-Transaction-API.md#limitations) — no TAPI path; use the Interactive API: [04 § Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) · [04 § PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line) |
-| Update a specific order line deterministically (**line handles**) | [03 § Design for updates: assign your own line handles](03-Transaction-API.md#design-for-updates-assign-your-own-line-handles) |
+| Update a specific order line deterministically (**line handles**) | [03 § Design for updates: assign your own line handles](03-Transaction-API.md#design-for-updates-assign-your-own-line-handles) · [recipe: update-order-lines](recipes/update-order-lines.md) |
+| **Modify an existing sales order** (edit a line, add a line) | [recipe: update-order-lines](recipes/update-order-lines.md) |
 | A tool is missing from `GET /v2/tools` on a multi-tab window | [04 § Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) — tool lists are tab-scoped and accumulate; select the tab first |
+| Write an **item / customer / supplier note** (drag-and-drop area picker) | [04 § Standalone Notepad Windows](04-Interactive-API.md#standalone-notepad-windows-itemcustomersupplier) — the picker is `cb_selectall` via `/tools` |
 | Which discovery endpoint — `definition` vs `defaults` vs `basics` | [03 § Endpoints](03-Transaction-API.md#endpoints) |
 | Write through disabled columns/tabs (`IgnoreDisabled`) | [03 § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) — **not a universal unlock; it can report success and write nothing** |
 | Contract break tiers refuse to save / "Tab page is disabled" | [03 § VALUES Writes Are Refused on 26.1](03-Transaction-API.md#values-writes-are-refused-on-261) · [14 § entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) |
@@ -62,7 +64,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Labels vs code_no (`UseCodeValues`, `code_p21`) | [03 § UseCodeValues](03-Transaction-API.md#usecodevalues) |
 | Check success properly (HTTP 200 lies; per-tx pass/fail) | [03 § Response Format](03-Transaction-API.md#response-format) · [06 § Transaction API Errors](06-Error-Handling.md#transaction-api-errors) |
 | Read a record back / verify a write | [03 § Endpoints — `/transaction/get`](03-Transaction-API.md#endpoints) |
-| Long-running / async transactions (**no cancel path** once queued) | [03 § Async Operations](03-Transaction-API.md#async-operations) |
+| Long-running / async transactions (**no cancel path** once queued; status `2` ≠ success — outcome is a JSON string inside `Messages`) | [03 § Async Operations](03-Transaction-API.md#async-operations) |
 | DynaChange rules & popup suppression for the API user | [03 § DynaChange and Popup Handling](03-Transaction-API.md#dynachange-and-popup-handling) |
 | Run a stored procedure via API | [03 § Stored Procedure Executor](03-Transaction-API.md#stored-procedure-executor) |
 
@@ -83,12 +85,17 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Break fields named differently per service (`calculation_value1` vs `value1`) | — | [08 § Cross-Service Break-Field Names](08-SalesPricePage-Codes.md#cross-service-break-field-names) |
 | **Set a carrier tracking number** on a pick ticket (and why not after invoicing) | — | [03 § Shipping Service — Carrier Tracking Number](03-Transaction-API.md#shipping-service-carrier-tracking-number) |
 | **Reassign a salesrep** (customer + ship-to) | [reassign-salesrep](recipes/reassign-salesrep.md) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
+| **Edit a salesrep's name/email** (`contact_id` key; email on TABPAGE_2) | — | [03 § Salesrep Service](03-Transaction-API.md#salesrep-service-editing-a-reps-name-and-email) |
+| **Modify an existing sales order** (edit a line in place, add a line) | [update-order-lines](recipes/update-order-lines.md) | [03 § Design for updates: line handles](03-Transaction-API.md#design-for-updates-assign-your-own-line-handles) |
+| **Item Defaults per location** (required before location-appends on fresh locations) | — | [03 § ItemDefaults Service](03-Transaction-API.md#itemdefaults-service-per-location-item-defaults) |
+| **Create bin zones** (fresh-location prereq for bins) | — | [03 § PutawayZone / PickZone Services](03-Transaction-API.md#putawayzone-pickzone-services-creating-bin-zones) |
 | **Create a customer** (salesrep_id + default_branch gotchas, no zip→rep cascade) | [create-customer](recipes/create-customer.md) | [03 § Common Services](03-Transaction-API.md#common-services) |
 | **Create a requisition PO** (`po_type` 'R'; disabled `po_hdr_po_type`; vendor vs supplier) | [create-requisition-po](recipes/create-requisition-po.md) | [03 § Purchase Order Types](03-Transaction-API.md#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
 | **GL dimensions via API** (voucher services carry them; POs don't) | — | [03 § GL Dimensions in the API](03-Transaction-API.md#gl-dimensions-in-the-api) |
 | Customers / vendors / contacts / addresses (simple CRUD) | — | [05 § CRUD Operations](05-Entity-API.md#crud-operations) |
 | Read/create **sales orders via REST** (`/api/sales/orders`) | — | [05 § Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families) · [05 § Creating an Order](05-Entity-API.md#creating-an-order-post-apisalesorders) — **trailing slash required; lines nest under `Lines.list`** |
 | Inventory items: read / create / update locations | — | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
+| Append locations **at scale** (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin) | — | [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale) |
 | Customer-specific **price + availability** lookup | — | [11 § Pricing Endpoints](11-Inventory-REST-API.md#pricing-endpoints) |
 | User-defined tables (UDT) rows | — | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) — **update/delete need a `row_uid` column; 2026.1-created UDTs don't have one** |
 | UDT delete "succeeds" but nothing is deleted | — | [06 § `[0] rows deleted`](06-Error-Handling.md#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261) · [14 § entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261) |
