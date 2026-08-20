@@ -334,6 +334,8 @@ python -c "import json;d=json.load(open('definitions/Order.json'));[print(e['Nam
 
 The live endpoint carries the same field — see [Get Service Definition](#get-service-definition), which prints `KeyFields` per element.
 
+**Elements that declare no `KeyFields` never fold.** The collapse runs on the element's *declared* key fields, so on the ~third of `List` elements that declare none, repeated rows simply append in order. Verified on `Order` → `TABPAGE_RELEASE.tabpage_release` (scheduled releases — declared keys: none): two release rows with `Keys: []` landed as **two rows**, and re-sending the *same* row twice was treated as a second new row — it failed business validation (`The release date must be after the previous release date`) rather than folding into the first. So the collapse trap lives only on keyed elements; on keyless ones the trap inverts — nothing deduplicates for you, and a retried payload appends duplicates instead of matching existing rows.
+
 ### Debugging a key problem
 
 The symptom is always the same shape: **the write succeeded and the data is wrong** — a line missing, a quantity belonging to a different line, or an update that appeared as a new row. When that happens:
@@ -676,35 +678,42 @@ For long-running operations, use the async endpoint. Async requests run in a ded
 POST /api/v2/transaction/async
 ```
 
-Response includes a request ID:
+The body is the same TransactionSet you would POST to `/transaction`. The response (verified 26.1, August 2026 — HTTP **200**, not the 202 documented for earlier versions) is a **status wrapper**, the same shape the status GET returns:
 
 ```json
 {
-    "RequestId": "11111111-2222-3333-4444-555555555555",
-    "Status": "Active"
+    "RequestId": "c27a95d8-4a4e-4183-9d86-7be1dd242f92",
+    "RequestType": "V2 Transaction",
+    "Key": "N/A",
+    "StartDate": "2026-08-19T19:55:58.78-05:00",
+    "CompletedDate": null,
+    "Status": 3,
+    "CallbackResult": null,
+    "Messages": null
 }
 ```
 
 ### Check Status
 
 ```http
-GET /api/v2/transaction/async?id=11111111-2222-3333-4444-555555555555
+GET /api/v2/transaction/async?id={RequestId}
 ```
 
-Response:
+Once the run finishes, `CompletedDate` is set and `Status` flips to `2`:
 
 ```json
 {
-    "RequestId": "11111111-2222-3333-4444-555555555555",
-    "Status": "Complete",
-    "Messages": "...",
-    "CompletedDate": "2025-01-15T16:34:53"
+    "RequestId": "c27a95d8-...",
+    "CompletedDate": "2026-08-19T19:56:00.317",
+    "Status": 2,
+    "Messages": "{\"Results\": {...}, \"Messages\": [], \"Summary\": {\"Failed\": 0, \"Succeeded\": 1, \"Other\": 0}}"
 }
 ```
 
-Status values: `Active`, `Complete`, `Failed`
+Two traps in this wrapper, both verified by running a valid and an invalid transaction side by side:
 
-> **Note:** The async POST returns HTTP **202 Accepted** (not 200) to indicate the request was queued successfully.
+- **`Status` is queue state, not outcome.** `3` = queued/running, `2` = completed — and it is `2` for a transaction that **failed** exactly as for one that succeeded. Do not branch on it.
+- **The outcome is double-encoded.** `Messages` is a **JSON string** containing the complete synchronous-style envelope (`Results` / `Messages` / `Summary`) — parse the wrapper, then `json.loads(wrapper["Messages"])`, and read `Summary.Failed` and the inner `Messages` there. The failed run's business-rule text appears only at that inner level.
 
 **What the immediate response does and does not tell you.** The submit returns in milliseconds with a request ID, and that is an acknowledgement of *queueing only* — not of validation, and not of success. A transaction that the synchronous endpoint would have rejected returns a perfectly normal request ID here. The status GET is where the outcome lives, and it carries the same `Messages` the synchronous call would have returned — a request that failed shows its `Failed` count and the business-rule text (*"You cannot cancel an order that is fully invoiced"*, for instance) only once you go and read it. Treat the request ID as something you must persist and follow up on; work submitted and never checked is work whose outcome nobody knows.
 
@@ -3010,6 +3019,38 @@ The `BinLocation` service *is* the **Bin Location Maintenance** window: its form
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — pattern verified in production (July 2026), including the `IgnoreDisabled` placement failure mode.
 
+### PutawayZone / PickZone Services — Creating Bin Zones
+
+A freshly created P21 location has **no bin zones**, and `BinLocation` (above) requires `putaway_zone_id`/`pick_zone_id` codes that resolve within the location — so on a new location the bin recipe fails until zones exist. The `PutawayZone` and `PickZone` services create them (verified in production, August 2026).
+
+Both are single-form services — business object `bin_zone`, element `FORM.form`, keys `location_id` + `bin_zone_id`:
+
+```json
+{
+  "Name": "PutawayZone",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      { "Name": "FORM.form", "Type": "Form",
+        "Keys": ["location_id", "bin_zone_id"],
+        "Rows": [ { "Edits": [
+          {"Name": "company_id",  "Value": "ACME"},
+          {"Name": "location_id", "Value": "10"},
+          {"Name": "bin_zone_id", "Value": "ZONE-A"},
+          {"Name": "zone_desc",   "Value": "Zone A"}
+        ] } ] }
+    ]
+  }]
+}
+```
+
+- **The zone type is set by which service you call** — `PutawayZone` writes `zone_type_cd` 1406, `PickZone` writes 1407. The same `bin_zone_id` code can exist as both types.
+- **Fresh-location sequence that works end-to-end:** `PutawayZone` create → `PickZone` create → `BinLocation` create (per the recipe above, `IgnoreDisabled: true` at top level, codes not uids). Verified: zones and bin land with correct `zone_type_cd` and uid wiring in `bin_zone`/`bin`.
+- For setting an item's **primary bin**, the Inventory REST API is the lighter path — `Locations.list[].PrimaryBin` is writable via GET → modify → PUT; see [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale).
+
+*(From [issue #112](https://github.com/mrwuss/p21-api-documentation/issues/112), verified in production 2026-08-14.)*
+
 ### Shipping Service -- Carrier Tracking Number
 
 **`Shipping` is the only service that writes `oe_pick_ticket.tracking_no`.** A scan of all **299** services returned by `GET /api/v2/services` (240 returned a definition; the rest answer with the unavailable-window HTTP 500) found the column in exactly one writable place. *Verified on a P21 26.1 tenant, 2026-08-11.*
@@ -3359,6 +3400,68 @@ static string ReadField(string payload, string field)
 <!-- /tabs -->
 
 ---
+
+### Salesrep Service — Editing a Rep's Name and Email
+
+The `Salesrep` service is the write surface for a salesrep's own contact record (the `contacts` row where `salesrep = 'Y'`). Verified against P21 26.1 in production (2026-08-11): a misspelled rep name and its email corrected in one transaction, `Status: "Passed"`, confirmed by read-after-write against `contacts`.
+
+```json
+{
+  "Name": "Salesrep",
+  "UseCodeValues": false,
+  "IgnoreDisabled": true,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form",
+        "Keys": ["contact_id"],
+        "Rows": [{ "Edits": [
+          { "Name": "contact_id", "Value": "4431", "IgnoreIfEmpty": false },
+          { "Name": "first_name", "Value": "John",  "IgnoreIfEmpty": true },
+          { "Name": "last_name",  "Value": "Smith", "IgnoreIfEmpty": true }
+        ] }] },
+      { "Name": "TABPAGE_2.tp_2_dw_2", "Type": "Form", "Keys": [],
+        "Rows": [{ "Edits": [
+          { "Name": "contacts_email_address", "Value": "jsmith@example.com", "IgnoreIfEmpty": true }
+        ] }] }
+    ]
+  }]
+}
+```
+
+| Data element | Keys | Notable fields |
+|---|---|---|
+| `TABPAGE_1.tp_1_dw_1` | `contact_id` | `salutation`, `first_name`, `mi`, `last_name`, `title`, `login_id`, `address_id`, `commission_class_id`, `sales_manager_id`, `inside_salesrep_flag`, `delete_flag` |
+| `TABPAGE_2.tp_2_dw_2` | — | `contacts_email_address`, `direct_phone`, `cellular`, `direct_fax`, `central_phone_number` |
+
+Gotchas:
+
+- **The key is `contact_id`, not `id`** — even though the underlying column is `contacts.id`.
+- **Email is `contacts_email_address` on TABPAGE_2**, not `email_address` on the name tab. (Contrast with the `Address` service, where the field *is* `email_address` — see the [update-supplier-contact recipe](recipes/update-supplier-contact.md).)
+- `Status: "New"` is the usual [upsert shape](#upsert-semantics-keyed-rows-insert-when-absent) — an existing `contact_id` updates that record.
+- **`login_id` is a separate TABPAGE_1 field and is NOT changed by a name/email edit.** After renaming a rep, their P21 login can still carry the old spelling; changing it is a deliberate, separate decision.
+- Retiring a rep is `delete_flag` on TABPAGE_1 of this same service.
+- Writes land with `last_maintained_by` = the API user and are captured in the window's audit trail (`TIMESTAMP.timestamp_dw_audittrail`).
+
+*(From [issue #109](https://github.com/mrwuss/p21-api-documentation/issues/109), verified in production 2026-08-11.)*
+
+### ItemDefaults Service — Per-Location Item Defaults
+
+The `ItemDefaults` service is the **Item Defaults Maintenance** window (Inventory > Inventory Management > System), business object `inventory_defaults`, keyed on `company_id` + `location_id`. `Status: "New"` creates the per-company/location defaults record that new `inv_loc` rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).
+
+**Why you care:** a location without an `inventory_defaults` row breaks downstream flows — Inventory REST location-appends demand explicit GL (`Required value missing for Revenue Account`, see [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale)), and new `inv_loc` rows land with `replenishment_location = NULL`. Create the defaults row first and both problems disappear.
+
+Element map (from `GET /api/v2/definition/ItemDefaults`):
+
+| Data element | Keys | Carries |
+|---|---|---|
+| `TABPAGE_1.tp_1_dw_1` (Form) | `company_id`, `location_id` | general: `tax_group_id`, `sales_discount_group_id`, `purchase_discount_group_id`, `unit_id`/`unit_size` (sales pricing unit), `default_base_unit`, `stockable`/`buy`/`make` (ON/OFF), `track_bins`… |
+| `TABPAGE_2.tp_2_dw_2` (Form) | — | GL: `asset_account_no`, `revenue_account_no`, `cos_account_no` |
+| `TABPAGE_3.tp_3_dw_3` (Form) | `company_id`, `location_id` | replenishment: `replenishment_location_id`, `replenishment_method` (e.g. `"Min/Max"`), `price_unit_id`/`price_unit_size` (purchase pricing unit) |
+
+> **Gotcha — the pricing units are required.** `unit_id`/`unit_size` on TABPAGE_1 and `price_unit_id`/`price_unit_size` on TABPAGE_3 must be sent — omitting them fails the whole transaction with `'Sales Pricing Unit' is a required column`, even though the window shows them as ordinary defaults. Send e.g. `EA` / `1`.
+
+*(From [issue #111](https://github.com/mrwuss/p21-api-documentation/issues/111), verified 2026-08-14.)*
 
 ## PDF Report Generation
 
@@ -4106,7 +4209,7 @@ Key characteristics:
 | Wizard-type popups requiring user input | (Verified) Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input |
 | "Column is disabled" errors | (Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. *(Credit: Justin Cassidy)* |
 | In-window **wizards** launched from another window — the PO wizard and assembly decoder from Order Entry, credit-card entry (an embedded merchant-gateway form, not a P21 window) | (Community-reported) Not drivable from TAPI. Use the Interactive API. For credit cards, the documented TAPI path takes a **token you generated elsewhere** — the entry form itself is out of reach. *(Community session, Felipe Maurer, 2026)* |
-| Drag-and-drop windows | No TAPI path. Verified on the standalone `*Notepad` services (26.1, Aug 2026): their mandatory **area selector** is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with `You must select at least one area where this note will display.`; send a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`) and it fails with `Column is disabled: area`. `IgnoreDisabled: true` changes neither. *(Community session, Felipe Maurer, 2026; verified August 2026)* |
+| Drag-and-drop windows | No TAPI path. Verified on the standalone `*Notepad` services (26.1, Aug 2026): their mandatory **area selector** is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with `You must select at least one area where this note will display.`; send a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`) and it fails with `Column is disabled: area`. `IgnoreDisabled: true` changes neither. **The Interactive API drives the same picker** — the window exposes it as `cb_select`/`cb_selectall` tools; see [04 § Standalone Notepad Windows](04-Interactive-API.md#standalone-notepad-windows-itemcustomersupplier). *(Community session, Felipe Maurer, 2026; verified August 2026)* |
 | **Mandatory notes** blocking a save | (Community-reported) A mandatory note diverts the window to the notes tab and strands the transaction. A **user setting** on the API user's profile — the option to receive mandatory notes as prompts/alerts rather than as a hard stop (bottom-left of the login/user settings) — lets the transaction proceed. Weigh this before enabling it: mandatory notes usually exist for a reason, and this suppresses them for that user. *(Community session, Felipe Maurer, 2026)* |
 
 > **Order notes: the elements are published, and they are all disabled.** The `Order` definition looks encouraging — it publishes **`LINE_NOTE.line_note`** and **`HDR_NOTE.hdr_note`** as ordinary `List` DataElements keyed on `note_id`, each with `note`, `topic` and `notepad_class_desc` fields, plus `TP_ITEMNOTES.tp_itemnotes` keyed on `note_uid`. None of it is writable. Tested against a 26.1 tenant on a live order (August 2026), **every column of both note elements is refused**, one at a time, whichever you send: `Column is disabled: topic`, `Column is disabled: notepad_class_desc`, `Column is disabled: note`. `TP_ITEMNOTES` refuses a step earlier still, with `Tab page is disabled and cannot be selected`.
@@ -4115,7 +4218,7 @@ Key characteristics:
 >
 > The standalone notepad services close the loop the same way. `ItemNotepad`, `CustomerNotepad`, `SupplierNotepad` and `VendorNotepad` (see [Common Services](#common-services)) each publish a perfectly ordinary header form — `note_id`, `topic`, `note`, `mandatory`, activation/expiration dates, a `notepad_class` with `ValidValues` — and every create dies on the same wall (tested on the first three, 26.1, August 2026): the mandatory **"where does this note display" area selector is a drag-and-drop control**. Omit it and the save fails with `You must select at least one area where this note will display.`; send the area as a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`, declared `KeyFields: ["area"]`) and it fails with `Column is disabled: area`; the Available Areas side (`tp_17_dw_dragdrop`) accepts the row and then fails the save on the same missing selection. `IgnoreDisabled: true` changes none of it. This is the [drag-and-drop limitation](#limitations) with a paper trail.
 >
-> So **"the Transaction API can't do notes" is simply true — notes are Interactive API territory.** Not for the reason usually given (the *Add Line Note* wizard — true, but incidental): every path is independently closed. `Order`'s embedded note elements are disabled columns; the standalone `*Notepad` services stall on a drag-and-drop area picker. Use the Interactive API's verified paths: [PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line) and [Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) — the Order path is verified end-to-end (header and line notes, DB-confirmed) with the same popup mechanics. *(Community session, Felipe Maurer, 2026, for the wizard claim; both closures and the working Order path verified live, August 2026.)*
+> So **"the Transaction API can't do notes" is simply true — notes are Interactive API territory.** Not for the reason usually given (the *Add Line Note* wizard — true, but incidental): every path is independently closed. `Order`'s embedded note elements are disabled columns; the standalone `*Notepad` services stall on a drag-and-drop area picker. Use the Interactive API's verified paths: [PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line), [Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line), and — for the standalone item/customer/supplier notepads whose drag-and-drop area picker blocks the Transaction API — [Standalone Notepad Windows](04-Interactive-API.md#standalone-notepad-windows-itemcustomersupplier), where the picker is an ordinary `cb_selectall` tool. *(Community session, Felipe Maurer, 2026, for the wizard claim; both closures and the working Order path verified live, August 2026.)*
 
 ### Item Issues Detected Popup Root Cause and Data Fix
 

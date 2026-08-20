@@ -287,13 +287,15 @@
             overflow-wrap: anywhere;
         }
 
-        /* Tables FIT their column -- they never scroll sideways.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
-           would otherwise force the table past the content width, so cells are
-           allowed to break inside a token when, and only when, the token
-           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
-           cell's min-content width, which is what lets the table shrink.
-           .table-wrap stays as a last-resort guard for anything pathological. */
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -310,14 +312,16 @@
         }
 
         th, td {
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: normal;
         }
 
-        /* Inline code in a cell must break with the cell, not push past it. */
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
         td code, th code {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -606,7 +610,7 @@
             </ul>
         </details>
         <details class="nav-group" open>
-            <summary>Recipes <span class="nav-count">15</span></summary>
+            <summary>Recipes <span class="nav-count">16</span></summary>
             <ul class="nav-pages">
             <li><a href="../recipes/README.html">Recipes Overview</a></li>
             <li class="active"><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
@@ -622,6 +626,7 @@
             <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
             <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="../recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="../recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </details>
@@ -654,6 +659,7 @@
 <li>P21 credentials — the complete example below authenticates itself; nothing else to install but <code>httpx</code> (Python) or a bare <code>net9.0</code> console project (C#).</li>
 <li>A <strong>"twin"</strong> — an existing bin of the same <code>bin_type</code> at the target location. Copy its type, both zone codes, dimensions, sequences, <code>max_unique_items</code>, and flags rather than inventing them; that guarantees new bins match what the warehouse already uses. (Zone codes come from joining <code>bin.putaway_zone_uid</code> / <code>bin.pick_zone_uid</code> → <code>bin_zone.bin_zone_uid</code> → <code>bin_zone.bin_zone_id</code>.)</li>
 <li>OData read access to the <code>p21_view_bin</code> view — for the skip-existing check and the read-back (the raw <code>bin</code> table isn't always exposed via OData).</li>
+<li><strong>Zones must exist at the location.</strong> <code>putaway_zone_id</code>/<code>pick_zone_id</code> must resolve within the target location — a freshly created location has none, and the create fails until they exist. Create them first with the <code>PutawayZone</code> and <code>PickZone</code> Transaction services (verified sequence: PutawayZone → PickZone → BinLocation); see <a href="../03-Transaction-API.html#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services</a>.</li>
 </ul>
 <h2 id="payload">Payload</h2>
 <p>One bin per Transaction. <code>Status: "New"</code> with the three-field key makes this a <strong>create</strong> when the <code>(company_id, location_id, bin_id)</code> combination doesn't exist yet. Note <code>IgnoreDisabled: true</code> at the <strong>top level</strong> — not inside a Transaction (see Gotchas).</p>

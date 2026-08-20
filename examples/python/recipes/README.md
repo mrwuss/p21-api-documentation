@@ -5,6 +5,7 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | Script | Recipe page |
 |--------|-------------|
 | `update_contract_lines.py` | [update-contract-lines.md](../../../docs/recipes/update-contract-lines.md) |
+| `update_order_lines.py` | [update-order-lines.md](../../../docs/recipes/update-order-lines.md) |
 | `edit_contract_bins.py` | [edit-contract-bins.md](../../../docs/recipes/edit-contract-bins.md) |
 | `create_bins.py` | [create-bins.md](../../../docs/recipes/create-bins.md) |
 | `create_sales_order.py` | [create-sales-order.md](../../../docs/recipes/create-sales-order.md) |

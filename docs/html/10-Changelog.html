@@ -287,13 +287,15 @@
             overflow-wrap: anywhere;
         }
 
-        /* Tables FIT their column -- they never scroll sideways.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
-           would otherwise force the table past the content width, so cells are
-           allowed to break inside a token when, and only when, the token
-           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
-           cell's min-content width, which is what lets the table shrink.
-           .table-wrap stays as a last-resort guard for anything pathological. */
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -310,14 +312,16 @@
         }
 
         th, td {
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: normal;
         }
 
-        /* Inline code in a cell must break with the cell, not push past it. */
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
         td code, th code {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -606,7 +610,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">15</span></summary>
+            <summary>Recipes <span class="nav-count">16</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
@@ -622,6 +626,7 @@
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </details>
@@ -636,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v170">2026-08-20 — v1.7.0</a></li>
 <li><a href="#2026-08-20-v161">2026-08-20 — v1.6.1</a></li>
 <li><a href="#2026-08-19-v160">2026-08-19 — v1.6.0</a></li>
 <li><a href="#2026-08-19-v151">2026-08-19 — v1.5.1</a></li>
@@ -696,6 +702,22 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v170">2026-08-20 — v1.7.0</h2>
+<p>Continuation of the live-testing session, plus a fold-in of every open repo issue (all maintainer-verified production findings). Everything marked verified below carries a DB or read-back confirmation.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="recipes/update-order-lines.html">Recipe: Modify an Existing Sales Order</a></strong> — edit a line's quantity in place and add a new line, one stateless POST. Built on the verified <code>user_line_no</code> handle mechanics: header element sends <strong>only</strong> <code>order_no</code> (re-sending create-time header fields fails on <code>Column is disabled: customer_id</code>), the keyed items list upserts per row, mixed update+insert in a single POST verified live (handle <code>010</code> updated 3→4, <code>030</code> inserted, <code>020</code> untouched). Runnable Python + C# examples and validator-verified JSON/XML payloads included — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows</a></strong> — the drag-and-drop area picker that closes <code>ItemNotepad</code>/<code>CustomerNotepad</code>/<code>SupplierNotepad</code> to the Transaction API is an ordinary set of button tools in the Interactive window: <code>cb_select</code>/<code>cb_selectall</code>/<code>cb_deselect</code>/<code>cb_deselectall</code>. Item note written end-to-end (header fields → <code>TABPAGE_17</code> → <code>cb_selectall</code> → save) and confirmed in the <code>note</code> table. Every P21 notes surface now has a documented working path — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong>Elements with no declared <code>KeyFields</code> never fold</strong> — <a href="03-Transaction-API.html#what-the-definition-already-tells-you">Keys § What the definition already tells you</a>. Verified on <code>Order</code> → <code>TABPAGE_RELEASE.tabpage_release</code>: two differing rows with <code>Keys: []</code> landed as two rows, and a re-sent identical row was treated as a <em>new</em> row (rejected by business validation, not folded). The collapse trap lives only on keyed elements; on the keyless third the trap inverts — nothing deduplicates, and retries append duplicates — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#async-operations">Async Operations</a> rewritten from a live round-trip</strong> — on 26.1 the submit returns HTTP <strong>200</strong> (not the previously documented 202) with a status wrapper; wrapper <code>Status</code> is <strong>queue state, not outcome</strong> (<code>3</code> running, <code>2</code> completed — for failures too); the real outcome is a <strong>double-encoded JSON envelope inside the <code>Messages</code> string</strong> (<code>json.loads</code> it, then read <code>Summary</code>/inner <code>Messages</code>). Verified with a valid and an invalid transaction side by side — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>⚠ Consumer keys are skeleton keys</strong> — <a href="00-Authentication.html#method-2-consumer-key">00 § Method 2: Consumer Key</a> now leads with the impersonation warning: the key authenticates by itself and the <code>username</code> header is unauthenticated context, so a key holder can impersonate any user including admins — and an admin impersonation can mint its own admin account, surviving key revocation. Keys stay in trusted environments; vendors get username/password service accounts instead — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#salesrep-service-editing-a-reps-name-and-email">Salesrep Service</a></strong> — name/email edits via <code>contact_id</code> key; email is <code>contacts_email_address</code> on TABPAGE_2; <code>login_id</code> is untouched by a rename; retirement is <code>delete_flag</code>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/109">#109</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">Inventory REST location-append gotchas at scale</a></strong> — from a 138-item × 2-location production run: <code>LocationSuppliers</code> append sets the location primary supplier in the same PUT; GL is required when the location has no <code>inventory_defaults</code> row; kit items reject <code>Buy: "Y"</code>; OP/OQ needs a positive order quantity; transient 500s retry clean; <code>PrimaryBin</code> and <code>ReplenishmentLocation</code> are writable; re-PUTs are idempotent. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/110">#110</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#itemdefaults-service-per-location-item-defaults">ItemDefaults Service</a></strong> — creates the per-company/location defaults record new <code>inv_loc</code> rows inherit; the sales/purchase pricing units are required (<code>'Sales Pricing Unit' is a required column</code>); creating the defaults row first is the fix for fresh-location GL failures. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/111">#111</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services</a></strong> — single-form <code>bin_zone</code> services; the zone type is set by which service you call (1406/1407); fresh-location sequence PutawayZone → PickZone → BinLocation verified end-to-end; REST <code>PrimaryBin</code> documented as the lighter primary-bin path. Cross-linked from the create-bins and set-primary-bin-supplier recipes. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/112">#112</a> — <em>@mrwuss</em></li>
+<li><strong>fix(site):</strong> table columns size by content again — cells now use <code>overflow-wrap: break-word</code> instead of <code>anywhere</code>, so a column is never squeezed below its longest token (part numbers stay on one line) and a genuinely-too-wide table scrolls inside its wrapper instead of squishing — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> recipes index rows added for <code>update-order-lines</code> <strong>and the previously missing <code>reassign-salesrep</code></strong>; INDEX rows for every new section — <em>@mrwuss</em></li>
+</ul>
 <hr />
 <h2 id="2026-08-20-v161">2026-08-20 — v1.6.1</h2>
 <p>Follow-the-thread session: each v1.6.0 fact was pushed one step further against the live 26.1 tenant, and every result below is DB-confirmed.</p>
@@ -1113,6 +1135,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v170">2026-08-20 — v1.7.0</a></li>
 <li><a href="#2026-08-20-v161">2026-08-20 — v1.6.1</a></li>
 <li><a href="#2026-08-19-v160">2026-08-19 — v1.6.0</a></li>
 <li><a href="#2026-08-19-v151">2026-08-19 — v1.5.1</a></li>

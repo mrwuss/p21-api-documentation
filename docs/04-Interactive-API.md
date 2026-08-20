@@ -2808,6 +2808,19 @@ Verified sequence (session created with `"ResponseWindowHandlingEnabled": true`)
 > GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'
 > ```
 
+## Standalone Notepad Windows (Item/Customer/Supplier)
+
+The standalone notepad services (`ItemNotepad`, `CustomerNotepad`, `SupplierNotepad`, `VendorNotepad`) are **closed to the Transaction API** — their mandatory "where does this note display" area selector is a drag-and-drop control ([03 § Limitations](03-Transaction-API.md#limitations)). The Interactive API opens them: **the same picker is exposed as ordinary button tools** — `cb_select`, `cb_selectall`, `cb_deselect`, `cb_deselectall`, present in the tool list from the moment the window opens.
+
+Verified end-to-end on `ItemNotepad` (26.1, August 2026; note confirmed in the `note` table):
+
+1. Open `{"ServiceName": "ItemNotepad"}` (session with `ResponseWindowHandlingEnabled: true`).
+2. Fill the header on `TabName: "TABPAGE_1"`, `DatawindowName: "tp_1_dw_1"` — `inv_mast_item_id`, `topic`, `note` (plus `mandatory`, activation/expiration dates as needed).
+3. Select the areas tab (`PageName: "TABPAGE_17"`) and run **`cb_selectall`** (`POST /v2/tools`) — this selects **every** area the note can display in. To pick a single area, select its row in the Available Areas grid (`tp_17_dw_dragdrop`) first and run `cb_select` (not separately verified).
+4. Save (`PUT /v2/data`, bare window-GUID body) — `savesucceeded`.
+
+`CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` publish the identical element shape (header form + `TABPAGE_17` area pair) and the same tools; only the header key field differs (`customer_id` / `supplier_id` / `vendor_id`). They have not been separately exercised.
+
 ## Sales Order Entry with Assembly Lines
 
 Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. The Transaction API cannot do this: entering an assembly item fires an *"add as assembly?"* prompt, and the stateless API auto-answers **No**, killing the explode (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.

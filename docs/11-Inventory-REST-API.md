@@ -642,11 +642,36 @@ These errors prove the API is actively processing the appended Location records 
 
 ---
 
+## Location-Append & Update Gotchas (Verified at Scale)
+
+Findings from a production run appending **138 items × 2 locations** (276 rows) through `PUT /api/inventory/parts/{ItemId}` with the GET → append → PUT pattern, each verified by SQL read-back ([issue #110](https://github.com/mrwuss/p21-api-documentation/issues/110) and [#112](https://github.com/mrwuss/p21-api-documentation/issues/112), 2026-08-14):
+
+1. **`LocationSuppliers` append works — and sets the location's primary supplier.** Appending an `inventory_supplier_x_loc` object alongside the appended `Locations` entry in the *same* PUT creates the supplier-x-loc row **and** sets `inv_loc.primary_supplier_id`:
+
+   ```json
+   {"ItemId": "...", "LocationId": 10, "SupplierId": 64284,
+    "PrimarySupplier": "Y", "ObjectName": "inventory_supplier_x_loc"}
+   ```
+
+   This is a simpler alternative to the Transaction API's `SUPPLIER_X_LOCATION` flag pattern and avoids its silent-no-op gotcha — the same PUT can also append the item-level `Suppliers` entry when the item–supplier link doesn't exist yet (verified: one call created `inventory_supplier` + the x_loc row + the primary flag together).
+
+2. **GL accounts are required when the target location has no defaults.** "GL auto-derives" is true only when the location/company has an `inventory_defaults` row. Appending to a freshly created location without one fails with `Required value missing for Revenue Account (for Inventory Location) on row N`. Two fixes: create the defaults row first via the [ItemDefaults Transaction service](03-Transaction-API.md#itemdefaults-service-per-location-item-defaults), or always send `GlAccountNo`/`RevenueAccountNo`/`CosAccountNo` copied from a same-branch template row.
+
+3. **Kit items reject `Buy: "Y"` on appended locations** — `Error updating inv_mast: A Kit item cannot be marked as a Buy item.` — even when the item's older `inv_loc` rows carry `buy = Y` (legacy data). Omit `Buy`/`Make` for kit/assembly items and let P21 default them.
+
+4. **`ReplenishmentMethod: "OP/OQ"` requires a positive order quantity.** Copying an OP/OQ template without `order_quantity` fails with `The order quantity must be greater than zero when using the order point/order quantity inventory method... Invalid datawindow row specified`. Fall back to `Min/Max` on appended rows.
+
+5. **Transient 500s happen at scale.** One item of 138 failed with an opaque `Exception has been thrown by the target of an invocation` and succeeded unchanged on retry. Bulk scripts should retry once before reporting failure.
+
+6. **`PrimaryBin` is writable on `Locations` objects.** GET → modify → PUT of `Locations.list[].PrimaryBin` (a bin-id string) persists to `inv_loc.primary_bin` — verified across all 276 rows. This complements the Transaction API primary-bin path and handles both of an item's locations in one PUT. **The bin must already exist at that location** (create bins — and on a fresh location, their zones first — per [PutawayZone/PickZone](03-Transaction-API.md#putawayzone-pickzone-services-creating-bin-zones) + [create-bins](recipes/create-bins.md)).
+
+Also confirmed on appended `Locations` entries: `Stockable`, `Sellable`, `ProductGroupId`, `SalesDiscountGroup`, `PurchaseDiscountGroup`, `TaxGroupId`, `TrackBins`, `ReplenishmentMethod`, and `ReplenishmentLocation` are all honored — and **re-PUT with an already-present location is a safe no-op**, so bulk runs are idempotent and re-runnable.
+
 ## Updating Existing Location Fields
 
 The GET -> Modify -> PUT pattern also works for **updating fields on existing `inv_loc` records**, not just appending new ones.
 
-**Verified writable fields:** `Sellable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`
+**Verified writable fields:** `Sellable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`, `ReplenishmentLocation`, `PrimaryBin` (see [Location-Append & Update Gotchas](#location-append-update-gotchas-verified-at-scale) — `PrimaryBin` verified across 276 rows; the bin must already exist at that location)
 
 This API is the recommended path for `inv_loc` modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) **read-only**, so they cannot be edited there either.
 

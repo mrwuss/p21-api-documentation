@@ -287,13 +287,15 @@
             overflow-wrap: anywhere;
         }
 
-        /* Tables FIT their column -- they never scroll sideways.
-           Cells hold long unbreakable identifiers (d_dw_..._dataentry) that
-           would otherwise force the table past the content width, so cells are
-           allowed to break inside a token when, and only when, the token
-           cannot fit. `anywhere` (not `break-word`) is required: it lowers the
-           cell's min-content width, which is what lets the table shrink.
-           .table-wrap stays as a last-resort guard for anything pathological. */
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
         .table-wrap {
             overflow-x: auto;
             margin: 20px 0;
@@ -310,14 +312,16 @@
         }
 
         th, td {
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             word-break: normal;
         }
 
-        /* Inline code in a cell must break with the cell, not push past it. */
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
         td code, th code {
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
         }
 
         th {
@@ -606,7 +610,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">15</span></summary>
+            <summary>Recipes <span class="nav-count">16</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
@@ -622,6 +626,7 @@
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
             <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
             </ul>
         </details>
@@ -702,6 +707,7 @@
 </ul>
 </li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
+<li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>
@@ -3930,6 +3936,16 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1519092'
 GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</code></p>
 </blockquote>
+<h2 id="standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</h2>
+<p>The standalone notepad services (<code>ItemNotepad</code>, <code>CustomerNotepad</code>, <code>SupplierNotepad</code>, <code>VendorNotepad</code>) are <strong>closed to the Transaction API</strong> — their mandatory "where does this note display" area selector is a drag-and-drop control (<a href="03-Transaction-API.html#limitations">03 § Limitations</a>). The Interactive API opens them: <strong>the same picker is exposed as ordinary button tools</strong> — <code>cb_select</code>, <code>cb_selectall</code>, <code>cb_deselect</code>, <code>cb_deselectall</code>, present in the tool list from the moment the window opens.</p>
+<p>Verified end-to-end on <code>ItemNotepad</code> (26.1, August 2026; note confirmed in the <code>note</code> table):</p>
+<ol>
+<li>Open <code>{"ServiceName": "ItemNotepad"}</code> (session with <code>ResponseWindowHandlingEnabled: true</code>).</li>
+<li>Fill the header on <code>TabName: "TABPAGE_1"</code>, <code>DatawindowName: "tp_1_dw_1"</code> — <code>inv_mast_item_id</code>, <code>topic</code>, <code>note</code> (plus <code>mandatory</code>, activation/expiration dates as needed).</li>
+<li>Select the areas tab (<code>PageName: "TABPAGE_17"</code>) and run <strong><code>cb_selectall</code></strong> (<code>POST /v2/tools</code>) — this selects <strong>every</strong> area the note can display in. To pick a single area, select its row in the Available Areas grid (<code>tp_17_dw_dragdrop</code>) first and run <code>cb_select</code> (not separately verified).</li>
+<li>Save (<code>PUT /v2/data</code>, bare window-GUID body) — <code>savesucceeded</code>.</li>
+</ol>
+<p><code>CustomerNotepad</code> / <code>SupplierNotepad</code> / <code>VendorNotepad</code> publish the identical element shape (header form + <code>TABPAGE_17</code> area pair) and the same tools; only the header key field differs (<code>customer_id</code> / <code>supplier_id</code> / <code>vendor_id</code>). They have not been separately exercised.</p>
 <h2 id="sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</h2>
 <p>Use the Interactive API to create a sales order when a line is an <strong>assembly</strong> that should explode into components and/or spawn a <strong>production order</strong>. The Transaction API cannot do this: entering an assembly item fires an <em>"add as assembly?"</em> prompt, and the stateless API auto-answers <strong>No</strong>, killing the explode (see <a href="03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a>). Verified end-to-end: interactive order entry created a sales order whose assembly line (<code>oe_line.assembly = 'P'</code>) auto-linked to a new production order.</p>
 <p>The flow (session started with <code>ResponseWindowHandlingEnabled: true</code>):</p>
@@ -5132,6 +5148,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </ul>
 </li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
+<li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>
