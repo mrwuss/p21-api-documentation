@@ -78,6 +78,7 @@ p21-api-documentation/
 └── scripts/                     # Repo tooling (NOT API examples)
     ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
     ├── validate_payload.py      # Offline payload validator (JSON/XML shape + schema checks)
+    ├── check_anchors.py         # Validate internal doc links against the generated HTML
     ├── test_client.py           # Smoke-test client against a live tenant
     └── generate_html.py         # MD to HTML converter (supports tabbed code blocks)
 ```
