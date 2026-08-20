@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>
 <li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
 <li><a href="#2026-08-20-v183">2026-08-20 — v1.8.3</a></li>
 <li><a href="#2026-08-20-v182">2026-08-20 — v1.8.2</a></li>
@@ -707,6 +708,17 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v185">2026-08-20 — v1.8.5</h2>
+<p>The AP buy-side cycle, verified end-to-end on our own tenant — <strong>PO 998302 → receipt 5706613 → voucher 1775027</strong>, each step SQL-confirmed.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#purchaseorder-service-creating-a-po">PurchaseOrder Service</a></strong> — one stateless POST, no session. Field mappings confirmed by read-back: <strong><code>unit_price_display</code> → <code>po_line.unit_price</code></strong> (not <code>unit_price</code>; the field is labelled "PO Price"), <strong><code>buyer_id</code> → <code>po_hdr.requested_by</code></strong> (an employee <em>number</em>, not a login). <code>division_id</code> and <code>company_id</code> are both marked <code>Required: true</code> and both were <strong>omitted</strong> — they default, and <code>division_id</code> mirrored <code>supplier_id</code>. <code>po_type</code> isn't settable here (ours defaulted to <code>'B'</code>) — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service</a></strong> — <strong>the Transaction API can receive a PO</strong>, which was an open question in the source notes. Header only: <code>po_no</code> + <code>receive_all='Y'</code>, plus <code>external_reference_no</code> for tagging. Works <strong>when every line's item has a usable primary bin</strong>; when one doesn't, the Bin tab is contextual to the selected grid row, so flat bin rows land on the wrong line — the same <a href="03-Transaction-API.html#the-general-rule-repeat-the-element-pair-dont-batch-it">context rule</a> as order lines — and you must drive the window interactively. Records the two diagnostic signatures (bin-sum mismatch; put-locked bin <code>'0'</code>), the <code>ufc_inv_loc_primary_bin</code> column that tells you which path you're on, and that direct-ship POs can't be received here at all — <em>@mrwuss, bin analysis by <a href="https://github.com/AWestemeier">Alex Westemeier</a></em></li>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service</a></strong> — the line list is keyed <code>["receipt_number", "line_number", "po_no"]</code>, matching the <code>KeyFields</code> triple already in our Keys table. Send five header fields and nothing else: <code>company_id</code>, <code>branch_id</code>, <code>period</code>, <code>year_for_period</code> are all marked <code>Required: true</code> and all <strong>disabled</strong> — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> <strong>Probing a field in isolation gives false negatives on disabled-ness</strong> — a correction to v1.8.4, which reported that the <code>company_id</code> refusal "did not reproduce." It does. Whether a column is disabled is decided <strong>after the window loads its record</strong>, so a minimal probe that fails validation earlier never reaches the check: <code>company_id</code> on <code>ConvertPOToVoucher</code> with no valid PO fails on <em>"No receipts have been selected"</em> and looks accepted, while the same field in a complete payload returns <code>Column is disabled: company_id</code>. Both observed on the same tenant an hour apart. <strong>Test disabled-ness in context, never in isolation</strong> — now stated in <a href="03-Transaction-API.html#what-required-actually-means">What <code>Required</code> actually means</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> INDEX rows for creating, receiving and vouching a PO — <em>@mrwuss</em></li>
+<li><strong>chore:</strong> <strong><code>scripts/check_anchors.py</code></strong> — validates every internal anchor link against the generated HTML. Added because the same failure bit twice in one day: an <strong>em dash in a heading collapses to a single hyphen</strong> in the generated id, so <code>## Foo — Bar</code> becomes <code>#foo-bar</code>, and a hand-written <code>#foo--bar</code> renders fine on GitHub while 404-ing on the published page. Run it after <code>generate_html.py</code>; it exits non-zero and names the offenders — <em>@mrwuss</em></li>
+</ul>
 <hr />
 <h2 id="2026-08-20-v184">2026-08-20 — v1.8.4</h2>
 <p>Investigating the cross-check findings turned two reported claims into precise, verified rules — and answered a question left open in v1.8.0.</p>
@@ -1196,6 +1208,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>
 <li><a href="#2026-08-20-v184">2026-08-20 — v1.8.4</a></li>
 <li><a href="#2026-08-20-v183">2026-08-20 — v1.8.3</a></li>
 <li><a href="#2026-08-20-v182">2026-08-20 — v1.8.2</a></li>

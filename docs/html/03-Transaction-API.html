@@ -729,6 +729,9 @@
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
+<li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
+<li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
@@ -2102,8 +2105,9 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <blockquote>
 <p><strong>Derive the minimum payload empirically.</strong> Start from a known-good example, add fields until the write passes, and stop. Padding a payload to satisfy <code>Required</code> is a reliable way to hit <code>Column is disabled</code> — and because a Transaction is <a href="#what-failed-actually-guarantees">atomic</a>, one padded field fails the entire thing.</p>
 <p>This is also why <a href="#endpoints"><code>GET /api/v2/basics/{name}</code></a> both omits fields you need and includes fields you cannot write: it is generated as <code>KeyFields ∪ Required</code>, so it inherits every one of these errors.</p>
+<p><strong>Probing a field in isolation can give a false negative.</strong> Whether a column is disabled is decided <strong>after the window loads its record</strong>, so a minimal probe that fails validation earlier never reaches the check. Sending <code>company_id</code> to <code>ConvertPOToVoucher</code> with no valid PO fails on <code>No receipts have been selected</code> — looking, misleadingly, like an accepted field. Send the same field in a <em>complete, otherwise-valid</em> payload and you get the truth: <code>Column is disabled: company_id</code>. Both observed here on the same tenant an hour apart. <strong>Test disabled-ness in context, never in isolation.</strong></p>
 </blockquote>
-<p><em>(Verified on a 26.1 tenant, August 2026. The <code>PurchaseOrder</code> / <code>ConvertPOToVoucher</code> cases are reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>; the <code>Required: true</code> flag values were confirmed here, though the "column is disabled" refusal did not reproduce in an isolated probe — see the note in his voucher material about full-payload context.)</em></p>
+<p><em>(Verified on a 26.1 tenant, August 2026. The <code>PurchaseOrder</code> / <code>ConvertPOToVoucher</code> cases were reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a> and are confirmed here — including the <code>company_id</code> refusal, once probed in a full voucher payload.)</em></p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -5044,6 +5048,107 @@ General Exception: This pick ticket has already been invoiced.
 </div>
 </div>
 <hr />
+<h3 id="purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</h3>
+<p>The buy-side counterpart to <code>Order</code>, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO <strong>998302</strong>, confirmed in <code>po_hdr</code>/<code>po_line</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PurchaseOrder&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;40&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;vendor_id&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;22026&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;buyer_id&quot;</span><span class="p">,</span><span class="w">       </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;829&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;order_date&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;08/20/2026&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;required_date&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;08/25/2026&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;external_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TAG-ME&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_17.tp_17_dw_17&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_of_measure&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EA&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pricing_unit&quot;</span><span class="p">,</span><span class="w">       </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EA&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unit_price_display&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;6.55&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Field mappings, each confirmed by read-back:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>You send</th>
+<th>Lands in</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>unit_price_display</code></td>
+<td><code>po_line.unit_price</code></td>
+<td><strong>Not <code>unit_price</code>.</strong> The field is labelled "PO Price"</td>
+</tr>
+<tr>
+<td><code>buyer_id</code></td>
+<td><code>po_hdr.requested_by</code></td>
+<td>An employee/user <strong>number</strong> (<code>829</code>), not a login name</td>
+</tr>
+<tr>
+<td><em>(omitted)</em> <code>division_id</code></td>
+<td>defaults — mirrored <code>supplier_id</code></td>
+<td>Marked <code>Required: true</code>; see <a href="#what-required-actually-means">What <code>Required</code> actually means</a></td>
+</tr>
+<tr>
+<td><em>(omitted)</em> <code>company_id</code></td>
+<td>defaults</td>
+<td>Also marked required; also omitted</td>
+</tr>
+<tr>
+<td><code>external_po_no</code></td>
+<td><code>po_hdr.external_po_no</code></td>
+<td>Useful for tagging test POs</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong><code>required_date</code> genuinely is required</strong> — order date plus a few days.</li>
+<li>The PO landed <strong><code>approved='Y'</code></strong> immediately (config-dependent), so it is receivable straight away.</li>
+<li><strong><code>po_type</code> is not settable here</strong> — ours defaulted to <code>'B'</code>. Direct-ship (<code>'D'</code>) POs cannot be built by this service at all; they come from the Order-window wizard.</li>
+</ul>
+<h3 id="purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</h3>
+<p><strong>The Transaction API can receive a PO</strong> — verified on 26.1 (August 2026), receipt <strong>5706613</strong> against PO 998302, with nothing but a header:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_po&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;po_no&quot;</span><span class="p">,</span><span class="w">       </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;998302&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;receive_all&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;external_reference_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TAG-ME&quot;</span><span class="p">}],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<p><code>receive_all: "Y"</code> sets every line to its remaining quantity. The receipt lands in <code>inventory_receipts_hdr</code> (<code>receipt_type 'P'</code>) with lines in <code>inventory_receipts_line</code> — note that table uses <strong><code>line_number</code></strong>, not <code>line_no</code>.</p>
+<blockquote>
+<p><strong>It only works when every line's item has a usable primary bin.</strong> The receipt window's Bin tab is <strong>contextual to the selected items-grid row</strong>, so flat <code>TABPAGE_BIN.tabpage_bin</code> rows land on whichever line is current rather than the item named in the row — the same <a href="#the-general-rule-repeat-the-element-pair-dont-batch-it">context rule</a> that governs order lines and extended info. When a line needs an explicit bin, the stateless API cannot address it and you must drive the window through the <a href="04-Interactive-API.html">Interactive API</a>.</p>
+<p>Two failure signatures tell you that's where you are: <code>The sum of bin quantity for &lt;item&gt; does not equal the received quantity</code> — often because the item's <code>inv_loc.primary_bin</code> is <code>'0'</code>, which is <strong>put-locked</strong> (<code>bin.put_locked_flag='Y'</code>) so nothing can be auto-assigned — and, if you try supplying bin rows anyway, the same bin-sum error simply moving to a <em>different</em> line. The grid column <strong><code>ufc_inv_loc_primary_bin</code></strong> shows which rows lack a usable bin, so you can decide per PO which path to take.</p>
+<p><strong>Direct-ship POs (<code>po_type='D'</code>) cannot be received here at all</strong> — the window refuses because the linked sales-order lines are <code>'T'</code> status. That is by design; nothing is physically received on a direct ship.</p>
+</blockquote>
+<p><em>(The bin-context analysis and the Interactive fallback are <a href="https://github.com/AWestemeier">Alex Westemeier</a>'s; the header-only TAPI path was an open question in his notes and is verified here.)</em></p>
+<h3 id="convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</h3>
+<p>Step three of <strong>build → receive → vouch</strong>, and another clean one-POST. Verified on 26.1 (August 2026) — voucher <strong>1775027</strong> against receipt 5706613, with the receipt line flipping to <code>vouch_complete='Y'</code>, <code>qty_vouched=2</code>.</p>
+<ul>
+<li><strong>Form <code>TABPAGE_1.tp_1_dw_1</code></strong> (keys <code>["voucher_no"]</code>, leave the value empty to create): <code>po_no</code>, <code>invoice_no</code>, <code>invoice_date</code>, <code>invoice_amount</code>, <code>vendor_id</code>.</li>
+<li><strong>List <code>TABPAGE_17.tp_17_dw_17</code></strong> — keyed <strong><code>["receipt_number", "line_number", "po_no"]</code></strong>, which is exactly the <code>KeyFields</code> triple this service publishes (see <a href="#what-the-definition-already-tells-you">What the definition already tells you</a>). Per row: <code>unit_qty_invoiced</code>, <code>unit_cost_display</code>.</li>
+<li>The new <code>voucher_no</code> comes back in the response rows.</li>
+</ul>
+<blockquote>
+<p><strong>Send the five header fields and nothing else.</strong> <code>company_id</code>, <code>branch_id</code>, <code>period</code> and <code>year_for_period</code> are all marked <code>Required: true</code> in the definition and are all <strong>disabled columns</strong> — sending <code>company_id</code> fails the transaction with <code>Column is disabled: company_id</code>, verified. They default correctly (branch from the PO). This is the sharpest example in the repo of why the <a href="#what-required-actually-means"><code>Required</code> flag is not a contract</a>.</p>
+</blockquote>
+<ul>
+<li><code>invoice_amount</code> must equal the sum of the vouched lines, or P21 holds the variance — use the real invoice total.</li>
+<li>The voucher lands <code>approved='Y'</code>, <code>paid_in_full='N'</code>, ready for the payment run, and writes <code>apinv_hdr</code> + <code>apinv_line</code> (with <code>po_line_uid</code> links) plus the <code>apinv_hdr_x_inventory_receipts</code> cross-reference.</li>
+</ul>
+<p><em>(Cycle and payload shapes from <a href="https://github.com/AWestemeier">Alex Westemeier</a>; all three steps re-verified end-to-end here.)</em></p>
 <h3 id="rma-service-orders-the-order-service-refuses">RMA Service — Orders the <code>Order</code> Service Refuses</h3>
 <p>Return Merchandise Authorizations live in <code>oe_hdr</code> alongside ordinary sales orders, but the <strong><code>Order</code> service will not touch them</strong>. Loading one by <code>order_no</code> fails immediately:</p>
 <div class="highlight"><pre><span></span><code>General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.
@@ -6377,6 +6482,9 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
+<li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
+<li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
