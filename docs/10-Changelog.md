@@ -17,6 +17,22 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.4
+
+Investigating the cross-check findings turned two reported claims into precise, verified rules — and answered a question left open in v1.8.0.
+
+- **feat:** **[What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees)** — the repo says "check `Summary`" on every write page without saying what a failure count promises. Now measured, three scopes with read-backs: **within one Transaction it is atomic** (a valid line edit paired with a disabled column rolled back both times, same element and later element); **across Transactions in one POST it is not** (`{"Failed": 1, "Succeeded": 1}` and transaction 1's write persisted). The trap is the second: `Failed ≥ 1` does **not** mean nothing happened, and a client that retries the whole POST re-applies everything that already worked. Third scope — **downstream documents a service generates** — is outside both, which is where the reported `DirectShipConfirmation` case sits — *@mrwuss, from a report by [Alex Westemeier](https://github.com/AWestemeier)*
+
+  Recorded honestly: the blanket "a transaction can commit while reporting Failed" did **not** reproduce on ordinary `Order` writes. It is specific to services that cascade into other documents, and to Interactive wizards that commit at intermediate steps. That distinction is the useful part.
+
+- **feat:** **[What `Required` actually means](03-Transaction-API.md#what-required-actually-means)** — the definition's `Required` flag is not a contract and is wrong in **both** directions. The cleanest proof is our own most-used service: `Order` marks **`company_id` as `Required: true`**, and `company_id` is the disabled column we have always told readers never to send. `JobContractPricing.contract_no` is the reverse — marked optional, actually mandatory. **571 of 7,539 fields (7.6%)** across the committed definitions carry the flag, so this is not a rare mislabel. Guidance: derive the minimum payload empirically, because padding to satisfy `Required` hits `Column is disabled`, and a Transaction is atomic — one padded field kills the whole write — *@mrwuss*
+
+- **feat:** **`basics` is computed, not curated** — [03 § Endpoints](03-Transaction-API.md#endpoints). v1.8.0 documented *that* the endpoint omits fields you need and includes fields you can't write; this explains **why**. For every element it returns exactly **`KeyFields` ∪ `Required`** — verified across **220 elements in four services, zero mismatches**. It inherits the `Required` flag's errors wholesale: it lists `company_id` on `Order` because the definition marks it required, and omits `customer_id`/`source_loc_id`/`ship_to_id` because the definition doesn't. Practical upshot: `basics` tells you nothing the definition doesn't, so generate it offline from `definitions/*.json` — its value is the ready-to-fill *shape*, not the field selection — *@mrwuss*
+
+- **docs:** INDEX rows for both new sections and an [06](06-Error-Handling.md) entry for *"`Failed: 1` — did anything land?"* — *@mrwuss*
+
+---
+
 ## 2026-08-20 — v1.8.3
 
 Cross-check against [Alex Westemeier](https://github.com/AWestemeier)'s verified process work — 17 new commits since the July pass. This entry ships the one finding that breaks something published earlier today; the rest are filed as [#130](https://github.com/mrwuss/p21-api-documentation/issues/130)–[#133](https://github.com/mrwuss/p21-api-documentation/issues/133).

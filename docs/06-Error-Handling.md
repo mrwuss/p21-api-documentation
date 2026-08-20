@@ -193,6 +193,10 @@ A field named in a `List` element's `Keys` array is missing from that row's `Edi
 
 A required field is absent from the payload, and the message does not say which. Diff your header against a working example or the full `definition` — on `Order`, the trigger is omitting `ship_to_id` (a field the abbreviated [`basics`](03-Transaction-API.md#endpoints) skeleton doesn't even list).
 
+**`Summary` shows `Failed: 1` — did anything land?**
+
+Depends on the scope. A **single Transaction is atomic** — a failure anywhere rolls back its own edits, verified on `Order`. But **Transactions in one POST are independent**, so `{"Failed": 1, "Succeeded": 1}` means half your batch is live; branch on `Results.Transactions[].Status`, not the tally, or a retry double-applies. And atomicity covers the record, not **downstream documents** a service generates on save — those can survive a later failure. See [Transaction API - What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees).
+
 **Write reported `Succeeded: 1` but the data is wrong (a line missing, a value on the wrong line)**
 
 Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a `List` element that agree on the element's key fields are folded into one, last value wins. See [Transaction API - Keys](03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) for the debugging loop.

@@ -682,6 +682,7 @@
 <li><a href="#response-format">Response Format</a><ul>
 <li><a href="#success-response">Success Response</a></li>
 <li><a href="#error-response">Error Response</a></li>
+<li><a href="#what-failed-actually-guarantees">What Failed actually guarantees</a></li>
 </ul>
 </li>
 <li><a href="#field-order-matters">Field Order Matters</a><ul>
@@ -879,6 +880,9 @@
 </li>
 </ul>
 <p><code>basics</code> also answers for <strong>report services</strong> (<code>m_*</code>) — and there it shines: a report window carries only a handful of criteria fields, so <code>basics</code> returns a ready-to-fill criteria skeleton in a few hundred bytes (<code>m_picktickets</code>: 601 bytes against <code>definition</code>'s 15.8 KB), the API-side equivalent of reading the criteria names out of <em>SQL Help</em> (see <a href="#pdf-report-generation">PDF Report Generation</a>). An unknown service name returns an <strong>empty HTTP 500</strong>, the same shape <code>definition</code> and <code>defaults</code> give. <em>(Endpoint and behavior verified against a 26.1 tenant, August 2026; originally surfaced in a community session, Felipe Maurer, 2026.)</em></p>
+<p><strong><code>basics</code> is computed, not curated — and that explains both of its flaws.</strong> For every element it returns exactly the element's <strong><code>KeyFields</code> ∪ the fields the definition marks <code>Required: true</code></strong>. Verified across <strong>220 elements in four services</strong> (<code>Order</code>, <code>Item</code>, <code>JobContractPricing</code>, <code>PurchaseOrder</code>) with zero mismatches.</p>
+<p>So <code>basics</code> inherits the <code>Required</code> flag's unreliability wholesale (see <a href="#what-required-actually-means">What <code>Required</code> actually means</a>): it lists <code>company_id</code> on <code>Order</code> because the definition marks it required — and <code>company_id</code> is a <strong>disabled column</strong> that fails the save. It omits <code>customer_id</code>, <code>source_loc_id</code> and <code>ship_to_id</code> because the definition doesn't mark them required, even though a create needs all three. The endpoint isn't wrong; it is faithfully reflecting metadata that is.</p>
+<p>Practical consequence: <strong><code>basics</code> tells you nothing the definition doesn't</strong> — you can generate it offline from <code>definitions/*.json</code> and save the round-trip. Its value is the <em>shape</em> (a ready-to-fill skeleton with <code>Keys</code> prefilled), not the field selection.</p>
 <p><strong>Service Explorer:</strong> The P21 middleware includes a web-based Transaction API Service Explorer tool for browsing available services and their definitions interactively. Access it from the SOA Middleware admin pages.</p>
 <p><strong>Definition endpoint 500s for unavailable windows:</strong> <code>GET /api/v2/definition/{name}</code> can return HTTP 500 with <em>"Window &lt;&lt;X&gt;&gt; is not available or user does not have permission to open it"</em> for a service that <code>/api/v2/services</code> lists. Despite the wording, this is usually <strong>not a grantable permission problem</strong> — the same window fails for fully-privileged users in the Service Explorer. It means the window isn't available in that environment (unlicensed or undeployed module), and which services fail differs per environment. On one 25.2 test system, 238 of the 299 listed services had fetchable definitions. <em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a>)</em></p>
 <p><strong>Read-after-write verification:</strong> <code>POST /api/v2/transaction/get</code> is also the recommended way to verify that an Interactive API write actually persisted — a save can report success without persisting a sub-record, and the read-back is the only way to recover a server-generated key. See <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> in the Interactive API guide.</p>
@@ -1640,6 +1644,41 @@
 <blockquote>
 <p><strong>Transactions pass/fail independently.</strong> In a bulk POST, each Transaction in the array is processed on its own: one failing does not roll back the others (no cascade), and <code>Summary</code> tallies the outcomes (<code>Succeeded</code>/<code>Failed</code>/<code>Other</code>). Check <code>Results.Transactions[].Status</code> (<code>"Passed"</code>/<code>"Failed"</code>) to see which specific transactions landed — never the HTTP status, which is 200 either way. (Exception: transactions that each re-save the same shared header record can collide — see <a href="#upsert-semantics-keyed-rows-insert-when-absent">Upsert Semantics</a>.)</p>
 </blockquote>
+<h3 id="what-failed-actually-guarantees">What <code>Failed</code> actually guarantees</h3>
+<p>"Check <code>Summary</code>" is the rule this documentation repeats everywhere, and it is right — but it is worth being exact about what a failure count does and does not promise, because two different things get conflated. Verified on a 26.1 tenant (August 2026), each with a <code>/transaction/get</code> read-back:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Behavior</th>
+<th>Verified by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Within one Transaction</strong></td>
+<td><strong>Atomic.</strong> A failure anywhere rolls the whole Transaction back — including edits that already validated.</td>
+<td>A valid line-quantity edit paired with a disabled column, both in the same element and in a later element: <code>Failed: 1</code>, and the quantity was <strong>unchanged</strong> both times.</td>
+</tr>
+<tr>
+<td><strong>Across Transactions in one POST</strong></td>
+<td><strong>Independent.</strong> Earlier Transactions commit and stay committed.</td>
+<td>Transaction 1 (valid) + Transaction 2 (poisoned) → <code>Summary: {"Failed": 1, "Succeeded": 1}</code> and Transaction 1's quantity change <strong>persisted</strong>.</td>
+</tr>
+<tr>
+<td><strong>Downstream work a service triggers</strong></td>
+<td><strong>Not covered by either.</strong> Cascading business processes can complete before the Transaction's own validation fails.</td>
+<td>See the warning below.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The practical trap is the second row. <strong>A <code>Summary</code> with <code>Failed ≥ 1</code> does not mean "nothing happened"</strong> — if <code>Succeeded</code> is also non-zero, part of your batch is live. A client that reads only <code>Failed</code> and retries the whole POST will re-apply everything that already worked. Branch on <code>Results.Transactions[].Status</code> per transaction, not on the tally.</p>
+<blockquote>
+<p><strong>⚠️ Atomicity covers the record, not the consequences.</strong> Some services do substantial downstream work on save — writing related records, completing linked documents, generating invoices. Those side effects are <strong>not</strong> rolled back by a later validation failure in the same Transaction.</p>
+<p>The reported case is <code>DirectShipConfirmation</code>, which returned <code>Summary: {"Failed": 1}</code> — tripped by a disabled <code>c_email_invoice</code> column — <strong>after it had already written</strong> the inventory receipt, completed the purchase-order line, invoiced the sales-order line, and created the customer AR invoice. The failure was real; so was everything it had done first. <em>(Reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>; not reproduced here — ordinary <code>Order</code> writes are atomic as the table above shows, so this is specific to services that cascade.)</em></p>
+<p>The same shape appears in the Interactive API, where an in-window wizard can commit at an intermediate step: the PO/RFQ generation wizard creates and links the PO at <code>cb_next</code>, <strong>before</strong> <code>cb_finish</code>, so an abandoned wizard is not a no-op.</p>
+<p><strong>On any write that triggers downstream documents, read the record back — <code>Failed</code> is a reason to go and look, not proof that nothing landed.</strong></p>
+</blockquote>
 <hr />
 <h2 id="field-order-matters">Field Order Matters</h2>
 <p>For some services, the order of fields in the request is significant. The API processes fields sequentially and mirrors the window's UI cascades — some fields trigger validation, auto-population, or <strong>clearing</strong> of other fields, exactly as they would when typed into the window in that order.</p>
@@ -2056,6 +2095,15 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <hr />
 <h2 id="examples">Examples</h2>
 <h3 id="get-service-definition">Get Service Definition</h3>
+<h4 id="what-required-actually-means">What <code>Required</code> actually means</h4>
+<p>The definition is the authoritative field map — element names, <code>DataType</code>, <code>KeyFields</code>, and the <code>ValidValues</code> behind dropdowns are all reliable. <strong><code>Required</code> is not.</strong> It reflects the <em>window's</em> field metadata, not the API's contract, and it is wrong in both directions:</p>
+<p><strong>Marked required, must be omitted.</strong> <code>Order</code>'s <code>TABPAGE_1.order</code> marks <strong><code>company_id</code></strong> as <code>Required: true</code> — and <code>company_id</code> is a <a href="#order-service-gotchas">disabled column</a> that fails the whole transaction with <code>Column is disabled: company_id</code>. The same pattern is reported on <code>PurchaseOrder</code> (<code>division_id</code>) and <code>ConvertPOToVoucher</code> (<code>company_id</code>, <code>branch_id</code>, <code>period</code>, <code>year_for_period</code>), all of which default correctly when left out. Across the committed definitions, <strong>571 of 7,539 fields (7.6%) carry the flag</strong>, so this is not a rare mislabel.</p>
+<p><strong>Marked optional, actually required.</strong> The reverse also happens — <code>JobContractPricing</code>'s <code>contract_no</code> is marked optional and a create without it fails outright (see <a href="#jobcontractpricing-service">its service entry</a>).</p>
+<blockquote>
+<p><strong>Derive the minimum payload empirically.</strong> Start from a known-good example, add fields until the write passes, and stop. Padding a payload to satisfy <code>Required</code> is a reliable way to hit <code>Column is disabled</code> — and because a Transaction is <a href="#what-failed-actually-guarantees">atomic</a>, one padded field fails the entire thing.</p>
+<p>This is also why <a href="#endpoints"><code>GET /api/v2/basics/{name}</code></a> both omits fields you need and includes fields you cannot write: it is generated as <code>KeyFields ∪ Required</code>, so it inherits every one of these errors.</p>
+</blockquote>
+<p><em>(Verified on a 26.1 tenant, August 2026. The <code>PurchaseOrder</code> / <code>ConvertPOToVoucher</code> cases are reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>; the <code>Required: true</code> flag values were confirmed here, though the "column is disabled" refusal did not reproduce in an isolated probe — see the note in his voucher material about full-payload context.)</em></p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -6282,6 +6330,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#response-format">Response Format</a><ul>
 <li><a href="#success-response">Success Response</a></li>
 <li><a href="#error-response">Error Response</a></li>
+<li><a href="#what-failed-actually-guarantees">What Failed actually guarantees</a></li>
 </ul>
 </li>
 <li><a href="#field-order-matters">Field Order Matters</a><ul>
