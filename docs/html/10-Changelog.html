@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>
 <li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>
 <li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
 <li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>
@@ -710,6 +711,21 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v188">2026-08-20 — v1.8.8</h2>
+<p>A controlled A/B turned the most common error in the API into something quite different from what it looks like.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#column-is-disabled-can-mean-disabled-for-you"><code>Column is disabled</code> Can Mean "Disabled For You"</a></strong> — the error is <strong>not always a property of the field</strong>. Identical request sequence, same tenant, same moment, two consumer-key tokens differing only in the <code>username</code>: a CSR login set <code>disposition = 'D'</code> (<code>Status: 1</code>); a <strong>service account was refused</strong> with <code>Column is disabled: disposition</code>. Both could open the window, load the order and set every other field on the line. Nothing in the response says why.</li>
+</ul>
+<p>Role-scoped DynaChange rules, Application Security and window permissions all surface as this one undifferentiated message. The practical consequences are the point: <strong>a payload that works in development can fail in production</strong> because the service account there has a different role — and it will look like a schema problem; <code>Required: true</code> in the definition tells you nothing, because disabled-ness is evaluated per session; and the fix is a <strong>P21 configuration change</strong>, not a payload change. <strong>Test with the account that will actually run the integration</strong> — <em>@mrwuss</em></p>
+<ul>
+<li>
+<p><strong>fix:</strong> <strong>v1.8.7's <code>disposition</code> finding was incomplete.</strong> It said the field is settable only at line entry, which is true but not the whole story — it is <strong>user-gated on top of that</strong>. The <a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">wizard section</a> now carries the A/B result and the consequence for automation: <strong>a service account may be able to trigger the wizard and still be unable to create the line that feeds it</strong> — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> <strong>One permission does not unlock a workflow.</strong> Granting a service account a <strong>Buyer ID</strong> cleared the <code>To create a PO, you must have a valid Buyer ID.</code> gate on <code>c_create_po</code> (<code>Status: 2</code> → <code>Status: 1</code>, verified) — and that same account was <em>still</em> refused <code>disposition</code>. Two gates, two different mechanisms, one workflow. Recorded so nobody grants one setting and assumes the path is open — <em>@mrwuss</em></p>
+</li>
+</ul>
 <hr />
 <h2 id="2026-08-20-v187">2026-08-20 — v1.8.7</h2>
 <p>The direct-ship wizard, driven end-to-end here rather than taken on report.</p>
@@ -1228,6 +1244,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>
 <li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>
 <li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
 <li><a href="#2026-08-20-v185">2026-08-20 — v1.8.5</a></li>

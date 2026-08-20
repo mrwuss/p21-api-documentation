@@ -17,6 +17,20 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.8
+
+A controlled A/B turned the most common error in the API into something quite different from what it looks like.
+
+- **feat:** **[`Column is disabled` Can Mean "Disabled For You"](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you)** — the error is **not always a property of the field**. Identical request sequence, same tenant, same moment, two consumer-key tokens differing only in the `username`: a CSR login set `disposition = 'D'` (`Status: 1`); a **service account was refused** with `Column is disabled: disposition`. Both could open the window, load the order and set every other field on the line. Nothing in the response says why.
+
+  Role-scoped DynaChange rules, Application Security and window permissions all surface as this one undifferentiated message. The practical consequences are the point: **a payload that works in development can fail in production** because the service account there has a different role — and it will look like a schema problem; `Required: true` in the definition tells you nothing, because disabled-ness is evaluated per session; and the fix is a **P21 configuration change**, not a payload change. **Test with the account that will actually run the integration** — *@mrwuss*
+
+- **fix:** **v1.8.7's `disposition` finding was incomplete.** It said the field is settable only at line entry, which is true but not the whole story — it is **user-gated on top of that**. The [wizard section](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) now carries the A/B result and the consequence for automation: **a service account may be able to trigger the wizard and still be unable to create the line that feeds it** — *@mrwuss*
+
+- **docs:** **One permission does not unlock a workflow.** Granting a service account a **Buyer ID** cleared the `To create a PO, you must have a valid Buyer ID.` gate on `c_create_po` (`Status: 2` → `Status: 1`, verified) — and that same account was *still* refused `disposition`. Two gates, two different mechanisms, one workflow. Recorded so nobody grants one setting and assumes the path is open — *@mrwuss*
+
+---
+
 ## 2026-08-20 — v1.8.7
 
 The direct-ship wizard, driven end-to-end here rather than taken on report.

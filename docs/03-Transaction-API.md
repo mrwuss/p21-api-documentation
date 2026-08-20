@@ -579,6 +579,32 @@ Changing `pricing_method` **clears the typed price**, just like in the UI. If a 
 
 ---
 
+## `Column is disabled` Can Mean "Disabled For You"
+
+This is the most-seen error in the whole API surface, and its wording invites the wrong conclusion. **`Column is disabled: <column>` is not always a property of the field.** The same payload, against the same tenant, at the same moment, can be accepted for one user and refused for another.
+
+Verified on 26.1 (August 2026) with a controlled A/B — identical request sequence, identical field order, two consumer-key tokens differing only in the `username` they carried:
+
+| User | `disposition = 'D'` on a line being entered |
+|---|---|
+| A real CSR login | **Accepted** (`Status: 1`) |
+| A service account | **Refused** — `Column is disabled: disposition` |
+
+Both users could open the window, load the order, and set every other field on the line. Only this column differed, and nothing in the response says *why*.
+
+**What makes a column disabled for a user:** DynaChange data-change rules scoped to a role, Application Security settings, and window-level permissions — the same machinery documented under [DynaChange and Popup Handling](#dynachange-and-popup-handling) and [Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access). The API surfaces all of it as one undifferentiated message.
+
+**What this means in practice:**
+
+- **A payload that works in development can fail in production** purely because the service account there has a different role. The error will look like a schema problem and send you hunting through definitions.
+- **`Required: true` in the definition tells you nothing about this** — the definition is static metadata; disabled-ness is evaluated per session (see [What `Required` actually means](#what-required-actually-means)).
+- **Test with the account that will run the integration**, not with an admin login or your own. This is the single cheapest way to avoid a class of late surprise.
+- When a column is refused for your service account and you need it, the fix is a **P21 configuration change** — a role permission or a DynaChange rule exemption — not a payload change. `IgnoreDisabled: true` is not a substitute and [can silently write nothing](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
+
+> **A worked example of the split.** Granting a service account a **Buyer ID** in User Maintenance cleared the `To create a PO, you must have a valid Buyer ID.` gate on `c_create_po` — but the *same* account still could not set `disposition`, which a CSR login set without trouble. One permission was configuration; the other is a different gate entirely. Do not assume a single setting unlocks a whole workflow — see [Driving an In-Window Wizard](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation).
+
+---
+
 ## IgnoreDisabled
 
 `IgnoreDisabled: true` does more than suppress errors — it is the documented unlock for writing through **system-disabled columns** and **disabled sub-tabs** that the Transaction API otherwise cannot touch:
