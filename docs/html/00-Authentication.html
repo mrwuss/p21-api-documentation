@@ -1309,7 +1309,7 @@
 </tr>
 <tr>
 <td><strong>Allow access to the API system pool</strong></td>
-<td>Epicor marks this <em>"do not change this technical setting... only under instruction from Epicor support."</em> Relevant background when diagnosing <a href="07-Session-Pool-Troubleshooting.html">session pool problems</a> — there is a per-user switch involved, and it is not yours to turn.</td>
+<td><strong>Epicor's own docs contradict each other here.</strong> The Application Security reference calls it <em>"a technical setting... should only be changed under instruction from Epicor support"</em>, while the Prism documentation lists <em>"User Maintenance &gt; Application Security – Enable API System Pool"</em> as a required prerequisite for approving sales orders in Prism. So it is not untouchable — some features require it — but it is not a setting to flip speculatively either. Ask Epicor which applies to you, and note the connection to <a href="07-Session-Pool-Troubleshooting.html">session pool problems</a>.</td>
 </tr>
 <tr>
 <td><strong>Allow creation of business rules</strong></td>

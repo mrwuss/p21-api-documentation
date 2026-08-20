@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v181">2026-08-20 — v1.8.1</a></li>
 <li><a href="#2026-08-20-v180">2026-08-20 — v1.8.0</a></li>
 <li><a href="#2026-08-20-v170">2026-08-20 — v1.7.0</a></li>
 <li><a href="#2026-08-20-v161">2026-08-20 — v1.6.1</a></li>
@@ -703,6 +704,16 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-20-v181">2026-08-20 — v1.8.1</h2>
+<p>Help-site re-scrape for 26.2 and one correction it produced.</p>
+<ul>
+<li><strong>fix:</strong> <strong><code>Allow access to the API system pool</code> — Epicor's own docs contradict each other</strong>, and v1.8.0 took one side. The Application Security reference calls it <em>"a technical setting... only changed under instruction from Epicor support"</em>; the <strong>Prism</strong> documentation lists <em>"Application Security – Enable API System Pool"</em> as a <strong>required prerequisite</strong> for approving sales orders in Prism. <a href="00-Authentication.html#application-security-settings-that-affect-api-access">00 § Application Security settings</a> now records both rather than repeating the "don't touch" line as settled — <em>@mrwuss</em></li>
+<li><strong>chore:</strong> <strong><code>scraped/site-map.md</code> rebuilt for 2026.2</strong> — new host (<code>p21help262</code>), all-new category IDs, <strong>45 categories / 305 sections / 1,251 articles</strong>. Records the two genuinely new categories (<strong>DynaChange Designer</strong>, <strong>Prism</strong>), the <code>OPTIONAL - WMS</code> rename, and that auth is required for everything (403 on article HTML, 401 on the API) — <em>@mrwuss</em></li>
+<li><strong>chore:</strong> <strong>Scraper hygiene</strong> — <code>scrape_full_site.py</code> repointed at 26.2. The other seven scripts are one-off 25.2 jobs with hardcoded <code>40628…</code> article IDs and were deliberately <strong>left on the 25.2 host</strong>: a new host with dead IDs only looks usable. The distinction is written down in the site map — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>Two categories triaged so the next pass doesn't repeat the work.</strong> <strong>Prism</strong> is <em>not</em> an API surface (1 of 13 articles mentions API, and only the prerequisite above). <strong>Middleware</strong> is 10 articles of install/config with no API-usage content — the API documentation lives on the middleware itself at <code>/docs/</code>, not in the help site. <strong>DynaChange Designer</strong> (22 articles) is flagged as the highest-value remaining target — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><code>updated_at</code> is useless as a change signal on this site</strong> — all 1,251 articles carry the same date because 26.2 was republished wholesale. Finding real changes since 25.2 means diffing article text against the local corpus; noted in the site map so nobody trusts the timestamps — <em>@mrwuss</em></li>
+</ul>
 <hr />
 <h2 id="2026-08-20-v180">2026-08-20 — v1.8.0</h2>
 <p>Findings from two authoritative sources we had never systematically mined: the <strong>Epicor SDK and API Reference hosted on our own middleware</strong>, and the <strong>P21 26.2 help site</strong>. Everything marked verified was tested against a 26.1 tenant; vendor-documented items that could not be exercised say so.</p>
@@ -1149,6 +1160,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-20-v181">2026-08-20 — v1.8.1</a></li>
 <li><a href="#2026-08-20-v180">2026-08-20 — v1.8.0</a></li>
 <li><a href="#2026-08-20-v170">2026-08-20 — v1.7.0</a></li>
 <li><a href="#2026-08-20-v161">2026-08-20 — v1.6.1</a></li>
