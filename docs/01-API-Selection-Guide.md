@@ -65,7 +65,7 @@ Two verified instances (2026-08-11), both documented in detail in the [Transacti
 - Any read-only operation
 
 ### Characteristics
-- **Standard OData v3 protocol** - familiar to most developers
+- **Standard OData v4 protocol** - familiar to most developers
 - **Read-only** - cannot create, update, or delete
 - **No session management** - simple request/response
 - **Efficient** - supports filtering, pagination, field selection

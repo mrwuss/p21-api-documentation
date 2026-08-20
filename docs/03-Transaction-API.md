@@ -591,7 +591,7 @@ This setting controls how dropdown/checkbox values are interpreted:
 | `false` (default) | Display value | `"Cancelled": "ON"` |
 | `true` | Code value | `"Cancelled": "Y"` |
 
-**Recommendation**: Use `false` (display values) for better readability. (Exception: some report services require code values — see [PDF Report Generation](#pdf-report-generation).)
+**Recommendation**: Use `false` (display values) for better readability — this is also Epicor's own guidance: *"It is recommended to use display value using UseCodeValues = false (which is the default)."* The accepted display values for a field are published as `ValidValues` in its [service definition](#get-service-definition). (Exception: some report services require code values — see [PDF Report Generation](#pdf-report-generation).)
 
 ### Labels vs What the Database Stores (code_p21)
 
@@ -713,9 +713,38 @@ Once the run finishes, `CompletedDate` is set and `Status` flips to `2`:
 Two traps in this wrapper, both verified by running a valid and an invalid transaction side by side:
 
 - **`Status` is queue state, not outcome.** `3` = queued/running, `2` = completed — and it is `2` for a transaction that **failed** exactly as for one that succeeded. Do not branch on it.
+
+  *(Epicor's SDK describes this field as the strings `Active`, `Complete` or `Failed`. On 26.1 it is an integer, and there is no `Failed` state — a failed transaction completes as `2` and reports its failure only in the inner envelope. Handle both spellings if you support older builds.)*
 - **The outcome is double-encoded.** `Messages` is a **JSON string** containing the complete synchronous-style envelope (`Results` / `Messages` / `Summary`) — parse the wrapper, then `json.loads(wrapper["Messages"])`, and read `Summary.Failed` and the inner `Messages` there. The failed run's business-rule text appears only at that inner level.
 
 **What the immediate response does and does not tell you.** The submit returns in milliseconds with a request ID, and that is an acknowledgement of *queueing only* — not of validation, and not of success. A transaction that the synchronous endpoint would have rejected returns a perfectly normal request ID here. The status GET is where the outcome lives, and it carries the same `Messages` the synchronous call would have returned — a request that failed shows its `Failed` count and the business-rule text (*"You cannot cancel an order that is fully invoiced"*, for instance) only once you go and read it. Treat the request ID as something you must persist and follow up on; work submitted and never checked is work whose outcome nobody knows.
+
+### Callbacks instead of polling
+
+`/async` makes you poll. **`/async/callback` doesn't** — it takes a webhook spec alongside the transaction and calls you when the work finishes. This is the endpoint to reach for when "persist the request ID and follow up" is awkward, which is most of the time.
+
+The body wraps the ordinary TransactionSet in an envelope:
+
+```json
+POST /api/v2/transaction/async/callback
+{
+  "Content": { "Name": "Order", "UseCodeValues": false, "Transactions": [ ... ] },
+  "Callback": {
+    "Url": "https://your-listener.example.com/p21-hook",
+    "Method": "POST",
+    "ContentType": "application/json",
+    "Headers": [ {"Name": "X-Api-Key", "Value": "..."} ]
+  }
+}
+```
+
+- `ContentType` is `application/xml` or `application/json`
+- `Headers` is a list — use it to authenticate the call *into* your own receiver
+- **What P21 posts to your URL is the `AsyncRequest`** — the same object the status GET returns, so parse it exactly as described above (including the double-encoded `Messages` string)
+
+`CallbackResult` on the status object then tells you how *your* endpoint responded — e.g. `Success : 200 (OK)`. On a plain `/async` submit it stays `null`, which is why it looks like a dead field until you use callbacks.
+
+*(Envelope from the Epicor SDK Transaction API reference guide, served at `{middleware}/docs/p21sdk/index.html#/transaction/reference-guide`. Not exercised here — it needs a P21-reachable listener.)*
 
 > **There is no cancel.** Once transactions are queued there is no endpoint to stop them — probed on a 26.1 tenant, every cancel-shaped route 404s (`DELETE /api/v2/transaction/async/{id}`, `DELETE /api/v2/transaction/{id}`, `POST /api/v2/transaction/async/cancel`), and `DELETE /api/v2/transaction/async` returns 405: the route exists, for POST only — a loop that submits 50,000 wrong requests will run all 50,000, and every one fires the same DynaChange rules, alerts and event rules a synchronous call would. This is the endpoint's real hazard: it removes the natural backpressure of waiting for each response, so a payload bug that a synchronous run would have surfaced on record one instead surfaces after the whole batch has landed. Validate the payload synchronously against a single record before submitting a batch async. *(Community session, Felipe Maurer, 2026.)*
 
@@ -768,6 +797,55 @@ POST /api/v2/commands
 
 > **Important:** If you send these services to the standard `/transaction` endpoint, they will fail. Always check the service documentation or test with the Service Explorer to determine which endpoint to use.
 
+### Request Shape
+
+`/commands` does not take a TransactionSet. It takes an **ordered list of interactive commands** — it is the Interactive API's window-driving model exposed as one stateless POST. That is exactly why these services live here: they need row selection, tool clicks and drag-and-drop controls that a declarative TransactionSet cannot express.
+
+```json
+POST /api/v2/commands
+{
+  "Requests": [
+    {"Action": 0, "DetailLevel": 0, "Args": {"ServiceName": "ItemNotepad"}},
+    {"Action": 2, "DetailLevel": 0, "Args": {"List": [
+        {"DatawindowName": "tp_1_dw_1", "FieldName": "inv_mast_item_id", "Value": "WIDGET-001"},
+        {"DatawindowName": "tp_1_dw_1", "FieldName": "topic",            "Value": "API NOTE"},
+        {"DatawindowName": "tp_1_dw_1", "FieldName": "note",             "Value": "Note text"}]}},
+    {"Action": 5, "DetailLevel": 0, "Args": {"DatawindowName": "tp_17_dw_dragdrop", "Row": 2}},
+    {"Action": 9, "DetailLevel": 0, "Args": {"ToolName": "cb_select", "Row": 0}},
+    {"Action": 6, "DetailLevel": 0},
+    {"Action": 1, "DetailLevel": 0}
+  ]
+}
+```
+
+Each entry runs in order against one implicit window; the response returns one `Result` per request, carrying the same `Events` the Interactive API emits:
+
+```json
+{"Status": 1, "Results": [
+  {"Result": {"WindowId": "...", "Status": 1, "Events": [{"Name": "windowopened", ...}], "Messages": []}, "Data": null},
+  ...
+]}
+```
+
+Watch the **save** entry's events for `savesucceeded`, and read the record back — `Status: 1` on the envelope is not proof, exactly as on `/transaction`.
+
+#### Action codes
+
+Verified against a 26.1 tenant (August 2026) by running each value and reading the response:
+
+| `Action` | Meaning | `Args` |
+|---|---|---|
+| `0` | Open the window | `ServiceName` |
+| `1` | Close the window | — |
+| `2` | Change data (batched) | `List[]` of `DatawindowName` / `FieldName` / `Value` |
+| `5` | Select a row | `DatawindowName`, `Row` |
+| `6` | Save | — |
+| `9` | Run a tool (button) | `ToolName`, `Row` |
+
+`3` returns HTTP **204** and `4` returns `Status: 2` — both are real actions whose arguments we haven't mapped. `7`, `8`, and `10`+ return an **empty HTTP 500**, the same not-implemented signature seen elsewhere on 26.1. `DetailLevel` was `0` throughout except where noted; its effect is undocumented.
+
+> **This is the sanctioned path for notepads.** Verified end-to-end on 26.1 (August 2026): the payload above wrote an item note — including satisfying the mandatory **drag-and-drop area selector** via `Action 5` (select a row in `tp_17_dw_dragdrop`) then `Action 9` (`cb_select`) — returned `savesucceeded`, and the row was confirmed in the `note` table. See [Limitations](#limitations) for how this relates to the `/transaction` endpoint's refusal of the same services.
+
 ---
 
 ## Special Scenarios
@@ -788,11 +866,18 @@ Wrong:    item A → item B → detail A → detail B
 The second form doesn't error — it applies both details to whatever row was current, which is the last one. Verified on a 26.1 tenant with a two-line order and `TP_EXTDINFO.extd_info`: sending `item A → item B → extd "EXT-FOR-A" → extd "EXT-FOR-B"` returns `Succeeded: 1` with no messages and lands **both** descriptions on line 2, last one winning, leaving line 1's `extended_desc` null. The interleaved sequence puts each description on its own line. An element may appear **as many times as you need** in a single transaction; a ten-line order that also sets extended info per line is ten repetitions of the pair, in order. This is the same rule the lot-item and break-line cases below are specific instances of. *(General statement of the rule: community session, Felipe Maurer, 2026; verified August 2026.)*
 
 **Credit Card Payment Orders:**
-DataElements must appear in this order:
-1. Order header
-2. Items
-3. Remittances
+DataElements must appear in this order — the two payment elements go **after every other element in the request**, not in window order:
+1. Order header (`TABPAGE_1.order`)
+2. Items (`TP_ITEMS.items`)
+3. Remittances (`TP_REMITTANCES.remittances`) — `payment_type_id`, `payment_amount`, `payment_desc`
 4. CC Transaction Response (`TP_CCTRANSACTIONRESPONSE.cctransactionresponse`)
+
+The CC element carries the result of an authorization performed **elsewhere** — the API takes the outcome, never card entry (see [Limitations](#limitations)). Its fields: `auth_amount`, `cc_authorized_number`, `cc_authorized_date`, `retrieval_ref_number`, **`payment_account_id`** (the stored-payment token), `cc_number` (masked, e.g. `************6781`), `cc_expiration_date`, `payment_number`. The token plausibly originates from the `api/cardstorage` REST family listed on the middleware's [API Reference page](05-Entity-API.md#discovering-what-your-tenant-actually-exposes); that link is unverified here.
+
+**Task — `target_date` before `start_date`:**
+The Task window validates that start ≤ target, and **both default to today**. Setting `start_date` first validates it against a target that is still the default, and the transaction fails. Put `target_date` (and `target_minute`) **earlier in the `Edits` array** than `start_date`. Same class of bug as `pricing_method` before `price` — the API replays edits in order and each one validates as it lands.
+
+The Task service form is `Form.form`, keyed on `activity_trans_no`, carrying `subject`, `target_date`/`target_minute`, `start_date`/`start_minute`, `completed_flag`, `reminder_time_offset` + `reminder_time_offset_cd` (e.g. `"Minute(s)"`), `activity_id`, `assigned_to_id`, `contact_id`, `transaction_type_cd`. *(From the Epicor SDK Transaction API reference guide; the ordering rule is Epicor's own, not re-tested here.)*
 
 **Multiple Lot Items:**
 When creating items with lot tracking, interleave item and lot DataElements:
@@ -800,8 +885,6 @@ When creating items with lot tracking, interleave item and lot DataElements:
 2. Item 2 → Lot 2
 3. *(not: Item 1 → Item 2 → Lot 1 → Lot 2)*
 
-**Task Creation with Dates:**
-The `target_date` edit must appear before `start_date` in the Edits array (due to validation ordering).
 
 **SalesPricePage Fields:**
 1. `price_page_type_cd` — triggers type-specific validation
@@ -4209,16 +4292,24 @@ Key characteristics:
 | Wizard-type popups requiring user input | (Verified) Must use the Interactive API (IAPI) -- TAPI cannot provide multi-step input |
 | "Column is disabled" errors | (Community-reported) Often caused by DynaChange business rules, not by the API itself. Check the user's DynaChange profile for rules that disable fields or trigger response attributes. *(Credit: Justin Cassidy)* |
 | In-window **wizards** launched from another window — the PO wizard and assembly decoder from Order Entry, credit-card entry (an embedded merchant-gateway form, not a P21 window) | (Community-reported) Not drivable from TAPI. Use the Interactive API. For credit cards, the documented TAPI path takes a **token you generated elsewhere** — the entry form itself is out of reach. *(Community session, Felipe Maurer, 2026)* |
-| Drag-and-drop windows | No TAPI path. Verified on the standalone `*Notepad` services (26.1, Aug 2026): their mandatory **area selector** is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with `You must select at least one area where this note will display.`; send a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`) and it fails with `Column is disabled: area`. `IgnoreDisabled: true` changes neither. **The Interactive API drives the same picker** — the window exposes it as `cb_select`/`cb_selectall` tools; see [04 § Standalone Notepad Windows](04-Interactive-API.md#standalone-notepad-windows-itemcustomersupplier). *(Community session, Felipe Maurer, 2026; verified August 2026)* |
+| Drag-and-drop windows | No TAPI path. Verified on the standalone `*Notepad` services (26.1, Aug 2026): their mandatory **area selector** is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with `You must select at least one area where this note will display.`; send a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`) and it fails with `Column is disabled: area`. `IgnoreDisabled: true` changes neither. **Both the [Commands endpoint](#commands-endpoint) and the Interactive API drive the same picker** — it is an ordinary row-select plus `cb_select`/`cb_selectall` tool click, which is exactly what those two surfaces can express and `/transaction` cannot. *(Community session, Felipe Maurer, 2026; verified August 2026)* |
 | **Mandatory notes** blocking a save | (Community-reported) A mandatory note diverts the window to the notes tab and strands the transaction. A **user setting** on the API user's profile — the option to receive mandatory notes as prompts/alerts rather than as a hard stop (bottom-left of the login/user settings) — lets the transaction proceed. Weigh this before enabling it: mandatory notes usually exist for a reason, and this suppresses them for that user. *(Community session, Felipe Maurer, 2026)* |
 
-> **Order notes: the elements are published, and they are all disabled.** The `Order` definition looks encouraging — it publishes **`LINE_NOTE.line_note`** and **`HDR_NOTE.hdr_note`** as ordinary `List` DataElements keyed on `note_id`, each with `note`, `topic` and `notepad_class_desc` fields, plus `TP_ITEMNOTES.tp_itemnotes` keyed on `note_uid`. None of it is writable. Tested against a 26.1 tenant on a live order (August 2026), **every column of both note elements is refused**, one at a time, whichever you send: `Column is disabled: topic`, `Column is disabled: notepad_class_desc`, `Column is disabled: note`. `TP_ITEMNOTES` refuses a step earlier still, with `Tab page is disabled and cannot be selected`.
+> **Notes on the Order window: the elements are published, and they are all disabled.** The `Order` definition looks encouraging — it publishes **`LINE_NOTE.line_note`** and **`HDR_NOTE.hdr_note`** as ordinary `List` DataElements keyed on `note_id`, each with `note`, `topic` and `notepad_class_desc` fields, plus `TP_ITEMNOTES.tp_itemnotes` keyed on `note_uid`. None of it is writable through `/transaction`. Tested against a 26.1 tenant on a live order (August 2026), **every column of both note elements is refused**, one at a time, whichever you send: `Column is disabled: topic`, `Column is disabled: notepad_class_desc`, `Column is disabled: note`. `TP_ITEMNOTES` refuses a step earlier still, with `Tab page is disabled and cannot be selected`.
 >
 > **And `IgnoreDisabled: true` makes it worse, not better.** The same `LINE_NOTE` write that fails loudly without the flag returns `Succeeded: 1` with it — and the note is still empty on read-back. That is [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) exactly: the flag swallows the refusal and reports success on a write that wrote nothing.
 >
-> The standalone notepad services close the loop the same way. `ItemNotepad`, `CustomerNotepad`, `SupplierNotepad` and `VendorNotepad` (see [Common Services](#common-services)) each publish a perfectly ordinary header form — `note_id`, `topic`, `note`, `mandatory`, activation/expiration dates, a `notepad_class` with `ValidValues` — and every create dies on the same wall (tested on the first three, 26.1, August 2026): the mandatory **"where does this note display" area selector is a drag-and-drop control**. Omit it and the save fails with `You must select at least one area where this note will display.`; send the area as a row into the Selected Areas list (`TABPAGE_17.tp_17_dw_17`, declared `KeyFields: ["area"]`) and it fails with `Column is disabled: area`; the Available Areas side (`tp_17_dw_dragdrop`) accepts the row and then fails the save on the same missing selection. `IgnoreDisabled: true` changes none of it. This is the [drag-and-drop limitation](#limitations) with a paper trail.
+> **But "the Transaction API can't do notes" is still too broad — the answer is [`/api/v2/commands`](#commands-endpoint).** The standalone `ItemNotepad` / `CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` services are on the commands-only list precisely because their windows need row selection and tool clicks that a TransactionSet cannot express — including the mandatory **drag-and-drop area selector** that defeats `/transaction`. Verified end-to-end on 26.1 (August 2026): a six-step `/commands` payload wrote an item note, satisfied the area selector with `Action 5` + `Action 9 cb_select`, returned `savesucceeded`, and the row was confirmed in the `note` table. See [Commands Endpoint § Request Shape](#request-shape).
 >
-> So **"the Transaction API can't do notes" is simply true — notes are Interactive API territory.** Not for the reason usually given (the *Add Line Note* wizard — true, but incidental): every path is independently closed. `Order`'s embedded note elements are disabled columns; the standalone `*Notepad` services stall on a drag-and-drop area picker. Use the Interactive API's verified paths: [PurchaseOrder Notepad Writes](04-Interactive-API.md#purchaseorder-notepad-writes-header-vs-line), [Sales Order Notepad Writes](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line), and — for the standalone item/customer/supplier notepads whose drag-and-drop area picker blocks the Transaction API — [Standalone Notepad Windows](04-Interactive-API.md#standalone-notepad-windows-itemcustomersupplier), where the picker is an ordinary `cb_selectall` tool. *(Community session, Felipe Maurer, 2026, for the wizard claim; both closures and the working Order path verified live, August 2026.)*
+> So there are **three surfaces and three different answers**, and it is worth being precise about which is which:
+>
+> | Path | Order header/line notes | Standalone item/customer/supplier notes |
+> |---|---|---|
+> | `POST /api/v2/transaction` | **No** — every column disabled | **No** — drag-and-drop area selector |
+> | `POST /api/v2/commands` | n/a (`Order` is not a commands service) | **Yes** — verified |
+> | Interactive API | **Yes** — [verified](04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) | **Yes** — [verified](04-Interactive-API.md#standalone-notepad-windows-itemcustomersupplier) |
+>
+> For notes attached to an **order** (header or line), the Interactive API is the only path. For the **standalone notepads**, `/commands` is the stateless one-POST option and Interactive is the alternative. *(Community session, Felipe Maurer, 2026, for the wizard claim; all three rows verified live, August 2026.)*
 
 ### Item Issues Detected Popup Root Cause and Data Fix
 

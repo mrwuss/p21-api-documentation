@@ -496,6 +496,34 @@ If you receive a `401` or `403` "not authorized" error with a valid token:
 
 ---
 
+## Application Security settings that affect API access
+
+The two settings above are the ones that gate OData. The **Application Security** tab in User Maintenance carries several more that decide whether API work is possible at all — each is a per-user Yes/No, and a No produces a failure that looks like something else entirely.
+
+| Setting | Why an API integrator cares |
+|---|---|
+| **Access to SOA Admin Page** | Controls who can log in to the **Middleware Administration website** — where you register consumer keys, refresh the OData schema, and reach the Service Explorer and API Reference. Epicor's wording: *"it only accepts logins from users with this setting set to Yes. It rejects all others, even if they are otherwise valid."* A correct P21 password bouncing off the middleware logon page is this setting, not a bad credential. |
+| **Allow OData API Service** | Step 1 of [P21 Permissions](#p21-permissions-user-credential-auth) above. |
+| **Allow overriding audit trail user** | Lets a calling application log **the actual end user** rather than the API service account on transactions sent through the API. See [Attributing writes to a real user](#attributing-writes-to-a-real-user) below. |
+| **Allow access to the API system pool** | Epicor marks this *"do not change this technical setting... only under instruction from Epicor support."* Relevant background when diagnosing [session pool problems](07-Session-Pool-Troubleshooting.md) — there is a per-user switch involved, and it is not yours to turn. |
+| **Allow creation of business rules** | Gates authoring of DynaChange Rules — the mechanism behind auto-answered prompts, `Column is disabled` refusals and report date caps that surface as API failures. Useful to know who can change the rules that break your integration. |
+
+*(Source: P21 26.2 help, *System Setup > Users > Setting Application Security Settings for a User*.)*
+
+### Attributing writes to a real user
+
+API writes normally land against the authenticating account — `last_maintained_by` shows the service user, and the audit trail records it, which is why a shared integration account makes "who changed this?" unanswerable.
+
+**Allow overriding audit trail user** exists to solve exactly that. Epicor's description:
+
+> *"allows Epicor companions to log the actual user signed into the companion application, rather than the API server user when sending transactions to Prophet 21 via the API."*
+
+The supported applications named are **Project Hub** and **Scheduling and Capacity Planning**. So the capability is real and shipped, but scoped to Epicor's own companion apps — **whether a third-party integration can supply the acting user the same way is untested here**, and the mechanism (a header? a session property?) is not documented publicly.
+
+If per-operator attribution matters to your integration, this is the setting to ask Epicor about rather than assuming the service-account limitation is absolute. Note the related trade-off already documented under [V1 vs V2 token endpoints](#v1-endpoint-deprecated-security-risk): consumer-key auth with a `username` gives you P21 user context on the write, which is the closest generally-available equivalent.
+
+---
+
 ## Using the Token
 
 > **`Accept: application/json` is not optional on 2026.1.** Every example in this documentation sends it; on P21 **2026.1** the Interactive API returns an **empty HTTP 500** for any request whose `Accept` header doesn't include `application/json` — including the `Accept: */*` default of httpx and .NET HttpClient — and the failed session create leaves a ghost session behind. Set it in one shared header builder rather than per call site. See [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).

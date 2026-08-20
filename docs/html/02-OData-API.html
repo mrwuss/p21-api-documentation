@@ -642,6 +642,8 @@
 <ul>
 <li><a href="#overview">Overview</a><ul>
 <li><a href="#key-characteristics">Key Characteristics</a></li>
+<li><a href="#protocol-version">Protocol version</a></li>
+<li><a href="#what-the-service-supports">What the service supports</a></li>
 </ul>
 </li>
 <li><a href="#endpoints">Endpoints</a><ul>
@@ -718,6 +720,13 @@
 <li><a href="#the-in-operator-is-silently-ignored-do-not-use-it">The in operator is silently ignored — do not use it</a></li>
 </ul>
 </li>
+<li><a href="#the-other-odata-surface-dataerpviewsv1">The other OData surface: /data/erp/views/v1</a><ul>
+<li><a href="#which-one-you-want">Which one you want</a></li>
+<li><a href="#listing-whats-exposed">Listing what's exposed</a></li>
+<li><a href="#fetching-one-record-by-key">Fetching one record by key</a></li>
+<li><a href="#documented-limitations">Documented limitations</a></li>
+</ul>
+</li>
 <li><a href="#odata-schema-refresh">OData Schema Refresh</a></li>
 <li><a href="#related">Related</a></li>
 </ul>
@@ -731,15 +740,74 @@
 </blockquote>
 <hr />
 <h2 id="overview">Overview</h2>
-<p>The OData API provides <strong>read-only</strong> access to P21 data using the OData v3 protocol. It's the fastest way to query P21 tables and views.</p>
+<p>The OData API provides <strong>read-only</strong> access to P21 data using the OData <strong>v4</strong> protocol. It's the fastest way to query P21 tables and views.</p>
 <h3 id="key-characteristics">Key Characteristics</h3>
 <ul>
 <li><strong>Read-only</strong> - Cannot create, update, or delete data</li>
-<li><strong>Standard protocol</strong> - OData v3</li>
+<li><strong>Standard protocol</strong> - OData <strong>v4</strong> (see <a href="#protocol-version">Protocol version</a> — earlier versions of this doc said v3)</li>
 <li><strong>Direct access</strong> - Query any P21 table or view</li>
-<li><strong>Efficient</strong> - Supports filtering, pagination, field selection</li>
+<li><strong>Efficient</strong> - Supports filtering, field selection (<strong>no server-driven paging</strong> — see <a href="#what-the-service-supports">What the service supports</a>)</li>
 <li><strong>No session</strong> - Simple request/response model</li>
 </ul>
+<blockquote>
+<p><strong>There are two OData surfaces on a P21 server.</strong> This document covers <code>/odataservice/odata/</code> — the current one, which reaches every exposed table and view. A second, older surface at <code>/data/erp/views/v1</code> exposes a curated set of ~118 views with single-row key addressing. See <a href="#the-other-odata-surface-dataerpviewsv1">The other OData surface</a>.</p>
+</blockquote>
+<h3 id="protocol-version">Protocol version</h3>
+<p>Verified against a 26.1 tenant (August 2026) — the service answers as OData <strong>4.0</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/</span>
+<span class="err">    OData-Version: 4.0</span>
+<span class="err">    Content-Type: application/json; odata.metadata=minimal; odata.streaming=true</span>
+
+<span class="err">{&quot;@odata.context&quot;: &quot;{base}/odataservice/odata/table/$metadata&quot;, &quot;value&quot;: [...]}</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/$metadata</span>
+<span class="err">    {&quot;$Version&quot;: &quot;4.0&quot;, &quot;$EntityContainer&quot;: &quot;ns.container&quot;, ...}</span>
+</code></pre></div>
+
+<p><code>@odata.context</code> and a JSON CSDL <code>$metadata</code> are v4 constructs; v3 used <code>odata.metadata</code> at the document root and an XML metadata document. Epicor's own SDK reference guide agrees: <em>"The Data Services API is based on the OData v4 standard."</em></p>
+<p>This matters in practice because v4 removed <code>substringof</code> (use <code>contains</code>) and changed the metadata format — a v3 client library will not talk to this service correctly.</p>
+<h3 id="what-the-service-supports">What the service supports</h3>
+<p>Epicor publishes an explicit capability list for this implementation. The negatives are the useful part:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Supported</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>$filter</code> — <code>eq</code> <code>ne</code> <code>gt</code> <code>ge</code> <code>lt</code> <code>le</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>$filter</code> — <code>and</code> <code>or</code> <code>not</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>$filter</code> — <code>startswith</code> <code>endswith</code> <code>contains</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>$select</code> <code>$orderby</code> <code>$top</code> <code>$skip</code> <code>$count</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Server-driven paging</strong></td>
+<td><strong>No</strong> — page yourself with <code>$top</code> + <code>$skip</code> (see <a href="#page-size-guidance">Page Size Guidance</a>)</td>
+</tr>
+<tr>
+<td><code>substringof</code></td>
+<td>No — removed in OData 4.0; use <code>contains</code></td>
+</tr>
+<tr>
+<td><code>$expand</code> (navigation properties)</td>
+<td>Not exposed — there are no relationships to expand; join client-side</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Source: Prophet 21 SDK, Data Services reference guide, served from your own middleware at <code>{middleware}/docs/p21sdk/index.html#/data/reference-guide</code>.)</em></p>
 <hr />
 <h2 id="endpoints">Endpoints</h2>
 <div class="table-wrap"><table>
@@ -2292,10 +2360,82 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </div>
 </div>
 <hr />
+<h2 id="the-other-odata-surface-dataerpviewsv1">The other OData surface: <code>/data/erp/views/v1</code></h2>
+<p>A P21 server exposes <strong>two</strong> OData endpoints. Everything above describes <code>/odataservice/odata/</code>. The middleware's API Reference page also lists a <strong>Data Services</strong> family at <code>/data/erp/views/v1</code> — an older, narrower surface that is genuinely useful for one thing the current one does awkwardly: <strong>fetching a single record by key</strong>.</p>
+<p>Verified on a 26.1 tenant, August 2026.</p>
+<h3 id="which-one-you-want">Which one you want</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><code>/odataservice/odata/{table,view}</code></th>
+<th><code>/data/erp/views/v1</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Protocol</strong></td>
+<td>OData <strong>v4</strong> (<code>@odata.context</code>)</td>
+<td>OData <strong>v3</strong> (<code>odata.metadata</code>)</td>
+</tr>
+<tr>
+<td><strong>Coverage</strong></td>
+<td>Every exposed table and view (thousands)</td>
+<td><strong>118 curated views</strong>, all <code>p21_view_*</code></td>
+</tr>
+<tr>
+<td><strong>Single row by key</strong></td>
+<td>Filter and take the first result</td>
+<td><strong>Native</strong> — <code>view('key')</code></td>
+</tr>
+<tr>
+<td><strong>User Defined Fields</strong></td>
+<td>Queryable</td>
+<td><strong>Not queryable</strong> (documented limitation)</td>
+</tr>
+<tr>
+<td><strong>Writes / joins</strong></td>
+<td>Neither</td>
+<td>Neither</td>
+</tr>
+</tbody>
+</table></div>
+<p>Both are read-only, both need the same token, and neither can join — you assemble related data client-side.</p>
+<blockquote>
+<p>The SDK page for this endpoint claims v4, which appears to be copied from its sibling page. The wire format says v3 (<code>odata.metadata</code> at the document root, <code>#p21_view_oe_hdr/@Element</code> for a single entity). Trust the wire.</p>
+</blockquote>
+<h3 id="listing-whats-exposed">Listing what's exposed</h3>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/data/erp/views/v1</span>
+</code></pre></div>
+
+<p>Returns the 118 available views. The set is inventory- and order-centric — <code>p21_view_oe_hdr</code>, <code>p21_view_oe_line</code>, <code>p21_view_invoice_hdr</code>, <code>p21_view_po_hdr</code>, <code>p21_view_inv_mast</code>, <code>p21_view_inv_loc</code>, <code>p21_view_lot</code>, <code>p21_view_prod_order_hdr</code>, <code>p21_view_job_price_hdr</code>, the allocation-finder views, and so on. If your view is on the list, this endpoint is often the shorter path; if not, use <code>/odataservice/</code>.</p>
+<h3 id="fetching-one-record-by-key">Fetching one record by key</h3>
+<p>This is the reason to know the endpoint exists:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/data/erp/views/v1/p21_view_oe_hdr(&#39;1013938&#39;)</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;odata.metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{base}/data/erp/views/v1/$metadata#p21_view_oe_hdr/@Element&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;order_no&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1013938&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;13162&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;order_date&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">}</span>
+</code></pre></div>
+
+<p>For a view with a <strong>compound key</strong>, name each part — and mind the OData type suffixes, which is where this bites:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/data/erp/views/v1/p21_view_customer(company_id = &#39;1&#39;, customer_id = 100915M)</span>
+</code></pre></div>
+
+<p>The trailing <strong><code>M</code> marks an <code>Edm.Decimal</code></strong>. Omitting it, or quoting a numeric key, produces the same <code>incompatible types</code> family of errors documented under <a href="#data-type-formatting">Data Type Formatting</a> — the rules there apply to both surfaces.</p>
+<h3 id="documented-limitations">Documented limitations</h3>
+<ul>
+<li><strong>Read-only</strong> — no create, update or delete.</li>
+<li><strong>No joins</strong> — retrieve each set and join locally.</li>
+<li><strong>Curated views only</strong> — the list above is all of it.</li>
+<li><strong>User Defined Fields cannot be queried.</strong> <em>(Stated by Epicor for this surface. Not re-tested against <code>/odataservice/</code>, which does expose UDF columns on the tables that carry them.)</em></li>
+</ul>
+<p><em>(Source: middleware API Reference (<code>{middleware}/docs/apiref.aspx</code>) and the SDK Data Services v1 reference guide; view count and key addressing verified live.)</em></p>
+<hr />
 <h2 id="odata-schema-refresh">OData Schema Refresh</h2>
 <p>The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when <strong>new tables or views</strong> are added to the database, the OData service must be manually refreshed:</p>
 <ol>
-<li>Log in to the <strong>SOA Middleware</strong> home page (<code>https://{hostname}/api/admin</code>)</li>
+<li>Log in to the <strong>SOA Middleware</strong> home page (<code>https://{hostname}/api/admin</code>) — this requires the P21 user's <strong>Access to SOA Admin Page</strong> application-security setting to be <strong>Yes</strong>; see <a href="00-Authentication.html#application-security-settings-that-affect-api-access">Authentication § Application Security settings that affect API access</a></li>
 <li>Go to <strong>Administration</strong> from the menu</li>
 <li>Find the <strong>"Refresh OData API service"</strong> section</li>
 <li>Click <strong>"Refresh OData API service"</strong></li>
@@ -2322,6 +2462,8 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <ul>
 <li><a href="#overview">Overview</a><ul>
 <li><a href="#key-characteristics">Key Characteristics</a></li>
+<li><a href="#protocol-version">Protocol version</a></li>
+<li><a href="#what-the-service-supports">What the service supports</a></li>
 </ul>
 </li>
 <li><a href="#endpoints">Endpoints</a><ul>
@@ -2396,6 +2538,13 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#measured-performance">Measured Performance</a></li>
 <li><a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a></li>
 <li><a href="#the-in-operator-is-silently-ignored-do-not-use-it">The in operator is silently ignored — do not use it</a></li>
+</ul>
+</li>
+<li><a href="#the-other-odata-surface-dataerpviewsv1">The other OData surface: /data/erp/views/v1</a><ul>
+<li><a href="#which-one-you-want">Which one you want</a></li>
+<li><a href="#listing-whats-exposed">Listing what's exposed</a></li>
+<li><a href="#fetching-one-record-by-key">Fetching one record by key</a></li>
+<li><a href="#documented-limitations">Documented limitations</a></li>
 </ul>
 </li>
 <li><a href="#odata-schema-refresh">OData Schema Refresh</a></li>

@@ -703,11 +703,13 @@
 <li><a href="#async-operations">Async Operations</a><ul>
 <li><a href="#submit-async-request">Submit Async Request</a></li>
 <li><a href="#check-status">Check Status</a></li>
+<li><a href="#callbacks-instead-of-polling">Callbacks instead of polling</a></li>
 <li><a href="#with-callback">With Callback</a></li>
 </ul>
 </li>
 <li><a href="#commands-endpoint">Commands Endpoint</a><ul>
 <li><a href="#services-requiring-commands-endpoint">Services Requiring Commands Endpoint</a></li>
+<li><a href="#request-shape">Request Shape</a></li>
 </ul>
 </li>
 <li><a href="#special-scenarios">Special Scenarios</a><ul>
@@ -1702,7 +1704,7 @@
 </tr>
 </tbody>
 </table></div>
-<p><strong>Recommendation</strong>: Use <code>false</code> (display values) for better readability. (Exception: some report services require code values — see <a href="#pdf-report-generation">PDF Report Generation</a>.)</p>
+<p><strong>Recommendation</strong>: Use <code>false</code> (display values) for better readability — this is also Epicor's own guidance: <em>"It is recommended to use display value using UseCodeValues = false (which is the default)."</em> The accepted display values for a field are published as <code>ValidValues</code> in its <a href="#get-service-definition">service definition</a>. (Exception: some report services require code values — see <a href="#pdf-report-generation">PDF Report Generation</a>.)</p>
 <h3 id="labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores (code_p21)</h3>
 <p>For enum-style columns, the API's display labels come from the <strong><code>code_p21</code></strong> table (<code>language_id = 9</code>), but the database stores the integer <strong><code>code_no</code></strong> — which is what OData reads return. When you verify a write via OData, map the numbers back to labels with:</p>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">code_no</span><span class="p">,</span><span class="w"> </span><span class="n">code_description</span>
@@ -1833,9 +1835,32 @@
 <p>Two traps in this wrapper, both verified by running a valid and an invalid transaction side by side:</p>
 <ul>
 <li><strong><code>Status</code> is queue state, not outcome.</strong> <code>3</code> = queued/running, <code>2</code> = completed — and it is <code>2</code> for a transaction that <strong>failed</strong> exactly as for one that succeeded. Do not branch on it.</li>
-<li><strong>The outcome is double-encoded.</strong> <code>Messages</code> is a <strong>JSON string</strong> containing the complete synchronous-style envelope (<code>Results</code> / <code>Messages</code> / <code>Summary</code>) — parse the wrapper, then <code>json.loads(wrapper["Messages"])</code>, and read <code>Summary.Failed</code> and the inner <code>Messages</code> there. The failed run's business-rule text appears only at that inner level.</li>
 </ul>
+<p><em>(Epicor's SDK describes this field as the strings <code>Active</code>, <code>Complete</code> or <code>Failed</code>. On 26.1 it is an integer, and there is no <code>Failed</code> state — a failed transaction completes as <code>2</code> and reports its failure only in the inner envelope. Handle both spellings if you support older builds.)</em>
+- <strong>The outcome is double-encoded.</strong> <code>Messages</code> is a <strong>JSON string</strong> containing the complete synchronous-style envelope (<code>Results</code> / <code>Messages</code> / <code>Summary</code>) — parse the wrapper, then <code>json.loads(wrapper["Messages"])</code>, and read <code>Summary.Failed</code> and the inner <code>Messages</code> there. The failed run's business-rule text appears only at that inner level.</p>
 <p><strong>What the immediate response does and does not tell you.</strong> The submit returns in milliseconds with a request ID, and that is an acknowledgement of <em>queueing only</em> — not of validation, and not of success. A transaction that the synchronous endpoint would have rejected returns a perfectly normal request ID here. The status GET is where the outcome lives, and it carries the same <code>Messages</code> the synchronous call would have returned — a request that failed shows its <code>Failed</code> count and the business-rule text (<em>"You cannot cancel an order that is fully invoiced"</em>, for instance) only once you go and read it. Treat the request ID as something you must persist and follow up on; work submitted and never checked is work whose outcome nobody knows.</p>
+<h3 id="callbacks-instead-of-polling">Callbacks instead of polling</h3>
+<p><code>/async</code> makes you poll. <strong><code>/async/callback</code> doesn't</strong> — it takes a webhook spec alongside the transaction and calls you when the work finishes. This is the endpoint to reach for when "persist the request ID and follow up" is awkward, which is most of the time.</p>
+<p>The body wraps the ordinary TransactionSet in an envelope:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">transa</span><span class="err">c</span><span class="kc">t</span><span class="err">io</span><span class="kc">n</span><span class="err">/asy</span><span class="kc">n</span><span class="err">c/callback</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Content&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;Callback&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://your-listener.example.com/p21-hook&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ContentType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Headers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;X-Api-Key&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">}</span><span class="w"> </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li><code>ContentType</code> is <code>application/xml</code> or <code>application/json</code></li>
+<li><code>Headers</code> is a list — use it to authenticate the call <em>into</em> your own receiver</li>
+<li><strong>What P21 posts to your URL is the <code>AsyncRequest</code></strong> — the same object the status GET returns, so parse it exactly as described above (including the double-encoded <code>Messages</code> string)</li>
+</ul>
+<p><code>CallbackResult</code> on the status object then tells you how <em>your</em> endpoint responded — e.g. <code>Success : 200 (OK)</code>. On a plain <code>/async</code> submit it stays <code>null</code>, which is why it looks like a dead field until you use callbacks.</p>
+<p><em>(Envelope from the Epicor SDK Transaction API reference guide, served at <code>{middleware}/docs/p21sdk/index.html#/transaction/reference-guide</code>. Not exercised here — it needs a P21-reachable listener.)</em></p>
 <blockquote>
 <p><strong>There is no cancel.</strong> Once transactions are queued there is no endpoint to stop them — probed on a 26.1 tenant, every cancel-shaped route 404s (<code>DELETE /api/v2/transaction/async/{id}</code>, <code>DELETE /api/v2/transaction/{id}</code>, <code>POST /api/v2/transaction/async/cancel</code>), and <code>DELETE /api/v2/transaction/async</code> returns 405: the route exists, for POST only — a loop that submits 50,000 wrong requests will run all 50,000, and every one fires the same DynaChange rules, alerts and event rules a synchronous call would. This is the endpoint's real hazard: it removes the natural backpressure of waiting for each response, so a payload bug that a synchronous run would have surfaced on record one instead surfaces after the whole batch has landed. Validate the payload synchronously against a single record before submitting a batch async. <em>(Community session, Felipe Maurer, 2026.)</em></p>
 </blockquote>
@@ -1921,6 +1946,79 @@
 <blockquote>
 <p><strong>Important:</strong> If you send these services to the standard <code>/transaction</code> endpoint, they will fail. Always check the service documentation or test with the Service Explorer to determine which endpoint to use.</p>
 </blockquote>
+<h3 id="request-shape">Request Shape</h3>
+<p><code>/commands</code> does not take a TransactionSet. It takes an <strong>ordered list of interactive commands</strong> — it is the Interactive API's window-driving model exposed as one stateless POST. That is exactly why these services live here: they need row selection, tool clicks and drag-and-drop controls that a declarative TransactionSet cannot express.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST</span><span class="w"> </span><span class="err">/api/v</span><span class="mi">2</span><span class="err">/comma</span><span class="kc">n</span><span class="err">ds</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Requests&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DetailLevel&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;ServiceName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ItemNotepad&quot;</span><span class="p">}},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DetailLevel&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;List&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;inv_mast_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;topic&quot;</span><span class="p">,</span><span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;API NOTE&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;FieldName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;note&quot;</span><span class="p">,</span><span class="w">             </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Note text&quot;</span><span class="p">}]}},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DetailLevel&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;DatawindowName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tp_17_dw_dragdrop&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Row&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">}},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DetailLevel&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;ToolName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cb_select&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Row&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DetailLevel&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;Action&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DetailLevel&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Each entry runs in order against one implicit window; the response returns one <code>Result</code> per request, carrying the same <code>Events</code> the Interactive API emits:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="nt">&quot;Result&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Events&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;windowopened&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">}],</span><span class="w"> </span><span class="nt">&quot;Messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]},</span><span class="w"> </span><span class="nt">&quot;Data&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
+<span class="w">  </span><span class="err">...</span>
+<span class="p">]}</span>
+</code></pre></div>
+
+<p>Watch the <strong>save</strong> entry's events for <code>savesucceeded</code>, and read the record back — <code>Status: 1</code> on the envelope is not proof, exactly as on <code>/transaction</code>.</p>
+<h4 id="action-codes">Action codes</h4>
+<p>Verified against a 26.1 tenant (August 2026) by running each value and reading the response:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>Action</code></th>
+<th>Meaning</th>
+<th><code>Args</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Open the window</td>
+<td><code>ServiceName</code></td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Close the window</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>Change data (batched)</td>
+<td><code>List[]</code> of <code>DatawindowName</code> / <code>FieldName</code> / <code>Value</code></td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td>Select a row</td>
+<td><code>DatawindowName</code>, <code>Row</code></td>
+</tr>
+<tr>
+<td><code>6</code></td>
+<td>Save</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>9</code></td>
+<td>Run a tool (button)</td>
+<td><code>ToolName</code>, <code>Row</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>3</code> returns HTTP <strong>204</strong> and <code>4</code> returns <code>Status: 2</code> — both are real actions whose arguments we haven't mapped. <code>7</code>, <code>8</code>, and <code>10</code>+ return an <strong>empty HTTP 500</strong>, the same not-implemented signature seen elsewhere on 26.1. <code>DetailLevel</code> was <code>0</code> throughout except where noted; its effect is undocumented.</p>
+<blockquote>
+<p><strong>This is the sanctioned path for notepads.</strong> Verified end-to-end on 26.1 (August 2026): the payload above wrote an item note — including satisfying the mandatory <strong>drag-and-drop area selector</strong> via <code>Action 5</code> (select a row in <code>tp_17_dw_dragdrop</code>) then <code>Action 9</code> (<code>cb_select</code>) — returned <code>savesucceeded</code>, and the row was confirmed in the <code>note</code> table. See <a href="#limitations">Limitations</a> for how this relates to the <code>/transaction</code> endpoint's refusal of the same services.</p>
+</blockquote>
 <hr />
 <h2 id="special-scenarios">Special Scenarios</h2>
 <h3 id="field-and-dataelement-ordering">Field and DataElement Ordering</h3>
@@ -1933,18 +2031,20 @@ Wrong:    item A → item B → detail A → detail B
 
 <p>The second form doesn't error — it applies both details to whatever row was current, which is the last one. Verified on a 26.1 tenant with a two-line order and <code>TP_EXTDINFO.extd_info</code>: sending <code>item A → item B → extd "EXT-FOR-A" → extd "EXT-FOR-B"</code> returns <code>Succeeded: 1</code> with no messages and lands <strong>both</strong> descriptions on line 2, last one winning, leaving line 1's <code>extended_desc</code> null. The interleaved sequence puts each description on its own line. An element may appear <strong>as many times as you need</strong> in a single transaction; a ten-line order that also sets extended info per line is ten repetitions of the pair, in order. This is the same rule the lot-item and break-line cases below are specific instances of. <em>(General statement of the rule: community session, Felipe Maurer, 2026; verified August 2026.)</em></p>
 <p><strong>Credit Card Payment Orders:</strong>
-DataElements must appear in this order:
-1. Order header
-2. Items
-3. Remittances
+DataElements must appear in this order — the two payment elements go <strong>after every other element in the request</strong>, not in window order:
+1. Order header (<code>TABPAGE_1.order</code>)
+2. Items (<code>TP_ITEMS.items</code>)
+3. Remittances (<code>TP_REMITTANCES.remittances</code>) — <code>payment_type_id</code>, <code>payment_amount</code>, <code>payment_desc</code>
 4. CC Transaction Response (<code>TP_CCTRANSACTIONRESPONSE.cctransactionresponse</code>)</p>
+<p>The CC element carries the result of an authorization performed <strong>elsewhere</strong> — the API takes the outcome, never card entry (see <a href="#limitations">Limitations</a>). Its fields: <code>auth_amount</code>, <code>cc_authorized_number</code>, <code>cc_authorized_date</code>, <code>retrieval_ref_number</code>, <strong><code>payment_account_id</code></strong> (the stored-payment token), <code>cc_number</code> (masked, e.g. <code>************6781</code>), <code>cc_expiration_date</code>, <code>payment_number</code>. The token plausibly originates from the <code>api/cardstorage</code> REST family listed on the middleware's <a href="05-Entity-API.html#discovering-what-your-tenant-actually-exposes">API Reference page</a>; that link is unverified here.</p>
+<p><strong>Task — <code>target_date</code> before <code>start_date</code>:</strong>
+The Task window validates that start ≤ target, and <strong>both default to today</strong>. Setting <code>start_date</code> first validates it against a target that is still the default, and the transaction fails. Put <code>target_date</code> (and <code>target_minute</code>) <strong>earlier in the <code>Edits</code> array</strong> than <code>start_date</code>. Same class of bug as <code>pricing_method</code> before <code>price</code> — the API replays edits in order and each one validates as it lands.</p>
+<p>The Task service form is <code>Form.form</code>, keyed on <code>activity_trans_no</code>, carrying <code>subject</code>, <code>target_date</code>/<code>target_minute</code>, <code>start_date</code>/<code>start_minute</code>, <code>completed_flag</code>, <code>reminder_time_offset</code> + <code>reminder_time_offset_cd</code> (e.g. <code>"Minute(s)"</code>), <code>activity_id</code>, <code>assigned_to_id</code>, <code>contact_id</code>, <code>transaction_type_cd</code>. <em>(From the Epicor SDK Transaction API reference guide; the ordering rule is Epicor's own, not re-tested here.)</em></p>
 <p><strong>Multiple Lot Items:</strong>
 When creating items with lot tracking, interleave item and lot DataElements:
 1. Item 1 → Lot 1
 2. Item 2 → Lot 2
 3. <em>(not: Item 1 → Item 2 → Lot 1 → Lot 2)</em></p>
-<p><strong>Task Creation with Dates:</strong>
-The <code>target_date</code> edit must appear before <code>start_date</code> in the Edits array (due to validation ordering).</p>
 <p><strong>SalesPricePage Fields:</strong>
 1. <code>price_page_type_cd</code> — triggers type-specific validation
 2. <code>company_id</code> — required before product group
@@ -5809,7 +5909,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </tr>
 <tr>
 <td>Drag-and-drop windows</td>
-<td>No TAPI path. Verified on the standalone <code>*Notepad</code> services (26.1, Aug 2026): their mandatory <strong>area selector</strong> is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with <code>You must select at least one area where this note will display.</code>; send a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>) and it fails with <code>Column is disabled: area</code>. <code>IgnoreDisabled: true</code> changes neither. <strong>The Interactive API drives the same picker</strong> — the window exposes it as <code>cb_select</code>/<code>cb_selectall</code> tools; see <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a>. <em>(Community session, Felipe Maurer, 2026; verified August 2026)</em></td>
+<td>No TAPI path. Verified on the standalone <code>*Notepad</code> services (26.1, Aug 2026): their mandatory <strong>area selector</strong> is a drag-and-drop control, and no payload satisfies it — omit the areas element and the save fails with <code>You must select at least one area where this note will display.</code>; send a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>) and it fails with <code>Column is disabled: area</code>. <code>IgnoreDisabled: true</code> changes neither. <strong>Both the <a href="#commands-endpoint">Commands endpoint</a> and the Interactive API drive the same picker</strong> — it is an ordinary row-select plus <code>cb_select</code>/<code>cb_selectall</code> tool click, which is exactly what those two surfaces can express and <code>/transaction</code> cannot. <em>(Community session, Felipe Maurer, 2026; verified August 2026)</em></td>
 </tr>
 <tr>
 <td><strong>Mandatory notes</strong> blocking a save</td>
@@ -5818,10 +5918,37 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </tbody>
 </table></div>
 <blockquote>
-<p><strong>Order notes: the elements are published, and they are all disabled.</strong> The <code>Order</code> definition looks encouraging — it publishes <strong><code>LINE_NOTE.line_note</code></strong> and <strong><code>HDR_NOTE.hdr_note</code></strong> as ordinary <code>List</code> DataElements keyed on <code>note_id</code>, each with <code>note</code>, <code>topic</code> and <code>notepad_class_desc</code> fields, plus <code>TP_ITEMNOTES.tp_itemnotes</code> keyed on <code>note_uid</code>. None of it is writable. Tested against a 26.1 tenant on a live order (August 2026), <strong>every column of both note elements is refused</strong>, one at a time, whichever you send: <code>Column is disabled: topic</code>, <code>Column is disabled: notepad_class_desc</code>, <code>Column is disabled: note</code>. <code>TP_ITEMNOTES</code> refuses a step earlier still, with <code>Tab page is disabled and cannot be selected</code>.</p>
+<p><strong>Notes on the Order window: the elements are published, and they are all disabled.</strong> The <code>Order</code> definition looks encouraging — it publishes <strong><code>LINE_NOTE.line_note</code></strong> and <strong><code>HDR_NOTE.hdr_note</code></strong> as ordinary <code>List</code> DataElements keyed on <code>note_id</code>, each with <code>note</code>, <code>topic</code> and <code>notepad_class_desc</code> fields, plus <code>TP_ITEMNOTES.tp_itemnotes</code> keyed on <code>note_uid</code>. None of it is writable through <code>/transaction</code>. Tested against a 26.1 tenant on a live order (August 2026), <strong>every column of both note elements is refused</strong>, one at a time, whichever you send: <code>Column is disabled: topic</code>, <code>Column is disabled: notepad_class_desc</code>, <code>Column is disabled: note</code>. <code>TP_ITEMNOTES</code> refuses a step earlier still, with <code>Tab page is disabled and cannot be selected</code>.</p>
 <p><strong>And <code>IgnoreDisabled: true</code> makes it worse, not better.</strong> The same <code>LINE_NOTE</code> write that fails loudly without the flag returns <code>Succeeded: 1</code> with it — and the note is still empty on read-back. That is <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a> exactly: the flag swallows the refusal and reports success on a write that wrote nothing.</p>
-<p>The standalone notepad services close the loop the same way. <code>ItemNotepad</code>, <code>CustomerNotepad</code>, <code>SupplierNotepad</code> and <code>VendorNotepad</code> (see <a href="#common-services">Common Services</a>) each publish a perfectly ordinary header form — <code>note_id</code>, <code>topic</code>, <code>note</code>, <code>mandatory</code>, activation/expiration dates, a <code>notepad_class</code> with <code>ValidValues</code> — and every create dies on the same wall (tested on the first three, 26.1, August 2026): the mandatory <strong>"where does this note display" area selector is a drag-and-drop control</strong>. Omit it and the save fails with <code>You must select at least one area where this note will display.</code>; send the area as a row into the Selected Areas list (<code>TABPAGE_17.tp_17_dw_17</code>, declared <code>KeyFields: ["area"]</code>) and it fails with <code>Column is disabled: area</code>; the Available Areas side (<code>tp_17_dw_dragdrop</code>) accepts the row and then fails the save on the same missing selection. <code>IgnoreDisabled: true</code> changes none of it. This is the <a href="#limitations">drag-and-drop limitation</a> with a paper trail.</p>
-<p>So <strong>"the Transaction API can't do notes" is simply true — notes are Interactive API territory.</strong> Not for the reason usually given (the <em>Add Line Note</em> wizard — true, but incidental): every path is independently closed. <code>Order</code>'s embedded note elements are disabled columns; the standalone <code>*Notepad</code> services stall on a drag-and-drop area picker. Use the Interactive API's verified paths: <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">PurchaseOrder Notepad Writes</a>, <a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes</a>, and — for the standalone item/customer/supplier notepads whose drag-and-drop area picker blocks the Transaction API — <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows</a>, where the picker is an ordinary <code>cb_selectall</code> tool. <em>(Community session, Felipe Maurer, 2026, for the wizard claim; both closures and the working Order path verified live, August 2026.)</em></p>
+<p><strong>But "the Transaction API can't do notes" is still too broad — the answer is <a href="#commands-endpoint"><code>/api/v2/commands</code></a>.</strong> The standalone <code>ItemNotepad</code> / <code>CustomerNotepad</code> / <code>SupplierNotepad</code> / <code>VendorNotepad</code> services are on the commands-only list precisely because their windows need row selection and tool clicks that a TransactionSet cannot express — including the mandatory <strong>drag-and-drop area selector</strong> that defeats <code>/transaction</code>. Verified end-to-end on 26.1 (August 2026): a six-step <code>/commands</code> payload wrote an item note, satisfied the area selector with <code>Action 5</code> + <code>Action 9 cb_select</code>, returned <code>savesucceeded</code>, and the row was confirmed in the <code>note</code> table. See <a href="#request-shape">Commands Endpoint § Request Shape</a>.</p>
+<p>So there are <strong>three surfaces and three different answers</strong>, and it is worth being precise about which is which:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Order header/line notes</th>
+<th>Standalone item/customer/supplier notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /api/v2/transaction</code></td>
+<td><strong>No</strong> — every column disabled</td>
+<td><strong>No</strong> — drag-and-drop area selector</td>
+</tr>
+<tr>
+<td><code>POST /api/v2/commands</code></td>
+<td>n/a (<code>Order</code> is not a commands service)</td>
+<td><strong>Yes</strong> — verified</td>
+</tr>
+<tr>
+<td>Interactive API</td>
+<td><strong>Yes</strong> — <a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">verified</a></td>
+<td><strong>Yes</strong> — <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">verified</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>For notes attached to an <strong>order</strong> (header or line), the Interactive API is the only path. For the <strong>standalone notepads</strong>, <code>/commands</code> is the stateless one-POST option and Interactive is the alternative. <em>(Community session, Felipe Maurer, 2026, for the wizard claim; all three rows verified live, August 2026.)</em></p>
 </blockquote>
 <h3 id="item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</h3>
 <p><em>Verified on production P21, 2026-08-10.</em></p>
@@ -6157,11 +6284,13 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#async-operations">Async Operations</a><ul>
 <li><a href="#submit-async-request">Submit Async Request</a></li>
 <li><a href="#check-status">Check Status</a></li>
+<li><a href="#callbacks-instead-of-polling">Callbacks instead of polling</a></li>
 <li><a href="#with-callback">With Callback</a></li>
 </ul>
 </li>
 <li><a href="#commands-endpoint">Commands Endpoint</a><ul>
 <li><a href="#services-requiring-commands-endpoint">Services Requiring Commands Endpoint</a></li>
+<li><a href="#request-shape">Request Shape</a></li>
 </ul>
 </li>
 <li><a href="#special-scenarios">Special Scenarios</a><ul>

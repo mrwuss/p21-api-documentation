@@ -6,15 +6,54 @@
 
 ## Overview
 
-The OData API provides **read-only** access to P21 data using the OData v3 protocol. It's the fastest way to query P21 tables and views.
+The OData API provides **read-only** access to P21 data using the OData **v4** protocol. It's the fastest way to query P21 tables and views.
 
 ### Key Characteristics
 
 - **Read-only** - Cannot create, update, or delete data
-- **Standard protocol** - OData v3
+- **Standard protocol** - OData **v4** (see [Protocol version](#protocol-version) — earlier versions of this doc said v3)
 - **Direct access** - Query any P21 table or view
-- **Efficient** - Supports filtering, pagination, field selection
+- **Efficient** - Supports filtering, field selection (**no server-driven paging** — see [What the service supports](#what-the-service-supports))
 - **No session** - Simple request/response model
+
+> **There are two OData surfaces on a P21 server.** This document covers `/odataservice/odata/` — the current one, which reaches every exposed table and view. A second, older surface at `/data/erp/views/v1` exposes a curated set of ~118 views with single-row key addressing. See [The other OData surface](#the-other-odata-surface-dataerpviewsv1).
+
+### Protocol version
+
+Verified against a 26.1 tenant (August 2026) — the service answers as OData **4.0**:
+
+```http
+GET {base}/odataservice/odata/table/
+    OData-Version: 4.0
+    Content-Type: application/json; odata.metadata=minimal; odata.streaming=true
+
+{"@odata.context": "{base}/odataservice/odata/table/$metadata", "value": [...]}
+```
+
+```http
+GET {base}/odataservice/odata/table/$metadata
+    {"$Version": "4.0", "$EntityContainer": "ns.container", ...}
+```
+
+`@odata.context` and a JSON CSDL `$metadata` are v4 constructs; v3 used `odata.metadata` at the document root and an XML metadata document. Epicor's own SDK reference guide agrees: *"The Data Services API is based on the OData v4 standard."*
+
+This matters in practice because v4 removed `substringof` (use `contains`) and changed the metadata format — a v3 client library will not talk to this service correctly.
+
+### What the service supports
+
+Epicor publishes an explicit capability list for this implementation. The negatives are the useful part:
+
+| Feature | Supported |
+|---|---|
+| `$filter` — `eq` `ne` `gt` `ge` `lt` `le` | Yes |
+| `$filter` — `and` `or` `not` | Yes |
+| `$filter` — `startswith` `endswith` `contains` | Yes |
+| `$select` `$orderby` `$top` `$skip` `$count` | Yes |
+| **Server-driven paging** | **No** — page yourself with `$top` + `$skip` (see [Page Size Guidance](#page-size-guidance)) |
+| `substringof` | No — removed in OData 4.0; use `contains` |
+| `$expand` (navigation properties) | Not exposed — there are no relationships to expand; join client-side |
+
+*(Source: Prophet 21 SDK, Data Services reference guide, served from your own middleware at `{middleware}/docs/p21sdk/index.html#/data/reference-guide`.)*
 
 ---
 
@@ -1391,11 +1430,71 @@ public class P21OData
 
 ---
 
+## The other OData surface: `/data/erp/views/v1`
+
+A P21 server exposes **two** OData endpoints. Everything above describes `/odataservice/odata/`. The middleware's API Reference page also lists a **Data Services** family at `/data/erp/views/v1` — an older, narrower surface that is genuinely useful for one thing the current one does awkwardly: **fetching a single record by key**.
+
+Verified on a 26.1 tenant, August 2026.
+
+### Which one you want
+
+| | `/odataservice/odata/{table,view}` | `/data/erp/views/v1` |
+|---|---|---|
+| **Protocol** | OData **v4** (`@odata.context`) | OData **v3** (`odata.metadata`) |
+| **Coverage** | Every exposed table and view (thousands) | **118 curated views**, all `p21_view_*` |
+| **Single row by key** | Filter and take the first result | **Native** — `view('key')` |
+| **User Defined Fields** | Queryable | **Not queryable** (documented limitation) |
+| **Writes / joins** | Neither | Neither |
+
+Both are read-only, both need the same token, and neither can join — you assemble related data client-side.
+
+> The SDK page for this endpoint claims v4, which appears to be copied from its sibling page. The wire format says v3 (`odata.metadata` at the document root, `#p21_view_oe_hdr/@Element` for a single entity). Trust the wire.
+
+### Listing what's exposed
+
+```http
+GET {base}/data/erp/views/v1
+```
+
+Returns the 118 available views. The set is inventory- and order-centric — `p21_view_oe_hdr`, `p21_view_oe_line`, `p21_view_invoice_hdr`, `p21_view_po_hdr`, `p21_view_inv_mast`, `p21_view_inv_loc`, `p21_view_lot`, `p21_view_prod_order_hdr`, `p21_view_job_price_hdr`, the allocation-finder views, and so on. If your view is on the list, this endpoint is often the shorter path; if not, use `/odataservice/`.
+
+### Fetching one record by key
+
+This is the reason to know the endpoint exists:
+
+```http
+GET {base}/data/erp/views/v1/p21_view_oe_hdr('1013938')
+```
+
+```json
+{"odata.metadata": "{base}/data/erp/views/v1/$metadata#p21_view_oe_hdr/@Element",
+ "order_no": "1013938", "customer_id": "13162", "order_date": "..."}
+```
+
+For a view with a **compound key**, name each part — and mind the OData type suffixes, which is where this bites:
+
+```http
+GET {base}/data/erp/views/v1/p21_view_customer(company_id = '1', customer_id = 100915M)
+```
+
+The trailing **`M` marks an `Edm.Decimal`**. Omitting it, or quoting a numeric key, produces the same `incompatible types` family of errors documented under [Data Type Formatting](#data-type-formatting) — the rules there apply to both surfaces.
+
+### Documented limitations
+
+- **Read-only** — no create, update or delete.
+- **No joins** — retrieve each set and join locally.
+- **Curated views only** — the list above is all of it.
+- **User Defined Fields cannot be queried.** *(Stated by Epicor for this surface. Not re-tested against `/odataservice/`, which does expose UDF columns on the tables that carry them.)*
+
+*(Source: middleware API Reference (`{middleware}/docs/apiref.aspx`) and the SDK Data Services v1 reference guide; view count and key addressing verified live.)*
+
+---
+
 ## OData Schema Refresh
 
 The OData service automatically picks up changes to existing table/view schemas (e.g., column type changes). However, when **new tables or views** are added to the database, the OData service must be manually refreshed:
 
-1. Log in to the **SOA Middleware** home page (`https://{hostname}/api/admin`)
+1. Log in to the **SOA Middleware** home page (`https://{hostname}/api/admin`) — this requires the P21 user's **Access to SOA Admin Page** application-security setting to be **Yes**; see [Authentication § Application Security settings that affect API access](00-Authentication.md#application-security-settings-that-affect-api-access)
 2. Go to **Administration** from the menu
 3. Find the **"Refresh OData API service"** section
 4. Click **"Refresh OData API service"**
