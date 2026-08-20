@@ -2015,8 +2015,9 @@
 </tr>
 </tbody>
 </table></div>
-<p><code>3</code> returns HTTP <strong>204</strong> and <code>4</code> returns <code>Status: 2</code> — both are real actions whose arguments we haven't mapped. <code>7</code>, <code>8</code>, and <code>10</code>+ return an <strong>empty HTTP 500</strong>, the same not-implemented signature seen elsewhere on 26.1. <code>DetailLevel</code> was <code>0</code> throughout except where noted; its effect is undocumented.</p>
+<p><code>3</code> and <code>4</code> are real but unmapped: <code>4</code> with a <code>DatawindowName</code> returns <code>Status: 2</code> (Failure), while <code>3</code> with any argument shape — and <code>4</code> with none — returns <strong>HTTP 204</strong>. <code>7</code>, <code>8</code>, and <code>10</code>+ return an <strong>empty HTTP 500</strong>, the not-implemented signature seen elsewhere on 26.1.</p>
 <blockquote>
+<p><strong>A <code>204</code> empties the entire response, not just that step.</strong> One unrecognised action mid-batch and you get a zero-length body — no <code>Results</code> array, no per-step statuses, nothing to inspect about the steps that <em>did</em> run. Parse defensively: check for a body before calling <code>.json()</code>, and treat a 204 as "the batch told you nothing", not as success. <code>DetailLevel</code> was <code>0</code>/<code>1</code>/<code>2</code> across these probes with no observable difference; its effect is undocumented.</p>
 <p><strong>This is the sanctioned path for notepads.</strong> Verified end-to-end on 26.1 (August 2026): the payload above wrote an item note — including satisfying the mandatory <strong>drag-and-drop area selector</strong> via <code>Action 5</code> (select a row in <code>tp_17_dw_dragdrop</code>) then <code>Action 9</code> (<code>cb_select</code>) — returned <code>savesucceeded</code>, and the row was confirmed in the <code>note</code> table. See <a href="#limitations">Limitations</a> for how this relates to the <code>/transaction</code> endpoint's refusal of the same services.</p>
 </blockquote>
 <hr />

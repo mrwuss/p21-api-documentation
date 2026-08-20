@@ -842,7 +842,9 @@ Verified against a 26.1 tenant (August 2026) by running each value and reading t
 | `6` | Save | — |
 | `9` | Run a tool (button) | `ToolName`, `Row` |
 
-`3` returns HTTP **204** and `4` returns `Status: 2` — both are real actions whose arguments we haven't mapped. `7`, `8`, and `10`+ return an **empty HTTP 500**, the same not-implemented signature seen elsewhere on 26.1. `DetailLevel` was `0` throughout except where noted; its effect is undocumented.
+`3` and `4` are real but unmapped: `4` with a `DatawindowName` returns `Status: 2` (Failure), while `3` with any argument shape — and `4` with none — returns **HTTP 204**. `7`, `8`, and `10`+ return an **empty HTTP 500**, the not-implemented signature seen elsewhere on 26.1.
+
+> **A `204` empties the entire response, not just that step.** One unrecognised action mid-batch and you get a zero-length body — no `Results` array, no per-step statuses, nothing to inspect about the steps that *did* run. Parse defensively: check for a body before calling `.json()`, and treat a 204 as "the batch told you nothing", not as success. `DetailLevel` was `0`/`1`/`2` across these probes with no observable difference; its effect is undocumented.
 
 > **This is the sanctioned path for notepads.** Verified end-to-end on 26.1 (August 2026): the payload above wrote an item note — including satisfying the mandatory **drag-and-drop area selector** via `Action 5` (select a row in `tp_17_dw_dragdrop`) then `Action 9` (`cb_select`) — returned `savesucceeded`, and the row was confirmed in the `note` table. See [Limitations](#limitations) for how this relates to the `/transaction` endpoint's refusal of the same services.
 
