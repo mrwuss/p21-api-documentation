@@ -17,6 +17,18 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.1
+
+Help-site re-scrape for 26.2 and one correction it produced.
+
+- **fix:** **`Allow access to the API system pool` — Epicor's own docs contradict each other**, and v1.8.0 took one side. The Application Security reference calls it *"a technical setting... only changed under instruction from Epicor support"*; the **Prism** documentation lists *"Application Security – Enable API System Pool"* as a **required prerequisite** for approving sales orders in Prism. [00 § Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access) now records both rather than repeating the "don't touch" line as settled — *@mrwuss*
+- **chore:** **`scraped/site-map.md` rebuilt for 2026.2** — new host (`p21help262`), all-new category IDs, **45 categories / 305 sections / 1,251 articles**. Records the two genuinely new categories (**DynaChange Designer**, **Prism**), the `OPTIONAL - WMS` rename, and that auth is required for everything (403 on article HTML, 401 on the API) — *@mrwuss*
+- **chore:** **Scraper hygiene** — `scrape_full_site.py` repointed at 26.2. The other seven scripts are one-off 25.2 jobs with hardcoded `40628…` article IDs and were deliberately **left on the 25.2 host**: a new host with dead IDs only looks usable. The distinction is written down in the site map — *@mrwuss*
+- **docs:** **Two categories triaged so the next pass doesn't repeat the work.** **Prism** is *not* an API surface (1 of 13 articles mentions API, and only the prerequisite above). **Middleware** is 10 articles of install/config with no API-usage content — the API documentation lives on the middleware itself at `/docs/`, not in the help site. **DynaChange Designer** (22 articles) is flagged as the highest-value remaining target — *@mrwuss*
+- **docs:** **`updated_at` is useless as a change signal on this site** — all 1,251 articles carry the same date because 26.2 was republished wholesale. Finding real changes since 25.2 means diffing article text against the local corpus; noted in the site map so nobody trusts the timestamps — *@mrwuss*
+
+---
+
 ## 2026-08-20 — v1.8.0
 
 Findings from two authoritative sources we had never systematically mined: the **Epicor SDK and API Reference hosted on our own middleware**, and the **P21 26.2 help site**. Everything marked verified was tested against a 26.1 tenant; vendor-documented items that could not be exercised say so.
