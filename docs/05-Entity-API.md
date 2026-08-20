@@ -2281,9 +2281,29 @@ Both create orders. Pick by what you need:
 
 For a walk-through of the Transaction path, see the [create-sales-order recipe](recipes/create-sales-order.md).
 
-### Families that 404 on the tested tenant
+### Discovering what your tenant actually exposes
 
-`sales/customers`, `sales/quotes`, `sales/invoices`, `sales/shipments`, `sales/payments`, `purchasing/*`, `ar/*`, `inventory/items`, `inventory/lots` — all returned 404 on ping. Availability may vary by version; the SOA middleware admin site lists the endpoint families your server actually exposes.
+**Don't guess family names — read them off the middleware.** Your own server publishes the authoritative list at:
+
+```
+https://{middleware}/docs/apiref.aspx
+```
+
+It enumerates every REST and SOAP family the server hosts, per tenant and per version, and links each one to a **`/help` page** (`{base}/{family}/help`) describing its operations. Reaching that page requires the **Access to SOA Admin Page** application-security setting; see [Authentication](00-Authentication.md#application-security-settings-that-affect-api-access).
+
+This matters because family names are not guessable. An earlier version of this document reported that `purchasing/*` 404s — it doesn't; the family is named **`purchasing/purchaseorders`** and it answers fine. The wildcard was a guess written up as a finding.
+
+#### Verified family sweep
+
+`GET {base}/{family}/ping` against a 26.1 tenant, August 2026. This is one tenant at one version — treat it as a worked example of the method, not a universal list:
+
+| Answering (200) | Not on this tenant |
+|---|---|
+| `accounting/customerformtemplates` · `accounting/exchangerates` · `accounting/gl` · `entity/addresses` · `entity/contacts` · `entity/customers` · `entity/vendors` · `epayments` · `extensibility/userdefinedfields` · `filehandler` · `inventory/externalcounts` · `inventory/inventoryadjustments` · `inventory/parts` · `inventory/partscan` · `inventory/serialnumberextdinfo` · `inventory/v2/parts` · `purchasing/purchaseorders` · `sales/consignmentusageorders` · `sales/opportunities` · `sales/orders` · `sales/tasks` · `service/serviceorders` | `.configuration` · `chat` · `ecommerce` · `eh` · `environment/systems` · `help` · `integrationProcedures` · `inventory/inventorymovement` · `inventory/rental` · `localization` · `pathguide` · `printing` · **`sales/invoices`** (404) · `cardstorage` (**405** — route exists, `GET /ping` not allowed) · `document`, `logistics/roadnet` (500) |
+
+Notable among the ones that answer and aren't documented here yet: **`accounting/gl`**, **`extensibility/userdefinedfields`** (UDF access over REST), **`inventory/inventoryadjustments`**, **`sales/tasks`**, and **`purchasing/purchaseorders`**. A `405` rather than a `404` — as on `cardstorage` — means the family is real and only the probe verb is wrong; worth a `/help` read rather than writing it off.
+
+> **`inventory/v2/parts` is not a different API.** It pings 200 and a single-item GET returns a **byte-identical** response to `inventory/parts` (1,396 bytes for the same item on the tested tenant). Treat it as an alias unless you find a divergence on a write path; [11 Inventory REST API](11-Inventory-REST-API.md) documents the v1 path and applies to both.
 
 *Credit: Felipe Maurer ([P21WWUG profile](https://forums.p21ww.org/UserInfo10045.aspx)) — surfaced `/api/sales/orders` and the middleware endpoint listing in [this forum topic](https://forums.p21ww.org/Topic245514-3.aspx).*
 

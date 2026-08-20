@@ -674,6 +674,10 @@
 <li><a href="#troubleshooting">Troubleshooting</a></li>
 </ul>
 </li>
+<li><a href="#application-security-settings-that-affect-api-access">Application Security settings that affect API access</a><ul>
+<li><a href="#attributing-writes-to-a-real-user">Attributing writes to a real user</a></li>
+</ul>
+</li>
 <li><a href="#using-the-token">Using the Token</a></li>
 <li><a href="#token-lifetime-and-reuse">Token Lifetime and Reuse</a><ul>
 <li><a href="#token-ttl">Token TTL</a></li>
@@ -1280,6 +1284,48 @@
 <li>Verify the target table/view is set to <strong>Allow</strong> in Role Maintenance → Dataservice Permission</li>
 <li>Ensure you're checking the correct <strong>role</strong> (the one actually assigned to the user)</li>
 </ol>
+<hr />
+<h2 id="application-security-settings-that-affect-api-access">Application Security settings that affect API access</h2>
+<p>The two settings above are the ones that gate OData. The <strong>Application Security</strong> tab in User Maintenance carries several more that decide whether API work is possible at all — each is a per-user Yes/No, and a No produces a failure that looks like something else entirely.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why an API integrator cares</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Access to SOA Admin Page</strong></td>
+<td>Controls who can log in to the <strong>Middleware Administration website</strong> — where you register consumer keys, refresh the OData schema, and reach the Service Explorer and API Reference. Epicor's wording: <em>"it only accepts logins from users with this setting set to Yes. It rejects all others, even if they are otherwise valid."</em> A correct P21 password bouncing off the middleware logon page is this setting, not a bad credential.</td>
+</tr>
+<tr>
+<td><strong>Allow OData API Service</strong></td>
+<td>Step 1 of <a href="#p21-permissions-user-credential-auth">P21 Permissions</a> above.</td>
+</tr>
+<tr>
+<td><strong>Allow overriding audit trail user</strong></td>
+<td>Lets a calling application log <strong>the actual end user</strong> rather than the API service account on transactions sent through the API. See <a href="#attributing-writes-to-a-real-user">Attributing writes to a real user</a> below.</td>
+</tr>
+<tr>
+<td><strong>Allow access to the API system pool</strong></td>
+<td>Epicor marks this <em>"do not change this technical setting... only under instruction from Epicor support."</em> Relevant background when diagnosing <a href="07-Session-Pool-Troubleshooting.html">session pool problems</a> — there is a per-user switch involved, and it is not yours to turn.</td>
+</tr>
+<tr>
+<td><strong>Allow creation of business rules</strong></td>
+<td>Gates authoring of DynaChange Rules — the mechanism behind auto-answered prompts, <code>Column is disabled</code> refusals and report date caps that surface as API failures. Useful to know who can change the rules that break your integration.</td>
+</tr>
+</tbody>
+</table></div>
+<p><em>(Source: P21 26.2 help, </em>System Setup &gt; Users &gt; Setting Application Security Settings for a User<em>.)</em></p>
+<h3 id="attributing-writes-to-a-real-user">Attributing writes to a real user</h3>
+<p>API writes normally land against the authenticating account — <code>last_maintained_by</code> shows the service user, and the audit trail records it, which is why a shared integration account makes "who changed this?" unanswerable.</p>
+<p><strong>Allow overriding audit trail user</strong> exists to solve exactly that. Epicor's description:</p>
+<blockquote>
+<p><em>"allows Epicor companions to log the actual user signed into the companion application, rather than the API server user when sending transactions to Prophet 21 via the API."</em></p>
+</blockquote>
+<p>The supported applications named are <strong>Project Hub</strong> and <strong>Scheduling and Capacity Planning</strong>. So the capability is real and shipped, but scoped to Epicor's own companion apps — <strong>whether a third-party integration can supply the acting user the same way is untested here</strong>, and the mechanism (a header? a session property?) is not documented publicly.</p>
+<p>If per-operator attribution matters to your integration, this is the setting to ask Epicor about rather than assuming the service-account limitation is absolute. Note the related trade-off already documented under <a href="#v1-endpoint-deprecated-security-risk">V1 vs V2 token endpoints</a>: consumer-key auth with a <code>username</code> gives you P21 user context on the write, which is the closest generally-available equivalent.</p>
 <hr />
 <h2 id="using-the-token">Using the Token</h2>
 <blockquote>
@@ -2078,6 +2124,10 @@
 <li><a href="#step-2-role-level-dataservice-permissions">Step 2: Role-Level Dataservice Permissions</a></li>
 <li><a href="#permission-requirements-by-auth-method">Permission Requirements by Auth Method</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li><a href="#application-security-settings-that-affect-api-access">Application Security settings that affect API access</a><ul>
+<li><a href="#attributing-writes-to-a-real-user">Attributing writes to a real user</a></li>
 </ul>
 </li>
 <li><a href="#using-the-token">Using the Token</a></li>

@@ -815,8 +815,40 @@
 <td><a href="03-Transaction-API.html#choosing-a-key">03 § Choosing a key</a> — every <code>Keys</code> field must be a real column <strong>and</strong> be sent in <code>Edits</code></td>
 </tr>
 <tr>
-<td>Write a <strong>note</strong> (order line/header, item, customer, supplier)</td>
-<td><a href="03-Transaction-API.html#limitations">03 § Limitations</a> — no TAPI path; use the Interactive API: <a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> · <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a></td>
+<td>Write a <strong>note</strong> on an order (header/line)</td>
+<td><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> · <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a> — Interactive only; <code>/transaction</code> refuses (<a href="03-Transaction-API.html#limitations">why</a>)</td>
+</tr>
+<tr>
+<td>Write an <strong>item / customer / supplier note</strong></td>
+<td><a href="03-Transaction-API.html#request-shape">03 § Commands Endpoint</a> — one stateless POST · or <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a></td>
+</tr>
+<tr>
+<td>Call a <strong>commands-only</strong> service (notepads, reverse payment, slab adjustment)</td>
+<td><a href="03-Transaction-API.html#commands-endpoint">03 § Commands Endpoint</a> — request shape and <code>Action</code> codes</td>
+</tr>
+<tr>
+<td>Get an async <strong>callback</strong> instead of polling</td>
+<td><a href="03-Transaction-API.html#callbacks-instead-of-polling">03 § Callbacks instead of polling</a></td>
+</tr>
+<tr>
+<td>Fetch <strong>one record by key</strong> over OData</td>
+<td><a href="02-OData-API.html#the-other-odata-surface-dataerpviewsv1">02 § The other OData surface</a> — <code>/data/erp/views/v1/{view}('key')</code></td>
+</tr>
+<tr>
+<td>Which <strong>OData version / what's supported</strong></td>
+<td><a href="02-OData-API.html#protocol-version">02 § Protocol version</a> · <a href="02-OData-API.html#what-the-service-supports">02 § What the service supports</a> — v4; <strong>no server-driven paging</strong></td>
+</tr>
+<tr>
+<td><strong>Does my server have endpoint X?</strong></td>
+<td><a href="05-Entity-API.html#discovering-what-your-tenant-actually-exposes">05 § Discovering what your tenant actually exposes</a> — <code>apiref.aspx</code> + per-family <code>/help</code></td>
+</tr>
+<tr>
+<td>Valid P21 login <strong>rejected by the middleware admin site</strong></td>
+<td><a href="00-Authentication.html#application-security-settings-that-affect-api-access">00 § Application Security settings</a> — needs <em>Access to SOA Admin Page</em></td>
+</tr>
+<tr>
+<td>Attribute API writes to a <strong>real user</strong>, not the service account</td>
+<td><a href="00-Authentication.html#attributing-writes-to-a-real-user">00 § Attributing writes to a real user</a></td>
 </tr>
 <tr>
 <td>Update a specific order line deterministically (<strong>line handles</strong>)</td>
