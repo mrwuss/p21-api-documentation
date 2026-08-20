@@ -53,6 +53,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Read **several** records in one `/transaction/get` call (no field/element subsetting exists) | [03 § Reading several records in one call](03-Transaction-API.md#reading-several-records-in-one-call) |
 | **`Failed: 1` but part of my batch landed** | [03 § What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees) — a Transaction is atomic; Transactions in one POST are not |
 | Create a **purchase order** | [03 § PurchaseOrder Service](03-Transaction-API.md#purchaseorder-service-creating-a-po) |
+| Create a **direct-ship PO** from a sales order (drive a wizard) | [04 § Driving an In-Window Wizard](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) — needs a Buyer ID; commits at `cb_next` |
 | **Receive** a PO / receipt won't post (bin errors) | [03 § PurchaseOrderReceipt Service](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) |
 | **Vouch** a receipt against a vendor invoice | [03 § ConvertPOToVoucher Service](03-Transaction-API.md#convertpotovoucher-service-vouching-a-receipt) |
 | Is the definition's `Required` flag trustworthy? | [03 § What `Required` actually means](03-Transaction-API.md#what-required-actually-means) — **no**, wrong in both directions |

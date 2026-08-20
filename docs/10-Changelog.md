@@ -17,6 +17,18 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-20 — v1.8.6
+
+Closes the cross-check. The wizard limitation now has a worked escape hatch.
+
+- **feat:** **[Driving an In-Window Wizard](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation)** — we have always said the Transaction API cannot drive wizards and pointed at the Interactive API without ever showing it. The Order window's **PO/RFQ generation wizard** (direct-ship PO linked to a sales order) is now documented end to end: the two-phase sequence, identifying the wizard by its buttons before answering, and the result (`po_hdr` `po_type='D'` + an `oe_line_po` link row). The `docs/03` limitation row now links to it instead of stopping at "use the Interactive API" — *@mrwuss, flow verified by [Alex Westemeier](https://github.com/AWestemeier)*
+- **docs:** **Two prerequisites verified here, and both save wasted time.** `c_create_po = 'ON'` returns `Status: 2` / *"To create a PO, you must have a valid Buyer ID."* when the API user has none — a **P21 configuration change**, not an API problem. And **`disposition` is a disabled column**: `Column is disabled: disposition` through `/transaction` *and* through an interactive change on an existing line, so a direct-ship line cannot be started statelessly at all; it must be set as the line is entered in the window — *@mrwuss*
+- **docs:** **⚠️ The wizard commits at `cb_next`, before `cb_finish`** — a session that dies mid-wizard leaves a real, linked PO behind. An abandoned wizard is not a no-op. Cross-linked to [What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees) as the same class of hazard. Also records that **`supplier_id` on the wizard page is disabled through the API** — it defaults to the item's primary supplier and cannot be overridden, so if vendor choice matters this flow cannot make it — *@mrwuss*
+
+  The wizard itself was **not re-driven here**: our API user has no Buyer ID and granting one is an operator decision. Everything reachable without that change was verified; the rest is credited and marked as such.
+
+---
+
 ## 2026-08-20 — v1.8.5
 
 The AP buy-side cycle, verified end-to-end on our own tenant — **PO 998302 → receipt 5706613 → voucher 1775027**, each step SQL-confirmed.

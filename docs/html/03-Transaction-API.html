@@ -6077,7 +6077,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </tr>
 <tr>
 <td>In-window <strong>wizards</strong> launched from another window — the PO wizard and assembly decoder from Order Entry, credit-card entry (an embedded merchant-gateway form, not a P21 window)</td>
-<td>(Community-reported) Not drivable from TAPI. Use the Interactive API. For credit cards, the documented TAPI path takes a <strong>token you generated elsewhere</strong> — the entry form itself is out of reach. <em>(Community session, Felipe Maurer, 2026)</em></td>
+<td>(Community-reported) Not drivable from TAPI. Use the Interactive API — <strong>worked example:</strong> <a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">04 § Driving an In-Window Wizard</a>, which drives the PO wizard end to end (and notes that it <strong>commits at <code>cb_next</code></strong>, before you finish). For credit cards, the documented TAPI path takes a <strong>token you generated elsewhere</strong> — the entry form itself is out of reach. <em>(Community session, Felipe Maurer, 2026)</em></td>
 </tr>
 <tr>
 <td>Drag-and-drop windows</td>
