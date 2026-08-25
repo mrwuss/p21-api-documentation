@@ -109,12 +109,18 @@ namespace P21Examples.Common
 
         /// <summary>
         /// Get the UI Server URL for Interactive/Transaction API calls.
+        ///
+        /// The trailing slash after v1 is required, not cosmetic. Without it
+        /// the server answers 307 to the trailing-slash form, and HttpClient
+        /// strips the Authorization header when it follows a redirect — so the
+        /// second request arrives unauthenticated and the call fails with 401
+        /// "Authorization header was not present or 'Bearer' was missing."
         /// </summary>
         public static async Task<string> GetUiServerUrlAsync(
             HttpClient client, string baseUrl)
         {
             var response = await client.GetAsync(
-                $"{baseUrl}/api/ui/router/v1?urlType=external");
+                $"{baseUrl}/api/ui/router/v1/?urlType=external");
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadAsStringAsync();
 

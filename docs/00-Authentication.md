@@ -915,7 +915,7 @@ class TokenManager
 The Interactive and Transaction APIs require the UI server URL, which is obtained after authentication:
 
 ```http
-GET /api/ui/router/v1?urlType=external HTTP/1.1
+GET /api/ui/router/v1/?urlType=external HTTP/1.1
 Host: play.p21server.com
 Authorization: Bearer {token}
 Accept: application/json
@@ -928,7 +928,24 @@ Accept: application/json
 }
 ```
 
-> **307 redirect gotcha:** On some installations, `GET /api/ui/router/v1?urlType=external` (no trailing slash after `v1`) responds with a **307 redirect** to the trailing-slash form. HTTP clients that do not follow redirects by default — including `httpx` — receive the 307 and an HTML body instead of the JSON response. Either request `/api/ui/router/v1/?urlType=external` (trailing slash) directly, or enable redirect following (`httpx.get(..., follow_redirects=True)`). C# `HttpClient` follows GET redirects by default and is unaffected. Verified live on a 25.2 system (July 2026).
+> ⚠️ **Send the trailing slash. It is not cosmetic, and following the redirect is not an equivalent fix.**
+>
+> `GET /api/ui/router/v1?urlType=external` (no trailing slash after `v1`) answers **307** to the trailing-slash form. What happens next depends on your client, and neither outcome is what you want:
+>
+> | Client | Behavior on the slashless URL |
+> |---|---|
+> | `httpx` without `follow_redirects` | Returns the **307** and an HTML body — no JSON to parse |
+> | `httpx` with `follow_redirects=True` | Works — httpx keeps `Authorization` on a same-origin redirect |
+> | .NET `HttpClient` | Follows the redirect but **strips the `Authorization` header**, so the second request arrives unauthenticated → **401** |
+>
+> The .NET case is the one that misleads, because the redirect *is* followed and the failure surfaces one step later as an authentication error rather than a routing one:
+>
+> ```text
+> 401 {"Description":"Authorization header was not present or 'Bearer' was missing.",
+>      "Error":"invalid_request","Uri":""}
+> ```
+>
+> The token is fine — it never left the client. .NET drops `Authorization` on **any** auto-redirect, same-origin included, and whether the header was set on `DefaultRequestHeaders` or on the individual request; `AllowAutoRedirect` only changes whether you see the 307 or the 401. Requesting `/api/ui/router/v1/?urlType=external` avoids the redirect entirely and is the portable answer for every client. Verified live on 25.2 (July 2026) and re-verified on 26.1 with the .NET behavior isolated (August 2026).
 
 > **XML responses:** As with the token endpoint, some middleware returns **XML** for the router response even with `Accept: application/json`. Parse JSON first and fall back to XML (see [XML Token Responses](#xml-token-responses)).
 
@@ -1029,8 +1046,10 @@ static HttpClient CreateAuthorizedClient(string token)
 static async Task<string> GetUiServerUrlAsync(string baseUrl, string token)
 {
     using var client = CreateAuthorizedClient(token);
+    // Trailing slash required: without it the server 307s, and HttpClient
+    // drops the Authorization header when it follows a redirect -> 401.
     var response = await client.GetAsync(
-        $"{baseUrl}/api/ui/router/v1?urlType=external");
+        $"{baseUrl}/api/ui/router/v1/?urlType=external");
     response.EnsureSuccessStatusCode();
 
     // Some middleware returns XML here even when asked for JSON, so try JSON

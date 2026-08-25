@@ -106,7 +106,7 @@ class InteractiveClient:
 
     def _get_ui_server(self):
         response = self.client.get(
-            f"{self.base_url}/api/ui/router/v1?urlType=external",
+            f"{self.base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
             headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"}
         )
         response.raise_for_status()

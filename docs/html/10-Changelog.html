@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-25-v1810">2026-08-25 — v1.8.10</a></li>
 <li><a href="#2026-08-25-v189">2026-08-25 — v1.8.9</a></li>
 <li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>
 <li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>
@@ -712,6 +713,24 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-25-v1810">2026-08-25 — v1.8.10</h2>
+<p>Every C# example in the repo failed to authenticate, and the doc note that would have explained it said the opposite.</p>
+<ul>
+<li>
+<p><strong>fix:</strong> <strong>The C# examples could not authenticate — 401 on every program.</strong> <code>P21Auth.GetUiServerUrlAsync</code> requested the router as <code>/api/ui/router/v1?urlType=external</code>, <strong>without the trailing slash</strong>. The server answers that with a <strong>307</strong> to the trailing-slash form, and .NET's <code>HttpClient</code> <strong>strips the <code>Authorization</code> header when it follows a redirect</strong> — so the second request arrived unauthenticated and came back <code>401 {"Description":"Authorization header was not present or 'Bearer' was missing."}</code>. The token was never the problem; it was obtained successfully one call earlier. Fixed by requesting the trailing-slash URL, which avoids the redirect outright — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong><code>P21Config.LoadDotEnv()</code> never found the repo <code>.env</code>.</strong> It walked up from <code>AppContext.BaseDirectory</code> for a fixed <strong>6</strong> iterations, but an example runs from <code>&lt;project&gt;/bin/&lt;config&gt;/&lt;tfm&gt;/</code> — already three levels below its own project folder — putting the repository root <strong>7</strong> levels up. Every C# example therefore died with <em>"P21_BASE_URL environment variable is required"</em> unless you exported the variables by hand. It now walks to the filesystem root — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong><a href="00-Authentication.html#ui-server-url">00 § UI Server URL</a> said C# was unaffected by this.</strong> The old note read <em>"C# <code>HttpClient</code> follows GET redirects by default and is unaffected"</em> — half right and wholly misleading: it follows the redirect, and that is exactly when it drops the header. Replaced with a per-client table of what actually happens on the slashless URL, the 401 body it produces, and why <em>following the redirect</em> is not an equivalent fix to <em>not causing one</em>. .NET drops <code>Authorization</code> on <strong>any</strong> auto-redirect — same-origin included, and whether the header sits on <code>DefaultRequestHeaders</code> or on the individual request — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>chore:</strong> <strong>Trailing slash everywhere, so nothing re-learns this.</strong> The five Python call sites, the remaining <code>docs/00</code>/<code>03</code>/<code>04</code> snippets, and the Postman collection's <em>Get UI Server URL</em> request now all send <code>/api/ui/router/v1/?urlType=external</code>. The Python paths worked before — httpx keeps the header on a same-origin redirect — but they were paying for a pointless round trip and modelling the form that breaks in another language — <em>@mrwuss</em></p>
+</li>
+</ul>
+<p><em>Verified on 26.1: token → router → OData → Transaction all green through <code>P21Client.CreateAsync()</code>, and <code>dotnet run --project Recipes</code> now reaches a recipe's payload with no environment variables exported.</em></p>
 <hr />
 <h2 id="2026-08-25-v189">2026-08-25 — v1.8.9</h2>
 <p>A grid everyone had written off as undeletable, and the field that deletes it.</p>
@@ -1275,6 +1294,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-25-v1810">2026-08-25 — v1.8.10</a></li>
 <li><a href="#2026-08-25-v189">2026-08-25 — v1.8.9</a></li>
 <li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>
 <li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>

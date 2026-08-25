@@ -71,7 +71,7 @@ class SessionPoolTester:
 
         # Get UI server URL
         resp = await client.get(
-            f"{self.base_url}/api/ui/router/v1?urlType=external",
+            f"{self.base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
             headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"},
             follow_redirects=True
         )

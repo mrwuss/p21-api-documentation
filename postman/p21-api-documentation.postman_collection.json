@@ -85,7 +85,7 @@
       "method": "GET",
       "header": [],
       "url": {
-       "raw": "{{P21_BASE_URL}}/api/ui/router/v1?urlType=external",
+       "raw": "{{P21_BASE_URL}}/api/ui/router/v1/?urlType=external",
        "host": [
         "{{P21_BASE_URL}}"
        ],
@@ -93,7 +93,8 @@
         "api",
         "ui",
         "router",
-        "v1"
+        "v1",
+        ""
        ],
        "query": [
         {

@@ -1731,7 +1731,7 @@
 <hr />
 <h2 id="ui-server-url">UI Server URL</h2>
 <p>The Interactive and Transaction APIs require the UI server URL, which is obtained after authentication:</p>
-<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/ui/router/v1?urlType=external</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/ui/router/v1/?urlType=external</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
 <span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer {token}</span>
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
@@ -1744,7 +1744,35 @@
 </code></pre></div>
 
 <blockquote>
-<p><strong>307 redirect gotcha:</strong> On some installations, <code>GET /api/ui/router/v1?urlType=external</code> (no trailing slash after <code>v1</code>) responds with a <strong>307 redirect</strong> to the trailing-slash form. HTTP clients that do not follow redirects by default — including <code>httpx</code> — receive the 307 and an HTML body instead of the JSON response. Either request <code>/api/ui/router/v1/?urlType=external</code> (trailing slash) directly, or enable redirect following (<code>httpx.get(..., follow_redirects=True)</code>). C# <code>HttpClient</code> follows GET redirects by default and is unaffected. Verified live on a 25.2 system (July 2026).</p>
+<p>⚠️ <strong>Send the trailing slash. It is not cosmetic, and following the redirect is not an equivalent fix.</strong></p>
+<p><code>GET /api/ui/router/v1?urlType=external</code> (no trailing slash after <code>v1</code>) answers <strong>307</strong> to the trailing-slash form. What happens next depends on your client, and neither outcome is what you want:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Behavior on the slashless URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>httpx</code> without <code>follow_redirects</code></td>
+<td>Returns the <strong>307</strong> and an HTML body — no JSON to parse</td>
+</tr>
+<tr>
+<td><code>httpx</code> with <code>follow_redirects=True</code></td>
+<td>Works — httpx keeps <code>Authorization</code> on a same-origin redirect</td>
+</tr>
+<tr>
+<td>.NET <code>HttpClient</code></td>
+<td>Follows the redirect but <strong>strips the <code>Authorization</code> header</strong>, so the second request arrives unauthenticated → <strong>401</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The .NET case is the one that misleads, because the redirect <em>is</em> followed and the failure surfaces one step later as an authentication error rather than a routing one:</p>
+<p><code>text
+401 {"Description":"Authorization header was not present or 'Bearer' was missing.",
+     "Error":"invalid_request","Uri":""}</code></p>
+<p>The token is fine — it never left the client. .NET drops <code>Authorization</code> on <strong>any</strong> auto-redirect, same-origin included, and whether the header was set on <code>DefaultRequestHeaders</code> or on the individual request; <code>AllowAutoRedirect</code> only changes whether you see the 307 or the 401. Requesting <code>/api/ui/router/v1/?urlType=external</code> avoids the redirect entirely and is the portable answer for every client. Verified live on 25.2 (July 2026) and re-verified on 26.1 with the .NET behavior isolated (August 2026).</p>
 <p><strong>XML responses:</strong> As with the token endpoint, some middleware returns <strong>XML</strong> for the router response even with <code>Accept: application/json</code>. Parse JSON first and fall back to XML (see <a href="#xml-token-responses">XML Token Responses</a>).</p>
 </blockquote>
 <div class="code-tabs">
@@ -1843,8 +1871,10 @@
 <span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetUiServerUrlAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">baseUrl</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">token</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CreateAuthorizedClient</span><span class="p">(</span><span class="n">token</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// Trailing slash required: without it the server 307s, and HttpClient</span>
+<span class="w">    </span><span class="c1">// drops the Authorization header when it follows a redirect -&gt; 401.</span>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
-<span class="w">        </span><span class="s">$&quot;{baseUrl}/api/ui/router/v1?urlType=external&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="s">$&quot;{baseUrl}/api/ui/router/v1/?urlType=external&quot;</span><span class="p">);</span>
 <span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 
 <span class="w">    </span><span class="c1">// Some middleware returns XML here even when asked for JSON, so try JSON</span>
