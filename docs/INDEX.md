@@ -179,6 +179,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | `Invalid {field} value: 700` on an enum | [06 § Common Transaction Errors](06-Error-Handling.md#common-transaction-errors) — send the label, not the `code_p21` integer |
 | OData 404 saying `Edm.Decimal` / `Edm.String` | [06 § Incompatible Operand Types](06-Error-Handling.md#404-incompatible-operand-types-a-quoted-numeric-key) — numeric key column, drop the quotes |
 | Auth failures | [06 § Authentication Errors](06-Error-Handling.md#authentication-errors) |
+| **401 right after a token call that worked** (`Authorization header was not present`) | [06 § 401 Authorization header was not present](06-Error-Handling.md#401-authorization-header-was-not-present-or-bearer-was-missing) — a 307 stripped the header; send the trailing-slash router URL |
 | Intermittent interactive failures under load | [07 Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) |
 | What changed in these docs recently | [10 Changelog](10-Changelog.md) |
 

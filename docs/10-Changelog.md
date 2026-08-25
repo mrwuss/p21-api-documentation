@@ -17,6 +17,20 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-25 — v1.8.11
+
+Two claims checked mechanically rather than believed, and the 401 from v1.8.10 given an entry under the error people will actually search for.
+
+- **feat:** **[06 § `401 Authorization header was not present or 'Bearer' was missing`](06-Error-Handling.md#401-authorization-header-was-not-present-or-bearer-was-missing)** — the [v1.8.10](#2026-08-25-v1810) failure now has its own catalog entry, because the message is what you search for and it points at the wrong thing: the token is fine and the credentials are fine, the header simply never arrived. Three causes in likelihood order, led by the redirect, plus the one-line diagnostic that separates them — **re-issue with automatic redirects disabled; a `307` instead of the `401` means the URL is the bug, not the credentials** — *@mrwuss*
+
+- **fix:** **The repo said C# examples target `net9.0`. They don't need it.** Extracted all **80** complete C# page programs from `docs/` and `docs/recipes/` and built every one in a scratch **`net8.0`** console project: **80 built, 0 failed**. `net9.0` in [README](../README.md), [CONTRIBUTING](../CONTRIBUTING.md) and the [recipes README](recipes/README.md) also contradicted `examples/csharp/README.md`, which tells you to install the **.NET 8 SDK** and whose seven projects all target `net8.0` — so the repo was telling a reader who followed its own setup instructions that the examples needed a newer runtime. Now **`net8.0` or later**, in all three plus the **eight recipe pages** whose Prerequisites bullet named the runtime — which is where a reader actually decides what to install. Historical changelog entries keep their original wording — *@mrwuss*
+
+- **docs:** **CONTRIBUTING's build check now says what "complete" excludes.** Blocks the prose labels a **structural sketch** — elided bodies, a usage trailer calling methods the sketch never defines — are illustrations and are not expected to compile; [04 § Async Context Manager](04-Interactive-API.md#async-context-manager-iasyncdisposable-recommended) is the example, and it already links its runnable counterpart. Recorded so the next person running the check doesn't "fix" a sketch into disagreeing with its Python twin — *@mrwuss*
+
+- **docs:** The router/redirect hazard is now routed from [CLAUDE.md](../CLAUDE.md) and the [task index](INDEX.md) alongside the other verified hazards, rather than living only in the two pages that describe it — *@mrwuss*
+
+---
+
 ## 2026-08-25 — v1.8.10
 
 Every C# example in the repo failed to authenticate, and the doc note that would have explained it said the opposite.

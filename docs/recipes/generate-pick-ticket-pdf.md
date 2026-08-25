@@ -6,7 +6,7 @@ Generate or reprint pick tickets and purchase orders as base64-encoded PDFs via 
 
 ## Prerequisites
 
-- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - **For `m_picktickets` against a production order**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
 - The `m_*` report services are **hidden from `GET /api/v2/services`** (`?type=report` returns an empty list), but `GET /api/v2/definition/{service_name}` and `GET /api/v2/defaults/{service_name}` both work for them — use those for criteria field names and defaults. On a 25.2 test system, probing candidates from the `window_x_menu` table yields ~157 callable report services (`m_picktickets`, `m_reprintpicktickets`, `m_productionorders`, `m_orderacknowledgements`, `m_invoices`, `m_packinglists`, `m_customerstatements`, …) — see the Discovery note in the [deep dive](../03-Transaction-API.md#pdf-report-generation).
 

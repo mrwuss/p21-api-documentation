@@ -41,7 +41,7 @@ Thank you for your interest in improving P21 API documentation! This project aim
 Every example that calls P21 is a **complete program**: paste it into a file, edit the constants at the top, run it. No repo clone, no `.env`, no helper imported from another page. A reader should never have to assemble an example from two places.
 
 - **Both languages, adjacent**: Python (`httpx`) *and* C#, inside `<!-- tabs -->` / `<!-- /tabs -->` markers. `scripts/generate_html.py` builds the tab labels from the **fence language**, so the fence goes directly after the opening marker; it discards other text inside the region. Match whatever label style the file you are editing already uses.
-- **Zero install beyond the language**: Python needs only `httpx`. C# targets `net9.0` with `ImplicitUsings` + `Nullable` and **System.Text.Json** — no NuGet packages, so `dotnet new console` + paste + `dotnet run` works. Do not introduce Newtonsoft or `Microsoft.Extensions.*` into a docs example.
+- **Zero install beyond the language**: Python needs only `httpx`. C# targets **`net8.0` or later** with `ImplicitUsings` + `Nullable` and **System.Text.Json** — no NuGet packages, so `dotnet new console` + paste + `dotnet run` works. `net8.0` is the floor because that is the SDK the [csharp examples](examples/csharp/README.md) ask you to install; all 80 complete C# page programs are verified to build on it. Do not introduce Newtonsoft or `Microsoft.Extensions.*` into a docs example.
 - **An `EDIT THESE` block at the top** holding `BASE_URL`, credentials, `VERIFY_SSL` and the task's own variables — one per line with a trailing comment. Copy the auth preamble verbatim from an existing converted example (e.g. [reassign-salesrep](docs/recipes/reassign-salesrep.md)) rather than writing your own; it handles the v2 token, the router 307, and the XML fallback.
 - **Only where it is used**: include the UI-server helper for Transaction/Interactive examples; omit it for OData, Entity, Inventory REST and UDT, which call `BASE_URL` directly.
 - **Every write ends in a read-back** that prints what actually landed. In this API HTTP 200 routinely lies — a save can report success and write nothing.
@@ -52,7 +52,7 @@ Every example that calls P21 is a **complete program**: paste it into a file, ed
 - Add comments explaining P21-specific behavior
 - Test against a P21 environment before submitting
 
-Before opening the PR, check the examples mechanically: every Python block should parse (`ast.parse`), and every complete C# block should build in a scratch `net9.0` console project.
+Before opening the PR, check the examples mechanically: every Python block should parse (`ast.parse`), and every complete C# block should build in a scratch `net8.0` console project. "Complete" excludes blocks the prose labels a **structural sketch** (elided bodies, a usage trailer calling methods defined elsewhere) — those are illustrations and are not expected to compile.
 
 ### What We're Looking For
 - Additional API endpoints not yet documented

@@ -8,7 +8,7 @@ The `Item` service (Item Maintenance window) supports **nested DataElement navig
 
 ## Prerequisites
 
-- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - The item and stocking location already exist.
 - **For the primary-supplier write:** the target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the write is a **silent no-op** — see Gotchas.
 - OData read access to `inv_mast` and `inv_loc` for the mandatory verification.

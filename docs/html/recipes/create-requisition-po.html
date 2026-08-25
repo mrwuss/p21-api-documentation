@@ -658,7 +658,7 @@
 <p>You <strong>cannot</strong> set the PO type by writing <code>po_hdr_po_type</code> on the <code>PurchaseOrder</code> service — it is a disabled column (<code>Column is disabled: po_hdr_po_type</code>). You pick the type by choosing the <strong>type-specific service</strong>. <code>RequisitionPurchaseOrder</code> is that service for requisition POs — same window as PO Entry (<code>w_purchase_order_entry_sheet</code>), type preset to Requisition. It's a listed service in <code>/api/v2/services</code> but easy to miss.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net9.0</code> console project (C#).</li>
+<li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net8.0</code>-or-later console project (C#).</li>
 <li>The <strong>item is flagged as a requisition item</strong> at the PO location (<code>inv_loc.requisition = 'Y'</code>). <em>Only requisition items may be purchased on a requisition PO</em> — this is enforced at the API layer.</li>
 <li>You have the <strong>vendor id</strong> and its <strong>supplier id</strong> — these are different numbers (e.g. vendor <code>99001</code> "Acme Technology Corp" ↔ supplier <code>10050</code> "ACME-PENNSYLVANIA"). Passing a supplier id as <code>vendor_id</code> fails with <em>"Record specified was not found."</em></li>
 </ul>

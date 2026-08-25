@@ -6,7 +6,7 @@ Create a customer master record in one stateless Transaction API call. `customer
 
 ## Prerequisites
 
-- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - The salesrep exists (`salesrep_id`) and the branch exists (`default_branch`).
 
 ## What the defaults template already fills

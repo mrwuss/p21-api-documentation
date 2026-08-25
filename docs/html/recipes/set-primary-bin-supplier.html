@@ -656,7 +656,7 @@
 <p>The <code>Item</code> service (Item Maintenance window) supports <strong>nested DataElement navigation</strong> that mirrors the UI: select the item, select a location row, then edit that location's detail. It works because the Item window's tabs aren't gated behind row selection — a good template for any nested edit.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net9.0</code> console project (C#).</li>
+<li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net8.0</code>-or-later console project (C#).</li>
 <li>The item and stocking location already exist.</li>
 <li><strong>For the primary-supplier write:</strong> the target supplier must already have a <em>location-level</em> row (<code>inventory_supplier_x_loc</code>) at that location. If it doesn't, the write is a <strong>silent no-op</strong> — see Gotchas.</li>
 <li>OData read access to <code>inv_mast</code> and <code>inv_loc</code> for the mandatory verification.</li>

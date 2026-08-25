@@ -658,7 +658,7 @@
 <p>Everything here was verified live on 26.1 (August 2026) with <code>/transaction/get</code> read-backs: the in-place update, the insert, both together in one POST, and every gotcha below.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net9.0</code> console project (C#).</li>
+<li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net8.0</code>-or-later console project (C#).</li>
 <li>An existing, editable order (not fully invoiced/closed) that is <strong>not an RMA</strong> — see the RMA gotcha below.</li>
 <li><strong>Know each target line's <code>user_line_no</code>.</strong> It is the stable update key. If your integration created the order, you ideally <a href="../03-Transaction-API.html#design-for-updates-assign-your-own-line-handles">assigned handles at create time</a>; otherwise read them back first (see <a href="#finding-the-handles">Finding the handles</a>).</li>
 </ul>

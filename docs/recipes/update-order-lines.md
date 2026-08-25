@@ -8,7 +8,7 @@ Everything here was verified live on 26.1 (August 2026) with `/transaction/get` 
 
 ## Prerequisites
 
-- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - An existing, editable order (not fully invoiced/closed) that is **not an RMA** — see the RMA gotcha below.
 - **Know each target line's `user_line_no`.** It is the stable update key. If your integration created the order, you ideally [assigned handles at create time](../03-Transaction-API.md#design-for-updates-assign-your-own-line-handles); otherwise read them back first (see [Finding the handles](#finding-the-handles)).
 

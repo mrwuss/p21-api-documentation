@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-25-v1811">2026-08-25 — v1.8.11</a></li>
 <li><a href="#2026-08-25-v1810">2026-08-25 — v1.8.10</a></li>
 <li><a href="#2026-08-25-v189">2026-08-25 — v1.8.9</a></li>
 <li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>
@@ -713,6 +714,23 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-25-v1811">2026-08-25 — v1.8.11</h2>
+<p>Two claims checked mechanically rather than believed, and the 401 from v1.8.10 given an entry under the error people will actually search for.</p>
+<ul>
+<li>
+<p><strong>feat:</strong> <strong><a href="06-Error-Handling.html#401-authorization-header-was-not-present-or-bearer-was-missing">06 § <code>401 Authorization header was not present or 'Bearer' was missing</code></a></strong> — the <a href="#2026-08-25-v1810">v1.8.10</a> failure now has its own catalog entry, because the message is what you search for and it points at the wrong thing: the token is fine and the credentials are fine, the header simply never arrived. Three causes in likelihood order, led by the redirect, plus the one-line diagnostic that separates them — <strong>re-issue with automatic redirects disabled; a <code>307</code> instead of the <code>401</code> means the URL is the bug, not the credentials</strong> — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong>The repo said C# examples target <code>net9.0</code>. They don't need it.</strong> Extracted all <strong>80</strong> complete C# page programs from <code>docs/</code> and <code>docs/recipes/</code> and built every one in a scratch <strong><code>net8.0</code></strong> console project: <strong>80 built, 0 failed</strong>. <code>net9.0</code> in <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/README.md">README</a>, <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/CONTRIBUTING.md">CONTRIBUTING</a> and the <a href="recipes/README.html">recipes README</a> also contradicted <code>examples/csharp/README.md</code>, which tells you to install the <strong>.NET 8 SDK</strong> and whose seven projects all target <code>net8.0</code> — so the repo was telling a reader who followed its own setup instructions that the examples needed a newer runtime. Now <strong><code>net8.0</code> or later</strong>, in all three plus the <strong>eight recipe pages</strong> whose Prerequisites bullet named the runtime — which is where a reader actually decides what to install. Historical changelog entries keep their original wording — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> <strong>CONTRIBUTING's build check now says what "complete" excludes.</strong> Blocks the prose labels a <strong>structural sketch</strong> — elided bodies, a usage trailer calling methods the sketch never defines — are illustrations and are not expected to compile; <a href="04-Interactive-API.html#async-context-manager-iasyncdisposable-recommended">04 § Async Context Manager</a> is the example, and it already links its runnable counterpart. Recorded so the next person running the check doesn't "fix" a sketch into disagreeing with its Python twin — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> The router/redirect hazard is now routed from <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/CLAUDE.md">CLAUDE.md</a> and the <a href="task-index.html">task index</a> alongside the other verified hazards, rather than living only in the two pages that describe it — <em>@mrwuss</em></p>
+</li>
+</ul>
 <hr />
 <h2 id="2026-08-25-v1810">2026-08-25 — v1.8.10</h2>
 <p>Every C# example in the repo failed to authenticate, and the doc note that would have explained it said the opposite.</p>
@@ -1294,6 +1312,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-25-v1811">2026-08-25 — v1.8.11</a></li>
 <li><a href="#2026-08-25-v1810">2026-08-25 — v1.8.10</a></li>
 <li><a href="#2026-08-25-v189">2026-08-25 — v1.8.9</a></li>
 <li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>

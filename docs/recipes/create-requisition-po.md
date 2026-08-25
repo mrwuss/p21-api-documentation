@@ -10,7 +10,7 @@ You **cannot** set the PO type by writing `po_hdr_po_type` on the `PurchaseOrder
 
 ## Prerequisites
 
-- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - The **item is flagged as a requisition item** at the PO location (`inv_loc.requisition = 'Y'`). *Only requisition items may be purchased on a requisition PO* — this is enforced at the API layer.
 - You have the **vendor id** and its **supplier id** — these are different numbers (e.g. vendor `99001` "Acme Technology Corp" ↔ supplier `10050` "ACME-PENNSYLVANIA"). Passing a supplier id as `vendor_id` fails with *"Record specified was not found."*
 
