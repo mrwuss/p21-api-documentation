@@ -578,6 +578,8 @@ static string ReadField(string p, string f)
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/reassign_salesrep.py`](../../examples/python/recipes/reassign_salesrep.py) · [`examples/csharp/Recipes/ReassignSalesrep.cs`](../../examples/csharp/Recipes/ReassignSalesrep.cs). The snippets above are self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+
 ## Gotchas (verified live on P21 26.1.5894.1, 2026-07-28; grid-delete behavior added 2026-08-25)
 
 - **`Keys` must be an array of key-column-name strings, not objects.** Passing `[{"Name": "...", "Value": "..."}]` inside a DataElement's `Keys` array returns HTTP 400: `Unexpected character encountered while parsing value: { ... Path 'Transactions[0].DataElements[0].Keys'`. This is a general Transaction API parsing rule; key values belong in row `Edits`.

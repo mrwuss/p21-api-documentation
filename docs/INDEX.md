@@ -26,7 +26,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 |------|-------|
 | Query a table or view | [02 § Query Parameters](02-OData-API.md#query-parameters) |
 | Filter syntax, operators, string functions | [02 § Filter Expressions](02-OData-API.md#filter-expressions) |
-| Only active rows — `row_status_flag` **or** `delete_flag`, depending on the table | [02 § Active Record Filter](02-OData-API.md#active-record-filter) |
+| Only active rows — `row_status_flag` **or** `delete_flag`, depending on the table | [02 § Active Record Filter](02-OData-API.md#active-record-filter) — soft-deleted rows keep their old values and dominate some tables |
+| Filter 404s on a value that looks right (`Edm.Decimal` vs `Edm.String`) | [02 § Active Record Filter](02-OData-API.md#active-record-filter) — many `*_id` columns are numeric; don't quote them |
 | Company column is `company_id` on some tables, `company_no` on others | [02 § Company Scoping](02-OData-API.md#company-scoping-company_id-vs-company_no) |
 | Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins-chain-queries-by-uid) |
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
@@ -174,6 +175,9 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Error catalog by API | [06 Error Handling](06-Error-Handling.md) (per-API sections) |
 | Write refused for being too long / how long is a field? | [06 § Field Length Limits](06-Error-Handling.md#field-length-limits-a-write-that-fails-on-size) — the API exposes no lengths; measured values + how to measure safely |
 | Quick symptom → cause table | [06 § Common Issues Quick Reference](06-Error-Handling.md#common-issues-quick-reference) |
+| `Invalid column name: {field}` — is the capability really missing? | [06 § Common Transaction Errors](06-Error-Handling.md#common-transaction-errors) — sometimes the sibling field does the job; check `ValidValues` |
+| `Invalid {field} value: 700` on an enum | [06 § Common Transaction Errors](06-Error-Handling.md#common-transaction-errors) — send the label, not the `code_p21` integer |
+| OData 404 saying `Edm.Decimal` / `Edm.String` | [06 § Incompatible Operand Types](06-Error-Handling.md#404-incompatible-operand-types-a-quoted-numeric-key) — numeric key column, drop the quotes |
 | Auth failures | [06 § Authentication Errors](06-Error-Handling.md#authentication-errors) |
 | Intermittent interactive failures under load | [07 Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) |
 | What changed in these docs recently | [10 Changelog](10-Changelog.md) |

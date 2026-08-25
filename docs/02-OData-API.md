@@ -267,7 +267,7 @@ $filter=notes ne null
 
 P21 tracks record status two different ways, and **using the wrong one 404s the whole request**. Check which column the table actually has before filtering.
 
-**Tables with `row_status_flag`** (e.g. `price_page`). The values are `code_p21` codes — confirmed against that table on 26.1.5910.3:
+**Tables with `row_status_flag`** (e.g. `price_page`, `customer_salesrep`). The values are `code_p21` codes — confirmed against those tables on 26.1:
 
 | `row_status_flag` | Meaning |
 |---|---|
@@ -279,7 +279,9 @@ P21 tracks record status two different ways, and **using the wrong one 404s the 
 $filter=row_status_flag eq 704
 ```
 
-This filter matters more than it looks: soft-deleted rows are not removed, so they accumulate. On the tenant tested, **297 of 300 sampled `price_page` rows were `700` (deleted)** — an unfiltered query returns overwhelmingly dead data.
+This filter matters more than it looks: soft-deleted rows are not removed, so they accumulate. On the tenants tested, **297 of 300 sampled `price_page` rows were `700` (deleted)**, and `customer_salesrep` held **12,060 rows at `700` against 20,201 at `704`** — an unfiltered query returns dead data, in the `price_page` case overwhelmingly so.
+
+A deleted row also keeps its old values (`customer_salesrep` rows at `700` still carry their last `commission_percentage`), so an unfiltered read isn't merely noisy — it reports retired records with live-looking data. The write side of the same flag is in [03 § Removing a Salesrep Grid Row](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row): the Transaction API sets it with the **label** (`Delete`), not the code.
 
 **Tables with `delete_flag`** — `customer`, `supplier`, `inv_mast` and many others have **no `row_status_flag` at all**. They use a `'Y'`/`'N'` char column:
 
@@ -288,6 +290,8 @@ $filter=delete_flag eq 'N'
 ```
 
 > ⚠️ **Filtering on the wrong column fails loudly — and misleadingly.** `supplier?$filter=row_status_flag eq 704` returns **404** with `Could not find a property named 'row_status_flag' on type 'dbo.supplier'`. A bare 404 from this API is easy to misread as "table not exposed" or "no permission", so check the column first: `GET /odataservice/odata/table/{name}?$top=1` and look at the keys.
+>
+> **Quoting a numeric key fails the same way.** `customer_salesrep?$filter=customer_id eq '100198'` also returns **404** — `A binary operator with incompatible types was detected. Found operand types 'Edm.Decimal' and 'Edm.String'`. Many `*_id` columns (`customer_salesrep.customer_id`, `ship_to_salesrep.ship_to_id`) are `Edm.Decimal` even though the value looks like an identifier string, so send it bare: `customer_id eq 100198`. The same `$top=1` probe answers this too — a quoted value in the response means a string column. Note the asymmetry with the Transaction API, where every `Value` you write is a string regardless of column type.
 
 ### Company Scoping — `company_id` vs `company_no`
 

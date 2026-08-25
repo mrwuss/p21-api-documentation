@@ -1226,6 +1226,9 @@
 </code></pre></div>
 </div>
 </div>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>, dry-run by default): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/reassign_salesrep.py"><code>examples/python/recipes/reassign_salesrep.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/ReassignSalesrep.cs"><code>examples/csharp/Recipes/ReassignSalesrep.cs</code></a>. The snippets above are self-contained; the files use the repo's shared <code>common</code> / <code>P21Examples.Common</code> helpers like every other example.</p>
+</blockquote>
 <h2 id="gotchas-verified-live-on-p21-26158941-2026-07-28-grid-delete-behavior-added-2026-08-25">Gotchas (verified live on P21 26.1.5894.1, 2026-07-28; grid-delete behavior added 2026-08-25)</h2>
 <ul>
 <li><strong><code>Keys</code> must be an array of key-column-name strings, not objects.</strong> Passing <code>[{"Name": "...", "Value": "..."}]</code> inside a DataElement's <code>Keys</code> array returns HTTP 400: <code>Unexpected character encountered while parsing value: { ... Path 'Transactions[0].DataElements[0].Keys'</code>. This is a general Transaction API parsing rule; key values belong in row <code>Edits</code>.</li>

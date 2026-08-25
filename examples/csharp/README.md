@@ -48,6 +48,7 @@ Interactive/                # Interactive API examples (net8.0)
 Entity/                     # Entity API examples (net8.0)
 Production/                 # Production & Labor examples (net8.0)
 Recipes/                    # End-to-end recipe programs (net8.0), one class per docs/recipes page
+                            #   (menu-driven; writes gated behind typing EXECUTE)
 ```
 
 ## Environment Variables

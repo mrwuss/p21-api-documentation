@@ -41,6 +41,7 @@ while (true)
     Console.WriteLine("  11. Create Customer            - Customer header + ship-to in one POST");
     Console.WriteLine("  12. Create Requisition PO      - RequisitionPurchaseOrder (po_type 'R')");
     Console.WriteLine("  13. Update Order Lines         - Edit/add lines on an existing order");
+    Console.WriteLine("  14. Reassign Salesrep          - Customer + ShipTo grids, two delete mechanisms");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -103,6 +104,10 @@ while (true)
 
             case "13":
                 await UpdateOrderLines.RunAsync();
+                break;
+
+            case "14":
+                await ReassignSalesrep.RunAsync();
                 break;
 
             case "Q":
