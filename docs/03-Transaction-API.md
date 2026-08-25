@@ -30,7 +30,7 @@ The Transaction API is a **stateless RESTful** web service for bulk data manipul
 All Transaction API endpoints use the UI Server URL. First, obtain the UI Server URL:
 
 ```http
-GET https://{hostname}/api/ui/router/v1?urlType=external
+GET https://{hostname}/api/ui/router/v1/?urlType=external
 ```
 
 Note that the no-trailing-slash form can return a 307 redirect and the response may be XML on some middleware — use the trailing-slash form (`/api/ui/router/v1/`) and follow redirects; see [00-Authentication § UI Server URL](00-Authentication.md#ui-server-url).

@@ -17,6 +17,22 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-25 — v1.8.10
+
+Every C# example in the repo failed to authenticate, and the doc note that would have explained it said the opposite.
+
+- **fix:** **The C# examples could not authenticate — 401 on every program.** `P21Auth.GetUiServerUrlAsync` requested the router as `/api/ui/router/v1?urlType=external`, **without the trailing slash**. The server answers that with a **307** to the trailing-slash form, and .NET's `HttpClient` **strips the `Authorization` header when it follows a redirect** — so the second request arrived unauthenticated and came back `401 {"Description":"Authorization header was not present or 'Bearer' was missing."}`. The token was never the problem; it was obtained successfully one call earlier. Fixed by requesting the trailing-slash URL, which avoids the redirect outright — *@mrwuss*
+
+- **fix:** **`P21Config.LoadDotEnv()` never found the repo `.env`.** It walked up from `AppContext.BaseDirectory` for a fixed **6** iterations, but an example runs from `<project>/bin/<config>/<tfm>/` — already three levels below its own project folder — putting the repository root **7** levels up. Every C# example therefore died with *"P21_BASE_URL environment variable is required"* unless you exported the variables by hand. It now walks to the filesystem root — *@mrwuss*
+
+- **fix:** **[00 § UI Server URL](00-Authentication.md#ui-server-url) said C# was unaffected by this.** The old note read *"C# `HttpClient` follows GET redirects by default and is unaffected"* — half right and wholly misleading: it follows the redirect, and that is exactly when it drops the header. Replaced with a per-client table of what actually happens on the slashless URL, the 401 body it produces, and why *following the redirect* is not an equivalent fix to *not causing one*. .NET drops `Authorization` on **any** auto-redirect — same-origin included, and whether the header sits on `DefaultRequestHeaders` or on the individual request — *@mrwuss*
+
+- **chore:** **Trailing slash everywhere, so nothing re-learns this.** The five Python call sites, the remaining `docs/00`/`03`/`04` snippets, and the Postman collection's *Get UI Server URL* request now all send `/api/ui/router/v1/?urlType=external`. The Python paths worked before — httpx keeps the header on a same-origin redirect — but they were paying for a pointless round trip and modelling the form that breaks in another language — *@mrwuss*
+
+  *Verified on 26.1: token → router → OData → Transaction all green through `P21Client.CreateAsync()`, and `dotnet run --project Recipes` now reaches a recipe's payload with no environment variables exported.*
+
+---
+
 ## 2026-08-25 — v1.8.9
 
 A grid everyone had written off as undeletable, and the field that deletes it.

@@ -67,9 +67,13 @@ namespace P21Examples.Common
 
         private static void LoadDotEnv()
         {
-            // Walk up from current directory to find .env
+            // Walk up from the build output directory to find .env. Keep going
+            // until the filesystem root: an example runs from
+            // <project>/bin/<config>/<tfm>/, which is already three levels below
+            // its own project folder, so a fixed small depth misses a .env at
+            // the repository root.
             var dir = AppContext.BaseDirectory;
-            for (var i = 0; i < 6; i++)
+            while (true)
             {
                 var envFile = System.IO.Path.Combine(dir, ".env");
                 if (System.IO.File.Exists(envFile))

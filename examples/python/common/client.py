@@ -995,7 +995,7 @@ class P21Client:
             return self._ui_server
         self._ensure_token()
         client = self._get_client()
-        resp = client.get(f"{self.config.base_url}/api/ui/router/v1?urlType=external")
+        resp = client.get(f"{self.config.base_url}/api/ui/router/v1/?urlType=external")  # trailing slash avoids a 307
         resp.raise_for_status()
         # Router may respond with JSON or XML — handle both
         self._ui_server = _parse_router_response(resp).rstrip("/")
@@ -1115,7 +1115,7 @@ class AsyncP21Client:
             return self._ui_server
         await self._ensure_token()
         client = self._get_client()
-        resp = await client.get(f"{self.config.base_url}/api/ui/router/v1?urlType=external")
+        resp = await client.get(f"{self.config.base_url}/api/ui/router/v1/?urlType=external")  # trailing slash avoids a 307
         resp.raise_for_status()
         # Router may respond with JSON or XML — handle both
         self._ui_server = _parse_router_response(resp).rstrip("/")

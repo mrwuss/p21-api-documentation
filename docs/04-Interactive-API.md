@@ -30,7 +30,7 @@ The Interactive API (IAPI) is a **stateful** RESTful API that simulates user int
 All Interactive API endpoints use the UI Server URL. First, obtain it:
 
 ```http
-GET https://{hostname}/api/ui/router/v1?urlType=external
+GET https://{hostname}/api/ui/router/v1/?urlType=external
 ```
 
 Then use the returned URL as base:
@@ -3024,7 +3024,7 @@ The C# SDK (`P21.UI.Service.Client`) calls these V1 REST endpoints internally. T
 | POST | `/uiserver0/ui/interactive/v1/row` | Add row |
 | PUT | `/uiserver0/ui/interactive/v1/row` | Change row |
 
-> **Note:** The `uiserver0` prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check `GET /api/ui/router/v1?urlType=external` to obtain the correct base URL.
+> **Note:** The `uiserver0` prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check `GET /api/ui/router/v1/?urlType=external` to obtain the correct base URL.
 
 ---
 

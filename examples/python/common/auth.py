@@ -208,7 +208,7 @@ def get_ui_server_url(base_url: str, token: str, verify_ssl: bool = False) -> st
     """
     with httpx.Client(verify=verify_ssl, follow_redirects=True) as client:
         response = client.get(
-            f"{base_url}/api/ui/router/v1?urlType=external",
+            f"{base_url}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
             headers=get_auth_headers(token)
         )
         response.raise_for_status()

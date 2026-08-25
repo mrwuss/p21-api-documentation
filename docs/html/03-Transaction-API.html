@@ -802,7 +802,7 @@
 <hr />
 <h2 id="endpoints">Endpoints</h2>
 <p>All Transaction API endpoints use the UI Server URL. First, obtain the UI Server URL:</p>
-<div class="highlight"><pre><span></span><code><span class="err">GET https://{hostname}/api/ui/router/v1?urlType=external</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET https://{hostname}/api/ui/router/v1/?urlType=external</span>
 </code></pre></div>
 
 <p>Note that the no-trailing-slash form can return a 307 redirect and the response may be XML on some middleware — use the trailing-slash form (<code>/api/ui/router/v1/</code>) and follow redirects; see <a href="00-Authentication.html#ui-server-url">00-Authentication § UI Server URL</a>.</p>

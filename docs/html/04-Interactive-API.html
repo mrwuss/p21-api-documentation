@@ -787,7 +787,7 @@
 <hr />
 <h2 id="endpoints">Endpoints</h2>
 <p>All Interactive API endpoints use the UI Server URL. First, obtain it:</p>
-<div class="highlight"><pre><span></span><code><span class="err">GET https://{hostname}/api/ui/router/v1?urlType=external</span>
+<div class="highlight"><pre><span></span><code><span class="err">GET https://{hostname}/api/ui/router/v1/?urlType=external</span>
 </code></pre></div>
 
 <p>Then use the returned URL as base:</p>
@@ -4367,7 +4367,7 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</cod
 </tbody>
 </table></div>
 <blockquote>
-<p><strong>Note:</strong> The <code>uiserver0</code> prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check <code>GET /api/ui/router/v1?urlType=external</code> to obtain the correct base URL.</p>
+<p><strong>Note:</strong> The <code>uiserver0</code> prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check <code>GET /api/ui/router/v1/?urlType=external</code> to obtain the correct base URL.</p>
 </blockquote>
 <hr />
 <h2 id="verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</h2>
