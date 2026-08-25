@@ -1058,7 +1058,7 @@
 <h2 id="common-patterns">Common Patterns</h2>
 <h3 id="active-record-filter">Active Record Filter</h3>
 <p>P21 tracks record status two different ways, and <strong>using the wrong one 404s the whole request</strong>. Check which column the table actually has before filtering.</p>
-<p><strong>Tables with <code>row_status_flag</code></strong> (e.g. <code>price_page</code>). The values are <code>code_p21</code> codes — confirmed against that table on 26.1.5910.3:</p>
+<p><strong>Tables with <code>row_status_flag</code></strong> (e.g. <code>price_page</code>, <code>customer_salesrep</code>). The values are <code>code_p21</code> codes — confirmed against those tables on 26.1:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1084,13 +1084,15 @@
 <div class="highlight"><pre><span></span><code><span class="err">$filter=row_status_flag eq 704</span>
 </code></pre></div>
 
-<p>This filter matters more than it looks: soft-deleted rows are not removed, so they accumulate. On the tenant tested, <strong>297 of 300 sampled <code>price_page</code> rows were <code>700</code> (deleted)</strong> — an unfiltered query returns overwhelmingly dead data.</p>
+<p>This filter matters more than it looks: soft-deleted rows are not removed, so they accumulate. On the tenants tested, <strong>297 of 300 sampled <code>price_page</code> rows were <code>700</code> (deleted)</strong>, and <code>customer_salesrep</code> held <strong>12,060 rows at <code>700</code> against 20,201 at <code>704</code></strong> — an unfiltered query returns dead data, in the <code>price_page</code> case overwhelmingly so.</p>
+<p>A deleted row also keeps its old values (<code>customer_salesrep</code> rows at <code>700</code> still carry their last <code>commission_percentage</code>), so an unfiltered read isn't merely noisy — it reports retired records with live-looking data. The write side of the same flag is in <a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row">03 § Removing a Salesrep Grid Row</a>: the Transaction API sets it with the <strong>label</strong> (<code>Delete</code>), not the code.</p>
 <p><strong>Tables with <code>delete_flag</code></strong> — <code>customer</code>, <code>supplier</code>, <code>inv_mast</code> and many others have <strong>no <code>row_status_flag</code> at all</strong>. They use a <code>'Y'</code>/<code>'N'</code> char column:</p>
 <div class="highlight"><pre><span></span><code><span class="err">$filter=delete_flag eq &#39;N&#39;</span>
 </code></pre></div>
 
 <blockquote>
 <p>⚠️ <strong>Filtering on the wrong column fails loudly — and misleadingly.</strong> <code>supplier?$filter=row_status_flag eq 704</code> returns <strong>404</strong> with <code>Could not find a property named 'row_status_flag' on type 'dbo.supplier'</code>. A bare 404 from this API is easy to misread as "table not exposed" or "no permission", so check the column first: <code>GET /odataservice/odata/table/{name}?$top=1</code> and look at the keys.</p>
+<p><strong>Quoting a numeric key fails the same way.</strong> <code>customer_salesrep?$filter=customer_id eq '100198'</code> also returns <strong>404</strong> — <code>A binary operator with incompatible types was detected. Found operand types 'Edm.Decimal' and 'Edm.String'</code>. Many <code>*_id</code> columns (<code>customer_salesrep.customer_id</code>, <code>ship_to_salesrep.ship_to_id</code>) are <code>Edm.Decimal</code> even though the value looks like an identifier string, so send it bare: <code>customer_id eq 100198</code>. The same <code>$top=1</code> probe answers this too — a quoted value in the response means a string column. Note the asymmetry with the Transaction API, where every <code>Value</code> you write is a string regardless of column type.</p>
 </blockquote>
 <h3 id="company-scoping-company_id-vs-company_no">Company Scoping — <code>company_id</code> vs <code>company_no</code></h3>
 <p>The company code is the same value everywhere (<code>"ACME"</code>), but <strong>the column that holds it has two different names</strong>, and a third group of tables doesn't carry it at all. Verified on 26.1.5910.3:</p>

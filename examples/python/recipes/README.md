@@ -1,6 +1,6 @@
 # Recipe Scripts
 
-End-to-end runnable Python versions of the [cookbook recipes](../../../docs/recipes/README.md) — one script per recipe page. Each script mirrors its page's Python example, adapted to this repo's conventions (`common.auth` / `common.config` instead of the inline `p21_auth()` helper).
+End-to-end runnable Python versions of the [cookbook recipes](../../../docs/recipes/README.md). Each script mirrors its page's Python example, adapted to this repo's conventions (`common.auth` / `common.config` instead of the inline `p21_auth()` helper). Most recipe pages have one; the pages not listed below are page-only for now, and their tabs are still complete standalone programs.
 
 | Script | Recipe page |
 |--------|-------------|
@@ -17,6 +17,7 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | `inventory_adjustment.py` | [inventory-adjustment.md](../../../docs/recipes/inventory-adjustment.md) |
 | `create_customer.py` | [create-customer.md](../../../docs/recipes/create-customer.md) |
 | `create_requisition_po.py` | [create-requisition-po.md](../../../docs/recipes/create-requisition-po.md) |
+| `reassign_salesrep.py` | [reassign-salesrep.md](../../../docs/recipes/reassign-salesrep.md) |
 
 ## Setup
 

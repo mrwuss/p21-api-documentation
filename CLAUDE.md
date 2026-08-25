@@ -154,6 +154,7 @@ All documentation is derived from:
 | Lowercase `item_id` accepted by TAPI, crashes the client on open — uppercase in code, never reproduce to test | [docs/03 § Item Service Gotchas](docs/03-Transaction-API.md#item-service-gotchas) |
 | **Buy side**: `PurchaseOrder` create · `PurchaseOrderReceipt` (TAPI works when every line has a usable primary bin) · `ConvertPOToVoucher` — full build→receive→vouch verified | [docs/03 § PurchaseOrder](docs/03-Transaction-API.md#purchaseorder-service-creating-a-po) · [§ Receipt](docs/03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) · [§ Voucher](docs/03-Transaction-API.md#convertpotovoucher-service-vouching-a-receipt) |
 | `Order` refuses **RMAs** — use the `RMA` service (same form, keyed `order_no`) | [docs/03 § RMA Service](docs/03-Transaction-API.md#rma-service-orders-the-order-service-refuses) |
+| **Grid deletes are not all `delete_flag`** — the Customer salesrep grid deletes via `row_status_flag: "Delete"` (label, not the `700` code); soft delete, so both OData *and* `/transaction/get` still return the row | [docs/03 § Removing a Salesrep Grid Row](docs/03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
 | What `Failed` guarantees (Transaction atomic; Transactions in one POST are **not**) and why `Required`/`basics` mislead | [docs/03 § What Failed actually guarantees](docs/03-Transaction-API.md#what-failed-actually-guarantees) · [§ What Required actually means](docs/03-Transaction-API.md#what-required-actually-means) |
 | Driving an **in-window wizard** (direct-ship PO) — commits at `cb_next` | [docs/04 § Driving an In-Window Wizard](docs/04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) |
 | Response windows: no answer-a-dialog endpoint, `w_message` auto-answered (GL-overwrite trap), drivable popups via `/tools`, editable popups via `TabName: null` | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) · [§ Response Window Types](docs/04-Interactive-API.md#response-window-types) |
@@ -163,4 +164,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-08-20*
+*Last updated: 2026-08-25*

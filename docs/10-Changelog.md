@@ -17,6 +17,30 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-25 — v1.8.9
+
+A grid everyone had written off as undeletable, and the field that deletes it.
+
+- **feat:** **[Customer Service — Removing a Salesrep Grid Row](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row)** — `CUSTOMERSALESREP.customersalesrep` has **no `delete_flag`**, and sending one returns `Invalid column name: delete_flag`. That reads as *"this grid has no delete"*, which is wrong: **`row_status_flag`** (`ValidValues: ["Active", "Delete"]`) is the mechanism, and it has been in the element all along. Send the **label** — the field is typed `Long` and the column stores `code_p21` `704`/`700`, but `"700"` and `"704"` are both rejected with `Invalid row_status_flag value` under `UseCodeValues: false` — *@mrwuss*
+
+- **fix:** **The [reassign-salesrep recipe](recipes/reassign-salesrep.md) was teaching the workaround.** It said the outgoing rep must be demoted to `OFF` / `0%` and that "both rows stay". The Customer payload, both language examples, the gotchas and the read-back now delete the row instead. Anyone who followed the old recipe has a live 0% rep row per reassignment — cosmetic, but it is why unfiltered rep reports show retired reps — *@mrwuss*
+
+- **docs:** **Three constraints that only show up when you try it.** (1) You **cannot delete the only primary** — `This salesrep is set up as the primary salesrep for this record. You cannot delete it.`, the same guard that blocks demoting the last primary. (2) **Row order inside the element decides the outcome**: promote-then-delete passes, delete-then-promote fails with that message, same two rows. (3) `row_status_flag: "Active"` on a deleted row **revives it** (700 → 704) — *@mrwuss*
+
+- **docs:** **The delete is soft, and `/transaction/get` still returns the row.** The row stays in `customer_salesrep` at `700` with its old commission intact — 12,060 rows at 700 against 20,201 at 704 on one 26.1 instance, so an unfiltered read overstates live reps by more than half again. OData needs `row_status_flag eq 704`; the **`/transaction/get` read-back needs the same filter**, which is the sharper trap — that call is our own recommended read-after-write check, so verifying a *successful* delete shows the row still sitting there — *@mrwuss*
+
+- **docs:** **The finding is now routed everywhere it would be looked for, not just where it was found.** [06 § Common Transaction Errors](06-Error-Handling.md#common-transaction-errors) gains `Invalid column name: {name}` (and why a missing field is not always a missing capability) and `Invalid {field} value: {value}` (label vs `code_p21` code); [06 § Incompatible Operand Types](06-Error-Handling.md#404-incompatible-operand-types-a-quoted-numeric-key) is a new OData entry for the quoted-numeric-key 404; [02 § Active Record Filter](02-OData-API.md#active-record-filter) picks up `customer_salesrep` alongside `price_page` and notes that soft-deleted rows keep their old values. Six new rows across the [task index](INDEX.md) and the [quick-symptom table](06-Error-Handling.md#common-issues-quick-reference) — *@mrwuss*
+
+- **docs:** **Repo files for the recipe.** `examples/python/recipes/reassign_salesrep.py` and `examples/csharp/Recipes/ReassignSalesrep.cs` (menu entry 14) — the recipe had page programs but no repo files, unlike every other recipe. Both build both payloads, both are validator-clean, both are dry-run/EXECUTE-gated, and both read the grids back with the soft-deleted rows labelled. The [definitions README](../definitions/README.md) now leads with **read `ValidValues`, not just the field names**, which is the transferable half of this finding — *@mrwuss*
+
+- **docs:** **Read `ValidValues` before concluding a grid can't delete.** `delete_flag` is the common pattern, not the universal one. The [general rule](03-Transaction-API.md#the-general-rule-read-validvalues-before-assuming-a-grid-cant-delete) and the one-liner that prints a grid's fields with their valid values. The sibling `TABPAGE_SALESREP.tabpage_salesrep` on **ShipTo** proves the asymmetry: same concept, and it *does* have `delete_flag` (`Char`, lenient — `"ON"` and `"Y"` both land as `'Y'`) — *@mrwuss*
+
+- **fix:** **The recipe's OData read-back filters were quoting a numeric key.** `customer_salesrep.customer_id` and `ship_to_salesrep.ship_to_id` are `Edm.Decimal`, so `customer_id eq '100198'` returns **404** — `Found operand types 'Edm.Decimal' and 'Edm.String'` — and the complete example's verification loop would have thrown on the last line. Filters are now unquoted in both language examples and in the Verify block, with a gotcha explaining why the 404 doesn't mean what it looks like — *@mrwuss*
+
+  *(From [issue #140](https://github.com/mrwuss/p21-api-documentation/issues/140), independently re-verified end to end on 26.1: definition, every write case, the primary guard, row ordering, the revive path, both read surfaces, and the `code_p21` mapping. `"Inactive"` (`705`) is rejected by this grid — `ValidValues` is authoritative about the labels, not just the codes.)*
+
+---
+
 ## 2026-08-20 — v1.8.8
 
 A controlled A/B turned the most common error in the API into something quite different from what it looks like.

@@ -124,6 +124,19 @@ Some middleware instances return XML instead of JSON for token endpoints. If you
 
 **Solution**: Verify table name exists in P21 database.
 
+### 404 - Incompatible Operand Types (a quoted numeric key)
+
+```text
+A binary operator with incompatible types was detected.
+Found operand types 'Edm.Decimal' and 'Edm.String' for operator kind 'Equal'.
+```
+
+The table exists and the column exists — the **filter value is quoted and the column is numeric**. `customer_salesrep.customer_id`, `ship_to_salesrep.ship_to_id` and many other `*_id` columns are `Edm.Decimal` despite holding what look like identifier strings, so `customer_id eq '100198'` fails while `customer_id eq 100198` succeeds.
+
+The reason this costs time is the status code: like [filtering on a column the table doesn't have](02-OData-API.md#active-record-filter), it comes back as **404**, which reads as *"table not exposed"* or *"no permission"* rather than *"drop the quotes"*. Read the message body, not the status.
+
+**Solution**: Check the column's type before guessing — `GET /odataservice/odata/table/{name}?$top=1` shows whether the value comes back quoted. Note the asymmetry with the Transaction API, where **every** `Value` is a string regardless of the column's type.
+
 ### Query Too Complex
 
 Long filter expressions or many joined conditions may fail:
@@ -196,6 +209,17 @@ A required field is absent from the payload, and the message does not say which.
 **`Summary` shows `Failed: 1` — did anything land?**
 
 Depends on the scope. A **single Transaction is atomic** — a failure anywhere rolls back its own edits, verified on `Order`. But **Transactions in one POST are independent**, so `{"Failed": 1, "Succeeded": 1}` means half your batch is live; branch on `Results.Transactions[].Status`, not the tally, or a retry double-applies. And atomicity covers the record, not **downstream documents** a service generates on save — those can survive a later failure. See [Transaction API - What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees).
+
+**`Invalid column name: {name}`**
+
+The field is not on that data element. Two flavors, and the second is the one that misleads:
+
+- A **typo or wrong element** — check the field list in `definitions/{Service}.json`.
+- A field that exists on a *sibling* element but not this one. `Invalid column name: delete_flag` on `CUSTOMERSALESREP.customersalesrep` does **not** mean the grid rows can't be removed; that grid deletes through `row_status_flag: "Delete"` instead, while the equivalent grid on `ShipTo` really does use `delete_flag`. Read the element's `ValidValues` before concluding a capability is missing — see [Transaction API - Removing a Salesrep Grid Row](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row).
+
+**`Invalid {field} value: {value}` on an enum field**
+
+The column accepts a fixed set of values and yours isn't one of them. Under the default `UseCodeValues: false` the API wants the **display label**, not the `code_p21` integer the database stores — so `Invalid row_status_flag value: 700` is what sending the *code* for `Delete` looks like, and `700`, `704` and `Inactive` all fail the same way where `Delete` and `Active` pass. The accepted set is published per field as `ValidValues` in the [service definition](03-Transaction-API.md#get-service-definition). See [UseCodeValues](03-Transaction-API.md#usecodevalues) and [Labels vs What the Database Stores](03-Transaction-API.md#labels-vs-what-the-database-stores-code_p21).
 
 **Write reported `Succeeded: 1` but the data is wrong (a line missing, a value on the wrong line)**
 
@@ -1241,6 +1265,9 @@ void CheckTokenExpiry(string token)
 | "Blocked" status | Interactive | Handle response window |
 | 422 "Window ID not provided" | Interactive | Use `?id=` not `?windowId=` (except tools) |
 | 404 on table | OData | Verify table name |
+| 404 `Edm.Decimal` / `Edm.String` operand types | OData | Numeric key column — drop the quotes: `customer_id eq 100198` — [details](#404-incompatible-operand-types-a-quoted-numeric-key) |
+| `Invalid column name: delete_flag` on a grid | Transaction | That grid may delete another way — check `ValidValues` for `row_status_flag` — [details](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
+| `Invalid {field} value: 700` on an enum | Transaction | Send the label, not the `code_p21` integer — [details](03-Transaction-API.md#usecodevalues) |
 | 404 on entity | Entity | Check if Entity API enabled |
 | 405 on address update | Entity | Address has no PUT — by design |
 | 500 on address `/new` | Entity | Address has no template — by design |

@@ -662,8 +662,11 @@ Verified examples (JobContractPricing cost/pricing enums):
 | Cost type (`*_cost_type_cd`) | `Order`=222, `Source`=220, `Value`=227, `None`=300 |
 | Pricing method (`job_price_line.pricing_method`) | `Price`=221, `Source`=220, `Pricing Libraries`=234, `None`=300 |
 | Calc method (`*_calc_method_cd`) | `Multiplier`=211, `Percentage`=230, `Difference`=228, `Mark up`=229 |
+| Row status (`row_status_flag`) | `Active`=704, `Delete`=700 |
 
 *(Credit: [Alex Westemeier](https://github.com/AWestemeier) — maps verified against `code_p21`.)*
+
+> **The mapping is for reading, not writing.** `row_status_flag` is typed `Long`, which invites sending the integer — but under `UseCodeValues: false` the API rejects `"700"` and `"704"` alike with `Invalid row_status_flag value`. Use these numbers to interpret an OData read; send the label. See [Customer Service — Removing a Salesrep Grid Row](#customer-service-removing-a-salesrep-grid-row).
 
 ---
 
@@ -3659,6 +3662,95 @@ GET {base}/odataservice/odata/view/p21_view_oe_hdr?$filter=rma_flag eq 'Y'&$sele
 This matters most for **bulk header maintenance** — reassigning `taker` when a salesperson leaves, retagging orders, any sweep over open orders. RMAs are a normal part of such a set, and the failure message doesn't obviously mean *"use a different service"*, so a batch job hits it as an unexplained per-record error.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — found while reassigning takers at scale, where the RMA rows in an open-order set failed as a group.
+
+### Customer Service — Removing a Salesrep Grid Row
+
+The `Customer` service's `CUSTOMERSALESREP.customersalesrep` grid (List, key `salesrep_id`, business object `customer_salesrep`) has **no `delete_flag`**. Sending one fails the whole transaction:
+
+```text
+General Exception: Invalid column name: delete_flag
+```
+
+That reads as *"this grid has no delete"*, and the natural workaround is to leave the retiring rep in place demoted to `primary_salesrep_flag: "OFF"` / `commission_percentage: "0"`. It isn't necessary. **`row_status_flag` is the delete mechanism** — it has always been in the element, one field below the flags everyone does use:
+
+| Field | DataType | ValidValues |
+|---|---|---|
+| `salesrep_id` | Char | — |
+| `salesrep_name` | Char | — |
+| `commission_percentage` | Decimal | — |
+| `primary_salesrep_flag` | Char | `ON`, `OFF` |
+| `row_status_flag` | **Long** | **`Active`, `Delete`** |
+| `compute_1` | — | — (computed display column, always empty) |
+
+**Send the label, not the code.** `row_status_flag` is typed `Long` and the column stores `code_p21` integers — `704` = `Active`, `700` = `Delete` — but under `UseCodeValues: false` the API takes only the label. Both integers are rejected, in both directions:
+
+| `Value` sent | `UseCodeValues` | Result |
+|---|---|---|
+| `"Delete"` | `false` | **`Passed`** — row moves 704 → 700 |
+| `"Active"` | `false` | **`Passed`** — row moves 700 → 704 |
+| `"700"` | `false` | `Failed` — `Invalid row_status_flag value: 700` |
+| `"704"` | `false` | `Failed` — `Invalid row_status_flag value: 704` |
+| `"Inactive"` | `false` | `Failed` — `Invalid row_status_flag value: Inactive` |
+
+`ValidValues` is authoritative about the labels too. `row_status_flag` carries a third state elsewhere in P21 — `705` = *Inactive*, see [02 § Active Record Filter](02-OData-API.md#active-record-filter) — and this grid does not take it. Two states here, and only the two the definition lists.
+
+```json
+{
+  "Name": "CUSTOMERSALESREP.customersalesrep",
+  "Type": "List",
+  "Keys": ["salesrep_id"],
+  "Rows": [{
+    "Edits": [
+      { "Name": "salesrep_id",     "Value": "100" },
+      { "Name": "row_status_flag", "Value": "Delete" }
+    ],
+    "RelativeDateEdits": []
+  }]
+}
+```
+
+#### It is a soft delete, and both read surfaces still return the row
+
+A deleted row is **not** removed from `customer_salesrep`; it sits at `row_status_flag = 700` indefinitely, keeping whatever `commission_percentage` it had. On one 26.1 instance the table holds 12,060 rows at 700 against 20,201 at 704 — so **an unfiltered read reports long-retired reps as if they were live**, at roughly a 3:5 ratio to the real ones. This is the same accumulation documented for `price_page` in [02 § Active Record Filter](02-OData-API.md#active-record-filter); the salesrep grid is simply another table where it bites.
+
+Filter on both read paths:
+
+- **OData** — `?$filter=row_status_flag eq 704`.
+- **`POST /transaction/get`** — the read-back still returns the deleted row, as `{"Name": "row_status_flag", "Value": "Delete"}`. Skip those rows client-side. This one catches people out precisely *because* `/transaction/get` is the recommended [read-after-write check](#reading-one-record-post-transactionget): the verification read of a successful delete looks, at a glance, like the row never went anywhere.
+
+#### You cannot delete the only primary, and row order decides whether the transaction passes
+
+Deleting a customer's sole primary rep fails the transaction:
+
+```text
+General Exception: This salesrep is set up as the primary salesrep for this record.
+You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Value: Delete
+```
+
+This is the same guard that blocks demoting the last primary (`Primary salesrep is required.`) — the window refuses to leave a customer with no primary rep. So a reassignment has to promote the incoming rep and delete the outgoing one **in one transaction**, and the rows are applied in payload order, so the promotion has to come **first**:
+
+| Row order in `Rows` | Result |
+|---|---|
+| promote new (`primary_salesrep_flag: "ON"`), then delete old | **`Passed`** |
+| delete old, then promote new | `Failed` — `You cannot delete it` |
+
+Sending `row_status_flag: "Active"` on a row at 700 **revives it** — 700 → 704 — which is how the same payload shape reinstates a rep who comes back, and how the promote row above works when the incoming rep already has a deleted row on the customer.
+
+#### The sibling grid on ShipTo does not work this way
+
+`TABPAGE_SALESREP.tabpage_salesrep` on the **`ShipTo`** service holds the same concept and *does* have a `delete_flag` (`Char`, `ValidValues: ["ON", "OFF"]`, column `ship_to_salesrep.delete_flag`). Because it is a `Char` flag it is lenient about representation: `"ON"` and `"Y"` both pass and both land as `delete_flag = 'Y'`. Prefer `"ON"` to match the definition. Two grids, one concept, two different delete mechanisms — see the [reassign-salesrep recipe](recipes/reassign-salesrep.md) for both sides in one worked payload.
+
+#### The general rule: read `ValidValues` before assuming a grid can't delete
+
+`delete_flag` is the common pattern, not the universal one. Before concluding that a grid row can only be neutralized, pull the element out of its definition and read every field's `ValidValues` — a value pair like `Active`/`Delete` on a field you'd otherwise skim past is the delete mechanism:
+
+```bash
+python -c "import json;d=json.load(open('definitions/Customer.json'));[print(f['Name'],f['DataType'],f['ValidValues']) for e in d['TransactionDefinition']['DataElementDefinitions'] if e['Name']=='CUSTOMERSALESREP.customersalesrep' for f in e['FieldDefinitions']]"
+```
+
+The same `ValidValues` array is what tells you to send `Delete` rather than `700`, and `ON` rather than `Y`. It is the most under-read part of the definition response.
+
+*(From [issue #140](https://github.com/mrwuss/p21-api-documentation/issues/140), independently re-verified on 26.1 — the definition, every write case in the tables above, the primary guard, row ordering, the revive path, both read surfaces and the `code_p21` mapping, 2026-08-25.)*
 
 ### Salesrep Service — Editing a Rep's Name and Email
 

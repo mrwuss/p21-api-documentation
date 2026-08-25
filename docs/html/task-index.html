@@ -721,7 +721,11 @@
 </tr>
 <tr>
 <td>Only active rows — <code>row_status_flag</code> <strong>or</strong> <code>delete_flag</code>, depending on the table</td>
-<td><a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a></td>
+<td><a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a> — soft-deleted rows keep their old values and dominate some tables</td>
+</tr>
+<tr>
+<td>Filter 404s on a value that looks right (<code>Edm.Decimal</code> vs <code>Edm.String</code>)</td>
+<td><a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a> — many <code>*_id</code> columns are numeric; don't quote them</td>
 </tr>
 <tr>
 <td>Company column is <code>company_id</code> on some tables, <code>company_no</code> on others</td>
@@ -1020,6 +1024,16 @@
 <td><a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
 <tr>
+<td><strong>Remove a rep from a customer's grid</strong> (no <code>delete_flag</code> — it's <code>row_status_flag: "Delete"</code>)</td>
+<td><a href="recipes/reassign-salesrep.html">reassign-salesrep</a></td>
+<td><a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row">03 § Customer Service — Removing a Salesrep Grid Row</a></td>
+</tr>
+<tr>
+<td>A grid row <strong>looks undeletable</strong> — no <code>delete_flag</code> in the definition</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#the-general-rule-read-validvalues-before-assuming-a-grid-cant-delete">03 § Read <code>ValidValues</code> before assuming a grid can't delete</a></td>
+</tr>
+<tr>
 <td><strong>Edit a salesrep's name/email</strong> (<code>contact_id</code> key; email on TABPAGE_2)</td>
 <td>—</td>
 <td><a href="03-Transaction-API.html#salesrep-service-editing-a-reps-name-and-email">03 § Salesrep Service</a></td>
@@ -1277,6 +1291,18 @@
 <tr>
 <td>Quick symptom → cause table</td>
 <td><a href="06-Error-Handling.html#common-issues-quick-reference">06 § Common Issues Quick Reference</a></td>
+</tr>
+<tr>
+<td><code>Invalid column name: {field}</code> — is the capability really missing?</td>
+<td><a href="06-Error-Handling.html#common-transaction-errors">06 § Common Transaction Errors</a> — sometimes the sibling field does the job; check <code>ValidValues</code></td>
+</tr>
+<tr>
+<td><code>Invalid {field} value: 700</code> on an enum</td>
+<td><a href="06-Error-Handling.html#common-transaction-errors">06 § Common Transaction Errors</a> — send the label, not the <code>code_p21</code> integer</td>
+</tr>
+<tr>
+<td>OData 404 saying <code>Edm.Decimal</code> / <code>Edm.String</code></td>
+<td><a href="06-Error-Handling.html#404-incompatible-operand-types-a-quoted-numeric-key">06 § Incompatible Operand Types</a> — numeric key column, drop the quotes</td>
 </tr>
 <tr>
 <td>Auth failures</td>

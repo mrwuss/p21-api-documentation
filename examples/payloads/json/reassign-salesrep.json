@@ -1,0 +1,48 @@
+{
+  "Name": "Customer",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                { "Name": "company_id", "Value": "ACME" },
+                { "Name": "customer_id", "Value": "100198" },
+                { "Name": "salesrep_id", "Value": "200" }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "CUSTOMERSALESREP.customersalesrep",
+          "Type": "List",
+          "Keys": ["salesrep_id"],
+          "Rows": [
+            {
+              "Edits": [
+                { "Name": "salesrep_id", "Value": "200" },
+                { "Name": "primary_salesrep_flag", "Value": "ON" },
+                { "Name": "commission_percentage", "Value": "100" }
+              ],
+              "RelativeDateEdits": []
+            },
+            {
+              "Edits": [
+                { "Name": "salesrep_id", "Value": "100" },
+                { "Name": "row_status_flag", "Value": "Delete" }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

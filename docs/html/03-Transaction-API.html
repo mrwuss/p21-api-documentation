@@ -734,6 +734,7 @@
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
+<li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 </ul>
@@ -1811,9 +1812,16 @@
 <td>Calc method (<code>*_calc_method_cd</code>)</td>
 <td><code>Multiplier</code>=211, <code>Percentage</code>=230, <code>Difference</code>=228, <code>Mark up</code>=229</td>
 </tr>
+<tr>
+<td>Row status (<code>row_status_flag</code>)</td>
+<td><code>Active</code>=704, <code>Delete</code>=700</td>
+</tr>
 </tbody>
 </table></div>
 <p><em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a> — maps verified against <code>code_p21</code>.)</em></p>
+<blockquote>
+<p><strong>The mapping is for reading, not writing.</strong> <code>row_status_flag</code> is typed <code>Long</code>, which invites sending the integer — but under <code>UseCodeValues: false</code> the API rejects <code>"700"</code> and <code>"704"</code> alike with <code>Invalid row_status_flag value</code>. Use these numbers to interpret an OData read; send the label. See <a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a>.</p>
+</blockquote>
 <hr />
 <h2 id="reading-one-record-post-transactionget">Reading One Record -- POST /transaction/get</h2>
 <p><code>POST /api/v2/transaction/get</code> is the Transaction API's read side. It is a <strong>POST despite being called "get"</strong> — the key you are looking up travels in the body, not the query string, so a GET against this path is not the call you want.</p>
@@ -5200,6 +5208,147 @@ DataElement: order, Column: order_no
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — found while reassigning takers at scale, where the RMA rows in an open-order set failed as a group.</p>
 </blockquote>
+<h3 id="customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</h3>
+<p>The <code>Customer</code> service's <code>CUSTOMERSALESREP.customersalesrep</code> grid (List, key <code>salesrep_id</code>, business object <code>customer_salesrep</code>) has <strong>no <code>delete_flag</code></strong>. Sending one fails the whole transaction:</p>
+<div class="highlight"><pre><span></span><code>General Exception: Invalid column name: delete_flag
+</code></pre></div>
+
+<p>That reads as <em>"this grid has no delete"</em>, and the natural workaround is to leave the retiring rep in place demoted to <code>primary_salesrep_flag: "OFF"</code> / <code>commission_percentage: "0"</code>. It isn't necessary. <strong><code>row_status_flag</code> is the delete mechanism</strong> — it has always been in the element, one field below the flags everyone does use:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>DataType</th>
+<th>ValidValues</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>salesrep_id</code></td>
+<td>Char</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>salesrep_name</code></td>
+<td>Char</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>commission_percentage</code></td>
+<td>Decimal</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>primary_salesrep_flag</code></td>
+<td>Char</td>
+<td><code>ON</code>, <code>OFF</code></td>
+</tr>
+<tr>
+<td><code>row_status_flag</code></td>
+<td><strong>Long</strong></td>
+<td><strong><code>Active</code>, <code>Delete</code></strong></td>
+</tr>
+<tr>
+<td><code>compute_1</code></td>
+<td>—</td>
+<td>— (computed display column, always empty)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Send the label, not the code.</strong> <code>row_status_flag</code> is typed <code>Long</code> and the column stores <code>code_p21</code> integers — <code>704</code> = <code>Active</code>, <code>700</code> = <code>Delete</code> — but under <code>UseCodeValues: false</code> the API takes only the label. Both integers are rejected, in both directions:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>Value</code> sent</th>
+<th><code>UseCodeValues</code></th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"Delete"</code></td>
+<td><code>false</code></td>
+<td><strong><code>Passed</code></strong> — row moves 704 → 700</td>
+</tr>
+<tr>
+<td><code>"Active"</code></td>
+<td><code>false</code></td>
+<td><strong><code>Passed</code></strong> — row moves 700 → 704</td>
+</tr>
+<tr>
+<td><code>"700"</code></td>
+<td><code>false</code></td>
+<td><code>Failed</code> — <code>Invalid row_status_flag value: 700</code></td>
+</tr>
+<tr>
+<td><code>"704"</code></td>
+<td><code>false</code></td>
+<td><code>Failed</code> — <code>Invalid row_status_flag value: 704</code></td>
+</tr>
+<tr>
+<td><code>"Inactive"</code></td>
+<td><code>false</code></td>
+<td><code>Failed</code> — <code>Invalid row_status_flag value: Inactive</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>ValidValues</code> is authoritative about the labels too. <code>row_status_flag</code> carries a third state elsewhere in P21 — <code>705</code> = <em>Inactive</em>, see <a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a> — and this grid does not take it. Two states here, and only the two the definition lists.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUSTOMERSALESREP.customersalesrep&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;row_status_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Delete&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h4 id="it-is-a-soft-delete-and-both-read-surfaces-still-return-the-row">It is a soft delete, and both read surfaces still return the row</h4>
+<p>A deleted row is <strong>not</strong> removed from <code>customer_salesrep</code>; it sits at <code>row_status_flag = 700</code> indefinitely, keeping whatever <code>commission_percentage</code> it had. On one 26.1 instance the table holds 12,060 rows at 700 against 20,201 at 704 — so <strong>an unfiltered read reports long-retired reps as if they were live</strong>, at roughly a 3:5 ratio to the real ones. This is the same accumulation documented for <code>price_page</code> in <a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a>; the salesrep grid is simply another table where it bites.</p>
+<p>Filter on both read paths:</p>
+<ul>
+<li><strong>OData</strong> — <code>?$filter=row_status_flag eq 704</code>.</li>
+<li><strong><code>POST /transaction/get</code></strong> — the read-back still returns the deleted row, as <code>{"Name": "row_status_flag", "Value": "Delete"}</code>. Skip those rows client-side. This one catches people out precisely <em>because</em> <code>/transaction/get</code> is the recommended <a href="#reading-one-record-post-transactionget">read-after-write check</a>: the verification read of a successful delete looks, at a glance, like the row never went anywhere.</li>
+</ul>
+<h4 id="you-cannot-delete-the-only-primary-and-row-order-decides-whether-the-transaction-passes">You cannot delete the only primary, and row order decides whether the transaction passes</h4>
+<p>Deleting a customer's sole primary rep fails the transaction:</p>
+<div class="highlight"><pre><span></span><code>General Exception: This salesrep is set up as the primary salesrep for this record.
+You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Value: Delete
+</code></pre></div>
+
+<p>This is the same guard that blocks demoting the last primary (<code>Primary salesrep is required.</code>) — the window refuses to leave a customer with no primary rep. So a reassignment has to promote the incoming rep and delete the outgoing one <strong>in one transaction</strong>, and the rows are applied in payload order, so the promotion has to come <strong>first</strong>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Row order in <code>Rows</code></th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>promote new (<code>primary_salesrep_flag: "ON"</code>), then delete old</td>
+<td><strong><code>Passed</code></strong></td>
+</tr>
+<tr>
+<td>delete old, then promote new</td>
+<td><code>Failed</code> — <code>You cannot delete it</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Sending <code>row_status_flag: "Active"</code> on a row at 700 <strong>revives it</strong> — 700 → 704 — which is how the same payload shape reinstates a rep who comes back, and how the promote row above works when the incoming rep already has a deleted row on the customer.</p>
+<h4 id="the-sibling-grid-on-shipto-does-not-work-this-way">The sibling grid on ShipTo does not work this way</h4>
+<p><code>TABPAGE_SALESREP.tabpage_salesrep</code> on the <strong><code>ShipTo</code></strong> service holds the same concept and <em>does</em> have a <code>delete_flag</code> (<code>Char</code>, <code>ValidValues: ["ON", "OFF"]</code>, column <code>ship_to_salesrep.delete_flag</code>). Because it is a <code>Char</code> flag it is lenient about representation: <code>"ON"</code> and <code>"Y"</code> both pass and both land as <code>delete_flag = 'Y'</code>. Prefer <code>"ON"</code> to match the definition. Two grids, one concept, two different delete mechanisms — see the <a href="recipes/reassign-salesrep.html">reassign-salesrep recipe</a> for both sides in one worked payload.</p>
+<h4 id="the-general-rule-read-validvalues-before-assuming-a-grid-cant-delete">The general rule: read <code>ValidValues</code> before assuming a grid can't delete</h4>
+<p><code>delete_flag</code> is the common pattern, not the universal one. Before concluding that a grid row can only be neutralized, pull the element out of its definition and read every field's <code>ValidValues</code> — a value pair like <code>Active</code>/<code>Delete</code> on a field you'd otherwise skim past is the delete mechanism:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import json;d=json.load(open(&#39;definitions/Customer.json&#39;));[print(f[&#39;Name&#39;],f[&#39;DataType&#39;],f[&#39;ValidValues&#39;]) for e in d[&#39;TransactionDefinition&#39;][&#39;DataElementDefinitions&#39;] if e[&#39;Name&#39;]==&#39;CUSTOMERSALESREP.customersalesrep&#39; for f in e[&#39;FieldDefinitions&#39;]]&quot;</span>
+</code></pre></div>
+
+<p>The same <code>ValidValues</code> array is what tells you to send <code>Delete</code> rather than <code>700</code>, and <code>ON</code> rather than <code>Y</code>. It is the most under-read part of the definition response.</p>
+<p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/140">issue #140</a>, independently re-verified on 26.1 — the definition, every write case in the tables above, the primary guard, row ordering, the revive path, both read surfaces and the <code>code_p21</code> mapping, 2026-08-25.)</em></p>
 <h3 id="salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</h3>
 <p>The <code>Salesrep</code> service is the write surface for a salesrep's own contact record (the <code>contacts</code> row where <code>salesrep = 'Y'</code>). Verified against P21 26.1 in production (2026-08-11): a misspelled rep name and its email corrected in one transaction, <code>Status: "Passed"</code>, confirmed by read-after-write against <code>contacts</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -6522,6 +6671,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
+<li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 </ul>

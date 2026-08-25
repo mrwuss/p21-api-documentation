@@ -12,6 +12,12 @@ Each `<ServiceName>.json` is the (sanitized) response of `GET {ui_server}/api/v2
 - `TransactionDefinition.DataElementDefinitions[]` — every tab/datawindow with its `KeyFields` and `FieldDefinitions` (this is where you find field names and types).
 - `Template.TransactionSet` — a payload skeleton with every field name and empty values. Copy it, fill the `Edits` you need, delete the rest (or set `IgnoreIfEmpty`), and submit.
 
+> **Read `ValidValues`, not just the field names.** It is the most under-used part of a definition: it publishes the exact strings a field accepts under the default `UseCodeValues: false`, which is how you learn to send `Delete` rather than the `code_p21` integer `700`, and `ON` rather than `Y`. It also answers capability questions the field list alone gets wrong — a grid with no `delete_flag` is not necessarily a grid you cannot delete from, it may simply delete through a differently-named field. Worked example: [03 § Removing a Salesrep Grid Row](../docs/03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row).
+>
+> ```bash
+> python -c "import json;d=json.load(open('definitions/Customer.json'));[print(e['Name'],'|',f['Name'],f['DataType'],f['ValidValues']) for e in d['TransactionDefinition']['DataElementDefinitions'] for f in e['FieldDefinitions'] if f['ValidValues']]"
+> ```
+
 `_manifest.json` records the fetch date and any services that failed.
 
 ## Sanitization (why some ValidValues are empty)

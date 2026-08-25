@@ -655,6 +655,7 @@
 <li><a href="#odata-api-errors">OData API Errors</a><ul>
 <li><a href="#400-invalid-filter-expression">400 - Invalid Filter Expression</a></li>
 <li><a href="#404-table-not-found">404 - Table Not Found</a></li>
+<li><a href="#404-incompatible-operand-types-a-quoted-numeric-key">404 - Incompatible Operand Types (a quoted numeric key)</a></li>
 <li><a href="#query-too-complex">Query Too Complex</a></li>
 </ul>
 </li>
@@ -920,6 +921,14 @@
 </code></pre></div>
 
 <p><strong>Solution</strong>: Verify table name exists in P21 database.</p>
+<h3 id="404-incompatible-operand-types-a-quoted-numeric-key">404 - Incompatible Operand Types (a quoted numeric key)</h3>
+<div class="highlight"><pre><span></span><code>A binary operator with incompatible types was detected.
+Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator kind &#39;Equal&#39;.
+</code></pre></div>
+
+<p>The table exists and the column exists — the <strong>filter value is quoted and the column is numeric</strong>. <code>customer_salesrep.customer_id</code>, <code>ship_to_salesrep.ship_to_id</code> and many other <code>*_id</code> columns are <code>Edm.Decimal</code> despite holding what look like identifier strings, so <code>customer_id eq '100198'</code> fails while <code>customer_id eq 100198</code> succeeds.</p>
+<p>The reason this costs time is the status code: like <a href="02-OData-API.html#active-record-filter">filtering on a column the table doesn't have</a>, it comes back as <strong>404</strong>, which reads as <em>"table not exposed"</em> or <em>"no permission"</em> rather than <em>"drop the quotes"</em>. Read the message body, not the status.</p>
+<p><strong>Solution</strong>: Check the column's type before guessing — <code>GET /odataservice/odata/table/{name}?$top=1</code> shows whether the value comes back quoted. Note the asymmetry with the Transaction API, where <strong>every</strong> <code>Value</code> is a string regardless of the column's type.</p>
 <h3 id="query-too-complex">Query Too Complex</h3>
 <p>Long filter expressions or many joined conditions may fail:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -973,6 +982,14 @@
 <p>A required field is absent from the payload, and the message does not say which. Diff your header against a working example or the full <code>definition</code> — on <code>Order</code>, the trigger is omitting <code>ship_to_id</code> (a field the abbreviated <a href="03-Transaction-API.html#endpoints"><code>basics</code></a> skeleton doesn't even list).</p>
 <p><strong><code>Summary</code> shows <code>Failed: 1</code> — did anything land?</strong></p>
 <p>Depends on the scope. A <strong>single Transaction is atomic</strong> — a failure anywhere rolls back its own edits, verified on <code>Order</code>. But <strong>Transactions in one POST are independent</strong>, so <code>{"Failed": 1, "Succeeded": 1}</code> means half your batch is live; branch on <code>Results.Transactions[].Status</code>, not the tally, or a retry double-applies. And atomicity covers the record, not <strong>downstream documents</strong> a service generates on save — those can survive a later failure. See <a href="03-Transaction-API.html#what-failed-actually-guarantees">Transaction API - What <code>Failed</code> actually guarantees</a>.</p>
+<p><strong><code>Invalid column name: {name}</code></strong></p>
+<p>The field is not on that data element. Two flavors, and the second is the one that misleads:</p>
+<ul>
+<li>A <strong>typo or wrong element</strong> — check the field list in <code>definitions/{Service}.json</code>.</li>
+<li>A field that exists on a <em>sibling</em> element but not this one. <code>Invalid column name: delete_flag</code> on <code>CUSTOMERSALESREP.customersalesrep</code> does <strong>not</strong> mean the grid rows can't be removed; that grid deletes through <code>row_status_flag: "Delete"</code> instead, while the equivalent grid on <code>ShipTo</code> really does use <code>delete_flag</code>. Read the element's <code>ValidValues</code> before concluding a capability is missing — see <a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row">Transaction API - Removing a Salesrep Grid Row</a>.</li>
+</ul>
+<p><strong><code>Invalid {field} value: {value}</code> on an enum field</strong></p>
+<p>The column accepts a fixed set of values and yours isn't one of them. Under the default <code>UseCodeValues: false</code> the API wants the <strong>display label</strong>, not the <code>code_p21</code> integer the database stores — so <code>Invalid row_status_flag value: 700</code> is what sending the <em>code</em> for <code>Delete</code> looks like, and <code>700</code>, <code>704</code> and <code>Inactive</code> all fail the same way where <code>Delete</code> and <code>Active</code> pass. The accepted set is published per field as <code>ValidValues</code> in the <a href="03-Transaction-API.html#get-service-definition">service definition</a>. See <a href="03-Transaction-API.html#usecodevalues">UseCodeValues</a> and <a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores</a>.</p>
 <p><strong>Write reported <code>Succeeded: 1</code> but the data is wrong (a line missing, a value on the wrong line)</strong></p>
 <p>Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a <code>List</code> element that agree on the element's key fields are folded into one, last value wins. See <a href="03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">Transaction API - Keys</a> for the debugging loop.</p>
 <p><strong>HTTP 500 on <code>Status: "Existing"</code></strong></p>
@@ -1978,6 +1995,21 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Verify table name</td>
 </tr>
 <tr>
+<td>404 <code>Edm.Decimal</code> / <code>Edm.String</code> operand types</td>
+<td>OData</td>
+<td>Numeric key column — drop the quotes: <code>customer_id eq 100198</code> — <a href="#404-incompatible-operand-types-a-quoted-numeric-key">details</a></td>
+</tr>
+<tr>
+<td><code>Invalid column name: delete_flag</code> on a grid</td>
+<td>Transaction</td>
+<td>That grid may delete another way — check <code>ValidValues</code> for <code>row_status_flag</code> — <a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row">details</a></td>
+</tr>
+<tr>
+<td><code>Invalid {field} value: 700</code> on an enum</td>
+<td>Transaction</td>
+<td>Send the label, not the <code>code_p21</code> integer — <a href="03-Transaction-API.html#usecodevalues">details</a></td>
+</tr>
+<tr>
 <td>404 on entity</td>
 <td>Entity</td>
 <td>Check if Entity API enabled</td>
@@ -2033,6 +2065,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <li><a href="#odata-api-errors">OData API Errors</a><ul>
 <li><a href="#400-invalid-filter-expression">400 - Invalid Filter Expression</a></li>
 <li><a href="#404-table-not-found">404 - Table Not Found</a></li>
+<li><a href="#404-incompatible-operand-types-a-quoted-numeric-key">404 - Incompatible Operand Types (a quoted numeric key)</a></li>
 <li><a href="#query-too-complex">Query Too Complex</a></li>
 </ul>
 </li>

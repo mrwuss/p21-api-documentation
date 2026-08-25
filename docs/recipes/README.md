@@ -22,7 +22,7 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | [update-supplier-contact](update-supplier-contact.md) | Write a supplier's email / central phone (shared `address` record) | Transaction (`Address`) |
 | [create-customer](create-customer.md) | Create a customer master record (salesrep + default_branch gotchas) | Transaction (`Customer`) |
 | [create-requisition-po](create-requisition-po.md) | Create a requisition PO (`po_type` 'R'; vendor vs supplier) | Transaction (`RequisitionPurchaseOrder`) |
-| [reassign-salesrep](reassign-salesrep.md) | Reassign a customer's and ship-tos' salesrep | Transaction |
+| [reassign-salesrep](reassign-salesrep.md) | Reassign a customer's and ship-tos' salesrep (two grids, two delete mechanisms) | Transaction (`Customer`, `ShipTo`) |
 
 ## Shared conventions (recipes don't repeat these)
 
