@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <Name>Customer</Name>
+  <Transactions>
+    <Transaction>
+      <DataElements>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+          <Name>TABPAGE_1.tp_1_dw_1</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>company_id</Name>
+                  <Value>ACME</Value>
+                </Edit>
+                <Edit>
+                  <Name>customer_id</Name>
+                  <Value>100198</Value>
+                </Edit>
+                <Edit>
+                  <Name>salesrep_id</Name>
+                  <Value>200</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+            <a:string>salesrep_id</a:string>
+          </Keys>
+          <Name>CUSTOMERSALESREP.customersalesrep</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>salesrep_id</Name>
+                  <Value>200</Value>
+                </Edit>
+                <Edit>
+                  <Name>primary_salesrep_flag</Name>
+                  <Value>ON</Value>
+                </Edit>
+                <Edit>
+                  <Name>commission_percentage</Name>
+                  <Value>100</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>salesrep_id</Name>
+                  <Value>100</Value>
+                </Edit>
+                <Edit>
+                  <Name>row_status_flag</Name>
+                  <Value>Delete</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>List</Type>
+        </DataElement>
+      </DataElements>
+      <Status>New</Status>
+    </Transaction>
+  </Transactions>
+  <UseCodeValues>false</UseCodeValues>
+</TransactionSet>

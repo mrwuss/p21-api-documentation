@@ -1020,6 +1020,16 @@
 <td><a href="03-Transaction-API.html#payload-anatomy-types-nesting-and-common-mistakes">03 § Payload Anatomy</a></td>
 </tr>
 <tr>
+<td><strong>Remove a rep from a customer's grid</strong> (no <code>delete_flag</code> — it's <code>row_status_flag: "Delete"</code>)</td>
+<td><a href="recipes/reassign-salesrep.html">reassign-salesrep</a></td>
+<td><a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row">03 § Customer Service — Removing a Salesrep Grid Row</a></td>
+</tr>
+<tr>
+<td>A grid row <strong>looks undeletable</strong> — no <code>delete_flag</code> in the definition</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#the-general-rule-read-validvalues-before-assuming-a-grid-cant-delete">03 § Read <code>ValidValues</code> before assuming a grid can't delete</a></td>
+</tr>
+<tr>
 <td><strong>Edit a salesrep's name/email</strong> (<code>contact_id</code> key; email on TABPAGE_2)</td>
 <td>—</td>
 <td><a href="03-Transaction-API.html#salesrep-service-editing-a-reps-name-and-email">03 § Salesrep Service</a></td>

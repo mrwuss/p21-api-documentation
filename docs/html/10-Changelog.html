@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-25-v189">2026-08-25 — v1.8.9</a></li>
 <li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>
 <li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>
 <li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
@@ -711,6 +712,30 @@
 <li><strong>25.2</strong> — <code>DatawindowName</code> <strong>required</strong> in Interactive change requests (3-param form stops working). → <a href="14-Breaking-Changes.html#p21-252">details</a></li>
 </ul>
 </blockquote>
+<hr />
+<h2 id="2026-08-25-v189">2026-08-25 — v1.8.9</h2>
+<p>A grid everyone had written off as undeletable, and the field that deletes it.</p>
+<ul>
+<li>
+<p><strong>feat:</strong> <strong><a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></strong> — <code>CUSTOMERSALESREP.customersalesrep</code> has <strong>no <code>delete_flag</code></strong>, and sending one returns <code>Invalid column name: delete_flag</code>. That reads as <em>"this grid has no delete"</em>, which is wrong: <strong><code>row_status_flag</code></strong> (<code>ValidValues: ["Active", "Delete"]</code>) is the mechanism, and it has been in the element all along. Send the <strong>label</strong> — the field is typed <code>Long</code> and the column stores <code>code_p21</code> <code>704</code>/<code>700</code>, but <code>"700"</code> and <code>"704"</code> are both rejected with <code>Invalid row_status_flag value</code> under <code>UseCodeValues: false</code> — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong>The <a href="recipes/reassign-salesrep.html">reassign-salesrep recipe</a> was teaching the workaround.</strong> It said the outgoing rep must be demoted to <code>OFF</code> / <code>0%</code> and that "both rows stay". The Customer payload, both language examples, the gotchas and the read-back now delete the row instead. Anyone who followed the old recipe has a live 0% rep row per reassignment — cosmetic, but it is why unfiltered rep reports show retired reps — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> <strong>Three constraints that only show up when you try it.</strong> (1) You <strong>cannot delete the only primary</strong> — <code>This salesrep is set up as the primary salesrep for this record. You cannot delete it.</code>, the same guard that blocks demoting the last primary. (2) <strong>Row order inside the element decides the outcome</strong>: promote-then-delete passes, delete-then-promote fails with that message, same two rows. (3) <code>row_status_flag: "Active"</code> on a deleted row <strong>revives it</strong> (700 → 704) — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> <strong>The delete is soft, and <code>/transaction/get</code> still returns the row.</strong> The row stays in <code>customer_salesrep</code> at <code>700</code> with its old commission intact — 12,060 rows at 700 against 20,201 at 704 on one 26.1 instance, so an unfiltered read overstates live reps by more than half again. OData needs <code>row_status_flag eq 704</code>; the <strong><code>/transaction/get</code> read-back needs the same filter</strong>, which is the sharper trap — that call is our own recommended read-after-write check, so verifying a <em>successful</em> delete shows the row still sitting there — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> <strong>Read <code>ValidValues</code> before concluding a grid can't delete.</strong> <code>delete_flag</code> is the common pattern, not the universal one. The <a href="03-Transaction-API.html#the-general-rule-read-validvalues-before-assuming-a-grid-cant-delete">general rule</a> and the one-liner that prints a grid's fields with their valid values. The sibling <code>TABPAGE_SALESREP.tabpage_salesrep</code> on <strong>ShipTo</strong> proves the asymmetry: same concept, and it <em>does</em> have <code>delete_flag</code> (<code>Char</code>, lenient — <code>"ON"</code> and <code>"Y"</code> both land as <code>'Y'</code>) — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong>The recipe's OData read-back filters were quoting a numeric key.</strong> <code>customer_salesrep.customer_id</code> and <code>ship_to_salesrep.ship_to_id</code> are <code>Edm.Decimal</code>, so <code>customer_id eq '100198'</code> returns <strong>404</strong> — <code>Found operand types 'Edm.Decimal' and 'Edm.String'</code> — and the complete example's verification loop would have thrown on the last line. Filters are now unquoted in both language examples and in the Verify block, with a gotcha explaining why the 404 doesn't mean what it looks like — <em>@mrwuss</em></p>
+</li>
+</ul>
+<p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/140">issue #140</a>, independently re-verified end to end on 26.1: definition, every write case, the primary guard, row ordering, the revive path, both read surfaces, and the <code>code_p21</code> mapping. <code>"Inactive"</code> (<code>705</code>) is rejected by this grid — <code>ValidValues</code> is authoritative about the labels, not just the codes.)</em></p>
 <hr />
 <h2 id="2026-08-20-v188">2026-08-20 — v1.8.8</h2>
 <p>A controlled A/B turned the most common error in the API into something quite different from what it looks like.</p>
@@ -1244,6 +1269,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-25-v189">2026-08-25 — v1.8.9</a></li>
 <li><a href="#2026-08-20-v188">2026-08-20 — v1.8.8</a></li>
 <li><a href="#2026-08-20-v187">2026-08-20 — v1.8.7</a></li>
 <li><a href="#2026-08-20-v186">2026-08-20 — v1.8.6</a></li>
