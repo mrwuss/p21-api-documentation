@@ -1274,7 +1274,19 @@
 <tbody>
 <tr>
 <td><strong>Upgrading P21? What breaks between versions</strong></td>
-<td><a href="14-Breaking-Changes.html">14 Breaking Changes</a> — 2026.1 (Accept-header 500, ghost sessions, non-atomic batched changes) · 25.2 (DatawindowName)</td>
+<td><a href="14-Breaking-Changes.html">14 Breaking Changes</a> — 2026.1 (sequential fail-fast batched changes, silent-false-success loads, <code>IgnoreDisabled</code>, bad-<code>DatawindowName</code> poison) · <a href="14-Breaking-Changes.html#resolved-in-a-later-20261-build">resolved in 5940.0</a> (Accept-header 500, ghost sessions) · 25.2 (DatawindowName)</td>
+</tr>
+<tr>
+<td>Empty HTTP 500, no body, on an interactive call</td>
+<td><a href="14-Breaking-Changes.html#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">14 § entry 9</a> — a bad <code>DatawindowName</code> on the previous request; <strong>not</strong> the <code>Accept</code> header on current builds</td>
+</tr>
+<tr>
+<td><code>Status: "Existing"</code> / <code>"Update"</code> rejected on a transaction</td>
+<td><a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">03 § <code>Status: "New"</code> is the only value</a> — one-member enum; 400 on 5940.0, 500 on older builds</td>
+</tr>
+<tr>
+<td>Which .NET runtime do P21 business rules need?</td>
+<td><a href="14-Breaking-Changes.html#the-middleware-runtime-and-what-it-does-not-dictate">14 § The middleware runtime</a> — both .NET and .NET Framework, for now</td>
 </tr>
 <tr>
 <td>Which middleware build am I on?</td>

@@ -999,7 +999,7 @@
 <tbody>
 <tr>
 <td><code>Status</code></td>
-<td><code>"New"</code> for create <strong>and</strong> update (there is no working <code>"Existing"</code> status — it returns HTTP 500); responses echo <code>"Passed"</code>/<code>"Failed"</code></td>
+<td><code>"New"</code> for create <strong>and</strong> update — <a href="#status-new-is-the-only-value-the-enum-accepts">it is the only string the enum accepts</a>; responses echo <code>"Passed"</code>/<code>"Failed"</code></td>
 </tr>
 <tr>
 <td><code>DataElements</code></td>
@@ -1011,6 +1011,44 @@
 </tr>
 </tbody>
 </table></div>
+<h4 id="status-new-is-the-only-value-the-enum-accepts"><code>Status: "New"</code> is the only value the enum accepts</h4>
+<p><code>Status</code> looks like it should have a create/update/delete vocabulary. It does not. <code>P21.Transactions.Model.V2.TransactionStatus</code> has <strong>exactly one string member — <code>New</code></strong> — and the API's create/update distinction is carried by the keys, not by this field (see <a href="#upsert-semantics-keyed-rows-insert-when-absent">Upsert Semantics</a>).</p>
+<p>Enumerated on 26.1.5940.0 by posting each candidate with an <strong>empty <code>DataElements</code> list</strong>, so the probe measures only whether the model binder accepts the value and nothing can be written:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sent</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"New"</code>, <code>"new"</code>, <code>"NEW"</code></td>
+<td>Accepted — <strong>case-insensitive</strong></td>
+</tr>
+<tr>
+<td><code>"Existing"</code>, <code>"Update"</code>, <code>"Updated"</code>, <code>"Delete"</code>, <code>"Deleted"</code>, <code>"Modified"</code>, <code>"Insert"</code>, <code>"Change"</code>, <code>"Upsert"</code>, <code>"None"</code>, <code>"Unchanged"</code>, <code>"Current"</code>, …</td>
+<td><strong>HTTP 400</strong>, every one</td>
+</tr>
+<tr>
+<td>Any integer (<code>-1</code>, <code>0</code>, <code>1</code>, <code>2</code>, <code>3</code>, …)</td>
+<td>Accepted by the binder — see the warning below</td>
+</tr>
+</tbody>
+</table></div>
+<p>The rejection is a clean model-binding failure that names the type, which is worth recognising on sight:</p>
+<div class="highlight"><pre><span></span><code>// POST /api/v2/transaction  with  &quot;Status&quot;: &quot;Existing&quot;
+HTTP 400
+{&quot;errors&quot;: {
+   &quot;Transactions[0].Status&quot;: [
+     &quot;Error converting value \&quot;Existing\&quot; to type &#39;P21.Transactions.Model.V2.TransactionStatus&#39;. ...&quot;]},
+ &quot;title&quot;: &quot;One or more validation errors occurred.&quot;, &quot;status&quot;: 400}
+</code></pre></div>
+
+<blockquote>
+<p><strong>This used to be an HTTP 500.</strong> On builds before 26.1.5940.0 the same payload produced a <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code> with no indication of the cause — a 500 that looked like a server fault rather than a bad request, and sent more than one integration hunting for a middleware bug. If you are on an older build you will still see the 500; the fix is the same either way.</p>
+<p><strong>Do not send <code>Status</code> as an integer.</strong> The binder accepts any integer because that is how .NET binds enums — it does not range-check, so out-of-range values bind silently to an undefined member rather than erroring. Every integer we probed returned HTTP 200. <strong>Send the string <code>"New"</code></strong>, which is the only value with defined behavior, and let a wrong value fail loudly at the binder instead of undefined-behaving inside the transaction.</p>
+</blockquote>
 <h3 id="dataelement-fields">DataElement Fields</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -1159,7 +1197,7 @@
 <td><code>Status: "Existing"</code></td>
 <td>—</td>
 <td><code>"Status": "New"</code></td>
-<td>HTTP 500 <code>NullReferenceException</code> — <a href="#updating-an-existing-contract">use "New" for updates too</a></td>
+<td>Rejected — HTTP 400 on 26.1.5940.0, HTTP 500 <code>NullReferenceException</code> on earlier builds. <a href="#status-new-is-the-only-value-the-enum-accepts"><code>"New"</code> is the only accepted value</a></td>
 </tr>
 <tr>
 <td>Report payload to <code>/transaction</code></td>
@@ -3562,7 +3600,7 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <ul>
 <li><strong>Commission fields disabled by default:</strong> require <code>IgnoreDisabled: true</code> (see <a href="#commission-costs">Commission Costs</a> above).</li>
 <li><strong><code>corp_address_id</code> read-only after save:</strong> Must be set during initial creation.</li>
-<li><strong>Status <code>"Existing"</code> is not a valid Transaction status:</strong> Setting <code>Transactions[0].Status = "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) returns HTTP 500 (<code>NullReferenceException</code> at <code>ToInternalBeSpecification</code>). Use <code>"New"</code> for both create and update -- see <a href="#updating-an-existing-contract">Updating an Existing Contract</a>.</li>
+<li><strong>Status <code>"Existing"</code> is not a valid Transaction status:</strong> Setting <code>Transactions[0].Status = "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) is rejected — a clean HTTP 400 on 26.1.5940.0, an HTTP 500 <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code> on earlier builds. Use <code>"New"</code> for both create and update -- see <a href="#updating-an-existing-contract">Updating an Existing Contract</a> and <a href="#status-new-is-the-only-value-the-enum-accepts"><code>Status: "New"</code> is the only value the enum accepts</a>.</li>
 </ul>
 <h4 id="example-create-a-job-contract-with-break-and-non-break-lines">Example: Create a Job Contract with Break and Non-Break Lines</h4>
 <blockquote>
@@ -4204,7 +4242,7 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <p>The Assembly service does NOT create new inventory items -- it adds BOM metadata to an item that already exists.</p>
 <h4 id="known-limitations_1">Known Limitations</h4>
 <ul>
-<li><strong>Status "Existing" returns HTTP 500:</strong> Same <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code> as other services. Use the Interactive API (Assembly window) for modifications to existing assemblies.</li>
+<li><strong>Status "Existing" is rejected:</strong> Same as every other service — HTTP 400 on 26.1.5940.0, <code>NullReferenceException</code> HTTP 500 on earlier builds. Use the Interactive API (Assembly window) for modifications to existing assemblies.</li>
 <li><strong>Item must exist first:</strong> <code>inv_mast_item_id</code> must reference an existing item.</li>
 <li><strong>No re-creation:</strong> Items that already have assembly definitions cannot have a second assembly created.</li>
 </ul>

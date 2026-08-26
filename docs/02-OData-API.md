@@ -20,7 +20,7 @@ The OData API provides **read-only** access to P21 data using the OData **v4** p
 
 ### Protocol version
 
-Verified against a 26.1 tenant (August 2026) — the service answers as OData **4.0**:
+Verified against a 26.1 tenant (August 2026) and re-verified on **26.1.5940.0** — the service answers as OData **4.0**:
 
 ```http
 GET {base}/odataservice/odata/table/
@@ -210,6 +210,8 @@ Skip N records (combine with $top for paging):
 ```
 
 > **No `@odata.nextLink`:** P21's OData responses do **not** include a continuation link. Paging is entirely client-driven with `$skip`/`$top` — loop until a page comes back with fewer rows than `$top` (or track `@odata.count`). See the [Pagination Helper](#pagination-helper).
+>
+> **The service will not save you from yourself here.** Re-confirmed on 26.1.5940.0: a `$select` with no `$top` against `p21_view_oe_hdr` returned **806,503 rows in a single response** — no truncation, no continuation link, no server-side cap. An unbounded query is not a page-one query; it is the whole table, materialized in your process. **Always send `$top`.**
 
 ### $count - Get Count
 

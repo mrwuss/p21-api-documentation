@@ -170,7 +170,10 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 
 | Task | Where |
 |------|-------|
-| **Upgrading P21? What breaks between versions** | [14 Breaking Changes](14-Breaking-Changes.md) — 2026.1 (Accept-header 500, ghost sessions, non-atomic batched changes) · 25.2 (DatawindowName) |
+| **Upgrading P21? What breaks between versions** | [14 Breaking Changes](14-Breaking-Changes.md) — 2026.1 (sequential fail-fast batched changes, silent-false-success loads, `IgnoreDisabled`, bad-`DatawindowName` poison) · [resolved in 5940.0](14-Breaking-Changes.md#resolved-in-a-later-20261-build) (Accept-header 500, ghost sessions) · 25.2 (DatawindowName) |
+| Empty HTTP 500, no body, on an interactive call | [14 § entry 9](14-Breaking-Changes.md#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500) — a bad `DatawindowName` on the previous request; **not** the `Accept` header on current builds |
+| `Status: "Existing"` / `"Update"` rejected on a transaction | [03 § `Status: "New"` is the only value](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) — one-member enum; 400 on 5940.0, 500 on older builds |
+| Which .NET runtime do P21 business rules need? | [14 § The middleware runtime](14-Breaking-Changes.md#the-middleware-runtime-and-what-it-does-not-dictate) — both .NET and .NET Framework, for now |
 | Which middleware build am I on? | [14 § Reading the middleware version](14-Breaking-Changes.md#reading-the-middleware-version) — no version endpoint; it rides the session-create response |
 | Error catalog by API | [06 Error Handling](06-Error-Handling.md) (per-API sections) |
 | Write refused for being too long / how long is a field? | [06 § Field Length Limits](06-Error-Handling.md#field-length-limits-a-write-that-fails-on-size) — the API exposes no lengths; measured values + how to measure safely |

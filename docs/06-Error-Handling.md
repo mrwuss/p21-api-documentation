@@ -99,6 +99,8 @@ Some middleware instances return XML instead of JSON for token endpoints. If you
 
 **Diagnostic:** re-issue the failing request with automatic redirects disabled. If you get a `307`/`301` instead of the 401, the redirect is the cause and the fix is the URL, not the credentials.
 
+> **Do not wait for a newer .NET to fix this.** Re-verified on 26.1.5940.0 against **.NET 9.0.19 and .NET 10.0.11**: identical behavior on both — the no-slash form 401s and the trailing-slash form returns 200. Stripping `Authorization` across a redirect is deliberate `HttpClient` behavior, not a bug being fixed, so the URL is the fix on every runtime.
+
 ### Token Troubleshooting
 
 | Issue | Solution |

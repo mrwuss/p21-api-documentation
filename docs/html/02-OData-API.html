@@ -753,7 +753,7 @@
 <p><strong>There are two OData surfaces on a P21 server.</strong> This document covers <code>/odataservice/odata/</code> — the current one, which reaches every exposed table and view. A second, older surface at <code>/data/erp/views/v1</code> exposes a curated set of ~118 views with single-row key addressing. See <a href="#the-other-odata-surface-dataerpviewsv1">The other OData surface</a>.</p>
 </blockquote>
 <h3 id="protocol-version">Protocol version</h3>
-<p>Verified against a 26.1 tenant (August 2026) — the service answers as OData <strong>4.0</strong>:</p>
+<p>Verified against a 26.1 tenant (August 2026) and re-verified on <strong>26.1.5940.0</strong> — the service answers as OData <strong>4.0</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/</span>
 <span class="err">    OData-Version: 4.0</span>
 <span class="err">    Content-Type: application/json; odata.metadata=minimal; odata.streaming=true</span>
@@ -953,6 +953,7 @@
 
 <blockquote>
 <p><strong>No <code>@odata.nextLink</code>:</strong> P21's OData responses do <strong>not</strong> include a continuation link. Paging is entirely client-driven with <code>$skip</code>/<code>$top</code> — loop until a page comes back with fewer rows than <code>$top</code> (or track <code>@odata.count</code>). See the <a href="#pagination-helper">Pagination Helper</a>.</p>
+<p><strong>The service will not save you from yourself here.</strong> Re-confirmed on 26.1.5940.0: a <code>$select</code> with no <code>$top</code> against <code>p21_view_oe_hdr</code> returned <strong>806,503 rows in a single response</strong> — no truncation, no continuation link, no server-side cap. An unbounded query is not a page-one query; it is the whole table, materialized in your process. <strong>Always send <code>$top</code>.</strong></p>
 </blockquote>
 <h3 id="count-get-count">$count - Get Count</h3>
 <p>Include total count in response:</p>

@@ -140,7 +140,10 @@ All documentation is derived from:
 
 | Hazard / behavior | Where it lives |
 |---|---|
-| **2026.1 breaking changes** — Accept-header empty 500, ghost sessions, `SessionId`→`Id`, non-atomic `/v2/change`, silent-false-success loads, UDT delete no-op, `IgnoreDisabled` false success | [docs/14-Breaking-Changes.md](docs/14-Breaking-Changes.md) (version-indexed registry; check before touching Interactive code) |
+| **2026.1 breaking changes** — `SessionId`→`Id`, sequential fail-fast `/v2/change`, silent-false-success loads, UDT delete no-op, `IgnoreDisabled` false success, bad-`DatawindowName` eats the next request. **Accept-header empty 500 + ghost sessions are FIXED in 26.1.5940.0** and kept as resolved entries | [docs/14-Breaking-Changes.md](docs/14-Breaking-Changes.md) (version-indexed registry; **which entries apply depends on the build** — check before touching Interactive code) |
+| **An empty HTTP 500 on the interactive surface no longer means the `Accept` header** — on current builds it means a bad `DatawindowName` on the *previous* request burned this one | [docs/14 entry 9](docs/14-Breaking-Changes.md#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500) |
+| Transaction `Status` — **`"New"` is the only string the enum accepts** (case-insensitive); `"Existing"`/`"Update"`/etc. are HTTP 400 on 5940.0, HTTP 500 on older builds; integers bind silently, never send one | [docs/03 § Status: "New" is the only value](docs/03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
+| **P21 supports both .NET and .NET Framework for business rules, for now** — the middleware's own .NET 10 move did not drag rule code with it; client runtime is unconstrained (`net8.0`+) | [docs/14 § The middleware runtime](docs/14-Breaking-Changes.md#the-middleware-runtime-and-what-it-does-not-dictate) |
 | **25.2** — `DatawindowName` required in change requests | [docs/14 § 25.2](docs/14-Breaking-Changes.md#p21-252) |
 | `IgnoreDisabled: true` reports success on writes that write nothing (3 services confirmed) — never trust a `Passed` under this flag, read the record back | [docs/14 entry 8](docs/14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) · [docs/03 § IgnoreDisabled](docs/03-Transaction-API.md#ignoredisabled) |
 | Transaction `Status: "Existing"` HTTP 500 (platform-wide); updates go through keyed `Status: "New"` upserts | [docs/03 § Upsert Semantics](docs/03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) · [§ Updating an Existing Contract](docs/03-Transaction-API.md#updating-an-existing-contract) |
@@ -165,4 +168,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-08-25*
+*Last updated: 2026-08-26*

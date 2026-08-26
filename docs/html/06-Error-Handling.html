@@ -881,6 +881,9 @@
 <li><strong>The header was set on the wrong object</strong> — for example on a <code>HttpRequestMessage</code> that was then replaced, or on a client that a helper rebuilt.</li>
 </ol>
 <p><strong>Diagnostic:</strong> re-issue the failing request with automatic redirects disabled. If you get a <code>307</code>/<code>301</code> instead of the 401, the redirect is the cause and the fix is the URL, not the credentials.</p>
+<blockquote>
+<p><strong>Do not wait for a newer .NET to fix this.</strong> Re-verified on 26.1.5940.0 against <strong>.NET 9.0.19 and .NET 10.0.11</strong>: identical behavior on both — the no-slash form 401s and the trailing-slash form returns 200. Stripping <code>Authorization</code> across a redirect is deliberate <code>HttpClient</code> behavior, not a bug being fixed, so the URL is the fix on every runtime.</p>
+</blockquote>
 <h3 id="token-troubleshooting">Token Troubleshooting</h3>
 <div class="table-wrap"><table>
 <thead>

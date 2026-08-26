@@ -190,6 +190,8 @@ Use for service accounts and automated integrations. Consumer keys bypass P21 us
 >
 > Read that alongside the impersonation point above and the consequence is concrete: **`Allow creation of business rules` is an admin-equivalent permission on any system where a consumer key is attached to a rule.** A rule author can read the key's value out of `RuleState` and use it anywhere — the rule is arbitrary .NET code. Grant that setting to the same short list of people you would trust with the key itself, and treat the Rule Consumer Key dropdown as a decision about *who can see this key*, not just *what this rule can call*.
 >
+> **"Arbitrary .NET code" currently means either runtime.** P21 supports **both .NET and .NET Framework for business rules** as of 2026.1 — the middleware's own [migration to .NET 10](14-Breaking-Changes.md#the-middleware-runtime-and-what-it-does-not-dictate) did not force rule code onto modern .NET with it. That widens the surface rather than narrowing it: a rule targeting .NET Framework has the same access to `RuleState.ConsumerKey`, so the caveat above applies to both. Treat "for now" as load-bearing — the dual support is a transition state, not a commitment, so a new rule is better written against modern .NET than against Framework.
+>
 > *(Source: P21 26.2 help, OPTIONAL - DynaChange Rules - BRE > Managing Business Rules. The feature is working as designed — this is a caveat about who you hand it to, not a defect.)*
 
 ### Creating a Consumer Key

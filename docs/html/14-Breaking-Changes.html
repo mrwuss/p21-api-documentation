@@ -642,15 +642,19 @@
 <ul>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#p21-20261">P21 2026.1</a><ul>
-<li><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit Accept: application/json header</a></li>
-<li><a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</a></li>
 <li><a href="#3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: SessionId → Id</a></li>
 <li><a href="#4-put-v2tab-no-longer-accepts-tabname">4. PUT /v2/tab no longer accepts TabName</a></li>
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
-<li><a href="#6-batched-v2change-is-not-atomic-a-rejected-field-does-not-roll-back-its-neighbours">6. Batched /v2/change is not atomic — a rejected field does not roll back its neighbours</a></li>
+<li><a href="#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">6. Batched /v2/change is not atomic — it is sequential and fail-fast</a></li>
 <li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
 <li><a href="#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">8. IgnoreDisabled: true reports success on writes that write nothing</a></li>
+<li><a href="#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">9. A bad DatawindowName eats the next request on that window (empty HTTP 500)</a></li>
 <li><a href="#related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</a></li>
+</ul>
+</li>
+<li><a href="#resolved-in-a-later-20261-build">Resolved in a later 2026.1 build</a><ul>
+<li><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit Accept: application/json header</a></li>
+<li><a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</a></li>
 </ul>
 </li>
 <li><a href="#p21-252">P21 25.2</a><ul>
@@ -675,95 +679,44 @@
 <thead>
 <tr>
 <th>Version</th>
-<th>Entries</th>
+<th>Still live on the latest build we have</th>
+<th>Resolved</th>
 <th>Severity</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><a href="#p21-20261">2026.1</a></td>
-<td>Empty 500 without <code>Accept: application/json</code> · ghost sessions (500/409) · <code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>non-atomic batched changes</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong> · <strong><code>IgnoreDisabled</code> reports success on JobContractPricing <code>VALUES.values</code> writes that write nothing</strong></td>
-<td>High — one hard break, four data-integrity hazards</td>
+<td><code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>batched changes are sequential and fail-fast</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong> · <strong><code>IgnoreDisabled</code> reports success on writes that write nothing</strong> · <strong>a bad <code>DatawindowName</code> eats the next request on that window</strong></td>
+<td><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">Empty 500 without <code>Accept: application/json</code></a> and the <a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">ghost sessions</a> it caused — both fixed in <strong>26.1.5940.0</strong></td>
+<td>High — four data-integrity hazards</td>
 </tr>
 <tr>
 <td><a href="#p21-252">25.2</a></td>
 <td><code>DatawindowName</code> required in change requests</td>
+<td>—</td>
 <td>High — hard break for 3-param change calls</td>
 </tr>
 </tbody>
 </table></div>
+<blockquote>
+<p><strong>Resolved entries stay on this page.</strong> A fix in a later 2026.1 build does not help you if you are upgrading <em>from</em> an affected one, and the symptom is what you will search for when it bites. Resolved entries are marked at the top and moved to the end of their version's section.</p>
+</blockquote>
 <hr />
 <h2 id="p21-20261">P21 2026.1</h2>
-<p>Originally found on <strong>2026.1.5873.1</strong> during upgrade validation (June 2026), where none of it reproduced on 2025.2.5855.0 with identical requests. <strong>Re-verified July 2026 against a production tenant on 26.1.5894.1</strong>, a later build: entries 1–5 all still reproduce, with the refinements noted below. Entry 6 has been rewritten — the originally reported mechanism did not reproduce on 5894.1 (see that entry). The empty-500 defect has been reported to Epicor; the contract changes are awaiting written confirmation of intent.</p>
+<p>Originally found on <strong>2026.1.5873.1</strong> during upgrade validation (June 2026), where none of it reproduced on 2025.2.5855.0 with identical requests. Re-verified against <strong>26.1.5894.1</strong> (July 2026) and <strong>26.1.5910.3</strong> (August 2026), then re-run in full against <strong>26.1.5940.0</strong> (August 2026).</p>
+<p><strong>On 26.1.5940.0, entries 3–8 all still reproduce</strong>, with the refinements noted in each. <strong>Entries 1 and 2 are fixed</strong> and have moved to <a href="#resolved-in-a-later-20261-build">Resolved in a later 2026.1 build</a> at the end of this section. <strong>Entry 6's mechanism is sharpened</strong> — the batch turns out to be sequential and fail-fast, which is a more useful rule than "not atomic". <strong>Entry 9 is new</strong>, and it inherits entry 1's symptom: an empty HTTP 500 on the interactive surface now means something else entirely.</p>
 <blockquote>
-<p><strong>Finding your build:</strong> there is no version endpoint, but the session-create response carries it — <code>Properties[0].Properties.fullversion</code> (e.g. <code>26.1.5894.1</code>) and <code>shortversion</code> (<code>26.1</code>). See <a href="#reading-the-middleware-version">Reading the middleware version</a> below.</p>
+<p><strong>Read entry 9 before you debug an empty 500 on a current build.</strong> The empty-500 signature that entry 1 made famous no longer comes from the <code>Accept</code> header. It comes from <a href="#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">a bad <code>DatawindowName</code> on the <em>previous</em> request</a>.</p>
 </blockquote>
-<h3 id="1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit <code>Accept: application/json</code> header</h3>
-<p><strong>Hard break — every interactive endpoint.</strong></p>
-<p>On 2026.1, any request to <code>/uiserver0/api/ui/interactive/...</code> whose <code>Accept</code> header does not include <code>application/json</code> fails with an <strong>empty-body HTTP 500</strong>. That includes <code>Accept: */*</code> — the <strong>default for most HTTP libraries, including Python <code>httpx</code> and .NET <code>HttpClient</code></strong>. 2025.2 falls back to a default representation instead of failing.</p>
-<p>The rule is <em>"<code>application/json</code> must be present"</em>, not <em>"<code>*/*</code> is rejected"</em> — a list containing both works. Verified on 26.1.5894.1, each variant tested from a clean slate:</p>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th><code>Accept</code></th>
-<th>Result</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>application/json</code></td>
-<td>200</td>
-</tr>
-<tr>
-<td><em>(header omitted)</em></td>
-<td><strong>500, empty body</strong></td>
-</tr>
-<tr>
-<td><code>*/*</code></td>
-<td><strong>500, empty body</strong></td>
-</tr>
-<tr>
-<td><code>application/xml</code></td>
-<td><strong>500, empty body</strong></td>
-</tr>
-<tr>
-<td><code>text/html</code></td>
-<td><strong>500, empty body</strong></td>
-</tr>
-<tr>
-<td><code>application/json, */*</code></td>
-<td>200</td>
-</tr>
-</tbody>
-</table></div>
-<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">{uiserver}/api/ui/interactive/sessions/</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer {token}</span>
-<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
-<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json        &lt;-- REQUIRED on 2026.1; omit it and you get an empty 500</span>
-
-<span class="p">{</span><span class="nt">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}</span>
-</code></pre></div>
-
-<p>Note that <code>application/xml</code> also fails here, even though the <code>/api/v2</code> Transaction endpoints negotiate XML happily — this is specific to the interactive surface.</p>
-<p><strong>Mitigation:</strong> send <code>Accept: application/json</code> on <strong>every</strong> P21 request, ideally forced in one shared header builder rather than per call site. Every example in this repo already does this — the consequence of omitting it is what changed.</p>
+<p>The empty-500 defect was reported to Epicor and is fixed as of 5940.0; the contract changes are still awaiting written confirmation of intent.</p>
 <blockquote>
-<p><strong>It will look like an authentication problem. It isn't — don't downgrade your auth.</strong> The empty 500 lands on session-create, so the natural reading is <em>"our v2 tokens can no longer open sessions on 26.1"</em>. A production integration reached exactly that conclusion and shipped a fallback to the legacy <code>/api/security/token</code> endpoint before a controlled test — same token, one request with <code>Accept</code>, one without — isolated the header as the real cause. Their write-up records the correction: it "masqueraded as a 'v2 tokens can't open sessions' regression until a controlled same-token test isolated the header."</p>
-<p><strong>v2 tokens open sessions normally on 26.1</strong>, confirmed independently here on 26.1.5910.3: a v2 token created a session, opened a window, and read its state with no trouble — the only requirement was the <code>Accept</code> header.</p>
-<p>This matters because the "fix" is a real security regression for no benefit. The v1 endpoint takes <strong>credentials in HTTP headers</strong>, where proxies and log pipelines capture them (see <a href="00-Authentication.html#v1-endpoint-deprecated-security-risk">Authentication § V1 Endpoint</a>), and it also <strong>forfeits per-operator attribution</strong> — the legacy endpoint has no consumer key, so every write is attributed to the service account instead of the person who triggered it. Fix the header; keep v2.</p>
-<p>Diagnostic that settles it in two requests: send the <strong>same</strong> token twice to session-create, once with <code>Accept: application/json</code> and once without. A 200 and an empty 500 mean the header, not the token. If both fail, look at the token.</p>
-</blockquote>
-<h3 id="2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</h3>
-<p><strong>Diagnosis trap that amplifies #1.</strong></p>
-<p>When the session create fails with the empty 500 above, the session is still <strong>partially created server-side</strong> — it appears in UI Server Administration and blocks subsequent creates with <strong>409 <code>{"ErrorMessage":"Session already exists."}</code></strong> A retrying integration therefore sees an <strong>alternating 500 / 409 pattern</strong> that looks like a session-pool or concurrency problem and is very hard to trace back to a missing header.</p>
-<p>The ghost also <strong>masks the original error</strong>: once one call has poisoned the session, every subsequent create returns 409 regardless of its headers — so the very header experiment you would run to diagnose #1 reports the wrong answer unless you clear the ghost between attempts.</p>
-<p><strong>Mitigation:</strong> fix the <code>Accept</code> header (#1). If you see 500/409 alternation on 2026.1, check the headers before anything else.</p>
-<p><strong>To clear a ghost, <code>DELETE</code> the session — don't wait it out.</strong> <code>DELETE {uiserver}/api/ui/interactive/sessions</code> returns 200 and a clean create succeeds <strong>immediately</strong> afterward (verified on 26.1.5894.1). Waiting for <code>SessionCleanupExpiration</code> (~6 min) also works but is unnecessary; make the delete the first step of your retry path.</p>
-<blockquote>
-<p><strong>This only works while you still hold the token that created the session.</strong> Verified on 26.1.5910.3: the delete is scoped to the bearer token, so a ghost left by a <em>previous</em> token — a crashed process, a worker that re-authenticated, a retry path that fetched a fresh token before cleaning up — cannot be deleted at all. Query parameters and body forms carrying the session id are all refused with <code>400 {"ErrorMessage":"Invalid session"}</code>, and only <code>SessionCleanupExpiration</code> will reap it. Keep the token alive until the session is closed; do not re-authenticate as part of your recovery path before deleting. Full attempt matrix: <a href="04-Interactive-API.html#6-end-session">Interactive API § End Session</a>.</p>
+<p><strong>Finding your build:</strong> there is no version endpoint, but the session-create response carries it — <code>Properties[0].Properties.fullversion</code> (e.g. <code>26.1.5940.0</code>) and <code>shortversion</code> (<code>26.1</code>). See <a href="#reading-the-middleware-version">Reading the middleware version</a> below. <strong>Which entries apply to you depends on this number</strong>, so read it before trusting the page.</p>
 </blockquote>
 <h3 id="3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: <code>SessionId</code> → <code>Id</code></h3>
 <p><code>POST /api/ui/interactive/sessions/</code> returns the session identifier under <strong><code>Id</code></strong> on 2026.1; 2025.2 returned <strong><code>SessionId</code></strong>.</p>
 <p><strong>Mitigation:</strong> read both (<code>data.get("Id") or data.get("SessionId")</code> / the C# equivalent) so one client works across versions.</p>
+<p>Still <code>Id</code> on 26.1.5940.0 — the rename was permanent, not a transitional build.</p>
 <h3 id="4-put-v2tab-no-longer-accepts-tabname">4. <code>PUT /v2/tab</code> no longer accepts <code>TabName</code></h3>
 <p>2026.1 binds <strong><code>PageName</code></strong> (PagePath structure) only; 2025.2 also tolerated <code>TabName</code> in the body. Requests still sending <code>TabName</code> stop working.</p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">ta</span><span class="err">b</span>
@@ -771,7 +724,7 @@
 </code></pre></div>
 
 <p><strong>Mitigation:</strong> none needed if you follow the documented v2 shape — this repo has always documented <code>PageName</code> (<a href="04-Interactive-API.html#changing-tabs">Interactive API § Changing Tabs</a>). Audit any legacy client for <code>TabName</code> in tab-change bodies.</p>
-<p><strong><code>TabName</code> is ignored, not rejected — which matters for the error message you get.</strong> Verified on 26.1.5910.3 against <code>SalesPricePage</code>, switching tabs and reading back which datawindow the window exposes:</p>
+<p><strong><code>TabName</code> is ignored, not rejected — which matters for the error message you get.</strong> Verified on 26.1.5910.3 and re-verified unchanged on <strong>26.1.5940.0</strong>, against <code>SalesPricePage</code>, switching tabs and reading back which datawindow the window exposes:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -809,30 +762,58 @@
 </code></pre></div>
 
 <p>So the failure is detectable in-band. It is still a false-success hazard for any client that gates on <code>Status</code> alone, because <code>Status: 2</code> on a <em>load</em> is easy to mistake for a benign non-success, and the window is left silently empty and writable.</p>
+<p>Re-verified on <strong>26.1.5940.0</strong>, <code>PurchaseOrder</code> keyed by <code>po_no</code>, against a control that loaded a real PO in the same run: the real PO returns <code>Status: 1</code>, <code>Messages: []</code> and a populated <code>tp_1_dw_1</code>; the nonexistent one returns <code>Status: 2</code>, the message above, and a datawindow that is present but empty. Both are HTTP 200.</p>
 <p><strong>Mitigation (verified):</strong> do not infer existence from the load status at all. Gate with an <strong>existence pre-read</strong> (OData or <code>POST /api/v2/transaction/get</code>) <em>before</em> opening/keying the window, and abort on no-match. Treat any non-Success load status as fatal, and inspect <code>Messages</code> when logging the reason.</p>
-<h3 id="6-batched-v2change-is-not-atomic-a-rejected-field-does-not-roll-back-its-neighbours">6. Batched <code>/v2/change</code> is not atomic — a rejected field does not roll back its neighbours</h3>
+<h3 id="6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">6. Batched <code>/v2/change</code> is not atomic — it is sequential and fail-fast</h3>
 <p><strong>Data-integrity hazard.</strong></p>
-<p><code>PUT /v2/change</code> takes a <code>List</code> of field changes but returns <strong>one top-level result for the whole batch</strong> — there is no per-item status. When one item in the batch is rejected, the call returns an <strong>HTTP 400 error envelope with no <code>Status</code> field at all</strong>, while <strong>the other fields in the same batch have already been applied</strong>. Verified on 26.1.5894.1 (PurchaseOrder, no save issued):</p>
-<div class="highlight"><pre><span></span><code>// One /v2/change carrying two fields: a header field and a disabled line field
-[{&quot;TabName&quot;: &quot;TABPAGE_1&quot;,  &quot;DatawindowName&quot;: &quot;tp_1_dw_1&quot;,     &quot;FieldName&quot;: &quot;external_po_no&quot;, &quot;Value&quot;: &quot;ZZ_HDR&quot;},
- {&quot;TabName&quot;: &quot;TABPAGE_18&quot;, &quot;DatawindowName&quot;: &quot;extended_info&quot;, &quot;FieldName&quot;: &quot;extended_desc&quot;,  &quot;Value&quot;: &quot;ZZ_LINE&quot;}]
+<p><code>PUT /v2/change</code> takes a <code>List</code> of field changes but returns <strong>one top-level result for the whole batch</strong> — there is no per-item status. When one item is rejected, the call returns an <strong>HTTP 400 error envelope with no <code>Status</code> field at all</strong>, and the batch is <strong>not</strong> rolled back.</p>
+<p><strong>The rule, verified on 26.1.5940.0: the list is applied in order and stops at the first rejection.</strong> Fields <em>before</em> the bad one are applied and stay applied; fields <em>after</em> it are never attempted. So a field's <strong>position in the list</strong> decides whether it survives — which is why the same two-field batch gives opposite results depending only on the order you wrote it in. PurchaseOrder keyed to an existing PO, <code>company_id</code> as the disabled field, no save issued, read-back after each:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Batch</th>
+<th>Response</th>
+<th><code>external_po_no</code> after</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[external_po_no, company_id]</code></td>
+<td><code>400 Column is disabled: company_id</code></td>
+<td><strong><code>ZZ_HDR</code> — applied</strong></td>
+</tr>
+<tr>
+<td><code>[company_id, external_po_no]</code></td>
+<td><code>400 Column is disabled: company_id</code></td>
+<td><code>''</code> — never attempted</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code>// The first row above, in full
+[{&quot;TabName&quot;: &quot;TABPAGE_1&quot;, &quot;DatawindowName&quot;: &quot;tp_1_dw_1&quot;, &quot;FieldName&quot;: &quot;external_po_no&quot;, &quot;Value&quot;: &quot;ZZ_HDR&quot;},
+ {&quot;TabName&quot;: &quot;TABPAGE_1&quot;, &quot;DatawindowName&quot;: &quot;tp_1_dw_1&quot;, &quot;FieldName&quot;: &quot;company_id&quot;,     &quot;Value&quot;: &quot;XX&quot;}]
 
-// Response: HTTP 400
-{&quot;ErrorMessage&quot;: &quot;Column is disabled: extended_desc&quot;, &quot;ErrorType&quot;: null, ...}
+// Response: HTTP 400 — note there is no Status field to check
+{&quot;ErrorMessage&quot;: &quot;Column is disabled: company_id&quot;, &quot;ErrorType&quot;: null, ...}
 // ...but a read-back shows external_po_no == &quot;ZZ_HDR&quot; — applied and still in the buffer.
 </code></pre></div>
 
-<p>A client that treats the 400 as "the change did not happen" is wrong: part of it did. If it then retries or falls through to a save, it commits a partially-applied edit it never intended.</p>
+<p>A client that treats the 400 as "the change did not happen" is wrong: part of it did, and <em>which</em> part depends on list order. If it then retries or falls through to a save, it commits a partially-applied edit it never intended.</p>
+<blockquote>
+<p><strong>Sequential fail-fast is the precise claim; "not atomic" was the observable.</strong> The earlier framing was correct about the consequence and vague about the cause — it left open whether surviving fields were applied at random or by rule. They are applied by rule, and the rule is worth knowing: it means a batch whose risky field is <strong>first</strong> fails cleanly with nothing applied, while the same batch with the risky field <strong>last</strong> leaves everything before it committed to the buffer. That is a footgun you can reason about rather than merely fear.</p>
+</blockquote>
 <p><strong>Mitigation (verified):</strong> write <strong>one field per <code>/change</code> call</strong> and check the status of every call, so a failure is unambiguously attributable to one field. Then prove the result with a <strong>read-back</strong> — see <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a>. A production run of 81 records using this pattern read back with zero silent drops.</p>
 <blockquote>
 <p><strong>Correction (July 2026).</strong> This entry originally reported the mechanism as <em>"a batch containing a field on a </em><em>non-active tab</em><em> returns <code>Status: 1</code> while silently not applying that field."</em> That does <strong>not</strong> reproduce on 26.1.5894.1. Across eight configurations on the PurchaseOrder window — batched and single-field, <code>DatawindowName</code> supplied and omitted, target tab active and inactive — the non-active-tab field was <strong>applied every time</strong> with <code>Status: 1</code>. The original observation was made on 26.1.5873.1, which is no longer available to re-test, so we cannot distinguish "fixed in a later build" from "misattributed mechanism" — and the batch <strong>is</strong> genuinely non-atomic, which produces the same end result (a partially-applied batch) by a different route. The one-field-per-call mitigation was correct and is unchanged.</p>
 <p><strong>Re-tested again on 26.1.5910.3 (August 2026), still no reproduction.</strong> PurchaseOrder, no save issued: with <code>TABPAGE_1</code> active, a write to <code>supplier_ship_date</code> on <code>TABPAGE_18</code> returned <code>Status: 1</code> and the value <strong>was present</strong> in the buffer after switching to that tab — matching the control that switched tabs first. The specific field named in the original 5873.1 report therefore applies normally on this build.</p>
+<p><strong>The 5894.1 repro is also dead as of 5940.0, for an unrelated reason.</strong> That example used <code>TABPAGE_18.extended_info.extended_desc</code> as its disabled field; on 5940.0 that column is <strong>no longer disabled</strong> and writes cleanly (<code>Status: 1</code>, value in the buffer). Nothing about entry 6 changed — the field did. The table above re-establishes the behavior with <code>company_id</code>, which is disabled on a saved PO on every build we have tested. Worth noting generally: <strong>which columns a window disables shifts between builds</strong>, so a repro pinned to one field name has a shorter shelf life than the behavior it demonstrates.</p>
 <p><strong>Write tab-by-tab anyway.</strong> The client that filed the original report still groups its field writes by tab and switches before each group, and that remains the right shape regardless of which build you are on: it costs one <code>/v2/tab</code> call per tab, removes the question entirely, and matches how the window behaves for a human. Treat it as cheap insurance, not as a workaround for a bug we can currently demonstrate.</p>
 </blockquote>
 <h3 id="7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</h3>
 <p><strong>Data-integrity hazard — silent false success on delete.</strong></p>
 <blockquote>
 <p><strong>Verification scope:</strong> unlike entries 1–6, this one has <strong>no prior-version comparison</strong> — by the time it was found, no pre-2026.1 tenant remained available. What follows is verified on 2026.1; whether it is a <em>regression</em> or has always depended on how the table was created is <strong>unproven</strong>. Treated as a 2026.1 hazard because 2026.1's table-creation UI is what produces the incompatible shape.</p>
+<p><strong>Partially re-verified on 26.1.5940.0 (August 2026).</strong> The <code>row_uid</code> existence probe, the update <code>400 {"error":["Invalid Row Uid!"]}</code> for <em>every</em> condition name — including the table's real primary key — and the nested-<code>conditions</code> payload trap all reproduce verbatim. <strong>The delete half could not be re-tested</strong>: the tenant available for the re-run carries no user-created UDT (its only <code>udt_*</code> table is a P21 system table), so the <code>[0] rows deleted ... successfully!</code> silent no-op is carried forward on the original July 2026 verification rather than re-confirmed. Flagged rather than quietly restated, because that half is the dangerous one.</p>
 </blockquote>
 <p><code>PUT /udtservice/api/udtdata/updateudtdata</code> and <code>DELETE .../deleteudtdata</code> identify rows by a column named <strong>exactly <code>row_uid</code></strong>. P21's <strong>User Defined Table Maintenance</strong> on 2026.1 names the primary key <strong><code>udt_{tablename}_uid</code></strong> and creates <strong>no</strong> <code>row_uid</code> column — so on any UDT built there, neither endpoint can reach a single row:</p>
 <div class="highlight"><pre><span></span><code>// Update — returns this for EVERY condition: the real PK name, any other
@@ -892,34 +873,233 @@
 </code></pre></div>
 
 <p>Add <code>IgnoreDisabled: true</code> and the identical payload returns <code>Summary: {"Failed": 0, "Succeeded": 1}</code> — and a read-back shows the value unchanged (verified 26.1.5910.3, 2026-08-11, on a throwaway contract).</p>
-<p><strong>And it is not limited to <code>JobContractPricing</code>.</strong> The same shape reproduces on <code>Order</code> (26.1, 2026-08-19). <code>LINE_NOTE.line_note</code> is published in the <code>Order</code> definition as an ordinary keyed <code>List</code>, but every one of its columns is disabled; without the flag the write is refused loudly:</p>
+<p><strong>And it is not limited to <code>JobContractPricing</code>.</strong> The same shape reproduces on <code>Order</code> (26.1, 2026-08-19; re-verified on <strong>26.1.5940.0</strong>, 2026-08-26, with the note read back unchanged before and after). <code>LINE_NOTE.line_note</code> is published in the <code>Order</code> definition as an ordinary keyed <code>List</code>, but every one of its columns is disabled; without the flag the write is refused loudly:</p>
 <div class="highlight"><pre><span></span><code>General Exception: Column is disabled: note
 </code></pre></div>
 
-<p>Add <code>IgnoreDisabled: true</code> — payload otherwise byte-identical — and it returns <code>Summary: {"Failed": 0, "Succeeded": 1}</code> with no messages, while a <code>/transaction/get</code> read-back shows the note still empty. That makes three unrelated services showing the same false success, which is what marks this as a platform behavior rather than a <code>JobContractPricing</code> quirk.</p>
+<p>Add <code>IgnoreDisabled: true</code> — payload otherwise byte-identical — and it returns <code>Summary: {"Failed": 0, "Succeeded": 1}</code>, <code>Status: "Passed"</code> and no messages, while a <code>/transaction/get</code> read-back shows the note <strong>unchanged</strong>. The echoed transaction drops the <code>LINE_NOTE.line_note</code> element entirely and returns only <code>TABPAGE_1.order</code>, so nothing in the response marks the omission. That makes three unrelated services showing the same false success, which is what marks this as a platform behavior rather than a <code>JobContractPricing</code> quirk.</p>
 <p>So <code>IgnoreDisabled</code> has two outcomes that are <strong>indistinguishable in the response</strong>: it genuinely unlocks the write (as it does for contract BINS quantities and JOBPRICECOST commission fields), or it swallows the refusal and writes nothing. You cannot tell which you got without reading the record back.</p>
 <p><strong>Mitigation:</strong> always read back after any write that used <code>IgnoreDisabled: true</code>, on any service — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat <code>Status: "Passed"</code> under <code>IgnoreDisabled</code> as <strong>unverified</strong> until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write <code>VALUES.values</code> at all, on any of the three paths. See <a href="03-Transaction-API.html#ignoredisabled">Transaction API § IgnoreDisabled</a> and <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> for the same read-back discipline applied elsewhere in this repo.</p>
+<h3 id="9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">9. A bad <code>DatawindowName</code> eats the <strong>next</strong> request on that window (empty HTTP 500)</h3>
+<p><strong>Diagnosis trap — and the reason an empty 500 no longer means what entry 1 says it means.</strong></p>
+<p>Naming a datawindow the window doesn't have returns a clean <code>400 "Unable to find datawindow named {name}"</code> and applies nothing. That much is <a href="#a-nonexistent-datawindowname-fails-loudly-not-silently">documented below</a> and is fine. What is not fine is what happens to the <strong>next</strong> call on that window: it returns an <strong>empty-body HTTP 500</strong> and does nothing, whatever kind of call it is.</p>
+<p>Verified on 26.1.5940.0, PurchaseOrder keyed to an existing PO, deterministic across 4/4 runs:</p>
+<div class="highlight"><pre><span></span><code>PUT /v2/change  {&quot;DatawindowName&quot;: &quot;dw_1&quot;, ...}    → 400  &quot;Unable to find datawindow named dw_1&quot;
+PUT /v2/change  {  a perfectly valid change    }    → 500  &lt;empty body&gt;   &lt;- eaten, applies nothing
+PUT /v2/change  {  the same valid change again }    → 200  Status: 1, value applied
+</code></pre></div>
+
+<p>The burnt call does not have to be a change — <code>GET /v2/data</code> and <code>PUT /v2/tab</code> are consumed the same way if either is what follows the 400. It is exactly <strong>one</strong> request, and the window is healthy again afterward; no session reset or window reopen is needed.</p>
+<p><strong>It is specific to this error, not to 400s in general.</strong> The control is a <code>Column is disabled</code> 400, which is the other 400 you routinely hit on this surface:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Preceding error</th>
+<th>Next request on that window</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>400 Unable to find datawindow named dw_1</code></td>
+<td><strong>500, empty body — applies nothing</strong></td>
+</tr>
+<tr>
+<td><code>400 Column is disabled: company_id</code></td>
+<td>200, applies normally</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Why this one matters out of proportion to its size.</strong> <a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">Entry 1</a> taught a generation of P21 integrations that an empty 500 on the interactive surface means a missing <code>Accept</code> header. That defect is <strong>fixed</strong> as of 26.1.5940.0 — so on a current build, an empty 500 here is this instead, and chasing the header will waste the afternoon. The two are easy to tell apart: entry 1's fires on <strong>session-create, every time</strong>; this one fires <strong>once, immediately after a 400 you already received</strong>.</p>
+<p><strong>Mitigation:</strong> get the datawindow name right — <code>GET /api/v2/definition/{Service}</code> or the committed <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/{Service}.json</code></a> lists every <code>TAB.datawindow</code> pair for the window, so there is no reason to guess. If you do take the 400, treat the following request as <strong>lost</strong>: re-send it, and check its result rather than assuming the first attempt landed. A client that retries the <em>failed</em> change but not the one after it will silently drop a field — the 500 carries no body to tell you otherwise.</p>
 <h3 id="related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</h3>
-<p>Found while re-verifying the above on 26.1.5894.1. None of these are regressions, but each will mislead you while debugging one.</p>
+<p>Found while re-verifying the above on 26.1.5894.1, and re-checked on 26.1.5940.0. None of these are regressions, but each will mislead you while debugging one.</p>
 <h4 id="reading-the-middleware-version">Reading the middleware version</h4>
 <p>There is no version endpoint (<code>/api/version</code>, <code>/api/v2/version</code> and friends all 404). The <strong>session-create response</strong> carries the build:</p>
 <div class="highlight"><pre><span></span><code>POST {uiserver}/api/ui/interactive/sessions   // Accept: application/json
 {
   &quot;Id&quot;: &quot;3c2aca0b-...&quot;,
   &quot;Properties&quot;: [{&quot;Name&quot;: &quot;Telemetry&quot;, &quot;Properties&quot;: {
-      &quot;fullversion&quot;: &quot;26.1.5894.1&quot;, &quot;shortversion&quot;: &quot;26.1&quot;, &quot;configurationid&quot;: &quot;3694&quot;, ...
+      &quot;fullversion&quot;: &quot;26.1.5940.0&quot;, &quot;shortversion&quot;: &quot;26.1&quot;, &quot;configurationid&quot;: &quot;3694&quot;, ...
   }}]
 }
 </code></pre></div>
 
-<p>This is the most reliable way to confirm which build you are actually talking to before trusting any entry on this page.</p>
+<p>This is the most reliable way to confirm which build you are actually talking to before trusting any entry on this page — and on this page it is now load-bearing, because <a href="#resolved-in-a-later-20261-build">entries 1 and 2</a> apply to some 2026.1 builds and not others.</p>
+<p>The same response also carries the session-handling configuration you will want when debugging <a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">entry 2</a> — <code>SessionHandling.SessionCleanupExpiration</code> (<code>00:06:00</code> on the tenants we have measured), <code>TimedCleanupInterval</code>, <code>PoolSize</code> and <code>WarmStartCount</code>.</p>
+<p><strong>If you cannot open a session, you cannot read the version.</strong> The probe is only available on the interactive surface, so a tenant that is refusing session-create for any reason will not tell you which build it is — which is precisely when you most want to know. <code>/api/version</code>, <code>/api/v2/version</code>, <code>/api/ui/version</code> and <code>/version</code> were all re-probed on 5940.0 and all four still 404.</p>
+<h4 id="the-middleware-runtime-and-what-it-does-not-dictate">The middleware runtime, and what it does not dictate</h4>
+<p>Epicor attributes 2026.1's platform work to <em>".NET Platform Modernization: migration to .NET 10 and a re-architected middleware home page"</em>. It is reasonable to suspect that migration is behind the content-negotiation and contract changes on this page, and Epicor has not confirmed that, so treat the link as circumstantial.</p>
+<p>What matters for integration work is how little it dictates:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Runtime</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>P21 middleware</strong> (server side)</td>
+<td>.NET 10 as of 2026.1 — Epicor's, not yours to choose</td>
+</tr>
+<tr>
+<td><strong>DynaChange business rules</strong></td>
+<td><strong>Both .NET and .NET Framework are supported, for now</strong></td>
+</tr>
+<tr>
+<td><strong>Your API client</strong></td>
+<td>Anything that speaks HTTP. This repo's C# examples target <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/README.md"><code>net8.0</code> or later</a></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The server moving to .NET 10 did not drag business rules with it.</strong> Rule code can still target .NET Framework as well as modern .NET. Read "for now" as load-bearing — dual support is a transition state rather than a commitment, so new rules are better written against modern .NET than against Framework, and existing Framework rules are worth treating as migration debt with an unannounced due date.</p>
+<p><strong>Nothing about your client's runtime changed either.</strong> The examples here build and run on <code>net8.0</code> through <code>net10.0</code>, and the one .NET-specific hazard in this documentation — <a href="06-Error-Handling.html#401-authorization-header-was-not-present-or-bearer-was-missing"><code>HttpClient</code> dropping <code>Authorization</code> across a redirect</a> — behaves <strong>identically on .NET 9.0.19 and .NET 10.0.11</strong>, re-verified against 26.1.5940.0. That is deliberate <code>HttpClient</code> behavior, so no runtime upgrade will fix it for you.</p>
 <h4 id="get-v2data-returns-only-a-subset-of-the-windows-datawindows"><code>GET /v2/data</code> returns only a <em>subset</em> of the window's datawindows</h4>
 <p>The response is a list of datawindow objects, and <strong>which ones appear varies between calls</strong> on the same window — immediately after a load it returned <code>tp_1_dw_1</code> + <code>tp_17_dw_17</code>; after a change touching the ship-to tab it returned <code>ship_to</code> + <code>tp_17_dw_17</code> and <strong>omitted <code>tp_1_dw_1</code> entirely</strong>. A datawindow's absence therefore proves nothing about the field's value.</p>
+<p>Reproduced exactly on 26.1.5940.0, same window and same two calls — the response tracks <em>the tab you last touched</em>, not the window's full contents:</p>
+<div class="highlight"><pre><span></span><code>after keying po_no          → [&#39;TABPAGE_1.tp_1_dw_1&#39;, &#39;TABPAGE_17.tp_17_dw_17&#39;]
+after a SHIP_TO field write → [&#39;SHIP_TO.ship_to&#39;,     &#39;TABPAGE_17.tp_17_dw_17&#39;]   &lt;- tp_1_dw_1 gone
+</code></pre></div>
+
 <p>Consequence for verification: <code>/v2/data</code> is not a reliable field-level read-back. Activate the field's tab first (which reliably brings its datawindow into the response), or verify out-of-band with OData / <code>POST /api/v2/transaction/get</code> — the approach <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> already recommends.</p>
 <h4 id="a-nonexistent-datawindowname-fails-loudly-not-silently">A nonexistent <code>DatawindowName</code> fails loudly, not silently</h4>
 <p>Naming a datawindow that doesn't exist on the window returns <strong>HTTP 400 <code>"Unable to find datawindow named dw_1"</code></strong> and applies nothing. This is worth knowing precisely <em>because</em> it is not a silent-failure mode: if you are hunting a field that "didn't take", a wrong datawindow name is not the culprit — you would have seen a 400.</p>
+<blockquote>
+<p><strong>But it is not free.</strong> The 400 itself is loud; the request <em>after</em> it is silently destroyed. That is <a href="#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">entry 9</a> — read it before you write a retry path around this 400.</p>
+</blockquote>
 <p>Relatedly, on 26.1 <code>DatawindowName</code> is <strong>optional for header-level fields</strong> — <code>{"TabName": "SHIP_TO", "FieldName": "ship2_name", "Value": "..."}</code> with no <code>DatawindowName</code> resolves by tab + field and applies correctly. Supplying the correct name also works. Keep sending it: it is still <strong>required</strong> on 25.2 (see <a href="#p21-252">below</a>), so including it is what makes one client work across both versions.</p>
+<p>Re-verified on 26.1.5940.0, each on a clean window with a read-back — <strong>omitted, <code>""</code> and <code>null</code> are all equivalent to supplying the right name</strong>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>DatawindowName</code> sent</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"tp_1_dw_1"</code> (correct)</td>
+<td>200, applied</td>
+</tr>
+<tr>
+<td><em>(key omitted)</em></td>
+<td>200, applied</td>
+</tr>
+<tr>
+<td><code>""</code></td>
+<td>200, applied</td>
+</tr>
+<tr>
+<td><code>null</code></td>
+<td>200, applied</td>
+</tr>
+<tr>
+<td><code>"dw_1"</code> (nonexistent)</td>
+<td><strong>400</strong>, applies nothing — and burns the next request (<a href="#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">entry 9</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The first run of this matrix appeared to show the omitted form returning an empty 500. It did not — that run followed a <code>dw_1</code> probe, and what it actually measured was entry 9. On a clean window the optional form has never failed. Worth stating because it is the exact trap entry 9 sets: <strong>one bad datawindow name upstream will make the next thing you test look broken.</strong></p>
 <hr />
+<hr />
+<h2 id="resolved-in-a-later-20261-build">Resolved in a later 2026.1 build</h2>
+<p>The two entries below <strong>no longer reproduce on 26.1.5940.0</strong>. They are kept because they still bite anyone upgrading <em>from</em> an affected build, and because their symptoms are what you will search for when they do. Each carries its fix build at the top.</p>
+<h3 id="1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit <code>Accept: application/json</code> header</h3>
+<blockquote>
+<p><strong>FIXED in 26.1.5940.0.</strong> Affected builds: <strong>5873.1 through 5910.3</strong>. On 5940.0 every <code>Accept</code> variant returns HTTP 200 — but <strong>the mitigation below has not changed</strong>, because what you get without <code>application/json</code> is now XML. See <a href="#what-replaced-it-on-59400">What replaced it</a> at the end of this entry.</p>
+</blockquote>
+<p><strong>Hard break on affected builds — every interactive endpoint.</strong></p>
+<p>On 2026.1 builds up to 5910.3, any request to <code>/uiserver0/api/ui/interactive/...</code> whose <code>Accept</code> header does not include <code>application/json</code> fails with an <strong>empty-body HTTP 500</strong>. That includes <code>Accept: */*</code> — the <strong>default for most HTTP libraries, including Python <code>httpx</code> and .NET <code>HttpClient</code></strong>. 2025.2 falls back to a default representation instead of failing.</p>
+<p>The rule is <em>"<code>application/json</code> must be present"</em>, not <em>"<code>*/*</code> is rejected"</em> — a list containing both works. Verified on 26.1.5894.1, each variant tested from a clean slate, with the 5940.0 column added from the August 2026 re-run:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>Accept</code></th>
+<th>5873.1 – 5910.3</th>
+<th>26.1.5940.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>application/json</code></td>
+<td>200</td>
+<td>200, JSON</td>
+</tr>
+<tr>
+<td><em>(header omitted)</em></td>
+<td><strong>500, empty body</strong></td>
+<td>200, <strong>XML</strong></td>
+</tr>
+<tr>
+<td><code>*/*</code></td>
+<td><strong>500, empty body</strong></td>
+<td>200, <strong>XML</strong></td>
+</tr>
+<tr>
+<td><code>application/xml</code></td>
+<td><strong>500, empty body</strong></td>
+<td>200, <strong>XML</strong></td>
+</tr>
+<tr>
+<td><code>text/html</code></td>
+<td><strong>500, empty body</strong></td>
+<td>200, <strong>XML</strong></td>
+</tr>
+<tr>
+<td><code>application/json, */*</code></td>
+<td>200</td>
+<td>200, JSON</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">{uiserver}/api/ui/interactive/sessions/</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer {token}</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json        &lt;-- REQUIRED on 2026.1; omit it and you get an empty 500</span>
+
+<span class="p">{</span><span class="nt">&quot;ResponseWindowHandlingEnabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}</span>
+</code></pre></div>
+
+<p>Note that <code>application/xml</code> also fails here, even though the <code>/api/v2</code> Transaction endpoints negotiate XML happily — this is specific to the interactive surface.</p>
+<p><strong>Mitigation:</strong> send <code>Accept: application/json</code> on <strong>every</strong> P21 request, ideally forced in one shared header builder rather than per call site. Every example in this repo already does this — the consequence of omitting it is what changed.</p>
+<blockquote>
+<p><strong>It will look like an authentication problem. It isn't — don't downgrade your auth.</strong> The empty 500 lands on session-create, so the natural reading is <em>"our v2 tokens can no longer open sessions on 26.1"</em>. A production integration reached exactly that conclusion and shipped a fallback to the legacy <code>/api/security/token</code> endpoint before a controlled test — same token, one request with <code>Accept</code>, one without — isolated the header as the real cause. Their write-up records the correction: it "masqueraded as a 'v2 tokens can't open sessions' regression until a controlled same-token test isolated the header."</p>
+<p><strong>v2 tokens open sessions normally on 26.1</strong>, confirmed independently here on 26.1.5910.3: a v2 token created a session, opened a window, and read its state with no trouble — the only requirement was the <code>Accept</code> header.</p>
+<p>This matters because the "fix" is a real security regression for no benefit. The v1 endpoint takes <strong>credentials in HTTP headers</strong>, where proxies and log pipelines capture them (see <a href="00-Authentication.html#v1-endpoint-deprecated-security-risk">Authentication § V1 Endpoint</a>), and it also <strong>forfeits per-operator attribution</strong> — the legacy endpoint has no consumer key, so every write is attributed to the service account instead of the person who triggered it. Fix the header; keep v2.</p>
+<p>Diagnostic that settles it in two requests: send the <strong>same</strong> token twice to session-create, once with <code>Accept: application/json</code> and once without. A 200 and an empty 500 mean the header, not the token. If both fail, look at the token.</p>
+<p><strong>On 5940.0 that diagnostic changes shape</strong> — both requests now return 200, and the one without the header returns XML. Compare <code>Content-Type</code>, not status.</p>
+</blockquote>
+<h4 id="what-replaced-it-on-59400">What replaced it on 5940.0</h4>
+<p>The 500 is gone; the content negotiation is not. Without <code>application/json</code> in <code>Accept</code>, session-create returns <strong>HTTP 200 with a DataContract XML body</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {uiserver}/api/ui/interactive/sessions/     # Accept: */*</span>
+<span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/xml; charset=utf-8</span>
+
+<span class="nt">&lt;Session</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">&quot;http://schemas.datacontract.org/2004/07/P21.UI.Service.Request&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Id&gt;</span>70e67fa6-0083-458d-9afa-cb3c3e7596f5<span class="nt">&lt;/Id&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Properties&gt;</span>...<span class="nt">&lt;/Properties&gt;</span>
+<span class="nt">&lt;/Session&gt;</span>
+</code></pre></div>
+
+<p>That is the 2025.2 behavior restored — a default representation instead of a failure. <strong>It is still a break for any client that assumes JSON</strong>, which is every client written against this API:</p>
+<ul>
+<li>Python <code>httpx</code> — <code>response.json()</code> raises <code>JSONDecodeError</code>.</li>
+<li>.NET <code>HttpClient</code> with <code>System.Text.Json</code> — <code>JsonDocument.Parse</code> raises <code>JsonException</code>.</li>
+</ul>
+<p>Both confirmed on 26.1.5940.0. So the failure moved from <em>"an empty 500 I can see in the status code"</em> to <em>"a 200 that blows up one frame deeper, in the parser"</em> — arguably harder to attribute, since a 200 in the log looks like the call worked.</p>
+<p><strong>The mitigation is unchanged and still required: send <code>Accept: application/json</code> on every P21 request.</strong> If you fixed your headers for the 500, you are already correct on 5940.0 and need do nothing.</p>
+<h3 id="2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</h3>
+<blockquote>
+<p><strong>No longer reachable as of 26.1.5940.0.</strong> Affected builds: <strong>5873.1 through 5910.3</strong>. This entry is downstream of <a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">entry 1</a> — it needs a <em>failed</em> session create to produce the ghost, and creates no longer fail that way. <strong>The token-scoping rule at the bottom of this entry is not part of the defect and still applies on every build</strong> — re-verified on 5940.0.</p>
+</blockquote>
+<p><strong>Diagnosis trap that amplifies #1, on affected builds.</strong></p>
+<p>When the session create fails with the empty 500 above, the session is still <strong>partially created server-side</strong> — it appears in UI Server Administration and blocks subsequent creates with <strong>409 <code>{"ErrorMessage":"Session already exists."}</code></strong> A retrying integration therefore sees an <strong>alternating 500 / 409 pattern</strong> that looks like a session-pool or concurrency problem and is very hard to trace back to a missing header.</p>
+<p>The ghost also <strong>masks the original error</strong>: once one call has poisoned the session, every subsequent create returns 409 regardless of its headers — so the very header experiment you would run to diagnose #1 reports the wrong answer unless you clear the ghost between attempts.</p>
+<p><strong>Mitigation:</strong> fix the <code>Accept</code> header (#1). If you see 500/409 alternation on 2026.1, check the headers before anything else.</p>
+<p><strong>To clear a ghost, <code>DELETE</code> the session — don't wait it out.</strong> <code>DELETE {uiserver}/api/ui/interactive/sessions</code> returns 200 and a clean create succeeds <strong>immediately</strong> afterward (verified on 26.1.5894.1). Waiting for <code>SessionCleanupExpiration</code> (~6 min) also works but is unnecessary; make the delete the first step of your retry path.</p>
+<blockquote>
+<p><strong>This only works while you still hold the token that created the session.</strong> Verified on 26.1.5910.3 and re-verified on 26.1.5940.0 — <strong>this half is current behavior, not a resolved defect.</strong> The delete is scoped to the bearer token, so a ghost left by a <em>previous</em> token — a crashed process, a worker that re-authenticated, a retry path that fetched a fresh token before cleaning up — cannot be deleted at all. Query parameters and body forms carrying the session id are all refused with <code>400 {"ErrorMessage":"Invalid session"}</code>, and only <code>SessionCleanupExpiration</code> will reap it. Keep the token alive until the session is closed; do not re-authenticate as part of your recovery path before deleting. Full attempt matrix: <a href="04-Interactive-API.html#6-end-session">Interactive API § End Session</a>.</p>
+</blockquote>
 <h2 id="p21-252">P21 25.2</h2>
 <h3 id="datawindowname-is-required-in-interactive-api-change-requests"><code>DatawindowName</code> is required in Interactive API change requests</h3>
 <p>25.2 changed window data structures so <code>DatawindowName</code> is <strong>required</strong> in v2 change payloads — the 3-parameter form (TabName + FieldName + Value) stops working. Confirmed through 25.2.5776.1 and acknowledged by Epicor as a development bug; affected windows include Item, PO Receiving Group, Delivery List, Group Pick Ticket, ConvertPOToVoucher, Order Entry, Clippership Auto Shipping, and Doc Links.</p>
@@ -946,15 +1126,19 @@
 <ul>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#p21-20261">P21 2026.1</a><ul>
-<li><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit Accept: application/json header</a></li>
-<li><a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</a></li>
 <li><a href="#3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: SessionId → Id</a></li>
 <li><a href="#4-put-v2tab-no-longer-accepts-tabname">4. PUT /v2/tab no longer accepts TabName</a></li>
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
-<li><a href="#6-batched-v2change-is-not-atomic-a-rejected-field-does-not-roll-back-its-neighbours">6. Batched /v2/change is not atomic — a rejected field does not roll back its neighbours</a></li>
+<li><a href="#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">6. Batched /v2/change is not atomic — it is sequential and fail-fast</a></li>
 <li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
 <li><a href="#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">8. IgnoreDisabled: true reports success on writes that write nothing</a></li>
+<li><a href="#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">9. A bad DatawindowName eats the next request on that window (empty HTTP 500)</a></li>
 <li><a href="#related-20261-observations-not-breaking-changes">Related 2026.1 observations (not breaking changes)</a></li>
+</ul>
+</li>
+<li><a href="#resolved-in-a-later-20261-build">Resolved in a later 2026.1 build</a><ul>
+<li><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">1. Interactive API returns an empty HTTP 500 without an explicit Accept: application/json header</a></li>
+<li><a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">2. Ghost sessions: the failed create still half-creates the session (alternating 500/409)</a></li>
 </ul>
 </li>
 <li><a href="#p21-252">P21 25.2</a><ul>

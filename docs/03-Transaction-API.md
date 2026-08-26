@@ -143,9 +143,36 @@ The main request body for create/update operations:
 
 | Field | Description |
 |-------|-------------|
-| `Status` | `"New"` for create **and** update (there is no working `"Existing"` status — it returns HTTP 500); responses echo `"Passed"`/`"Failed"` |
+| `Status` | `"New"` for create **and** update — [it is the only string the enum accepts](#status-new-is-the-only-value-the-enum-accepts); responses echo `"Passed"`/`"Failed"` |
 | `DataElements` | Array of tabs/sections in the window |
 | `Documents` | Optional array of file attachments |
+
+#### `Status: "New"` is the only value the enum accepts
+
+`Status` looks like it should have a create/update/delete vocabulary. It does not. `P21.Transactions.Model.V2.TransactionStatus` has **exactly one string member — `New`** — and the API's create/update distinction is carried by the keys, not by this field (see [Upsert Semantics](#upsert-semantics-keyed-rows-insert-when-absent)).
+
+Enumerated on 26.1.5940.0 by posting each candidate with an **empty `DataElements` list**, so the probe measures only whether the model binder accepts the value and nothing can be written:
+
+| Sent | Result |
+|---|---|
+| `"New"`, `"new"`, `"NEW"` | Accepted — **case-insensitive** |
+| `"Existing"`, `"Update"`, `"Updated"`, `"Delete"`, `"Deleted"`, `"Modified"`, `"Insert"`, `"Change"`, `"Upsert"`, `"None"`, `"Unchanged"`, `"Current"`, … | **HTTP 400**, every one |
+| Any integer (`-1`, `0`, `1`, `2`, `3`, …) | Accepted by the binder — see the warning below |
+
+The rejection is a clean model-binding failure that names the type, which is worth recognising on sight:
+
+```jsonc
+// POST /api/v2/transaction  with  "Status": "Existing"
+HTTP 400
+{"errors": {
+   "Transactions[0].Status": [
+     "Error converting value \"Existing\" to type 'P21.Transactions.Model.V2.TransactionStatus'. ..."]},
+ "title": "One or more validation errors occurred.", "status": 400}
+```
+
+> **This used to be an HTTP 500.** On builds before 26.1.5940.0 the same payload produced a `NullReferenceException` at `ToInternalBeSpecification` with no indication of the cause — a 500 that looked like a server fault rather than a bad request, and sent more than one integration hunting for a middleware bug. If you are on an older build you will still see the 500; the fix is the same either way.
+
+> **Do not send `Status` as an integer.** The binder accepts any integer because that is how .NET binds enums — it does not range-check, so out-of-range values bind silently to an undefined member rather than erroring. Every integer we probed returned HTTP 200. **Send the string `"New"`**, which is the only value with defined behavior, and let a wrong value fail loudly at the binder instead of undefined-behaving inside the transaction.
 
 ### DataElement Fields
 
@@ -214,7 +241,7 @@ Most first-integration failures are payload **shape** mistakes, not wrong endpoi
 | Boolean in quotes | `"UseCodeValues": "false"` | `"UseCodeValues": false` | The string `"false"` is truthy-ish to some binders — behavior undefined |
 | `Rows`/`Edits` as an object | `"Rows": { "Edits": ... }` | `"Rows": [ { "Edits": [...] } ]` | Deserialization error or empty save |
 | `Value` as a number | `"Value": 36.58` | `"Value": "36.58"` | Every verified example sends **strings**; other types are untested territory |
-| `Status: "Existing"` | — | `"Status": "New"` | HTTP 500 `NullReferenceException` — [use "New" for updates too](#updating-an-existing-contract) |
+| `Status: "Existing"` | — | `"Status": "New"` | Rejected — HTTP 400 on 26.1.5940.0, HTTP 500 `NullReferenceException` on earlier builds. [`"New"` is the only accepted value](#status-new-is-the-only-value-the-enum-accepts) |
 | Report payload to `/transaction` | — | `POST /api/v2/process/pdfreport` | Returns `Succeeded`, emits **nothing** ([details](#pdf-report-generation)) |
 | Wrong property case | `"transactions": [...]` | `"Transactions": [...]` | Property silently unbound — behaves like it was never sent |
 | Fields in UI-cascade-breaking order | `price` before `pricing_method` | Match the UI order | Value silently cleared while reporting Succeeded ([details](#field-order-matters)) |
@@ -2158,7 +2185,7 @@ Gotchas (all verified live):
 
 - **Commission fields disabled by default:** require `IgnoreDisabled: true` (see [Commission Costs](#commission-costs) above).
 - **`corp_address_id` read-only after save:** Must be set during initial creation.
-- **Status `"Existing"` is not a valid Transaction status:** Setting `Transactions[0].Status = "Existing"` (or `"Update"`, `"Change"`) returns HTTP 500 (`NullReferenceException` at `ToInternalBeSpecification`). Use `"New"` for both create and update -- see [Updating an Existing Contract](#updating-an-existing-contract).
+- **Status `"Existing"` is not a valid Transaction status:** Setting `Transactions[0].Status = "Existing"` (or `"Update"`, `"Change"`) is rejected — a clean HTTP 400 on 26.1.5940.0, an HTTP 500 `NullReferenceException` at `ToInternalBeSpecification` on earlier builds. Use `"New"` for both create and update -- see [Updating an Existing Contract](#updating-an-existing-contract) and [`Status: "New"` is the only value the enum accepts](#status-new-is-the-only-value-the-enum-accepts).
 
 #### Example: Create a Job Contract with Break and Non-Break Lines
 
@@ -2695,7 +2722,7 @@ The Assembly service does NOT create new inventory items -- it adds BOM metadata
 
 #### Known Limitations
 
-- **Status "Existing" returns HTTP 500:** Same `NullReferenceException` at `ToInternalBeSpecification` as other services. Use the Interactive API (Assembly window) for modifications to existing assemblies.
+- **Status "Existing" is rejected:** Same as every other service — HTTP 400 on 26.1.5940.0, `NullReferenceException` HTTP 500 on earlier builds. Use the Interactive API (Assembly window) for modifications to existing assemblies.
 - **Item must exist first:** `inv_mast_item_id` must reference an existing item.
 - **No re-creation:** Items that already have assembly definitions cannot have a second assembly created.
 
