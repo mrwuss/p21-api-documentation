@@ -81,6 +81,24 @@ Some middleware instances return XML instead of JSON for token endpoints. If you
 
 **Solution**: Use a dual-format parser that tries JSON first, then falls back to XML regex parsing. See [Authentication - XML Token Responses](00-Authentication.md#xml-token-responses).
 
+### `401 Authorization header was not present or 'Bearer' was missing`
+
+```json
+{
+    "Description": "Authorization header was not present or 'Bearer' was missing.",
+    "Error": "invalid_request",
+    "Uri": ""
+}
+```
+
+**The token is usually fine — the header never reached the server.** This is not a credentials problem and not an expiry problem; the request arrived with no `Authorization` at all. Check these in order:
+
+1. **A redirect ate the header.** The usual cause. `GET /api/ui/router/v1?urlType=external` (no trailing slash) answers **307**, and .NET's `HttpClient` **strips the `Authorization` header when it follows a redirect** — same-origin included, whether the header was set on `DefaultRequestHeaders` or on the individual request. The token call one step earlier succeeded, which is exactly why this reads as an authentication failure. Request the **trailing-slash** form, `/api/ui/router/v1/?urlType=external`, which avoids the redirect instead of surviving it. Full per-client breakdown: [00 § UI Server URL](00-Authentication.md#ui-server-url).
+2. **The scheme is missing or misspelled.** The value must be `Bearer {token}` — the space and the capital B both matter.
+3. **The header was set on the wrong object** — for example on a `HttpRequestMessage` that was then replaced, or on a client that a helper rebuilt.
+
+**Diagnostic:** re-issue the failing request with automatic redirects disabled. If you get a `307`/`301` instead of the 401, the redirect is the cause and the fix is the URL, not the credentials.
+
 ### Token Troubleshooting
 
 | Issue | Solution |
@@ -90,6 +108,7 @@ Some middleware instances return XML instead of JSON for token endpoints. If you
 | Consumer key invalid | Check API Console for correct key |
 | Missing scope | Add required API scope to consumer key |
 | JSON parse fails on token response | Middleware may return XML — use dual-format parser |
+| `Authorization header was not present` (401) after a successful token call | A redirect stripped the header — send the trailing-slash router URL ([details](#401-authorization-header-was-not-present-or-bearer-was-missing)) |
 
 ---
 
@@ -1255,6 +1274,7 @@ void CheckTokenExpiry(string token)
 | Issue | API | Solution |
 |-------|-----|----------|
 | 401 on every request | All | Check token, re-authenticate |
+| 401 `Authorization header was not present` right after a good token | All | A redirect dropped the header — use `/api/ui/router/v1/?urlType=external` — [details](#401-authorization-header-was-not-present-or-bearer-was-missing) |
 | 307 Redirect | Entity | Add `follow_redirects=True` (list endpoints) |
 | Request timeout | All | Increase timeout, check network |
 | "Unexpected window" | Transaction | Use async endpoint, add delays |

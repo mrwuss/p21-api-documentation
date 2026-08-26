@@ -8,7 +8,7 @@ Create a sales order — header plus line items — in one stateless Transaction
 
 ## Prerequisites
 
-- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net9.0` console project (C#).
+- P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - The customer, ship-to, contact, and items already exist; the items are stocked at the source location.
 - **No assembly lines.** If a line should explode into components or spawn a production order, the Transaction API auto-answers the *"add as assembly?"* prompt **No** and kills the explode — use the [order-with-assembly](order-with-assembly.md) recipe for those.
 

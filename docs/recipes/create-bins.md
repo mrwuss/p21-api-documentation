@@ -8,7 +8,7 @@ The `BinLocation` service *is* the **Bin Location Maintenance** window: its form
 
 ## Prerequisites
 
-- P21 credentials — the complete example below authenticates itself; nothing else to install but `httpx` (Python) or a bare `net9.0` console project (C#).
+- P21 credentials — the complete example below authenticates itself; nothing else to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - A **"twin"** — an existing bin of the same `bin_type` at the target location. Copy its type, both zone codes, dimensions, sequences, `max_unique_items`, and flags rather than inventing them; that guarantees new bins match what the warehouse already uses. (Zone codes come from joining `bin.putaway_zone_uid` / `bin.pick_zone_uid` → `bin_zone.bin_zone_uid` → `bin_zone.bin_zone_id`.)
 - OData read access to the `p21_view_bin` view — for the skip-existing check and the read-back (the raw `bin` table isn't always exposed via OData).
 - **Zones must exist at the location.** `putaway_zone_id`/`pick_zone_id` must resolve within the target location — a freshly created location has none, and the create fails until they exist. Create them first with the `PutawayZone` and `PickZone` Transaction services (verified sequence: PutawayZone → PickZone → BinLocation); see [PutawayZone / PickZone Services](../03-Transaction-API.md#putawayzone-pickzone-services-creating-bin-zones).

@@ -649,6 +649,7 @@
 </li>
 <li><a href="#authentication-errors">Authentication Errors</a><ul>
 <li><a href="#token-endpoint-errors">Token Endpoint Errors</a></li>
+<li><a href="#401-authorization-header-was-not-present-or-bearer-was-missing">401 Authorization header was not present or 'Bearer' was missing</a></li>
 <li><a href="#token-troubleshooting">Token Troubleshooting</a></li>
 </ul>
 </li>
@@ -865,6 +866,21 @@
 </code></pre></div>
 
 <p><strong>Solution</strong>: Use a dual-format parser that tries JSON first, then falls back to XML regex parsing. See <a href="00-Authentication.html#xml-token-responses">Authentication - XML Token Responses</a>.</p>
+<h3 id="401-authorization-header-was-not-present-or-bearer-was-missing"><code>401 Authorization header was not present or 'Bearer' was missing</code></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Authorization header was not present or &#39;Bearer&#39; was missing.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;invalid_request&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>The token is usually fine — the header never reached the server.</strong> This is not a credentials problem and not an expiry problem; the request arrived with no <code>Authorization</code> at all. Check these in order:</p>
+<ol>
+<li><strong>A redirect ate the header.</strong> The usual cause. <code>GET /api/ui/router/v1?urlType=external</code> (no trailing slash) answers <strong>307</strong>, and .NET's <code>HttpClient</code> <strong>strips the <code>Authorization</code> header when it follows a redirect</strong> — same-origin included, whether the header was set on <code>DefaultRequestHeaders</code> or on the individual request. The token call one step earlier succeeded, which is exactly why this reads as an authentication failure. Request the <strong>trailing-slash</strong> form, <code>/api/ui/router/v1/?urlType=external</code>, which avoids the redirect instead of surviving it. Full per-client breakdown: <a href="00-Authentication.html#ui-server-url">00 § UI Server URL</a>.</li>
+<li><strong>The scheme is missing or misspelled.</strong> The value must be <code>Bearer {token}</code> — the space and the capital B both matter.</li>
+<li><strong>The header was set on the wrong object</strong> — for example on a <code>HttpRequestMessage</code> that was then replaced, or on a client that a helper rebuilt.</li>
+</ol>
+<p><strong>Diagnostic:</strong> re-issue the failing request with automatic redirects disabled. If you get a <code>307</code>/<code>301</code> instead of the 401, the redirect is the cause and the fix is the URL, not the credentials.</p>
 <h3 id="token-troubleshooting">Token Troubleshooting</h3>
 <div class="table-wrap"><table>
 <thead>
@@ -893,6 +909,10 @@
 <tr>
 <td>JSON parse fails on token response</td>
 <td>Middleware may return XML — use dual-format parser</td>
+</tr>
+<tr>
+<td><code>Authorization header was not present</code> (401) after a successful token call</td>
+<td>A redirect stripped the header — send the trailing-slash router URL (<a href="#401-authorization-header-was-not-present-or-bearer-was-missing">details</a>)</td>
 </tr>
 </tbody>
 </table></div>
@@ -1945,6 +1965,11 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Check token, re-authenticate</td>
 </tr>
 <tr>
+<td>401 <code>Authorization header was not present</code> right after a good token</td>
+<td>All</td>
+<td>A redirect dropped the header — use <code>/api/ui/router/v1/?urlType=external</code> — <a href="#401-authorization-header-was-not-present-or-bearer-was-missing">details</a></td>
+</tr>
+<tr>
 <td>307 Redirect</td>
 <td>Entity</td>
 <td>Add <code>follow_redirects=True</code> (list endpoints)</td>
@@ -2059,6 +2084,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 </li>
 <li><a href="#authentication-errors">Authentication Errors</a><ul>
 <li><a href="#token-endpoint-errors">Token Endpoint Errors</a></li>
+<li><a href="#401-authorization-header-was-not-present-or-bearer-was-missing">401 Authorization header was not present or 'Bearer' was missing</a></li>
 <li><a href="#token-troubleshooting">Token Troubleshooting</a></li>
 </ul>
 </li>
