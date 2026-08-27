@@ -16,6 +16,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Authenticate with a consumer key | [00 § Method 2: Consumer Key](00-Authentication.md#method-2-consumer-key) |
 | Get the UI server URL (Transaction/Interactive base) — 307 redirect gotcha | [00 § UI Server URL](00-Authentication.md#ui-server-url) |
 | Token TTL / reuse across APIs | [00 § Token Lifetime and Reuse](00-Authentication.md#token-lifetime-and-reuse) |
+| Detect P21 server version / production flag (undocumented endpoint) | [00 § Server Info Endpoint](00-Authentication.md#server-info-endpoint-version-environment-detection) |
 | Fix "not authorized" (P21 user permissions) | [00 § P21 Permissions](00-Authentication.md#p21-permissions-user-credential-auth) |
 | Pick which API to use for a task | [01 API Selection Guide](01-API-Selection-Guide.md) (short — read whole) |
 | A write failed — will the *other* API get through? (usually no) | [01 § Interactive Is Not an Escape Hatch](01-API-Selection-Guide.md#before-you-choose-interactive-is-not-an-escape-hatch) |
@@ -34,6 +35,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
 | New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |
 | Table reads fine but is empty/inert (undeployed feature, e.g. zip→rep) | [02 § Undeployed / Unlicensed Windows](02-OData-API.md#undeployed-unlicensed-windows-readable-tables-no-api-surface) |
+| Denormalized, search-friendly views (`p21_view_es_*`: customer, item, order, invoice, etc.) | [02 § Enterprise/Global Search Views](02-OData-API.md#enterpriseglobal-search-views-p21_view_es_) |
 
 ## Create / update records (Transaction API)
 
@@ -117,6 +119,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Inventory items: read / create / update locations | — | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
 | Append locations **at scale** (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin) | — | [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale) |
 | Customer-specific **price + availability** lookup | — | [11 § Pricing Endpoints](11-Inventory-REST-API.md#pricing-endpoints) |
+| **Batch** price + availability lookup (multiple items in one call, JSON *or* XML) | — | [11 § Batch Pricing](11-Inventory-REST-API.md#batch-pricing) |
 | User-defined tables (UDT) rows | — | [13 § Insert](13-UDT-Service-API.md#insert) · [13 § Update](13-UDT-Service-API.md#update) · [13 § Delete](13-UDT-Service-API.md#delete) — **update/delete need a `row_uid` column; 2026.1-created UDTs don't have one** |
 | UDT delete "succeeds" but nothing is deleted | — | [06 § `[0] rows deleted`](06-Error-Handling.md#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261) · [14 § entry 7](14-Breaking-Changes.md#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261) |
 | Bulk-load a UDT from CSV (2026.1+) | — | [13 § Bulk Data API](13-UDT-Service-API.md#bulk-data-api-20261) — CSV upload; **headerless file silently inserts nothing** |

@@ -18,6 +18,18 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-27 — v1.10.0
+
+Two new endpoint families documented against a live 26.1.5930.1 tenant, plus a correction to the Server Info Endpoint added last version.
+
+- **feat:** **[Batch Pricing](11-Inventory-REST-API.md#batch-pricing)** — `POST /api/inventory/parts/prices` (and the identical `/api/inventory/v2/parts/prices`) is commonly mistaken for XML-only. It isn't: both JSON and XML bodies work, verified live. The actual cause of the "XML only" impression is a WCF quirk — the service picks its (de)serializer from `Content-Type`, not by inspecting the body, so a JSON body sent with `Content-Type: application/xml` fails with a generic, unhelpful WCF "Request Error" page that gives no hint the fix is a header. Also documented: three query parameters (`companyId`, `customerId`, `salesLocId`) are required and validated one at a time, so an incomplete request appears to fail progressively as each gets added.
+
+- **feat:** **[Enterprise/Global Search Views](02-OData-API.md#enterpriseglobal-search-views-p21_view_es_)** — 25 views under a `p21_view_es_*` prefix, discovered via the tenant's full OData `$metadata` and not listed anywhere else in this documentation. 18 are denormalized search-source views (`es_customer`, `es_item`, `es_sales_order`, etc.) ending in a consistent `unique_id`/`max_date_last_modified` pair useful for incremental sync; 7 are index-configuration views (`es_index_hdr`, `es_index_field`, `es_index_priority_*`) describing the search feature itself rather than carrying business data. Confirmed not part of the curated 118-view `/data/erp/views/v1` surface. Includes a live `p21_view_es_ship_to` example demonstrating the case for these views — one row already joins customer, tax group, freight/carrier, terms, branch, salesrep, and class codes that would otherwise take 6+ separate reads and client-side joins.
+
+- **fix:** **[Server Info Endpoint — `Monitoring/shortversion` is not the field to read](00-Authentication.md#server-info-endpoint-version-environment-detection).** Added last version as the recommended way to detect P21's version, it turned out to return `"0.0"` on a direct API call on a live 26.1.5930.1 tenant, despite carrying a real value when captured from the P21 web app's own session traffic — not consistently populated, and not safe to rely on alone. `Version/Application Version` returned the real build number (`"26.1.5930.1"`) in the same call and is now the documented field; both the Python and C# examples updated to read it, and a C# compile error in the original example (a `record` declared before a local function, invalid in a top-level-statements file) fixed along the way.
+
+---
+
 ## 2026-08-26 — v1.9.0
 
 The 2026.1 registry re-run end to end against a newer middleware build. Two entries retire, one gets a sharper mechanism, one is new — and the empty 500 everyone learned to recognize now means something else.

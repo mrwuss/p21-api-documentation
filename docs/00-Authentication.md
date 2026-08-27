@@ -538,8 +538,6 @@ If per-operator attribution matters to your integration, this is the setting to 
 
 > **`Accept: application/json` is not optional on 2026.1.** Every example in this documentation sends it; on P21 **2026.1** the Interactive API returns an **empty HTTP 500** for any request whose `Accept` header doesn't include `application/json` — including the `Accept: */*` default of httpx and .NET HttpClient — and the failed session create leaves a ghost session behind. Set it in one shared header builder rather than per call site. See [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
 
-
-
 Include the token in the `Authorization` header for all API requests:
 
 ```http
@@ -1094,6 +1092,176 @@ static async Task<JsonElement> GetTokenV2Async(
 ```
 
 <!-- /tabs -->
+
+---
+
+## Server Info Endpoint (Version & Environment Detection)
+
+`/uiserver0/ui/common/v1/serverinfo` is an **undocumented** UI-server endpoint — not part of the published OData/REST/SDK surface — that reports the P21 server's version and whether it considers itself a production instance. Reverse-engineered from the P21 web client's own network traffic; same bearer-token auth as every other `uiserver0/*` call, so it needs the [UI server URL](#ui-server-url) resolved first.
+
+```http
+GET /uiserver0/ui/common/v1/serverinfo HTTP/1.1
+Host: play.p21server.com
+Authorization: Bearer {token}
+Accept: application/json
+```
+
+Like the token and router endpoints, it serves **DataContract XML by default** but honors `Accept: application/json` — unlike those two, the JSON body is a flat `{"Result": {"Section/Key": value, ...}}` map (about a dozen keys; `Session/State`, `Monitoring/*`, `Version/*`) rather than a typed object:
+
+**Response** (trimmed to the keys that matter):
+
+```json
+{
+  "Result": {
+    "Monitoring/fullversion": "0.0.0.0",
+    "Monitoring/shortversion": "0.0",
+    "Monitoring/isproduction": null,
+    "Version/Application Version": "26.1.5930.1",
+    "Version/Build Framework": ".NET Core"
+  }
+}
+```
+
+> **Gotcha — `Monitoring/shortversion`/`fullversion` are not always populated:** these are the keys their own names suggest for version detection, and real values (e.g. `"26.1"`) have been observed there when captured from the P21 web app's own session traffic. But a direct API call authenticated the same way as every other example on this page — fresh token, no browser session — got back `"0.0"` / `"0.0.0.0"` on a live 26.1.5930.1 tenant instead. Whatever the difference in call context, don't rely on these two fields alone. `Version/Application Version` returned the real build number (`"26.1.5930.1"`) in the same call and is the safer field to read — note the literal space in the key, and that it's the **full** build number, not a bare major.minor, so parse the first two dot-segments if you only need `"26.1"`-style gating.
+
+Two keys are useful in practice:
+
+| Key | Type | Notes |
+|-----|------|-------|
+| `Version/Application Version` | string | e.g. `"26.1.5930.1"` — full build number; take the first two segments for major.minor gating (e.g. ES views require 26.1+, see [Breaking Changes](14-Breaking-Changes.md)). Prefer this over `Monitoring/shortversion`/`fullversion`, which were `"0.0"`/`"0.0.0.0"` on a direct API call even though the same fields carry real values in the web app's own traffic |
+| `Monitoring/isproduction` | boolean, null, or absent | observed `null` (not `false`) on a non-production tenant — treat anything other than literal `true` as "not confirmed production," never assume `false` |
+
+> **Use case:** call this once at login, alongside resolving the UI server URL, and cache the result for the session. It's cheaper than probing a version-gated view and catching the 404, and it lets the UI cross-check a play/live banner against what the server itself reports instead of trusting only a build-time config value.
+
+<!-- tabs -->
+
+**Python:**
+
+```python
+"""Detect P21 server version/environment via the undocumented serverinfo endpoint."""
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+# ---------------------------------------------------------------------------
+
+
+def get_token_v2(base_url: str, username: str, password: str) -> dict:
+    """Get token using V2 endpoint (recommended)."""
+    response = httpx.post(
+        f"{base_url}/api/security/token/v2",
+        json={"username": username, "password": password},
+        headers={"Accept": "application/json"},
+        verify=VERIFY_SSL,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def get_server_info(base_url: str, token: str) -> dict:
+    """GET /uiserver0/ui/common/v1/serverinfo - version + production flag.
+
+    Monitoring/shortversion and Monitoring/fullversion are not always
+    populated -- came back "0.0" / "0.0.0.0" on a direct API call even
+    though the same fields carry real values in the P21 web app's own
+    session traffic. Version/Application Version is the safer field to
+    read.
+    """
+    response = httpx.get(
+        f"{base_url}/uiserver0/ui/common/v1/serverinfo",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+        verify=VERIFY_SSL,
+    )
+    response.raise_for_status()
+    result = response.json().get("Result", {})
+    full_version = result.get("Version/Application Version")  # e.g. "26.1.5930.1"
+    return {
+        "version": full_version,
+        "short_version": ".".join(full_version.split(".")[:2]) if full_version else None,
+        "is_production": result.get("Monitoring/isproduction"),  # None/null if not confirmed
+    }
+
+
+if __name__ == "__main__":
+    token_data = get_token_v2(BASE_URL, USERNAME, PASSWORD)
+    info = get_server_info(BASE_URL, token_data["AccessToken"])
+    print("Server info:", info)
+```
+
+**C#:**
+
+```csharp
+using System.Text;
+using System.Text.Json;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+// ---------------------------------------------------------------------------
+
+using var authClient = new HttpClient();
+var tokenData = await GetTokenV2Async(authClient, BaseUrl, Username, Password);
+var token = tokenData.GetProperty("AccessToken").GetString() ?? "";
+
+var info = await GetServerInfoAsync(BaseUrl, token);
+Console.WriteLine($"Version: {info.Version}, IsProduction: {info.IsProduction?.ToString() ?? "unknown"}");
+
+// --- helpers ---------------------------------------------------------------
+
+// Monitoring/shortversion and Monitoring/fullversion are not always
+// populated -- came back "0.0" / "0.0.0.0" on a direct API call even
+// though the same fields carry real values in the P21 web app's own
+// session traffic. Version/Application Version is the safer field to read.
+static async Task<ServerInfo> GetServerInfoAsync(string baseUrl, string token)
+{
+    using var client = new HttpClient();
+    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+    var response = await client.GetAsync($"{baseUrl}/uiserver0/ui/common/v1/serverinfo");
+    response.EnsureSuccessStatusCode();
+
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    var result = doc.RootElement.GetProperty("Result");
+
+    string? version = result.TryGetProperty("Version/Application Version", out var v)
+        ? v.GetString() : null;
+    bool? isProduction = result.TryGetProperty("Monitoring/isproduction", out var p)
+        && p.ValueKind is JsonValueKind.True or JsonValueKind.False
+        ? p.GetBoolean() : null;
+
+    return new ServerInfo(version, isProduction);
+}
+
+/// <summary>Get token using V2 endpoint (recommended).</summary>
+static async Task<JsonElement> GetTokenV2Async(
+    HttpClient client, string baseUrl, string username, string password)
+{
+    var body = new { username, password };
+    var content = new StringContent(
+        JsonSerializer.Serialize(body),
+        Encoding.UTF8, "application/json");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+    var response = await client.PostAsync(
+        $"{baseUrl}/api/security/token/v2", content);
+    response.EnsureSuccessStatusCode();
+
+    var json = await response.Content.ReadAsStringAsync();
+    using var doc = JsonDocument.Parse(json);
+    return doc.RootElement.Clone();
+}
+
+record ServerInfo(string? Version, bool? IsProduction);
+```
+
+<!-- /tabs -->
+
+Verified live on 26.1.5930.1 (August 2026); the `Result` flattening and JSON content-negotiation behavior matches the token and router endpoints on the same host. The `Monitoring/shortversion` gotcha above was caught by that same live run — the endpoint's shape matched expectations, but the field originally documented for version detection came back `"0.0"` on this direct API call despite being populated in the source web-app traffic the endpoint was reverse-engineered from.
 
 ---
 

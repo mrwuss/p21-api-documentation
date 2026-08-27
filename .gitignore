@@ -32,3 +32,9 @@ reference/
 
 # Misc local files (repo root only)
 /*.png
+
+# Local Prettier config (kept out of the repo so it can't silently reformat
+# docs/*.md on someone's format-on-save -- Prettier can't match this repo's
+# markdown table/emphasis style, see .prettierignore)
+.prettierrc.json
+.prettierignore

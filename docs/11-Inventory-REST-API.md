@@ -54,7 +54,8 @@ Example: `https://play.p21server.com/api/inventory/parts`
 | `GET` | `/api/inventory/parts/{ItemId}/v2/price` | Single item pricing (V2) | Yes |
 | `GET` | `/api/inventory/v2/parts/v2/price/{ItemId}` | Single item pricing (alternative path) | Yes |
 | `POST` | `/api/inventory/parts/itemsAvailability` | Batch availability | Not tested |
-| `POST` | `/api/inventory/parts/prices` | Batch pricing | Not tested |
+| `POST` | `/api/inventory/parts/prices` | Batch pricing (JSON or XML, see [Batch Pricing](#batch-pricing)) | Yes |
+| `POST` | `/api/inventory/v2/parts/prices` | Batch pricing (alternative path, identical behavior) | Yes |
 
 ---
 
@@ -1971,6 +1972,302 @@ When item IDs contain special characters, URL encoding is required:
 | `+` | `%2B` | Use standard URL encoding |
 
 > **Known Issue**: Forward slash (`/`) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets `%2F` as a literal path separator, returning 404. There is no known workaround for items containing `/` in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)
+
+---
+
+### Batch Pricing
+
+> **Added August 2026** — Live-verified against Prophet21Play (26.1).
+
+`POST /api/inventory/parts/prices` (and the identical `POST /api/inventory/v2/parts/prices`) price and check availability for **multiple items in one call**. Unlike single-item pricing, `ItemId` is in the request body, not the URL — so the [forward-slash URL-encoding limitation](#url-encoding-for-special-characters) above does not apply here.
+
+```http
+POST /api/inventory/parts/prices?companyId=ACME&customerId=10&salesLocId=100
+Authorization: Bearer {token}
+Content-Type: application/json
+Accept: application/json
+
+[
+    { "ItemId": "WIDGET-001", "SourceLocId": 100 },
+    { "ItemId": "WIDGET-002", "SourceLocId": 100 }
+]
+```
+
+**Required query parameters** (verified — omitting any one produces a distinct error naming exactly that parameter, checked in this order):
+
+1. `companyId`
+2. `customerId`
+3. `salesLocId`
+
+P21 validates these one at a time and fails on the first missing one, so an incomplete request appears to fail "progressively" as you add parameters — each retry reveals the next missing one rather than listing all of them up front:
+
+```json
+{"ErrorMessage": "Please provide a value for required parameter companyId.", "ErrorType": "System.ArgumentException", ...}
+```
+
+The WCF method signature (visible in the stack trace) also accepts `optionalShipToId`, `optionalOrderDate`, and `optionalJobNo` as query parameters — not verified.
+
+**Request body** — a JSON array or an XML `ArrayOfItemPriceInfo` of per-item objects. Verified minimum: `ItemId` + `SourceLocId`. Also accepted per item: `CustomerPartNo`, `UnitQuantity`, `UnitSize`, `UOM`, `PriceUom` (all optional — P21 defaults `UOM`/`PriceUom` to the item's base unit when omitted).
+
+**Response** — a JSON array or an XML `ArrayOfItemPrice`, one entry per requested item, in the same shape as [single-item pricing](#verified-pricing-response) (pricing **and** availability fields together).
+
+#### Content-Type must match the body — this is not "XML only" (verified)
+
+This endpoint is often mistaken for XML-only. **It is not** — both JSON and XML request/response bodies work. It's a WCF REST endpoint that selects its (de)serializer from the `Content-Type` header, not by inspecting the body, so sending a body that doesn't match `Content-Type` produces a confusing failure that looks like a format rejection:
+
+| `Content-Type` sent | Actual body | Result |
+|---|---|---|
+| `application/json` | JSON | **200** — works |
+| `application/xml` | XML | **200** — works |
+| *(omitted, `Accept: application/json`)* | JSON | **200** — works (defaults to JSON) |
+| `application/xml` | JSON | **400** — generic WCF "Request Error" HTML page pointing at `/help`; no P21 error, no mention of a header mismatch |
+| `application/json` | XML | **500** — at least a real P21 error: `BadRequestException: Invalid JSON or request body for parameter 'itemInfo'. Unexpected character encountered while parsing value: <...` |
+
+The `application/xml` + JSON-body case is what creates the "XML only" impression: the response gives no hint that the body was even parsed, let alone that the fix is the `Content-Type` header rather than the body format. If a batch pricing POST comes back as that generic WCF "Request Error" page, check that `Content-Type` matches what you actually sent before concluding the endpoint rejects JSON.
+
+<!-- tabs -->
+
+**Python**
+
+```python
+"""Batch price + availability lookup via the Inventory REST API (JSON body)."""
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+COMPANY_ID = "ACME"                       # required query param
+CUSTOMER_ID = "10"                        # required query param
+SALES_LOC_ID = "100"                      # required query param
+ITEMS = [
+    {"ItemId": "WIDGET-001", "SourceLocId": 100},
+    {"ItemId": "WIDGET-002", "SourceLocId": 100},
+]
+# ---------------------------------------------------------------------------
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        # Content-Type must match the body -- application/json here because ITEMS
+        # is sent as JSON. Sending application/xml with a JSON body 400s (see above).
+        "Content-Type": "application/json",
+    }
+
+    resp = client.post(
+        f"{BASE_URL}/api/inventory/parts/prices",
+        headers=headers,
+        params={"companyId": COMPANY_ID, "customerId": CUSTOMER_ID, "salesLocId": SALES_LOC_ID},
+        json=ITEMS,
+    )
+    resp.raise_for_status()
+    for price in resp.json():
+        print(
+            f"{price['ItemId']}: UnitPrice={price['UnitPrice']} "
+            f"QtyAvailable={price['QuantityAvailable']}"
+        )
+```
+
+**C#**
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string CompanyId = "ACME";                        // required query param
+const string CustomerId = "10";                         // required query param
+const string SalesLocId = "100";                        // required query param
+// ---------------------------------------------------------------------------
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var items = new JsonArray
+{
+    new JsonObject { ["ItemId"] = "WIDGET-001", ["SourceLocId"] = 100 },
+    new JsonObject { ["ItemId"] = "WIDGET-002", ["SourceLocId"] = 100 },
+};
+
+// Content-Type must match the body -- application/json here because items is
+// sent as JSON. Sending application/xml with a JSON body 400s (see above).
+var url = $"{BaseUrl}/api/inventory/parts/prices" +
+          $"?companyId={CompanyId}&customerId={CustomerId}&salesLocId={SalesLocId}";
+var content = new StringContent(items.ToJsonString(), Encoding.UTF8, "application/json");
+var resp = await client.PostAsync(url, content);
+resp.EnsureSuccessStatusCode();
+
+var prices = JsonNode.Parse(await resp.Content.ReadAsStringAsync())!.AsArray();
+foreach (var price in prices)
+{
+    Console.WriteLine(
+        $"{price!["ItemId"]}: UnitPrice={price["UnitPrice"]} " +
+        $"QtyAvailable={price["QuantityAvailable"]}");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+**Sample response** (one entry per requested item, same fields as [single-item pricing](#verified-pricing-response)):
+
+```json
+[
+    {
+        "UnitPrice": 10.780000000,
+        "BaseUnitPrice": 10.780000000,
+        "UOM": "EA",
+        "UOMUnitSize": 1.000000000,
+        "PricePageUid": 0,
+        "PriceUOM": "EA",
+        "PriceUnitSize": 1.000000000,
+        "ExtendedPrice": 10.780000000,
+        "CalcValue": 1.000000000,
+        "UnitCommissionCost": 5.308224600,
+        "UnitOtherCost": 5.390000000,
+        "UnitSalesCost": 5.308224600,
+        "LotCosted": "N",
+        "ItemId": "WIDGET-001",
+        "CompanyId": null,
+        "LocationId": 100,
+        "QuantityAvailable": 41.000000000,
+        "QuantityOnHand": 41.000000000,
+        "QuantityAllocated": 0.000000000,
+        "QuantityNonPickable": 0.0,
+        "QuantityQuarantined": 0.0,
+        "QuantityFrozen": 0.0,
+        "LocationType": "Standard"
+    },
+    {
+        "ItemId": "WIDGET-002",
+        "PricePageUid": 813,
+        "...": "one object per requested item, same shape"
+    }
+]
+```
+
+> **Note:** As with single-item pricing, `CompanyId` in the response can be `null` even though it was required in the request.
+
+#### Equivalent XML request/response
+
+The same call, sent as XML instead — only the `Content-Type`/`Accept` headers and body format change; the query parameters and URL are identical:
+
+```http
+POST /api/inventory/parts/prices?companyId=ACME&customerId=10&salesLocId=100
+Authorization: Bearer {token}
+Content-Type: application/xml
+Accept: application/xml
+
+<ArrayOfItemPriceInfo>
+    <ItemPriceInfo>
+        <ItemId>WIDGET-001</ItemId>
+        <SourceLocId>100</SourceLocId>
+    </ItemPriceInfo>
+    <ItemPriceInfo>
+        <ItemId>WIDGET-002</ItemId>
+        <SourceLocId>100</SourceLocId>
+    </ItemPriceInfo>
+</ArrayOfItemPriceInfo>
+```
+
+```xml
+<?xml version="1.0"?>
+<ArrayOfItemPrice xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ItemPrice>
+    <ItemId>WIDGET-001</ItemId>
+    <LocationId>100</LocationId>
+    <QuantityAvailable>41.000000000</QuantityAvailable>
+    <QuantityOnHand>41.000000000</QuantityOnHand>
+    <QuantityAllocated>0.000000000</QuantityAllocated>
+    <QuantityNonPickable>0</QuantityNonPickable>
+    <QuantityQuarantined>0</QuantityQuarantined>
+    <QuantityFrozen>0</QuantityFrozen>
+    <LocationType>Standard</LocationType>
+    <UnitPrice>10.780000000</UnitPrice>
+    <BaseUnitPrice>10.780000000</BaseUnitPrice>
+    <UOM>EA</UOM>
+    <UOMUnitSize>1.000000000</UOMUnitSize>
+    <PricePageUid>0</PricePageUid>
+    <PriceUOM>EA</PriceUOM>
+    <PriceUnitSize>1.000000000</PriceUnitSize>
+    <ExtendedPrice>10.780000000</ExtendedPrice>
+    <CalcValue>1.000000000</CalcValue>
+    <UnitCommissionCost>5.308224600</UnitCommissionCost>
+    <UnitOtherCost>5.390000000</UnitOtherCost>
+    <UnitSalesCost>5.308224600</UnitSalesCost>
+    <LotCosted>N</LotCosted>
+  </ItemPrice>
+  <!-- one <ItemPrice> per requested item -->
+</ArrayOfItemPrice>
+```
+
+> Full runnable version: adapt the [Python/C# example above](#batch-pricing) — swap the JSON body/headers for the XML shown here, no other change needed.
 
 ---
 

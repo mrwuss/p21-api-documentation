@@ -639,6 +639,158 @@ static string ReadField(string payload, string field)
 
 ---
 
+## Enterprise/Global Search Views (`p21_view_es_*`)
+
+> **Added August 2026** — discovered and verified live against a 26.1.5930.1 tenant.
+
+25 views share a `p21_view_es_*` prefix and back P21's in-app global search feature (the `es` reads as "enterprise search"; not an officially documented expansion, inferred from the schema below). They are **not** part of the curated 118-view [`/data/erp/views/v1`](#the-other-odata-surface-dataerpviewsv1) surface — query them the normal way, at `/odataservice/odata/view/{viewname}`, and the same [`$top` is mandatory](#skip-pagination) guidance applies.
+
+They split cleanly into two groups by what their columns look like.
+
+### Search-source views (18)
+
+Denormalized, heavily-joined views of a single business entity — one row per record, with lookups (class codes, descriptions, salesrep names, etc.) already resolved. All 18 share two trailing fields useful for incremental sync: `unique_id` (a per-view natural key, often composite — e.g. `p21_view_es_item`'s is `{item_id}--{supplier_id}`, since the view fans an item out to one row per supplier) and `max_date_last_modified` (the latest modification timestamp across every joined table, so `$filter=max_date_last_modified gt {timestamp}` catches changes anywhere in the join, not just on the primary table).
+
+| View | Source entity | Fields |
+|---|---|---|
+| `p21_view_es_customer` | Customer | 58 |
+| `p21_view_es_contacts` | Contact | 87 |
+| `p21_view_es_vendor` | Vendor | 75 |
+| `p21_view_es_item` | Item | 15 |
+| `p21_view_es_item_supplier` | Item × Supplier | 57 |
+| `p21_view_es_sales_order` | Sales order header | 115 |
+| `p21_view_es_sales_order_line` | Sales order line | 157 |
+| `p21_view_es_quote` | Quote | 89 |
+| `p21_view_es_invoice_hdr` | Invoice header | 137 |
+| `p21_view_es_invoice_line` | Invoice line | 139 |
+| `p21_view_es_vendor_invoice` | Vendor invoice | 49 |
+| `p21_view_es_ship_to` | Ship-to | 63 |
+| `p21_view_es_pick_ticket_hdr` | Pick ticket header | 21 |
+| `p21_view_es_pick_ticket_line` | Pick ticket line | 16 |
+| `p21_view_es_production_order` | Production order | 85 |
+| `p21_view_es_production_order_component` | Production order component | 61 |
+| `p21_view_es_service_order` | Service order | 93 |
+| `p21_view_es_work_in_process` | WIP stage | 45 |
+
+### Index configuration views (7)
+
+These carry no business data — they configure the search feature itself. Every one of them returned `"value": []` on the tenant this was verified against (no custom indexes had been configured), but the schema is always present and the relationships below are legible from the foreign-key-shaped column names:
+
+| View | Purpose |
+|---|---|
+| `p21_view_es_index_hdr` | One row per named search index — `index_name` plus the source view it indexes (`view_name`), display panel layout (`line1_panel`…`line3_extended`), and refresh schedule (`refresh_rate_seconds`, `last_sync_date`) |
+| `p21_view_es_index_field` | One row per indexed column (FK `es_index_hdr_uid`) — `searchable_flag` / `display_in_search_flag` / `filter_in_search_flag` per field, plus `data_type` |
+| `p21_view_es_index_priority_hdr` | A named priority/ranking profile |
+| `p21_view_es_index_priority_field` | Per-profile override of an index field's searchable/display/filter flags (FKs to both the profile and the field) |
+| `p21_view_es_index_priority_ranking` | Result ordering — assigns a `rank` to an (profile, index) pair |
+| `p21_view_es_index_priority_role` | Links a priority profile to a role (`role_uid`) |
+| `p21_view_es_index_priority_user` | Links a priority profile to a user (`users_uid`) |
+
+> **Inferred, not confirmed:** the hdr→field and priority-hdr→field/ranking/role/user relationships above are read off the column names and `$metadata` types (`Edm.Int32` FK-shaped columns), not off live data — every `*_priority_*` view was empty on the verification tenant, so the actual row shape and what "priority" changes about search ranking were not directly observed.
+
+### Example: querying `p21_view_es_item`
+
+Verified live, 26.1.5930.1:
+
+```http
+GET /odataservice/odata/view/p21_view_es_item?$top=1
+Authorization: Bearer {token}
+Accept: application/json
+```
+
+```json
+{
+  "@odata.context": "{base}/odataservice/odata/view/$metadata#p21_view_es_item",
+  "value": [
+    {
+      "item_id": "WIDGET-001",
+      "item_desc": "Standard Widget Assembly",
+      "extended_desc": "Standard Widget Assembly - full description text",
+      "supplier_part_no": "",
+      "upc_code": null,
+      "catalog_name": null,
+      "contract_number": null,
+      "ean_code": null,
+      "purchase_discount_group": "Default",
+      "discount_group_description": "Default",
+      "alternate_code": null,
+      "alternate_code_desc": null,
+      "supplier_id": 10143,
+      "unique_id": "WIDGET-001--10143",
+      "max_date_last_modified": "2026-07-24T11:22:14.747-04:00"
+    }
+  ]
+}
+```
+
+> Some rows on the verification tenant had a stray leading space on `item_id` (e.g. `" EX21-NI"`). It isn't consistent padding — row lengths on the same column varied freely (7 to 19 characters) with no fixed width, so this reads as pre-existing data-entry noise in that specific database rather than a behavior of the view or column type. Not included as a documented gotcha; if you see it on your tenant, treat it as a data-quality issue, not an API contract.
+
+### Example: querying `p21_view_es_ship_to` — the case for these views
+
+`p21_view_es_item` above is deliberately the simplest of the 18 (15 fields). `p21_view_es_ship_to` (63 fields) is a better demonstration of what these views are *for*: one row already joins ship-to, customer, tax group, freight/carrier, payment terms, branch, salesrep, and both customer- and ship-to-level class codes — a query that would otherwise mean separately reading `ship_to`, `customer`, `tax_group`, `freight_code`, `terms`, `company`, and the class-code tables and joining them client-side (OData has [no server-side joins](#no-joins-chain-queries-by-uid)).
+
+Verified live, 26.1.5930.1:
+
+```http
+GET /odataservice/odata/view/p21_view_es_ship_to?$top=1
+Authorization: Bearer {token}
+Accept: application/json
+```
+
+```json
+{
+  "@odata.context": "{base}/odataservice/odata/view/$metadata#p21_view_es_ship_to",
+  "value": [
+    {
+      "ship_to_id": 1,
+      "ship_to_name": "Address 1",
+      "customer_id": 10397,
+      "customer_name": "ACME Plumbing Supply",
+      "phys_address1": null,
+      "phys_address2": null,
+      "phys_city": null,
+      "phys_state": null,
+      "phys_postal_code": "08701",
+      "company_id": "ACME",
+      "company_name": "ACME Distribution Inc.",
+      "default_branch": "01",
+      "tax_group_id": "NJ UEZ TAX",
+      "terms_id": "10",
+      "default_carrier_id": null,
+      "delivery_instructions": null,
+      "freight_code_uid": 2,
+      "tax_group_description": "NJ UEZ Sales Tax",
+      "freight_cd": "IN/OUT",
+      "freight_desc": "Customer Pays Incoming and Outgoing Freight",
+      "branch_description": "Main Branch",
+      "carrier_name": null,
+      "terms_desc": "COD",
+      "cust_class_1id": null,
+      "cust_class_1desc": null,
+      "cust_class_2id": "NOT INSU",
+      "cust_class_2desc": "Not Insured",
+      "ship_to_class1_id": null,
+      "ship_to_class1_desc": null,
+      "date_created": "2019-03-27T15:12:13.623-04:00",
+      "date_last_modified": "2021-04-26T13:09:15.507-04:00",
+      "created_by": "apiuser",
+      "last_maintained_by": "apiuser",
+      "corp_address_id": 10397,
+      "corp_address_name": "ACME Plumbing Supply",
+      "salesrep_id": "1002",
+      "salesrep_name": "Jane Smith",
+      "freight_charge_id": null,
+      "unique_id": "ACME-1-1002",
+      "max_date_last_modified": "2026-08-19T15:00:00-04:00"
+    }
+  ]
+}
+```
+
+> Trimmed to the fields that make the point; the live response carries all 63 (mailing address, all five customer- and ship-to-level class code pairs, `route_description`, `shipping_route_uid`, etc.). Note `unique_id`'s shape here is `{company_id}-{ship_to_id}-{salesrep_id}` — a different composite pattern than `p21_view_es_item`'s `{item_id}--{supplier_id}` (double dash). **`unique_id` composition is per-view; don't assume one view's key shape for another.**
+
+---
+
 ## Undeployed / Unlicensed Windows: Readable Tables, No API Surface
 
 OData exposes the **schema**, not the deployment state. A table can be fully readable over OData while the feature that populates it is **undeployed or unlicensed** — its maintenance window is classic-desktop-only and it has no Transaction/Interactive API surface. The rows you read are then **dead storage**: nothing writes them and no business logic consults them.
