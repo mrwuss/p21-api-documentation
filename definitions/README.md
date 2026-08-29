@@ -1,6 +1,8 @@
 # P21 Service Definitions (Schema Library)
 
-Raw Transaction API **service definitions** — one JSON per P21 window/service, fetched from a live P21 system (most from 25.2; `ConvertPOToVoucher`, `RequisitionPurchaseOrder`, `Salesrep`, and `VoucherByItem` from 26.1.5894.1; the three `PurchasePricingPageSupplier*` variants, `SalesPriceBook` and `ShipTo` from 26.1.5910.3). This is the authoritative full-field schema for building payloads: every service's tabs, datawindows, key fields, and field definitions (`DbColumnName`, `DataType`, `Required`, `Label`), plus a ready-to-populate `Template` payload skeleton. `_manifest.json` records the per-run fetch date; a partial `--services` refresh updates only the services it touches.
+Raw Transaction API **service definitions** — one JSON per P21 window/service, fetched from a live P21 system. **All 36 files were re-fetched together from 26.1.5940.0 on 2026-08-29**, so the folder is internally consistent rather than a mix of builds. This is the authoritative full-field schema for building payloads: every service's tabs, datawindows, key fields, and field definitions (`DbColumnName`, `DataType`, `Required`, `Label`), plus a ready-to-populate `Template` payload skeleton. [`_manifest.json`](_manifest.json) records the fetch date and the exact service list; a partial `--services` refresh updates only the services it touches, which is the one way the folder can drift back into a mix of builds.
+
+> **Definitions are build-specific, and that matters more than it looks.** Which columns a window disables shifts between builds — a field that is `Required` or writable here may not be on yours. Treat these as a strong starting point and confirm against your own tenant with `GET /api/v2/definition/{Service}` before relying on a field being writable. See [Breaking Changes entry 6](../docs/14-Breaking-Changes.md#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast) for a case where exactly that shift retired a documented repro.
 
 Load **one file for the service you're working on** — don't read the folder.
 
@@ -46,7 +48,18 @@ Set `P21_SCRUB_TERMS` (comma-separated company identifiers) before publishing an
 
 ## Services included
 
-The services documented in [`docs/`](../docs/INDEX.md): Assembly, BinLocation, ConvertPOToVoucher, Customer, InventoryAdjustment, Item, JobContractPricing, Labor, LaborProcess, Order, ProductionOrder, ProductionOrderPicking, ProductionOrderProcessing, PurchaseOrder, PurchasePricingPageSupplier, PurchasePricingPageSupplierDiscGrp, PurchasePricingPageSupplierItem, RequisitionPurchaseOrder, Salesrep, SalesPriceBook, SalesPricePage, Shipping, ShipTo, Supplier, TimeEntry, VoucherByItem, and the report services `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor`.
+**36 services**, and this list, [`_manifest.json`](_manifest.json) and `DOCUMENTED_SERVICES` in [`scripts/fetch_definitions.py`](../scripts/fetch_definitions.py) are kept in agreement — a default `python scripts/fetch_definitions.py` refreshes exactly the files in this folder, no more and no less. If you add a definition, add it to the fetch list in the same commit.
+
+| Area | Services |
+|---|---|
+| Sell side | `Order`, `RMA`, `ShipTo`, `Shipping`, `Customer`, `Address`, `Salesrep` |
+| Buy side | `PurchaseOrder`, `PurchaseOrderReceipt`, `ConvertPOToVoucher`, `RequisitionPurchaseOrder`, `VoucherByItem`, `Supplier` |
+| Inventory | `Item`, `ItemDefaults`, `InventoryAdjustment`, `BinLocation`, `PickZone`, `PutawayZone`, `Assembly` |
+| Pricing | `SalesPricePage`, `SalesPriceBook`, `JobContractPricing`, `PurchasePricingPageSupplier`, `PurchasePricingPageSupplierDiscGrp`, `PurchasePricingPageSupplierItem` |
+| Production & labor | `ProductionOrder`, `ProductionOrderPicking`, `ProductionOrderProcessing`, `Labor`, `LaborProcess`, `TimeEntry` |
+| Reports (`m_*`, hidden from `/api/v2/services` but callable) | `m_picktickets`, `m_reprintpicktickets`, `m_reprintpurchaseorders`, `m_storedprocedureexecutor` |
+
+**Not every service named in `docs/` has a file here, and that is deliberate** — the folder holds the services whose *schema* the documentation leans on, not every service it mentions. The gap is small and closing; if a doc page references a service you cannot find here, fetch it yourself with `--services {Name}`.
 
 The pricing set is worth knowing as a group: sales price pages (`SalesPricePage`), the book that collects them (`SalesPriceBook`), job contracts (`JobContractPricing`), and the three purchase-side page variants — each with its own key set and, unhelpfully, its own name for the break fields. See [08 § Cross-Service Break-Field Names](../docs/08-SalesPricePage-Codes.md#cross-service-break-field-names).
 

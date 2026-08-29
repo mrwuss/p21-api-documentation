@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <Name>Customer</Name>
+  <Transactions>
+    <Transaction>
+      <DataElements>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+          <Name>TABPAGE_1.tp_1_dw_1</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>customer_name</Name>
+                  <Value>ACME Industrial Supply</Value>
+                </Edit>
+                <Edit>
+                  <Name>salesrep_id</Name>
+                  <Value>100</Value>
+                </Edit>
+                <Edit>
+                  <Name>mail_address1</Name>
+                  <Value>123 Main St</Value>
+                </Edit>
+                <Edit>
+                  <Name>mail_city</Name>
+                  <Value>Des Moines</Value>
+                </Edit>
+                <Edit>
+                  <Name>mail_state</Name>
+                  <Value>IA</Value>
+                </Edit>
+                <Edit>
+                  <Name>mail_postal_code</Name>
+                  <Value>50309</Value>
+                </Edit>
+                <Edit>
+                  <Name>mail_country</Name>
+                  <Value>USA</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+        <DataElement>
+          <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+          <Name>SHIP_TO_GENERAL.ship_to_general</Name>
+          <Rows>
+            <Row>
+              <Edits>
+                <Edit>
+                  <Name>default_branch</Name>
+                  <Value>10</Value>
+                </Edit>
+              </Edits>
+              <RelativeDateEdits />
+            </Row>
+          </Rows>
+          <Type>Form</Type>
+        </DataElement>
+      </DataElements>
+      <Status>New</Status>
+    </Transaction>
+  </Transactions>
+  <UseCodeValues>false</UseCodeValues>
+</TransactionSet>

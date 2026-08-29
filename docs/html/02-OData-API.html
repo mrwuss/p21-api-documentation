@@ -676,6 +676,7 @@
 <li><a href="#company-scoping-company_id-vs-company_no">Company Scoping — company_id vs company_no</a></li>
 <li><a href="#non-expired-records">Non-Expired Records</a></li>
 <li><a href="#no-joins-chain-queries-by-uid">No Joins — Chain Queries by UID</a></li>
+<li><a href="#columns-that-dont-mean-what-their-name-says">Columns that don't mean what their name says</a></li>
 </ul>
 </li>
 <li><a href="#data-type-formatting">Data Type Formatting</a><ul>
@@ -880,7 +881,7 @@
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1172,6 +1173,81 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><strong>Batch the lookups</strong> — collect the uids from one query and fetch the next level with an <code>or</code>-combined filter rather than one call per row (see <a href="#avoiding-n1-query-patterns">Avoiding N+1 Query Patterns</a>).</li>
 </ul>
 <hr />
+<h3 id="columns-that-dont-mean-what-their-name-says">Columns that don't mean what their name says</h3>
+<p>A column name is a claim about intent, and P21 has a few where the stored value stops matching the intent once a downstream process touches the row. These are read hazards specifically: the value is present, well-typed and plausible, so nothing in the response tells you it is no longer the thing you asked for.</p>
+<h4 id="po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise"><code>po_line.supplier_ship_date</code> is last-shipment-observed on direct-ship POs, not a supplier promise</h4>
+<p>On a <strong>direct-ship PO (<code>po_hdr.po_type = 'D'</code>)</strong>, confirming the shipment writes the confirmation's ship date down onto <code>po_line.supplier_ship_date</code> for <strong>every line on that confirmation</strong> — including quantity that has not shipped. Read the column afterwards and you get the date of the last confirmation, not the date the supplier promised.</p>
+<p><strong>On a partial confirmation, the promise for the open balance is destroyed.</strong> There is nowhere in the PO line to record a reforecast for the unshipped quantity, so the original promise is simply gone:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>po_no</code></th>
+<th>line</th>
+<th>ordered</th>
+<th>received</th>
+<th><code>supplier_ship_date</code></th>
+<th><code>date_due</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>990695</td>
+<td>1</td>
+<td>200</td>
+<td>147</td>
+<td>2026-06-01</td>
+<td>2026-07-24</td>
+</tr>
+<tr>
+<td>991529</td>
+<td>1</td>
+<td>600</td>
+<td>360</td>
+<td>2026-05-22</td>
+<td>2026-06-09</td>
+</tr>
+<tr>
+<td>992085</td>
+<td>1</td>
+<td>1200</td>
+<td>480</td>
+<td>2026-06-02</td>
+<td>2026-06-16</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each of these has hundreds of pieces still open against a <code>supplier_ship_date</code> in the past that describes a shipment covering a fraction of the line.</p>
+<p><strong>It is confined to direct ship, and the split is total.</strong> Verified against a 26.1 tenant (August 2026) across <strong>687,879 receipts, all history, zero exceptions in either direction</strong>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>po_hdr.po_type</code></th>
+<th style="text-align: right;">receipts</th>
+<th style="text-align: right;"><code>inventory_receipts_hdr.shipment_date</code> populated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>D</code> — direct ship</td>
+<td style="text-align: right;">233,070</td>
+<td style="text-align: right;"><strong>100%</strong></td>
+</tr>
+<tr>
+<td><code>B</code> / <code>N</code> / <code>P</code> / <code>S</code> / <code>X</code></td>
+<td style="text-align: right;">454,809</td>
+<td style="text-align: right;"><strong>0%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>shipment_date</code> is only ever set by the direct-ship confirmation, and only the direct-ship confirmation pushes it down to the line. On every other PO type, <code>supplier_ship_date</code> is untouched by receiving and remains a usable promise.</p>
+<p><strong>What to use instead.</strong> <code>date_due</code> (labeled <em>Expected Date</em>) is not written by receiving on any PO type, and it survives the confirmation — in every row above it still carries a later, different date. Use <code>date_due</code> for the live line-level expectation. For on-time-delivery analysis, either exclude <code>po_type = 'D'</code> lines that have a receipt against them, or capture <code>supplier_ship_date</code> into your own store <em>before</em> the first confirmation, because P21 does not keep the prior value.</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/po_line</span>
+<span class="err">    ?$select=po_no,line_no,supplier_ship_date,date_due,qty_ordered,qty_received</span>
+<span class="err">    &amp;$filter=qty_received gt 0 and qty_received lt qty_ordered</span>
+</code></pre></div>
+
+<p>Join to <code>po_hdr.po_type</code> to tell which rows are affected — the line carries no flag of its own, which is the whole trap.</p>
+<p>The write itself is documented on the service that performs it: <a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">Interactive API § Direct-ship confirmation</a>.</p>
 <h2 id="data-type-formatting">Data Type Formatting</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -1297,7 +1373,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1606,7 +1682,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1735,7 +1811,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1917,7 +1993,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -2499,6 +2575,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#company-scoping-company_id-vs-company_no">Company Scoping — company_id vs company_no</a></li>
 <li><a href="#non-expired-records">Non-Expired Records</a></li>
 <li><a href="#no-joins-chain-queries-by-uid">No Joins — Chain Queries by UID</a></li>
+<li><a href="#columns-that-dont-mean-what-their-name-says">Columns that don't mean what their name says</a></li>
 </ul>
 </li>
 <li><a href="#data-type-formatting">Data Type Formatting</a><ul>

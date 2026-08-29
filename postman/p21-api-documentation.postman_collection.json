@@ -18,7 +18,17 @@
        "type": "noauth"
       },
       "method": "POST",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "{\r\n    \"username\": \"{{P21_USERNAME}}\",\r\n    \"password\": \"{{P21_PASSWORD}}\"\r\n}",
@@ -47,8 +57,19 @@
        "listen": "test",
        "script": {
         "exec": [
-         "var jsonData = pm.response.json();",
-         "pm.collectionVariables.set(\"TOKEN\", jsonData.AccessToken);"
+         "// P21 answers with XML unless Accept: application/json is present.",
+         "// Fail loudly here rather than letting a blank TOKEN break every later request.",
+         "var ct = pm.response.headers.get(\"Content-Type\") || \"\";",
+         "pm.test(\"Response is JSON (Accept header present)\", function () {",
+         "    pm.expect(ct).to.include(\"application/json\");",
+         "});",
+         "",
+         "if (ct.indexOf(\"application/json\") !== -1) {",
+         "    var jsonData = pm.response.json();",
+         "    pm.collectionVariables.set(\"TOKEN\", jsonData.AccessToken);",
+         "} else {",
+         "    console.error(\"Token response was \" + ct + \", not JSON. Check the Accept header on this request.\");",
+         "}"
         ],
         "type": "text/javascript"
        }
@@ -83,7 +104,13 @@
        ]
       },
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/api/ui/router/v1/?urlType=external",
        "host": [
@@ -116,7 +143,13 @@
      "name": "Basic Table Query",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$top=10",
        "host": [
@@ -144,7 +177,13 @@
      "name": "Filtered Query",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$filter=customer_id eq '100'&$select=customer_id,customer_name,date_created",
        "host": [
@@ -176,7 +215,13 @@
      "name": "Pagination (Top/Skip)",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/odataservice/odata/table/part?$top=10&$skip=20&$orderby=item_id desc",
        "host": [
@@ -219,7 +264,13 @@
      "name": "List Available Services",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{UI_SERVER_URL}}/api/v2/services",
        "host": [
@@ -239,7 +290,13 @@
      "name": "Get Service Definition",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{UI_SERVER_URL}}/api/v2/definition/Order",
        "host": [
@@ -260,7 +317,13 @@
      "name": "Get Service Defaults",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{UI_SERVER_URL}}/api/v2/defaults/Order",
        "host": [
@@ -281,7 +344,13 @@
      "name": "Get Service Basics (Abbreviated Skeleton)",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{UI_SERVER_URL}}/api/v2/basics/Order",
        "host": [
@@ -302,7 +371,17 @@
      "name": "Retrieve Record(s) (transaction/get)",
      "request": {
       "method": "POST",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "{\r\n  \"ServiceName\": \"Order\",\r\n  \"TransactionStates\": [\r\n    {\r\n      \"DataElementName\": \"TABPAGE_1.order\",\r\n      \"Keys\": [{\"Name\": \"order_no\", \"Value\": \"1000001\"}]\r\n    }\r\n  ]\r\n}",
@@ -332,7 +411,17 @@
      "name": "Create Single Record (Example)",
      "request": {
       "method": "POST",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "{\r\n  \"Name\": \"Order\",\r\n  \"UseCodeValues\": false,\r\n  \"Transactions\": [\r\n    {\r\n      \"Status\": \"New\",\r\n      \"DataElements\": [\r\n        {\r\n          \"Name\": \"FORM.form\",\r\n          \"Type\": \"Form\",\r\n          \"Keys\": [],\r\n          \"Rows\": [\r\n            {\r\n              \"Edits\": [\r\n                {\"Name\": \"order_no\", \"Value\": \"\"},\r\n                {\"Name\": \"customer_id\", \"Value\": \"1001\"}\r\n              ],\r\n              \"RelativeDateEdits\": []\r\n            }\r\n          ]\r\n        }\r\n      ]\r\n    }\r\n  ]\r\n}",
@@ -367,7 +456,17 @@
      "name": "Open Session",
      "request": {
       "method": "POST",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "{\r\n  \"ResponseWindowHandlingEnabled\": false\r\n}",
@@ -410,7 +509,17 @@
      "name": "Open Window (e.g., Sales Price Page)",
      "request": {
       "method": "POST",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "{\"ServiceName\": \"SalesPricePage\"}",
@@ -453,7 +562,17 @@
      "name": "Change Field Value",
      "request": {
       "method": "PUT",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "{\r\n  \"WindowId\": \"{{WINDOW_ID}}\",\r\n  \"List\": [\r\n    {\r\n      \"TabName\": \"FORM\",\r\n      \"FieldName\": \"description\",\r\n      \"Value\": \"Test Description\",\r\n      \"DatawindowName\": \"form\"\r\n    }\r\n  ]\r\n}",
@@ -484,7 +603,17 @@
      "name": "Save Data",
      "request": {
       "method": "PUT",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "\"{{WINDOW_ID}}\"",
@@ -515,7 +644,13 @@
      "name": "Close Window",
      "request": {
       "method": "DELETE",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/window?id={{WINDOW_ID}}",
        "host": [
@@ -543,7 +678,13 @@
      "name": "End Session",
      "request": {
       "method": "DELETE",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{UI_SERVER_URL}}/api/ui/interactive/sessions/",
        "host": [
@@ -571,7 +712,13 @@
      "name": "Ping (Health Check)",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/api/entity/customers/ping",
        "host": [
@@ -592,7 +739,13 @@
      "name": "List Customers",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/api/entity/customers/",
        "host": [
@@ -613,7 +766,13 @@
      "name": "Get Customer by Key",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/api/entity/customers/ACME_10",
        "host": [
@@ -634,7 +793,17 @@
      "name": "Update Customer (PUT)",
      "request": {
       "method": "PUT",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json"
+       }
+      ],
       "body": {
        "mode": "raw",
        "raw": "{\r\n  \"CustomerName\": \"Updated Name via Postman\"\r\n}",
@@ -664,7 +833,13 @@
      "name": "List Vendors",
      "request": {
       "method": "GET",
-      "header": [],
+      "header": [
+       {
+        "key": "Accept",
+        "value": "application/json",
+        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+       }
+      ],
       "url": {
        "raw": "{{P21_BASE_URL}}/api/entity/vendors/",
        "host": [

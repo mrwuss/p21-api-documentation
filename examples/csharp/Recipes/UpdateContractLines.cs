@@ -6,7 +6,7 @@
 // stateless Transaction API.
 //
 // Key rules (all verified live — see the recipe page):
-//   - Status is "New" for BOTH create and update ("Existing" returns HTTP 500).
+//   - Status is "New" for BOTH create and update (the only value the enum accepts).
 //   - pricing_method MUST precede price in the Edits, or price lands as $0.
 //   - One POST per line: inserts re-save the shared header and collide when batched.
 //   - end_date must be >= today; the header is re-validated on every save.

@@ -1,0 +1,67 @@
+{
+  "Name": "Customer",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "customer_name",
+                  "Value": "ACME Industrial Supply"
+                },
+                {
+                  "Name": "salesrep_id",
+                  "Value": "100"
+                },
+                {
+                  "Name": "mail_address1",
+                  "Value": "123 Main St"
+                },
+                {
+                  "Name": "mail_city",
+                  "Value": "Des Moines"
+                },
+                {
+                  "Name": "mail_state",
+                  "Value": "IA"
+                },
+                {
+                  "Name": "mail_postal_code",
+                  "Value": "50309"
+                },
+                {
+                  "Name": "mail_country",
+                  "Value": "USA"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "SHIP_TO_GENERAL.ship_to_general",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "default_branch",
+                  "Value": "10"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

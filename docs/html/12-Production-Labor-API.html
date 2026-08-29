@@ -886,6 +886,10 @@
 </tbody>
 </table></div>
 <h4 id="labor-lines-tp_laborrecordingprod_order_line_comp_labor-list">Labor Lines -- <code>TP_LABORRECORDING.prod_order_line_comp_labor</code> (List)</h4>
+<blockquote>
+<p><strong>This element's key set changed between 2026.1 builds — check yours before you batch.</strong> On 26.1.5940.0 it keys on <strong><code>prod_order_number</code> <em>and</em> <code>line_number</code></strong>; earlier builds in this repo's definition library keyed on <code>prod_order_number</code> alone. That matters because <code>Keys</code> is what P21 uses to decide whether two rows are the same row: <strong>under the one-key shape, labor rows for different lines of the same production order collapse into one and the last value wins</strong> — silently, with <code>Succeeded: 1</code>. See <a href="03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">Keys — Row Identity and the Collapse Trap</a>.</p>
+<p>Send <strong>both</strong> keys. <code>line_number</code> (<code>prod_order_line.line_number</code>, <code>Label: "Line No"</code>) is not <code>Required</code>, so adding it is safe on either shape, and it is the difference between one labor row and per-line labor rows. Confirm against your own tenant with <code>GET /api/v2/definition/TimeEntry</code> — <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/TimeEntry.json"><code>definitions/TimeEntry.json</code></a> here is 5940.0.</p>
+</blockquote>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -901,6 +905,12 @@
 <td>Decimal</td>
 <td>No (key)</td>
 <td>Production order number</td>
+</tr>
+<tr>
+<td><code>line_number</code></td>
+<td>Long</td>
+<td>No (key on 5940.0)</td>
+<td>Production order <strong>line</strong> — key it too, or rows for different lines collapse</td>
 </tr>
 <tr>
 <td><code>item_id</code></td>
@@ -2100,7 +2110,7 @@
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -2355,7 +2365,7 @@
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 

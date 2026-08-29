@@ -20,7 +20,7 @@ One POST, batchable: repeat the `JOBPRICELINE` + `BINS.bins` pair per bin inside
     "UseCodeValues": false,
     "IgnoreDisabled": true,        // MANDATORY, and at the top level — inside a Transaction it is silently ignored
     "Transactions": [{
-        "Status": "New",           // "New" even though the contract exists — "Existing" returns HTTP 500
+        "Status": "New",           // "New" even though the contract exists — it is the only value the enum takes
         "DataElements": [
             {
                 // Load the contract header. job_no is unique across renewals.
@@ -157,7 +157,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -401,7 +401,7 @@ All verified live:
 - **Select the line by `item_id`** (the `JOBPRICELINE` key). Selecting by `line_no` alone fails with *"Sequence contains no matching element."* If the same item appears on multiple lines, add `line_no` as a second key.
 - **Batching is fine here** — repeat the `JOBPRICELINE` + `BINS.bins` pair per bin inside the same Transaction. Unlike line inserts, bin edits don't collide on the header.
 - **No `end_date` required on this path** — it works on **expired** contracts too, unlike line-field updates.
-- **`Status: "New"` even for an existing contract** — `"Existing"` returns HTTP 500 (`NullReferenceException`).
+- **`Status: "New"` even for an existing contract** — [`"New"` is the only value the enum accepts](../03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts); `"Existing"` is HTTP 400 on 26.1.5940.0, HTTP 500 `NullReferenceException` on older builds.
 - **HTTP 200 can still carry `Summary.Failed > 0`** — check `Summary` and `Messages`, never the HTTP status.
 - **Interactive fallback** (slower; use when a Transaction-API edge case appears or the work needs window logic) — the EXISTING-contract unlock sequence from [Tab Unlock Sequences](../04-Interactive-API.md#tab-unlock-sequences):
   1. Load the contract by setting `job_no`, `customer_id`, and `ship_to_id` on `FORM/d_dw_job_price_hdr` (three separate change calls). **Load by `job_no`, not `contract_no`** — renewals can leave the same `contract_no` on two header rows.

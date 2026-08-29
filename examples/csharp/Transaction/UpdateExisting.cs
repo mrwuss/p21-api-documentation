@@ -11,7 +11,7 @@
 //      [{"Location": "form", "Name": "price_page_uid"}]) plus only the
 //      changed fields
 //   3. Send via POST /api/v2/transaction (Status is still "New" — sending
-//      "Existing" returns HTTP 500 platform-wide)
+//      "New" is the only value the Status enum accepts)
 //
 // !!! UNVERIFIED: the SalesPricePage update path shown here has NOT been
 // !!! verified live. The corrected payload shape follows the VERIFIED
@@ -236,7 +236,7 @@ public static class UpdateExisting
         Console.WriteLine("- Include the identifying key (price_page_uid) in the FORM Edits,");
         Console.WriteLine("  plus only the fields you want to change");
         Console.WriteLine("- The 'Status' in the request is still 'New' for updates");
-        Console.WriteLine("  ('Existing' returns HTTP 500 platform-wide)");
+        Console.WriteLine("  ('New' is the only value the Status enum accepts)");
         Console.WriteLine("- SalesPricePage updates are UNVERIFIED; the verified reference");
         Console.WriteLine("  is JobContractPricing (docs/03, 'Updating an Existing Contract')");
         Console.WriteLine("- Verify with a read-back (/transaction/get) after any update");

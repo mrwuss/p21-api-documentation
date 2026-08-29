@@ -29,7 +29,7 @@ POST https://{hostname}/api/security/token
 
 > **Security Warning:** The V1 endpoint transmits credentials in HTTP **headers**. Headers are routinely logged by reverse proxies, load balancers, WAFs, and middleware — meaning usernames and passwords can end up in access logs, error logs, and monitoring dashboards. **Always use V2** for new integrations. V1 is documented here only for reference with legacy systems.
 
-> **On 2026.1, don't let a session failure talk you back onto V1.** Interactive session-create returns an **empty HTTP 500 when the request lacks `Accept: application/json`**, which reads convincingly as "our V2 tokens stopped working on 26.1". It isn't a token problem: a V2 token opens sessions normally once the header is present (verified on 26.1.5910.3). A production integration misdiagnosed this and fell back to V1 before a controlled same-token test found the header.
+> **On 2026.1, don't let a session failure talk you back onto V1.** Interactive session-create misbehaves when the request lacks `Accept: application/json` — an **empty HTTP 500** on builds up to 5910.3, an **HTTP 200 carrying XML** on 26.1.5940.0 and later. Either way it reads convincingly as "our V2 tokens stopped working on 26.1". It isn't a token problem: a V2 token opens sessions normally once the header is present (verified on 26.1.5910.3 and 26.1.5940.0). A production integration misdiagnosed this and fell back to V1 before a controlled same-token test found the header.
 >
 > Downgrading costs you twice — credentials in headers, **and** per-operator attribution, since the V1 endpoint has no consumer key and every write lands against the service account. Two requests tell them apart: same token to session-create, once with `Accept` and once without. See [Breaking Changes § 2026.1 entry 1](14-Breaking-Changes.md#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header).
 
@@ -536,7 +536,7 @@ If per-operator attribution matters to your integration, this is the setting to 
 
 ## Using the Token
 
-> **`Accept: application/json` is not optional on 2026.1.** Every example in this documentation sends it; on P21 **2026.1** the Interactive API returns an **empty HTTP 500** for any request whose `Accept` header doesn't include `application/json` — including the `Accept: */*` default of httpx and .NET HttpClient — and the failed session create leaves a ghost session behind. Set it in one shared header builder rather than per call site. See [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+> **`Accept: application/json` is not optional on 2026.1.** Every example in this documentation sends it. Omit it — including via the `Accept: */*` default of httpx and .NET `HttpClient` — and the Interactive API refuses to give you JSON: an **empty HTTP 500** (plus a ghost session) on builds up to 5910.3, and an **HTTP 200 carrying XML** on 26.1.5940.0 and later, which raises `JSONDecodeError` / `JsonException` in the parser instead. The mitigation is the same on every build: set it in one shared header builder rather than per call site. See [Breaking Changes entry 1](14-Breaking-Changes.md#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header).
 
 
 

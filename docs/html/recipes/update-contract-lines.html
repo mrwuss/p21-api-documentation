@@ -694,7 +694,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
     &quot;UseCodeValues&quot;: false,
     &quot;IgnoreDisabled&quot;: true,            // top level — only needed when writing commission costs
     &quot;Transactions&quot;: [{
-        &quot;Status&quot;: &quot;New&quot;,               // &quot;New&quot; for BOTH create and update — &quot;Existing&quot; returns HTTP 500
+        &quot;Status&quot;: &quot;New&quot;,               // &quot;New&quot; for BOTH create and update — it is the only value the enum takes
         &quot;DataElements&quot;: [
             {
                 // Header: Keys stays EMPTY; the key fields go in Edits.
@@ -843,7 +843,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1108,7 +1108,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
 <ul>
 <li><strong><code>pricing_method</code> must precede <code>price</code> in the Edits.</strong> Changing <code>pricing_method</code> clears the typed price, exactly as in the UI — reversed order writes the line with <strong>price = $0</strong> and the transaction still reports <code>Succeeded</code>. Verified live. Order the Edits <code>item_id</code>, <code>pricing_method</code>, <code>price</code>.</li>
 <li><strong>One transaction per POST when inserting lines.</strong> Every transaction re-saves the shared FORM header; batched inserts collide — all but one fail with an optimistic-concurrency error, and the ones that land can get <strong>duplicate <code>line_no</code></strong> values. Edits to existing keyed rows batch fine.</li>
-<li><strong><code>Status: "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) returns HTTP 500</strong> (<code>NullReferenceException</code>). Use <code>"New"</code> for both create and update.</li>
+<li><strong><code>Status: "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) is rejected</strong> — <a href="../03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">the enum has one member, <code>"New"</code></a>. HTTP 400 on 26.1.5940.0, HTTP 500 <code>NullReferenceException</code> on older builds. Use <code>"New"</code> for both create and update.</li>
 <li><strong><code>end_date</code> must be &gt;= today</strong> — the header is validated on every save, so you cannot edit lines on an expired contract without also moving its <code>end_date</code> forward. For expired contracts, use the Interactive API.</li>
 <li><strong>Include <code>job_no</code> to disambiguate renewals</strong> — the same <code>contract_no</code> can exist on two header rows; <code>job_no</code> is unique.</li>
 <li><strong><code>IgnoreDisabled: true</code> goes at the payload top level</strong> (alongside <code>Name</code>/<code>Transactions</code>). Inside a Transaction object it is silently ignored and commission-cost writes fail with <code>Column is disabled: commission_cost_value</code>.</li>

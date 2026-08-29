@@ -694,7 +694,10 @@
 </tr>
 </tbody>
 </table></div>
-<p><strong>Labor lines — <code>TP_LABORRECORDING.prod_order_line_comp_labor</code> (List, key <code>prod_order_number</code>)</strong></p>
+<p><strong>Labor lines — <code>TP_LABORRECORDING.prod_order_line_comp_labor</code> (List, keyed <code>prod_order_number</code> + <code>line_number</code> on 26.1.5940.0)</strong></p>
+<blockquote>
+<p>On builds before 5940.0 this element keyed on <code>prod_order_number</code> alone. If you post labor for <strong>more than one line of the same production order</strong> under the one-key shape, the rows <a href="../03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">collapse into one</a> and the last wins — <code>Succeeded: 1</code>, one row written. Send <code>line_number</code> as well; it is not <code>Required</code>, so it is safe on either shape. See <a href="../12-Production-Labor-API.html#labor-lines----tp_laborrecordingprod_order_line_comp_labor-list">12 § Labor Lines</a>.</p>
+</blockquote>
 <p>Enter the fields <strong>in this order</strong> — out of order, the downstream fields stay disabled:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -808,7 +811,7 @@
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 

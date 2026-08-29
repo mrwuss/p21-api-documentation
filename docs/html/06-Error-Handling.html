@@ -667,9 +667,10 @@
 </ul>
 </li>
 <li><a href="#interactive-api-errors">Interactive API Errors</a><ul>
-<li><a href="#empty-http-500-on-every-interactive-call-20261">Empty HTTP 500 on Every Interactive Call (2026.1)</a></li>
-<li><a href="#alternating-500-409-session-already-exists-20261">Alternating 500 / 409 "Session already exists" (2026.1)</a></li>
-<li><a href="#batched-v2change-partially-applied-after-a-400-20261">Batched /v2/change Partially Applied After a 400 (2026.1)</a></li>
+<li><a href="#empty-http-500-on-an-interactive-call">Empty HTTP 500 on an Interactive Call</a></li>
+<li><a href="#missing-accept-applicationjson-an-xml-200-that-breaks-your-parser">Missing Accept: application/json — an XML 200 that breaks your parser</a></li>
+<li><a href="#alternating-500-409-session-already-exists-20261-builds-up-to-59103">Alternating 500 / 409 "Session already exists" (2026.1 builds up to 5910.3)</a></li>
+<li><a href="#batched-v2change-is-sequential-and-fail-fast-20261">Batched /v2/change Is Sequential and Fail-Fast (2026.1)</a></li>
 <li><a href="#session-errors">Session Errors</a></li>
 <li><a href="#window-errors">Window Errors</a></li>
 <li><a href="#422-400-wrong-query-parameter">422 / 400 - Wrong Query Parameter</a></li>
@@ -1015,9 +1016,28 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 <p>The column accepts a fixed set of values and yours isn't one of them. Under the default <code>UseCodeValues: false</code> the API wants the <strong>display label</strong>, not the <code>code_p21</code> integer the database stores — so <code>Invalid row_status_flag value: 700</code> is what sending the <em>code</em> for <code>Delete</code> looks like, and <code>700</code>, <code>704</code> and <code>Inactive</code> all fail the same way where <code>Delete</code> and <code>Active</code> pass. The accepted set is published per field as <code>ValidValues</code> in the <a href="03-Transaction-API.html#get-service-definition">service definition</a>. See <a href="03-Transaction-API.html#usecodevalues">UseCodeValues</a> and <a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores</a>.</p>
 <p><strong>Write reported <code>Succeeded: 1</code> but the data is wrong (a line missing, a value on the wrong line)</strong></p>
 <p>Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a <code>List</code> element that agree on the element's key fields are folded into one, last value wins. See <a href="03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">Transaction API - Keys</a> for the debugging loop.</p>
-<p><strong>HTTP 500 on <code>Status: "Existing"</code></strong></p>
-<p><code>POST /api/v2/transaction</code> with <code>Status: "Existing"</code> returns HTTP 500 <code>NullReferenceException</code> (at <code>ToInternalBeSpecification</code>) — a platform-wide bug, not a payload problem, confirmed across multiple services.</p>
-<p><strong>Solution</strong>: Use <code>Status: "New"</code> with key fields identifying the existing record — keyed <code>"New"</code> rows act as an upsert (update on key match, insert when absent). See <a href="03-Transaction-API.html#updating-an-existing-contract">Transaction API - Updating an Existing Contract</a>.</p>
+<p><strong><code>Status: "Existing"</code> is rejected — HTTP 400 on 5940.0, HTTP 500 on older builds</strong></p>
+<p><code>P21.Transactions.Model.V2.TransactionStatus</code> has <strong>exactly one member</strong>: <code>New</code>. Every other string is refused, and how it is refused depends on your build:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Build</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>26.1.5940.0</td>
+<td><code>400</code> — <code>Error converting value "Existing" to type 'P21.Transactions.Model.V2.TransactionStatus'</code></td>
+</tr>
+<tr>
+<td>Earlier builds</td>
+<td><code>500</code> <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code> — a server-fault shape for what was always a bad request</td>
+</tr>
+</tbody>
+</table></div>
+<p>Neither is a payload-content problem you can fix by adjusting fields; the value itself is not in the enum. <code>"Update"</code>, <code>"Delete"</code>, <code>"Modified"</code> and the rest fail identically.</p>
+<p><strong>Solution</strong>: Use <code>Status: "New"</code> with key fields identifying the existing record — keyed <code>"New"</code> rows act as an upsert (update on key match, insert when absent). See <a href="03-Transaction-API.html#updating-an-existing-contract">Transaction API - Updating an Existing Contract</a> and <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts"><code>Status: "New"</code> is the only value the enum accepts</a>.</p>
 <p><strong>Report Services Look Broken (But Aren't)</strong></p>
 <p>Two traps when working with report (<code>m_*</code>) services:</p>
 <ul>
@@ -1044,19 +1064,101 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 <p>See <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a> for details.</p>
 <hr />
 <h2 id="interactive-api-errors">Interactive API Errors</h2>
-<h3 id="empty-http-500-on-every-interactive-call-20261">Empty HTTP 500 on Every Interactive Call (2026.1)</h3>
-<p>On P21 <strong>2026.1</strong>, any interactive request whose <code>Accept</code> header does not include <code>application/json</code> returns an <strong>empty-body HTTP 500</strong> — including <code>Accept: */*</code>, the default of httpx and .NET HttpClient. The same request with <code>application/json</code> present succeeds; 2025.2 is unaffected.</p>
-<p>The rule is <em>"<code>application/json</code> must be present"</em>, not <em>"<code>*/*</code> is rejected"</em> — <code>Accept: application/json, */*</code> works. <code>application/xml</code> and <code>text/html</code> both fail, even though the <code>/api/v2</code> Transaction endpoints negotiate XML fine.</p>
-<p><strong>Solution</strong>: send <code>Accept: application/json</code> on every request. Details: <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
-<h3 id="alternating-500-409-session-already-exists-20261">Alternating 500 / 409 "Session already exists" (2026.1)</h3>
-<p>The failed session create above still <strong>half-creates the session</strong> server-side, so retries hit <strong>409 <code>{"ErrorMessage":"Session already exists."}</code></strong>. If you see this pattern on 2026.1, check the <code>Accept</code> header first — it is not a session-pool problem.</p>
+<h3 id="empty-http-500-on-an-interactive-call">Empty HTTP 500 on an Interactive Call</h3>
+<p><strong>On a current build this is almost never the <code>Accept</code> header.</strong> The empty-500 signature had a famous cause on 2026.1 builds up to 5910.3 — a missing <code>Accept: application/json</code> — and that defect is <strong>fixed as of 26.1.5940.0</strong>. Check which one you have before you start:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What you see</th>
+<th>Cause</th>
+<th>Build</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Empty 500 <strong>once</strong>, immediately after a <code>400 "Unable to find datawindow named X"</code> on the same window</td>
+<td>The bad <code>DatawindowName</code> burned this request — <a href="14-Breaking-Changes.html#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">Breaking Changes entry 9</a></td>
+<td><strong>All 2026.1 builds, including current</strong></td>
+</tr>
+<tr>
+<td>Empty 500 on <strong>session-create, every time</strong>, when <code>Accept</code> lacks <code>application/json</code></td>
+<td><a href="14-Breaking-Changes.html#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">Breaking Changes entry 1</a></td>
+<td>5873.1 – 5910.3 only; <strong>fixed in 5940.0</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><a href="14-Breaking-Changes.html#reading-the-middleware-version">Read your build first</a> — it decides which row applies.</p>
+<p><strong>Entry 9 is the one to suspect on a current build.</strong> A <code>400 "Unable to find datawindow named X"</code> destroys the <em>next</em> request on that window — <code>/v2/change</code>, <code>/v2/data</code> and <code>/v2/tab</code> alike — returning an empty 500 that applies nothing. Exactly one request; the one after it succeeds. A <code>Column is disabled</code> 400 does not do this. If your log shows a datawindow 400 shortly before the 500, that is your answer.</p>
+<p><strong>Solution</strong>: fix the datawindow name (from <code>GET /api/v2/definition/{Service}</code> or <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/</code></a>), and treat the request that followed the 400 as lost — re-send it and check the result.</p>
+<h3 id="missing-accept-applicationjson-an-xml-200-that-breaks-your-parser">Missing <code>Accept: application/json</code> — an XML 200 that breaks your parser</h3>
+<p><strong>Send <code>Accept: application/json</code> on every P21 request.</strong> This has always been the rule; only the consequence of breaking it has changed.</p>
+<p>On <strong>26.1.5940.0</strong>, a request whose <code>Accept</code> does not include <code>application/json</code> returns <strong>HTTP 200 with a DataContract XML body</strong> rather than the empty 500 older builds gave. That includes <code>Accept: */*</code>, the default of httpx and .NET <code>HttpClient</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {uiserver}/api/ui/interactive/sessions/     # Accept: */*</span>
+<span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
+<span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/xml; charset=utf-8</span>
+
+<span class="nt">&lt;Session</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">&quot;http://schemas.datacontract.org/2004/07/P21.UI.Service.Request&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;Id&gt;</span>70e67fa6-...<span class="nt">&lt;/Id&gt;</span>
+<span class="w">  </span>...
+</code></pre></div>
+
+<p>The failure now lands one frame deeper, in the parser rather than the status code:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Client</th>
+<th>Symptom</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python <code>httpx</code></td>
+<td><code>response.json()</code> raises <code>JSONDecodeError</code></td>
+</tr>
+<tr>
+<td>.NET <code>System.Text.Json</code></td>
+<td><code>JsonDocument.Parse</code> raises <code>JsonException</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>A 200 in your access log looks like the call worked, so this can read as a client-side deserialization bug rather than a header problem. <strong>Check <code>Content-Type</code> on the response</strong> — <code>application/xml</code> means the header, not your model.</p>
+<p>The rule is <em>"<code>application/json</code> must be present"</em>, not <em>"<code>*/*</code> is rejected"</em> — <code>Accept: application/json, */*</code> returns JSON. Full per-build matrix: <a href="14-Breaking-Changes.html#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">Breaking Changes entry 1</a>.</p>
+<h3 id="alternating-500-409-session-already-exists-20261-builds-up-to-59103">Alternating 500 / 409 "Session already exists" (2026.1 builds up to 5910.3)</h3>
+<blockquote>
+<p><strong>Not reachable on 26.1.5940.0</strong> — this needs a <em>failed</em> session create to produce the ghost, and creates no longer fail that way. The <code>DELETE</code> guidance below is still correct and still worth knowing; the alternating pattern is what has gone.</p>
+</blockquote>
+<p>The failed session create above still <strong>half-creates the session</strong> server-side, so retries hit <strong>409 <code>{"ErrorMessage":"Session already exists."}</code></strong>. If you see this pattern on an affected build, check the <code>Accept</code> header first — it is not a session-pool problem.</p>
 <p><strong>Clear the ghost with <code>DELETE {uiserver}/api/ui/interactive/sessions</code></strong> — it returns 200 and a clean create succeeds immediately after. Waiting out <code>SessionCleanupExpiration</code> (~6 min) also works but is unnecessary.</p>
 <blockquote>
+<p><strong>The delete is scoped to the bearer token, on every build.</strong> A session left by a <em>previous</em> token — a crashed worker, a retry path that re-authenticated before cleaning up — cannot be deleted at all; every id-carrying form returns <code>400 {"ErrorMessage":"Invalid session"}</code> and only <code>SessionCleanupExpiration</code> will reap it. Keep the token alive until the session is closed. Re-verified on 26.1.5940.0.</p>
 <p><strong>The ghost masks the diagnosis.</strong> Once a call has poisoned the session, <em>every</em> subsequent create returns 409 no matter what headers it sends — so the header experiment you would run to confirm the cause reports the wrong answer. <code>DELETE</code> the session before each attempt when testing this. Details: <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
 </blockquote>
-<h3 id="batched-v2change-partially-applied-after-a-400-20261">Batched <code>/v2/change</code> Partially Applied After a 400 (2026.1)</h3>
-<p>A <code>PUT /v2/change</code> carrying multiple fields is <strong>not atomic</strong>. If one field is rejected, the response is an HTTP 400 error envelope with <strong>no <code>Status</code> field</strong> — but the other fields in the same batch <strong>have already been applied</strong> to the window buffer. Treating the 400 as "nothing happened" and retrying or saving commits a partially-applied edit.</p>
-<p><strong>Solution</strong>: one field per <code>/change</code> call, check every call's status, and read back out-of-band. Details: <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
+<h3 id="batched-v2change-is-sequential-and-fail-fast-20261">Batched <code>/v2/change</code> Is Sequential and Fail-Fast (2026.1)</h3>
+<p>A <code>PUT /v2/change</code> carrying multiple fields is <strong>not atomic</strong>, and the way it fails is worth knowing precisely: <strong>the list is applied in order and stops at the first rejection.</strong> Fields before the rejected one are applied and stay applied; fields after it are never attempted. The response is an HTTP 400 error envelope with <strong>no <code>Status</code> field</strong>.</p>
+<p>So the same two-field batch gives opposite results depending only on the order you wrote it in:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Batch</th>
+<th>Response</th>
+<th>First field afterwards</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[good, disabled]</code></td>
+<td><code>400 Column is disabled: ...</code></td>
+<td><strong>applied</strong></td>
+</tr>
+<tr>
+<td><code>[disabled, good]</code></td>
+<td><code>400 Column is disabled: ...</code></td>
+<td>never attempted</td>
+</tr>
+</tbody>
+</table></div>
+<p>Treating the 400 as "nothing happened" and retrying or saving commits a partially-applied edit.</p>
+<p><strong>Solution</strong>: one field per <code>/change</code> call, check every call's status, and read back out-of-band. Details: <a href="14-Breaking-Changes.html#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">Breaking Changes entry 6</a>.</p>
 <h3 id="session-errors">Session Errors</h3>
 <p><strong>Session Not Found</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -1276,7 +1378,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1447,7 +1549,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1700,7 +1802,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -1799,7 +1901,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 </div>
 </div>
 <blockquote>
-<p><strong>Not all 500s are transient.</strong> Some HTTP 500s are deterministic and will fail on every retry — notably Transaction API <code>Status: "Existing"</code> (<code>NullReferenceException</code>) and XML payloads with wrong DataContract element order. Fix the payload instead of retrying those.</p>
+<p><strong>Not all 500s are transient.</strong> Some HTTP 500s are deterministic and will fail on every retry — notably Transaction API <code>Status: "Existing"</code> on builds before 26.1.5940.0 (<code>NullReferenceException</code>; a clean 400 on 5940.0 and later) and XML payloads with wrong DataContract element order. Fix the payload instead of retrying those.</p>
 </blockquote>
 <hr />
 <h2 id="debugging-tips">Debugging Tips</h2>
@@ -1988,9 +2090,9 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Use async endpoint, add delays</td>
 </tr>
 <tr>
-<td>500 NullReferenceException on <code>Status: "Existing"</code></td>
+<td><code>Status: "Existing"</code> rejected — 400 on 5940.0, 500 <code>NullReferenceException</code> on older builds</td>
 <td>Transaction</td>
-<td>Use <code>Status: "New"</code> + key fields (upsert) — <a href="03-Transaction-API.html#updating-an-existing-contract">details</a></td>
+<td><code>"New"</code> is the only value the enum accepts; use it + key fields (upsert) — <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">details</a></td>
 </tr>
 <tr>
 <td><code>services?type=report</code> empty (other <code>type</code> values 400)</td>
@@ -2105,9 +2207,10 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 </ul>
 </li>
 <li><a href="#interactive-api-errors">Interactive API Errors</a><ul>
-<li><a href="#empty-http-500-on-every-interactive-call-20261">Empty HTTP 500 on Every Interactive Call (2026.1)</a></li>
-<li><a href="#alternating-500-409-session-already-exists-20261">Alternating 500 / 409 "Session already exists" (2026.1)</a></li>
-<li><a href="#batched-v2change-partially-applied-after-a-400-20261">Batched /v2/change Partially Applied After a 400 (2026.1)</a></li>
+<li><a href="#empty-http-500-on-an-interactive-call">Empty HTTP 500 on an Interactive Call</a></li>
+<li><a href="#missing-accept-applicationjson-an-xml-200-that-breaks-your-parser">Missing Accept: application/json — an XML 200 that breaks your parser</a></li>
+<li><a href="#alternating-500-409-session-already-exists-20261-builds-up-to-59103">Alternating 500 / 409 "Session already exists" (2026.1 builds up to 5910.3)</a></li>
+<li><a href="#batched-v2change-is-sequential-and-fail-fast-20261">Batched /v2/change Is Sequential and Fail-Fast (2026.1)</a></li>
 <li><a href="#session-errors">Session Errors</a></li>
 <li><a href="#window-errors">Window Errors</a></li>
 <li><a href="#422-400-wrong-query-parameter">422 / 400 - Wrong Query Parameter</a></li>

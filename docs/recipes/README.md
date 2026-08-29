@@ -83,7 +83,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -167,6 +167,6 @@ static string ReadField(string payload, string field)
 
 **Full field lists.** Recipes show the fields that matter for the task. For *every* field a service accepts (names, types, keys, labels, payload template), load `definitions/{Service}.json` — see the [definitions README](../../definitions/README.md).
 
-**Page programs vs repo files.** The tabs on each page are **complete programs**: paste one into a file, edit the constants in its `EDIT THESE` block, run it. No repo clone, no `.env`, no shared import. Python needs only `httpx`; C# targets **`net8.0` or later** (`dotnet new console`, paste, `dotnet run`) with `System.Text.Json` and no NuGet packages. Each recipe also links **repo files** under [`examples/python/recipes/`](../../examples/python/recipes/README.md) (Python) and [`examples/csharp/Recipes/`](../../examples/csharp/Recipes/) (C#): those use the repo's shared config/auth helpers, run against your `.env`, and are **dry-run by default** (print the payload; `--execute` / typing `EXECUTE` posts).
+**Page programs vs repo files.** The tabs on each page are **complete programs**: paste one into a file, edit the constants in its `EDIT THESE` block, run it. No repo clone, no `.env`, no shared import. Python needs only `httpx`; C# targets **`net8.0` or later** (`dotnet new console`, paste, `dotnet run`) with `System.Text.Json` and no NuGet packages. **Most** recipes also have **repo files** under [`examples/python/recipes/`](../../examples/python/recipes/README.md) (Python) and [`examples/csharp/Recipes/`](../../examples/csharp/Recipes/) (C#): those use the repo's shared config/auth helpers, run against your `.env`, and are **dry-run by default** (print the payload; `--execute` / typing `EXECUTE` posts). A page without repo files is not incomplete — its tabs are still complete standalone programs. The [Python recipes README](../../examples/python/recipes/README.md) lists which pages have them.
 
 > **Credit:** the cookbook pattern and much of the verified content come from [Alex Westemeier](https://github.com/AWestemeier)'s process playbook.

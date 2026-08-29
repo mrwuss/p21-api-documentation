@@ -827,6 +827,14 @@
 <td><a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">04 § Driving an In-Window Wizard</a> — needs a Buyer ID; commits at <code>cb_next</code></td>
 </tr>
 <tr>
+<td>"When did the supplier say this would ship?"</td>
+<td><a href="02-OData-API.html#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise">02 § <code>po_line.supplier_ship_date</code></a> — <strong>not a promise on direct-ship POs</strong>; use <code>date_due</code></td>
+</tr>
+<tr>
+<td>Confirm a <strong>direct ship</strong> (<code>DirectShipConfirmation</code>)</td>
+<td><a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">04 § DirectShipConfirmation writes its ship date down</a> — overwrites <code>supplier_ship_date</code> on every line; checkboxes take <code>ON</code>/<code>OFF</code></td>
+</tr>
+<tr>
 <td><strong>Receive</strong> a PO / receipt won't post (bin errors)</td>
 <td><a href="03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">03 § PurchaseOrderReceipt Service</a></td>
 </tr>
@@ -852,7 +860,7 @@
 </tr>
 <tr>
 <td>Write an <strong>item / customer / supplier note</strong></td>
-<td><a href="03-Transaction-API.html#request-shape">03 § Commands Endpoint</a> — one stateless POST · or <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a></td>
+<td><a href="03-Transaction-API.html#request-shape">03 § Commands Endpoint</a> — one stateless POST · or <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a>, where the mandatory area picker is <code>cb_selectall</code> via <code>/tools</code></td>
 </tr>
 <tr>
 <td>Call a <strong>commands-only</strong> service (notepads, reverse payment, slab adjustment)</td>
@@ -895,16 +903,8 @@
 <td><a href="03-Transaction-API.html#rma-service-orders-the-order-service-refuses">03 § RMA Service</a> — use the <code>RMA</code> service; route on <code>oe_hdr.rma_flag</code></td>
 </tr>
 <tr>
-<td><strong>Modify an existing sales order</strong> (edit a line, add a line)</td>
-<td><a href="recipes/update-order-lines.html">recipe: update-order-lines</a></td>
-</tr>
-<tr>
 <td>A tool is missing from <code>GET /v2/tools</code> on a multi-tab window</td>
 <td><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> — tool lists are tab-scoped and accumulate; select the tab first</td>
-</tr>
-<tr>
-<td>Write an <strong>item / customer / supplier note</strong> (drag-and-drop area picker)</td>
-<td><a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a> — the picker is <code>cb_selectall</code> via <code>/tools</code></td>
 </tr>
 <tr>
 <td>Which discovery endpoint — <code>definition</code> vs <code>defaults</code> vs <code>basics</code></td>
@@ -1036,6 +1036,11 @@
 <tr>
 <td><strong>Edit a salesrep's name/email</strong> (<code>contact_id</code> key; email on TABPAGE_2)</td>
 <td>—</td>
+<td><a href="03-Transaction-API.html#salesrep-service-editing-a-reps-name-and-email">03 § Salesrep Service</a></td>
+</tr>
+<tr>
+<td><strong>Update a supplier's contact details</strong> (central email/phone live on <code>Address</code>, not <code>Supplier</code>)</td>
+<td><a href="recipes/update-supplier-contact.html">update-supplier-contact</a></td>
 <td><a href="03-Transaction-API.html#salesrep-service-editing-a-reps-name-and-email">03 § Salesrep Service</a></td>
 </tr>
 <tr>

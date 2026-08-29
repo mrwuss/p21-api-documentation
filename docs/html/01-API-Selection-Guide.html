@@ -891,7 +891,7 @@
 </tr>
 </tbody>
 </table></div>
-<p><em>Transaction API updates use <code>Status: "New"</code> with keyed rows (there is no working "Existing" status — it returns HTTP 500). Keyed rows behave as an </em><em>upsert</em>*: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See <a href="03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>. Flows that pop validation dialogs still need the Interactive API.</p>
+<p><em>Transaction API updates use <code>Status: "New"</code> with keyed rows — <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts"><code>"New"</code> is the only value the enum accepts</a>. Keyed rows behave as an </em><em>upsert</em>*: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See <a href="03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>. Flows that pop validation dialogs still need the Interactive API.</p>
 <hr />
 <h2 id="odata-api">OData API</h2>
 <h3 id="best-for">Best For</h3>
@@ -945,7 +945,7 @@
 <li><strong>Bulk operations</strong> - multiple records per request</li>
 <li><strong>Metadata-driven</strong> - follows P21 window schemas</li>
 <li><strong>Fast</strong> - 50-100x faster than Interactive API for creates</li>
-<li><strong>Updates via <code>Status: "New"</code> + keys</strong> - keyed rows upsert (update if the key matches, insert if not); the <code>"Existing"</code> status is broken (HTTP 500)</li>
+<li><strong>Updates via <code>Status: "New"</code> + keys</strong> - keyed rows upsert (update if the key matches, insert if not); <code>"New"</code> is the <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">only value the enum accepts</a></li>
 </ul>
 <h3 id="use-when_1">Use When</h3>
 <ul>
@@ -964,7 +964,7 @@
 <h3 id="known-issues">Known Issues</h3>
 <ul>
 <li><strong>Session Pool Contamination</strong> - intermittent failures with some windows</li>
-<li><strong><code>Status: "Existing"</code> is broken</strong> - returns HTTP 500 NullReferenceException platform-wide; use <code>Status: "New"</code> for updates (see <a href="03-Transaction-API.html#updating-an-existing-contract">Transaction API</a>)</li>
+<li><strong><code>Status: "Existing"</code> is not a value</strong> - the enum has <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">exactly one member, <code>"New"</code></a>; <code>"Existing"</code> is HTTP 400 on 26.1.5940.0 and an HTTP 500 <code>NullReferenceException</code> on older builds. Use <code>"New"</code> for updates too (see <a href="03-Transaction-API.html#updating-an-existing-contract">Transaction API</a>)</li>
 <li><strong>Prompts are auto-answered with the default</strong> - a DynaChange or validation prompt kills the affected line/record silently</li>
 <li>See <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a></li>
 </ul>

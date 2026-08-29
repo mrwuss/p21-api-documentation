@@ -225,7 +225,7 @@ def main():
     print("- Put the key field (price_page_uid) in Edits with Keys []")
     print("- Only include fields you want to change beyond the key")
     print("- The 'Status' in the request is still 'New' for updates")
-    print("  ('Existing' returns HTTP 500 platform-wide)")
+    print("  ('New' is the only value the Status enum accepts)")
     print("- This shape is verified for JobContractPricing (see")
     print("  docs/03-Transaction-API.md > Updating an Existing Contract)")
     print("  but UNVERIFIED for SalesPricePage - always read back after writing")

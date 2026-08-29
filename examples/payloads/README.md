@@ -17,11 +17,15 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Edit contract bin quantities | [json](json/edit-contract-bins.json) | [xml](xml/edit-contract-bins.xml) | `POST /api/v2/transaction` |
 | Create a warehouse bin | [json](json/create-bins.json) | [xml](xml/create-bins.xml) | `POST /api/v2/transaction` |
 | Create a sales order | [json](json/create-sales-order.json) | [xml](xml/create-sales-order.xml) | `POST /api/v2/transaction` |
+| Modify an existing sales order (edit a line, add a line) | [json](json/update-order-lines.json) | [xml](xml/update-order-lines.xml) | `POST /api/v2/transaction` |
+| Create a customer | [json](json/create-customer.json) | [xml](xml/create-customer.xml) | `POST /api/v2/transaction` |
+| Create a requisition PO | [json](json/create-requisition-po.json) | [xml](xml/create-requisition-po.xml) | `POST /api/v2/transaction` |
 | Set an item's primary bin | [json](json/set-primary-bin.json) | [xml](xml/set-primary-bin.xml) | `POST /api/v2/transaction` |
 | Set an item's primary supplier | [json](json/set-primary-supplier.json) | [xml](xml/set-primary-supplier.xml) | `POST /api/v2/transaction` |
 | Record labor time | [json](json/record-labor-time.json) | [xml](xml/record-labor-time.xml) | `POST /api/v2/transaction` |
 | Inventory adjustment (write-off) | [json](json/inventory-adjustment.json) | [xml](xml/inventory-adjustment.xml) | `POST /api/v2/transaction` |
 | Reassign a customer's salesrep (promote new, delete old) | [json](json/reassign-salesrep.json) | [xml](xml/reassign-salesrep.xml) | `POST /api/v2/transaction` |
+| Update a supplier's email / central phone | [json](json/update-supplier-contact.json) | [xml](xml/update-supplier-contact.xml) | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
 | Reprint a purchase order PDF | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |

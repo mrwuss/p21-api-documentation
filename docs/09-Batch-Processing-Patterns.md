@@ -240,7 +240,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -752,7 +752,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -1257,7 +1257,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -1785,7 +1785,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -2369,7 +2369,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -3581,7 +3581,7 @@ class P21Client:
         return {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
-            # 2026.1 returns an empty 500 on Interactive endpoints without this
+            # without this the Interactive API returns XML, not JSON
             "Accept": "application/json",
         }
 
@@ -4131,7 +4131,7 @@ public class P21Client : IAsyncDisposable
         _httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _token);
         _httpClient.DefaultRequestHeaders.Accept.Clear();
-        // 2026.1 returns an empty 500 on Interactive endpoints without this
+        // without this the Interactive API returns XML, not JSON
         _httpClient.DefaultRequestHeaders.Accept
             .Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
@@ -4786,7 +4786,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 

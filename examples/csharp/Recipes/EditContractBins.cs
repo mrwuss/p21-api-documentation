@@ -10,7 +10,7 @@
 //   - Select the line by item_id (the JOBPRICELINE key), not line_no.
 //   - Batching is fine here — repeat the JOBPRICELINE + BINS.bins pair per bin.
 //   - No end_date required; works on expired contracts too.
-//   - Status "New" even for an existing contract ("Existing" returns HTTP 500).
+//   - Status "New" even for an existing contract (the only value the enum accepts).
 
 using Newtonsoft.Json.Linq;
 using P21Examples.Common;

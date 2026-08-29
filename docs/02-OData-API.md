@@ -115,7 +115,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -369,6 +369,45 @@ Two ways to avoid long chains:
 
 ---
 
+### Columns that don't mean what their name says
+
+A column name is a claim about intent, and P21 has a few where the stored value stops matching the intent once a downstream process touches the row. These are read hazards specifically: the value is present, well-typed and plausible, so nothing in the response tells you it is no longer the thing you asked for.
+
+#### `po_line.supplier_ship_date` is last-shipment-observed on direct-ship POs, not a supplier promise
+
+On a **direct-ship PO (`po_hdr.po_type = 'D'`)**, confirming the shipment writes the confirmation's ship date down onto `po_line.supplier_ship_date` for **every line on that confirmation** — including quantity that has not shipped. Read the column afterwards and you get the date of the last confirmation, not the date the supplier promised.
+
+**On a partial confirmation, the promise for the open balance is destroyed.** There is nowhere in the PO line to record a reforecast for the unshipped quantity, so the original promise is simply gone:
+
+| `po_no` | line | ordered | received | `supplier_ship_date` | `date_due` |
+|---|---|---|---|---|---|
+| 990695 | 1 | 200 | 147 | 2026-06-01 | 2026-07-24 |
+| 991529 | 1 | 600 | 360 | 2026-05-22 | 2026-06-09 |
+| 992085 | 1 | 1200 | 480 | 2026-06-02 | 2026-06-16 |
+
+Each of these has hundreds of pieces still open against a `supplier_ship_date` in the past that describes a shipment covering a fraction of the line.
+
+**It is confined to direct ship, and the split is total.** Verified against a 26.1 tenant (August 2026) across **687,879 receipts, all history, zero exceptions in either direction**:
+
+| `po_hdr.po_type` | receipts | `inventory_receipts_hdr.shipment_date` populated |
+|---|---:|---:|
+| `D` — direct ship | 233,070 | **100%** |
+| `B` / `N` / `P` / `S` / `X` | 454,809 | **0%** |
+
+`shipment_date` is only ever set by the direct-ship confirmation, and only the direct-ship confirmation pushes it down to the line. On every other PO type, `supplier_ship_date` is untouched by receiving and remains a usable promise.
+
+**What to use instead.** `date_due` (labeled *Expected Date*) is not written by receiving on any PO type, and it survives the confirmation — in every row above it still carries a later, different date. Use `date_due` for the live line-level expectation. For on-time-delivery analysis, either exclude `po_type = 'D'` lines that have a receipt against them, or capture `supplier_ship_date` into your own store *before* the first confirmation, because P21 does not keep the prior value.
+
+```http
+GET {base}/odataservice/odata/table/po_line
+    ?$select=po_no,line_no,supplier_ship_date,date_due,qty_ordered,qty_received
+    &$filter=qty_received gt 0 and qty_received lt qty_ordered
+```
+
+Join to `po_hdr.po_type` to tell which rows are affected — the line carries no flag of its own, which is the whole trap.
+
+The write itself is documented on the service that performs it: [Interactive API § Direct-ship confirmation](04-Interactive-API.md#directshipconfirmation-writes-its-ship-date-down-onto-every-line).
+
 ## Data Type Formatting
 
 | Type | Format | Example |
@@ -464,7 +503,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -750,7 +789,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -882,7 +921,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -1067,7 +1106,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 

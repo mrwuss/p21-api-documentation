@@ -51,7 +51,7 @@ Two verified instances (2026-08-11), both documented in detail in the [Transacti
 | **Stateful** | No | No | Yes | No | No | No |
 | **Response Dialogs** | N/A | N/A | Yes | N/A | N/A | N/A |
 
-*Transaction API updates use `Status: "New"` with keyed rows (there is no working "Existing" status — it returns HTTP 500). Keyed rows behave as an **upsert**: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See [Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract). Flows that pop validation dialogs still need the Interactive API.
+*Transaction API updates use `Status: "New"` with keyed rows — [`"New"` is the only value the enum accepts](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts). Keyed rows behave as an **upsert**: update if the key matches, insert if it doesn't. Verified at scale (170+ line updates, 80+ line inserts on JobContractPricing). See [Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract). Flows that pop validation dialogs still need the Interactive API.
 
 ---
 
@@ -103,7 +103,7 @@ Two verified instances (2026-08-11), both documented in detail in the [Transacti
 - **Bulk operations** - multiple records per request
 - **Metadata-driven** - follows P21 window schemas
 - **Fast** - 50-100x faster than Interactive API for creates
-- **Updates via `Status: "New"` + keys** - keyed rows upsert (update if the key matches, insert if not); the `"Existing"` status is broken (HTTP 500)
+- **Updates via `Status: "New"` + keys** - keyed rows upsert (update if the key matches, insert if not); `"New"` is the [only value the enum accepts](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts)
 
 ### Use When
 - Creating many records at once
@@ -119,7 +119,7 @@ Two verified instances (2026-08-11), both documented in detail in the [Transacti
 
 ### Known Issues
 - **Session Pool Contamination** - intermittent failures with some windows
-- **`Status: "Existing"` is broken** - returns HTTP 500 NullReferenceException platform-wide; use `Status: "New"` for updates (see [Transaction API](03-Transaction-API.md#updating-an-existing-contract))
+- **`Status: "Existing"` is not a value** - the enum has [exactly one member, `"New"`](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts); `"Existing"` is HTTP 400 on 26.1.5940.0 and an HTTP 500 `NullReferenceException` on older builds. Use `"New"` for updates too (see [Transaction API](03-Transaction-API.md#updating-an-existing-contract))
 - **Prompts are auto-answered with the default** - a DynaChange or validation prompt kills the affected line/record silently
 - See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md)
 

@@ -89,9 +89,14 @@ GET /api/v2/definition/TimeEntry
 
 #### Labor Lines -- `TP_LABORRECORDING.prod_order_line_comp_labor` (List)
 
+> **This element's key set changed between 2026.1 builds — check yours before you batch.** On 26.1.5940.0 it keys on **`prod_order_number` *and* `line_number`**; earlier builds in this repo's definition library keyed on `prod_order_number` alone. That matters because `Keys` is what P21 uses to decide whether two rows are the same row: **under the one-key shape, labor rows for different lines of the same production order collapse into one and the last value wins** — silently, with `Succeeded: 1`. See [Keys — Row Identity and the Collapse Trap](03-Transaction-API.md#keys-row-identity-and-the-collapse-trap).
+>
+> Send **both** keys. `line_number` (`prod_order_line.line_number`, `Label: "Line No"`) is not `Required`, so adding it is safe on either shape, and it is the difference between one labor row and per-line labor rows. Confirm against your own tenant with `GET /api/v2/definition/TimeEntry` — [`definitions/TimeEntry.json`](../definitions/TimeEntry.json) here is 5940.0.
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `prod_order_number` | Decimal | No (key) | Production order number |
+| `line_number` | Long | No (key on 5940.0) | Production order **line** — key it too, or rows for different lines collapse |
 | `item_id` | Char | No | Assembly item ID |
 | `component_labor_id` | Char | No | Component labor ID |
 | `operation_cd` | Char | No | Operation code |
@@ -710,7 +715,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -942,7 +947,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 

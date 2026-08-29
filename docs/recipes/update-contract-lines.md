@@ -49,7 +49,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
     "UseCodeValues": false,
     "IgnoreDisabled": true,            // top level — only needed when writing commission costs
     "Transactions": [{
-        "Status": "New",               // "New" for BOTH create and update — "Existing" returns HTTP 500
+        "Status": "New",               // "New" for BOTH create and update — it is the only value the enum takes
         "DataElements": [
             {
                 // Header: Keys stays EMPTY; the key fields go in Edits.
@@ -196,7 +196,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -461,7 +461,7 @@ static string ReadField(string payload, string field)
 
 - **`pricing_method` must precede `price` in the Edits.** Changing `pricing_method` clears the typed price, exactly as in the UI — reversed order writes the line with **price = $0** and the transaction still reports `Succeeded`. Verified live. Order the Edits `item_id`, `pricing_method`, `price`.
 - **One transaction per POST when inserting lines.** Every transaction re-saves the shared FORM header; batched inserts collide — all but one fail with an optimistic-concurrency error, and the ones that land can get **duplicate `line_no`** values. Edits to existing keyed rows batch fine.
-- **`Status: "Existing"` (or `"Update"`, `"Change"`) returns HTTP 500** (`NullReferenceException`). Use `"New"` for both create and update.
+- **`Status: "Existing"` (or `"Update"`, `"Change"`) is rejected** — [the enum has one member, `"New"`](../03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts). HTTP 400 on 26.1.5940.0, HTTP 500 `NullReferenceException` on older builds. Use `"New"` for both create and update.
 - **`end_date` must be >= today** — the header is validated on every save, so you cannot edit lines on an expired contract without also moving its `end_date` forward. For expired contracts, use the Interactive API.
 - **Include `job_no` to disambiguate renewals** — the same `contract_no` can exist on two header rows; `job_no` is unique.
 - **`IgnoreDisabled: true` goes at the payload top level** (alongside `Name`/`Transactions`). Inside a Transaction object it is silently ignored and commission-cost writes fail with `Column is disabled: commission_cost_value`.

@@ -1499,7 +1499,7 @@
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -2084,7 +2084,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -2713,7 +2713,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -3488,7 +3488,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># 2026.1 returns an empty 500 without this</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>       <span class="c1"># without this you get XML, not JSON</span>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
@@ -3919,8 +3919,34 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <ul>
 <li><strong>There is no PO-generation service.</strong> Not among the 299 transaction services, and window-name guesses (<code>POGen</code>, <code>PurchaseOrderGeneration</code>, …) all 400. The wizard is the path.</li>
 <li><strong><code>PurchaseOrder</code> TAPI cannot build a <code>D</code>-type PO</strong> — <code>po_hdr_po_type</code> is system-disabled, and the Backorders link tab is invisible to TAPI.</li>
-<li><strong>Direct-ship POs are not received</strong> via <a href="03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt</a> — the window refuses because the linked sales-order lines are <code>'T'</code> status. Their receipt is created by the sales-side confirmation instead (<code>DirectShipConfirmation</code>, keyed on <code>po_no</code>), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice.</li>
+<li><strong>Direct-ship POs are not received</strong> via <a href="03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt</a> — the window refuses because the linked sales-order lines are <code>'T'</code> status. Their receipt is created by the sales-side confirmation instead (<code>DirectShipConfirmation</code>, keyed on <code>po_no</code>), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice — <strong>and overwrites <code>po_line.supplier_ship_date</code> on every line it touches</strong> (<a href="#directshipconfirmation-writes-its-ship-date-down-onto-every-line">below</a>).</li>
 </ul>
+<h4 id="directshipconfirmation-writes-its-ship-date-down-onto-every-line"><code>DirectShipConfirmation</code> writes its ship date down onto every line</h4>
+<p><strong>Confirming a direct ship mutates a date field on the PO line, and on a partial confirmation that destroys information.</strong> Anything you build on <code>DirectShipConfirmation</code> should know this before it runs at volume.</p>
+<p>The window carries a single <strong>Supplier Ship Date</strong> for the whole confirmation, bound to <code>inventory_receipts_hdr.shipment_date</code>:</p>
+<div class="highlight"><pre><span></span><code>TABPAGE_1.tp_1_dw_1   keys [&#39;receipt_number&#39;]
+  shipment_date   inventory_receipts_hdr.shipment_date   Required=true
+                  Label=&quot;Supplier Ship Date&quot;   DataType=Datetime
+</code></pre></div>
+
+<p>It is <code>Required: true</code> and <strong><code>GET /api/v2/defaults/DirectShipConfirmation</code> pre-fills it with today's date</strong>, so a confirmation submitted without touching it stamps today. That value is then written into <strong><code>po_line.supplier_ship_date</code> for every line on the confirmation</strong> — including quantity that has not shipped.</p>
+<p>For a full confirmation this is reasonable: the supplier really did ship on that date. For a <strong>partial</strong> one it is destructive. The open balance keeps a <code>supplier_ship_date</code> describing a shipment that covered only part of the line, and the original promise is not preserved anywhere — P21 has nowhere to record a reforecast for the unshipped quantity. <code>date_due</code> is untouched and remains the usable line-level expectation.</p>
+<p><strong>The behavior is confined to direct ship.</strong> Verified against a 26.1 tenant (August 2026), all history: <code>inventory_receipts_hdr.shipment_date</code> is populated on <strong>100% of <code>po_type = 'D'</code> receipts (233,070) and 0% of every other type (454,809)</strong> — 687,879 receipts, zero exceptions either way. Read-side detail, sample rows and the query to find affected lines: <a href="02-OData-API.html#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise">OData § <code>po_line.supplier_ship_date</code></a>.</p>
+<p><strong>If you are confirming partials through the API, capture <code>supplier_ship_date</code> before the first confirmation</strong> and keep it in your own store. There is no P21-side way to recover it afterwards.</p>
+<h5 id="the-write-path-is-not-reproduced-here">The write path is not reproduced here</h5>
+<p>The confirmation is documented elsewhere as <em>"one TAPI POST keyed by <code>po_no</code>"</em>, and <strong>we could not reproduce that</strong>. On a 26.1.5940.0 tenant every <code>POST /api/v2/transaction</code> against <code>DirectShipConfirmation</code> returned a clean but empty result — no rejection, no message, nothing done:</p>
+<div class="highlight"><pre><span></span><code>HTTP 200
+{&quot;Results&quot;: {&quot;Transactions&quot;: []}, &quot;Messages&quot;: [],
+ &quot;Summary&quot;: {&quot;Failed&quot;: 0, &quot;Succeeded&quot;: 0, &quot;Other&quot;: 0}}
+</code></pre></div>
+
+<p>Tried across <code>Status</code> variants, <code>receive_all</code> as both <code>Y</code>/<code>N</code> and <code>ON</code>/<code>OFF</code>, with and without <code>period</code> / <code>year_for_period</code>, and with a payload built from the tenant's own <code>/defaults</code> output. Target was an approved <code>po_type='D'</code> PO with one open line, linked to a sales order via <code>oe_line_po</code>.</p>
+<p>Two notes for whoever picks this up:</p>
+<ul>
+<li><strong>The checkbox fields take <code>ON</code>/<code>OFF</code>, not <code>Y</code>/<code>N</code>.</strong> <code>receive_all</code>, <code>complete</code>, <code>print_invoice</code> and <code>fax_invoice</code> all publish <code>ValidValues: ["ON", "OFF"]</code> and default to <code>"OFF"</code>. Getting this wrong is easy and was <em>not</em> the cause of the no-op, but fix it anyway.</li>
+<li>The path described elsewhere is <code>receive_all</code> on — a <strong>full</strong> confirmation. Nothing documents driving a <strong>partial</strong> one, which is the case that matters for the date overwrite. <code>TABPAGE_17.tp_17_dw_17</code> exposes <code>unit_quantity</code> and a <code>complete</code> bound to <code>po_line.complete</code>, so a partial looks expressible in principle.</li>
+</ul>
+<p>The date-overwrite behavior above rests on the field binding and on the receipt data, not on a live write from this repo — the data is unambiguous, the write path is not yet.</p>
 <h3 id="setting-disposition-only-at-line-entry">Setting <code>disposition</code> — only at line entry</h3>
 <p><code>disposition</code> behaves as a <strong>disabled column everywhere except a line being entered</strong>. Verified three ways on 26.1:</p>
 <div class="table-wrap"><table>
@@ -4614,7 +4640,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <hr />
 <h2 id="v1-vs-v2-api-differences">v1 vs v2 API Differences</h2>
 <blockquote>
-<p><strong>Upgrading P21?</strong> Version-specific middleware changes that break interactive integrations (25.2's required <code>DatawindowName</code>, 2026.1's Accept-header 500 / ghost sessions / <code>SessionId</code>→<code>Id</code> / nonexistent-record loads / non-atomic batched changes) are cataloged in <a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a>.</p>
+<p><strong>Upgrading P21?</strong> Version-specific middleware changes that break interactive integrations are cataloged in <a href="14-Breaking-Changes.html">P21 Breaking Changes by Version</a> — 25.2's required <code>DatawindowName</code>, and on 2026.1 <code>SessionId</code>→<code>Id</code>, nonexistent-record loads, <strong>sequential fail-fast batched changes</strong>, and <strong>a bad <code>DatawindowName</code> eating the next request on that window</strong>. The registry is <strong>build-indexed</strong>: the Accept-header 500 and its ghost sessions are <strong>fixed in 26.1.5940.0</strong>, so <a href="14-Breaking-Changes.html#reading-the-middleware-version">read your build</a> before trusting any entry.</p>
 <p><strong>Important:</strong> Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.</p>
 </blockquote>
 <h3 id="summary-table">Summary Table</h3>

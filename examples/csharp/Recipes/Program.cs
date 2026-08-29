@@ -42,6 +42,7 @@ while (true)
     Console.WriteLine("  12. Create Requisition PO      - RequisitionPurchaseOrder (po_type 'R')");
     Console.WriteLine("  13. Update Order Lines         - Edit/add lines on an existing order");
     Console.WriteLine("  14. Reassign Salesrep          - Customer + ShipTo grids, two delete mechanisms");
+    Console.WriteLine("  15. Update Supplier Contact    - Email/central phone via the Address service");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -104,6 +105,10 @@ while (true)
 
             case "13":
                 await UpdateOrderLines.RunAsync();
+                break;
+
+            case "15":
+                await UpdateSupplierContact.RunAsync();
                 break;
 
             case "14":

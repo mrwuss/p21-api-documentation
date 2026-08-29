@@ -18,6 +18,7 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | `create_customer.py` | [create-customer.md](../../../docs/recipes/create-customer.md) |
 | `create_requisition_po.py` | [create-requisition-po.md](../../../docs/recipes/create-requisition-po.md) |
 | `reassign_salesrep.py` | [reassign-salesrep.md](../../../docs/recipes/reassign-salesrep.md) |
+| `update_supplier_contact.py` | [update-supplier-contact.md](../../../docs/recipes/update-supplier-contact.md) |
 
 ## Setup
 

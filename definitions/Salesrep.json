@@ -567,7 +567,7 @@
      {
       "DataType": "Char",
       "DbColumnName": "contacts.email_address",
-      "Label": "Contact Email",
+      "Label": "Contact E-mail",
       "Name": "contacts_email_address",
       "Required": false,
       "ValidValues": null

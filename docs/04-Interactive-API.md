@@ -477,7 +477,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -1087,7 +1087,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -1609,7 +1609,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -2367,7 +2367,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -2807,7 +2807,46 @@ The line's `disposition` field is the trigger for a direct-ship line, and it is 
 
 - **There is no PO-generation service.** Not among the 299 transaction services, and window-name guesses (`POGen`, `PurchaseOrderGeneration`, …) all 400. The wizard is the path.
 - **`PurchaseOrder` TAPI cannot build a `D`-type PO** — `po_hdr_po_type` is system-disabled, and the Backorders link tab is invisible to TAPI.
-- **Direct-ship POs are not received** via [PurchaseOrderReceipt](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) — the window refuses because the linked sales-order lines are `'T'` status. Their receipt is created by the sales-side confirmation instead (`DirectShipConfirmation`, keyed on `po_no`), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice.
+- **Direct-ship POs are not received** via [PurchaseOrderReceipt](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) — the window refuses because the linked sales-order lines are `'T'` status. Their receipt is created by the sales-side confirmation instead (`DirectShipConfirmation`, keyed on `po_no`), which in one save writes the receipt, completes the PO line, invoices the sales-order line and creates the customer AR invoice — **and overwrites `po_line.supplier_ship_date` on every line it touches** ([below](#directshipconfirmation-writes-its-ship-date-down-onto-every-line)).
+
+#### `DirectShipConfirmation` writes its ship date down onto every line
+
+**Confirming a direct ship mutates a date field on the PO line, and on a partial confirmation that destroys information.** Anything you build on `DirectShipConfirmation` should know this before it runs at volume.
+
+The window carries a single **Supplier Ship Date** for the whole confirmation, bound to `inventory_receipts_hdr.shipment_date`:
+
+```text
+TABPAGE_1.tp_1_dw_1   keys ['receipt_number']
+  shipment_date   inventory_receipts_hdr.shipment_date   Required=true
+                  Label="Supplier Ship Date"   DataType=Datetime
+```
+
+It is `Required: true` and **`GET /api/v2/defaults/DirectShipConfirmation` pre-fills it with today's date**, so a confirmation submitted without touching it stamps today. That value is then written into **`po_line.supplier_ship_date` for every line on the confirmation** — including quantity that has not shipped.
+
+For a full confirmation this is reasonable: the supplier really did ship on that date. For a **partial** one it is destructive. The open balance keeps a `supplier_ship_date` describing a shipment that covered only part of the line, and the original promise is not preserved anywhere — P21 has nowhere to record a reforecast for the unshipped quantity. `date_due` is untouched and remains the usable line-level expectation.
+
+**The behavior is confined to direct ship.** Verified against a 26.1 tenant (August 2026), all history: `inventory_receipts_hdr.shipment_date` is populated on **100% of `po_type = 'D'` receipts (233,070) and 0% of every other type (454,809)** — 687,879 receipts, zero exceptions either way. Read-side detail, sample rows and the query to find affected lines: [OData § `po_line.supplier_ship_date`](02-OData-API.md#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise).
+
+**If you are confirming partials through the API, capture `supplier_ship_date` before the first confirmation** and keep it in your own store. There is no P21-side way to recover it afterwards.
+
+##### The write path is not reproduced here
+
+The confirmation is documented elsewhere as *"one TAPI POST keyed by `po_no`"*, and **we could not reproduce that**. On a 26.1.5940.0 tenant every `POST /api/v2/transaction` against `DirectShipConfirmation` returned a clean but empty result — no rejection, no message, nothing done:
+
+```jsonc
+HTTP 200
+{"Results": {"Transactions": []}, "Messages": [],
+ "Summary": {"Failed": 0, "Succeeded": 0, "Other": 0}}
+```
+
+Tried across `Status` variants, `receive_all` as both `Y`/`N` and `ON`/`OFF`, with and without `period` / `year_for_period`, and with a payload built from the tenant's own `/defaults` output. Target was an approved `po_type='D'` PO with one open line, linked to a sales order via `oe_line_po`.
+
+Two notes for whoever picks this up:
+
+- **The checkbox fields take `ON`/`OFF`, not `Y`/`N`.** `receive_all`, `complete`, `print_invoice` and `fax_invoice` all publish `ValidValues: ["ON", "OFF"]` and default to `"OFF"`. Getting this wrong is easy and was *not* the cause of the no-op, but fix it anyway.
+- The path described elsewhere is `receive_all` on — a **full** confirmation. Nothing documents driving a **partial** one, which is the case that matters for the date overwrite. `TABPAGE_17.tp_17_dw_17` exposes `unit_quantity` and a `complete` bound to `po_line.complete`, so a partial looks expressible in principle.
+
+The date-overwrite behavior above rests on the field binding and on the receipt data, not on a live write from this repo — the data is unambiguous, the write path is not yet.
 
 ### Setting `disposition` — only at line entry
 
@@ -3244,7 +3283,7 @@ When setting numeric fields, send whole numbers as integer strings (`"30"`), not
 
 ## v1 vs v2 API Differences
 
-> **Upgrading P21?** Version-specific middleware changes that break interactive integrations (25.2's required `DatawindowName`, 2026.1's Accept-header 500 / ghost sessions / `SessionId`→`Id` / nonexistent-record loads / non-atomic batched changes) are cataloged in [P21 Breaking Changes by Version](14-Breaking-Changes.md).
+> **Upgrading P21?** Version-specific middleware changes that break interactive integrations are cataloged in [P21 Breaking Changes by Version](14-Breaking-Changes.md) — 25.2's required `DatawindowName`, and on 2026.1 `SessionId`→`Id`, nonexistent-record loads, **sequential fail-fast batched changes**, and **a bad `DatawindowName` eating the next request on that window**. The registry is **build-indexed**: the Accept-header 500 and its ghost sessions are **fixed in 26.1.5940.0**, so [read your build](14-Breaking-Changes.md#reading-the-middleware-version) before trusting any entry.
 
 
 > **Important:** Some P21 servers only support v2 endpoints (v1 returns 404). Always try v2 first.

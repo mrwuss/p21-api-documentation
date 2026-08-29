@@ -1,0 +1,55 @@
+{
+  "Name": "RequisitionPurchaseOrder",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "vendor_id",
+                  "Value": "99001"
+                },
+                {
+                  "Name": "vendor_supplier_id",
+                  "Value": "10050"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "10"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

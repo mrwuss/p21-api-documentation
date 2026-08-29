@@ -1427,17 +1427,45 @@
            "IgnoreIfEmpty": true,
            "Name": "model",
            "Value": ""
-          },
-          {
-           "IgnoreIfEmpty": true,
-           "Name": "service_warranty_desc",
-           "Value": ""
           }
          ],
          "RelativeDateEdits": []
         }
        ],
        "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "ITEM_SERVICE.item_service_dw_2",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_warranty_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_warranty_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rowind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
       },
       {
        "BusinessObjectName": null,
@@ -2223,6 +2251,42 @@
         }
        ],
        "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "name",
+        "company_id"
+       ],
+       "Name": "TABPAGE_INTEGRATION.tabpage_integration",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "sync_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "external_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
       },
       {
        "BusinessObjectName": null,
@@ -6069,20 +6133,54 @@
       "Name": "model",
       "Required": false,
       "ValidValues": null
-     },
-     {
-      "DataType": "Char",
-      "DbColumnName": "service_warranty.service_warranty_desc",
-      "Label": "",
-      "Name": "service_warranty_desc",
-      "Required": false,
-      "ValidValues": null
      }
     ],
     "KeyFields": [],
     "Name": "ITEM_SERVICE.item_service",
     "ParentText": "Service",
     "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "item_x_service_warranty",
+    "DatawindowName": "d_dw_item_service_warranty_list",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_warranty.service_warranty_id",
+      "Label": "Default Warranty ID",
+      "Name": "service_warranty_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_warranty.service_warranty_desc",
+      "Label": "Description",
+      "Name": "service_warranty_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "rowind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "ITEM_SERVICE.item_service_dw_2",
+    "ParentText": "Service",
+    "Type": "List"
    },
    {
     "BusinessObjectName": "item_service_part_list",
@@ -7349,6 +7447,54 @@
     "Name": "TABPAGE_CONTROLLEDSUBSTANCE.tabpage_controlledsubstance",
     "ParentText": "Controlled Substance",
     "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "inv_mast_x_integration",
+    "DatawindowName": "d_dw_inv_mast_x_integration_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast_x_integration.sync_flag",
+      "Label": "Sync To Integration",
+      "Name": "sync_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast_x_integration.external_id",
+      "Label": "External Id",
+      "Name": "external_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "p21_integration.name",
+      "Label": "Integration Name",
+      "Name": "name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "p21_integration_x_company.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "name",
+     "company_id"
+    ],
+    "Name": "TABPAGE_INTEGRATION.tabpage_integration",
+    "ParentText": "Integration",
+    "Type": "List"
    },
    {
     "BusinessObjectName": "",

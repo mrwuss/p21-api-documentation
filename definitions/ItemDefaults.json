@@ -1,0 +1,1717 @@
+{
+ "Name": "ItemDefaults",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "ItemDefaults",
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "company_id",
+        "location_id"
+       ],
+       "Name": "TABPAGE_1.tp_1_dw_1",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "product_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "division_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "sales_discount_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_discount_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_family_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unit_size",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_base_unit",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "base_unit_is_item_uom",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "track_lots",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "track_bins",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "bin",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "serialized",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "stockable",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "buy",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "receipt_process_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "receipt_process_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "avail_for_sch_delivery_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "make",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "manufacturing_class_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "manufacturing_class_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "commission_class_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id3",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id4",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "class_id5",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "standard_cost_multiplier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "special_cost_multiplier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_cost_multiplier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pricing_service_option",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "division_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "sales_discount_group_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_family_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_discount_group_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "product_group_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "receipt_process_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_2.tp_2_dw_2",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "asset_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "revenue_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cos_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "asset_account_no_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cos_account_no_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "revenue_account_no_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "company_id",
+        "location_id"
+       ],
+       "Name": "TABPAGE_3.tp_3_dw_3",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "replenishment_location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_unit_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "price_unit_size",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "replenishment_method",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "inv_min",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_class_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "inv_max",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "avg_lead_time",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "safety_stock_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_level_measure",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_level_pct_goal",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "safety_stock",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "deviation_lookback_pds",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "deviation_mult_one_pd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "deviation_mult_two_pd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "deviation_mult_three_pd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "min_safety_stock_days",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "max_safety_stock_days",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "crit_item_deviation_mult",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "crit_min_safety_stock_days",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "crit_max_safety_stock_days",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "replenishment_location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "JURISDICTION.jurisdiction",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "jurisdiction_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "jurisdiction_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_percentage",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "flat_fee_amount",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_line_taxable",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_SERVICEITEM.tp_serviceitem",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_product_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_supplier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_division_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_class_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_division_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_product_group_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_supplier_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp_dw_audittrail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "column_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "old_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_display_key",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_sub_line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_line_no_visible",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_item_id_visible",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "inventory_defaults",
+    "DatawindowName": "d_item_defaults_general_sheet",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.product_group_id",
+      "Label": "Product Group ID",
+      "Name": "product_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.supplier_id",
+      "Label": "Supplier ID",
+      "Name": "supplier_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.division_id",
+      "Label": "Division ID",
+      "Name": "division_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.default_sales_discount_group",
+      "Label": "Sales Discount Group",
+      "Name": "sales_discount_group_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.default_purchase_disc_group",
+      "Label": "Purchase Discount Group",
+      "Name": "purchase_discount_group_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.tax_group_id",
+      "Label": "Tax Group ID",
+      "Name": "tax_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_family.price_family_id",
+      "Label": "Price Family ID",
+      "Name": "price_family_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.sales_pricing_unit",
+      "Label": "Sales Pricing Unit",
+      "Name": "unit_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.sales_pricing_unit_size",
+      "Label": "Sales Pricing Unit Size",
+      "Name": "unit_size",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.default_base_unit",
+      "Label": "Default Base Unit",
+      "Name": "default_base_unit",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.base_unit_is_item_uom",
+      "Label": "Base Unit is Item UOM",
+      "Name": "base_unit_is_item_uom",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.track_lots",
+      "Label": "Track Lots",
+      "Name": "track_lots",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.track_bins",
+      "Label": "Track Bins",
+      "Name": "track_bins",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.default_bin",
+      "Label": "Primary Bin",
+      "Name": "bin",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.serialized",
+      "Label": "Track Serial Numbers",
+      "Name": "serialized",
+      "Required": false,
+      "ValidValues": [
+       "Yes",
+       "No",
+       "Service Only"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.stockable",
+      "Label": "Stockable",
+      "Name": "stockable",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.buy",
+      "Label": "Buy",
+      "Name": "buy",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.receipt_process_flag",
+      "Label": "Create QA/QC Process Upon Receipt",
+      "Name": "receipt_process_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "process.process_code",
+      "Label": "Route Code",
+      "Name": "receipt_process_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.avail_for_sch_delivery_flag",
+      "Label": "Available for Scheduled Delivery",
+      "Name": "avail_for_sch_delivery_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.make",
+      "Label": "Make",
+      "Name": "make",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.manufacturing_class_id",
+      "Label": "Manufacturing Class ID",
+      "Name": "manufacturing_class_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "manufacturing_class.manufacturing_class_desc",
+      "Label": "",
+      "Name": "manufacturing_class_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.commission_class_id",
+      "Label": "Commission Class",
+      "Name": "commission_class_id",
+      "Required": false,
+      "ValidValues": [
+       " "
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.class_id1",
+      "Label": "Class 1",
+      "Name": "class_id1",
+      "Required": false,
+      "ValidValues": [
+       " "
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.class_id2",
+      "Label": "Class 2",
+      "Name": "class_id2",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.class_id3",
+      "Label": "Class 3",
+      "Name": "class_id3",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.class_id4",
+      "Label": "Class 4",
+      "Name": "class_id4",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.class_id5",
+      "Label": "Class 5",
+      "Name": "class_id5",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.standard_cost_multiplier",
+      "Label": "Standard Cost Multiplier",
+      "Name": "standard_cost_multiplier",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.special_cost_multiplier",
+      "Label": "Special Cost Multiplier",
+      "Name": "special_cost_multiplier",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.supplier_cost_multiplier",
+      "Label": "Supplier Cost Multiplier",
+      "Name": "supplier_cost_multiplier",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "inventory_defaults.pricing_service_option",
+      "Label": "Pricing Service Option",
+      "Name": "pricing_service_option",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.tax_group_description",
+      "Label": "",
+      "Name": "tax_group_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "supplier.supplier_name",
+      "Label": "",
+      "Name": "supplier_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "division.division_name",
+      "Label": "",
+      "Name": "division_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "discount_group_a.discount_group_description",
+      "Label": "",
+      "Name": "sales_discount_group_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "price_family.price_family_desc",
+      "Label": "",
+      "Name": "price_family_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "discount_group_a.discount_group_description",
+      "Label": "",
+      "Name": "purchase_discount_group_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "product_group.product_group_desc",
+      "Label": "",
+      "Name": "product_group_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "process.process_name",
+      "Label": "",
+      "Name": "receipt_process_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "company_id",
+     "location_id"
+    ],
+    "Name": "TABPAGE_1.tp_1_dw_1",
+    "ParentText": "General",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "inventory_defaults",
+    "DatawindowName": "d_item_defaults_accts_sheet",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.asset_account",
+      "Label": "Asset Account",
+      "Name": "asset_account_no",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.revenue_account",
+      "Label": "Revenue Account",
+      "Name": "revenue_account_no",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.cos_account",
+      "Label": "COS Account",
+      "Name": "cos_account_no",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "asset_account_no_desc",
+      "Label": "",
+      "Name": "asset_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "cos_account_no_desc",
+      "Label": "",
+      "Name": "cos_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "revenue_account_no_desc",
+      "Label": "",
+      "Name": "revenue_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_2.tp_2_dw_2",
+    "ParentText": "Accounts Info",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "inventory_defaults",
+    "DatawindowName": "d_item_defaults_replenish_sheet",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.replenishment_location",
+      "Label": "Replenishment Location",
+      "Name": "replenishment_location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.purchase_pricing_unit",
+      "Label": "Purchase Pricing Unit",
+      "Name": "price_unit_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.purchase_pricing_unit_size",
+      "Label": "Purchase Pricing Unit Size",
+      "Name": "price_unit_size",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.replenishment_method",
+      "Label": "Replenishment Method",
+      "Name": "replenishment_method",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.inv_min",
+      "Label": "Min/ Order Point",
+      "Name": "inv_min",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.purchase_class",
+      "Label": "ABC Class",
+      "Name": "purchase_class_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.inv_max",
+      "Label": "Max/ Order Quantity",
+      "Name": "inv_max",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.avg_lead_time",
+      "Label": "Average Lead Time",
+      "Name": "avg_lead_time",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "inventory_defaults.safety_stock_type",
+      "Label": "Safety Stock In Terms of",
+      "Name": "safety_stock_type",
+      "Required": false,
+      "ValidValues": [
+       "By ABC Class",
+       "Days",
+       "Deviation Multiplier"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "inventory_defaults.service_level_measure",
+      "Label": "Customer Service Measure",
+      "Name": "service_level_measure",
+      "Required": false,
+      "ValidValues": [
+       "Backorders",
+       "Stock Outs"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.service_level_pct_goal",
+      "Label": "Service Level % Goal",
+      "Name": "service_level_pct_goal",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.safety_stock",
+      "Label": "Safety Stock Days",
+      "Name": "safety_stock",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "inventory_defaults.deviation_lookback_pds",
+      "Label": "Deviation Lookback Periods",
+      "Name": "deviation_lookback_pds",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.deviation_mult_one_pd",
+      "Label": "1 Period",
+      "Name": "deviation_mult_one_pd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.deviation_mult_two_pd",
+      "Label": "2 Periods",
+      "Name": "deviation_mult_two_pd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.deviation_mult_three_pd",
+      "Label": "3+ Periods",
+      "Name": "deviation_mult_three_pd",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.min_safety_stock_days",
+      "Label": "Min Safety Stock Days",
+      "Name": "min_safety_stock_days",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.max_safety_stock_days",
+      "Label": "Max Safety Stock Days",
+      "Name": "max_safety_stock_days",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.crit_item_deviation_mult",
+      "Label": "Critical Item Deviation Multiplier",
+      "Name": "crit_item_deviation_mult",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.crit_min_safety_stock_days",
+      "Label": "Critical Min Safety Stock Days",
+      "Name": "crit_min_safety_stock_days",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.crit_max_safety_stock_days",
+      "Label": "Critical Max Safety Stock Days",
+      "Name": "crit_max_safety_stock_days",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "replenishment_location_name",
+      "Label": "",
+      "Name": "replenishment_location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "company_id",
+     "location_id"
+    ],
+    "Name": "TABPAGE_3.tp_3_dw_3",
+    "ParentText": "Replenishment Info",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "tax_jurisdiction",
+    "DatawindowName": "d_tax_jurisdictions_for_group",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.tax_group_id",
+      "Label": "Tax Group ID",
+      "Name": "tax_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": null,
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.tax_group_description",
+      "Label": null,
+      "Name": "tax_group_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_line.jurisdiction_id",
+      "Label": "Jurisdiction ID",
+      "Name": "jurisdiction_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_jurisdiction.jurisdiction_desc",
+      "Label": "Jurisdiction Description",
+      "Name": "jurisdiction_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "tax_jurisdiction.tax_percentage",
+      "Label": "Tax Percentage",
+      "Name": "tax_percentage",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "tax_jurisdiction.flat_fee_amount",
+      "Label": "Flat Rate Amount",
+      "Name": "flat_fee_amount",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_line.taxable",
+      "Label": "Taxable",
+      "Name": "tax_group_line_taxable",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "JURISDICTION.jurisdiction",
+    "ParentText": "Jurisdiction",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "inventory_defaults",
+    "DatawindowName": "d_dw_item_defaults_service_item",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.service_product_group_id",
+      "Label": "Product Group ID",
+      "Name": "service_product_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.service_supplier_id",
+      "Label": "Supplier ID",
+      "Name": "service_supplier_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inventory_defaults.service_division_id",
+      "Label": "Division ID",
+      "Name": "service_division_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inventory_defaults.service_class_id",
+      "Label": "Service Class",
+      "Name": "service_class_id",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "division.division_name",
+      "Label": "",
+      "Name": "service_division_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "product_group.product_group_desc",
+      "Label": "",
+      "Name": "service_product_group_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "supplier.supplier_name",
+      "Label": "",
+      "Name": "service_supplier_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_SERVICEITEM.tp_serviceitem",
+    "ParentText": "Service Item",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_external_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp",
+    "ParentText": "Timestamp",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "p21_view_audit_trail",
+    "DatawindowName": "d_dw_audit_trail_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "line_no",
+      "Label": "Line No",
+      "Name": "line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "column_description",
+      "Label": "Column Changed",
+      "Name": "column_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "old_value",
+      "Label": "Old Value",
+      "Name": "old_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "new_value",
+      "Label": "New Value",
+      "Name": "new_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "created_by",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_display_key",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_sub_line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_line_no_visible",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_item_id_visible",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp_dw_audittrail",
+    "ParentText": "Timestamp",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "tp_1_dw_1",
+    "Name": "company_id"
+   },
+   {
+    "Location": "tp_1_dw_1",
+    "Name": "location_id"
+   }
+  ]
+ }
+}

@@ -24,7 +24,9 @@ Post a technician's labor hours to a production order with the `TimeEntry` servi
 | `technician_id` | Char | Yes | **A contact ID**, not a user ID |
 | `entry_date` | Datetime | Yes | Accounting period for this date must be open |
 
-**Labor lines — `TP_LABORRECORDING.prod_order_line_comp_labor` (List, key `prod_order_number`)**
+**Labor lines — `TP_LABORRECORDING.prod_order_line_comp_labor` (List, keyed `prod_order_number` + `line_number` on 26.1.5940.0)**
+
+> On builds before 5940.0 this element keyed on `prod_order_number` alone. If you post labor for **more than one line of the same production order** under the one-key shape, the rows [collapse into one](../03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) and the last wins — `Succeeded: 1`, one row written. Send `line_number` as well; it is not `Required`, so it is safe on either shape. See [12 § Labor Lines](../12-Production-Labor-API.md#labor-lines----tp_laborrecordingprod_order_line_comp_labor-list).
 
 Enter the fields **in this order** — out of order, the downstream fields stay disabled:
 
@@ -106,7 +108,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 

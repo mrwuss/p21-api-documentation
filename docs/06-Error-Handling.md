@@ -246,11 +246,18 @@ The column accepts a fixed set of values and yours isn't one of them. Under the 
 
 Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a `List` element that agree on the element's key fields are folded into one, last value wins. See [Transaction API - Keys](03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) for the debugging loop.
 
-**HTTP 500 on `Status: "Existing"`**
+**`Status: "Existing"` is rejected — HTTP 400 on 5940.0, HTTP 500 on older builds**
 
-`POST /api/v2/transaction` with `Status: "Existing"` returns HTTP 500 `NullReferenceException` (at `ToInternalBeSpecification`) — a platform-wide bug, not a payload problem, confirmed across multiple services.
+`P21.Transactions.Model.V2.TransactionStatus` has **exactly one member**: `New`. Every other string is refused, and how it is refused depends on your build:
 
-**Solution**: Use `Status: "New"` with key fields identifying the existing record — keyed `"New"` rows act as an upsert (update on key match, insert when absent). See [Transaction API - Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract).
+| Build | Response |
+|---|---|
+| 26.1.5940.0 | `400` — `Error converting value "Existing" to type 'P21.Transactions.Model.V2.TransactionStatus'` |
+| Earlier builds | `500` `NullReferenceException` at `ToInternalBeSpecification` — a server-fault shape for what was always a bad request |
+
+Neither is a payload-content problem you can fix by adjusting fields; the value itself is not in the enum. `"Update"`, `"Delete"`, `"Modified"` and the rest fail identically.
+
+**Solution**: Use `Status: "New"` with key fields identifying the existing record — keyed `"New"` rows act as an upsert (update on key match, insert when absent). See [Transaction API - Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) and [`Status: "New"` is the only value the enum accepts](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts).
 
 **Report Services Look Broken (But Aren't)**
 
@@ -290,27 +297,74 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 
 ## Interactive API Errors
 
-### Empty HTTP 500 on Every Interactive Call (2026.1)
+### Empty HTTP 500 on an Interactive Call
 
-On P21 **2026.1**, any interactive request whose `Accept` header does not include `application/json` returns an **empty-body HTTP 500** — including `Accept: */*`, the default of httpx and .NET HttpClient. The same request with `application/json` present succeeds; 2025.2 is unaffected.
+**On a current build this is almost never the `Accept` header.** The empty-500 signature had a famous cause on 2026.1 builds up to 5910.3 — a missing `Accept: application/json` — and that defect is **fixed as of 26.1.5940.0**. Check which one you have before you start:
 
-The rule is *"`application/json` must be present"*, not *"`*/*` is rejected"* — `Accept: application/json, */*` works. `application/xml` and `text/html` both fail, even though the `/api/v2` Transaction endpoints negotiate XML fine.
+| What you see | Cause | Build |
+|---|---|---|
+| Empty 500 **once**, immediately after a `400 "Unable to find datawindow named X"` on the same window | The bad `DatawindowName` burned this request — [Breaking Changes entry 9](14-Breaking-Changes.md#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500) | **All 2026.1 builds, including current** |
+| Empty 500 on **session-create, every time**, when `Accept` lacks `application/json` | [Breaking Changes entry 1](14-Breaking-Changes.md#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) | 5873.1 – 5910.3 only; **fixed in 5940.0** |
 
-**Solution**: send `Accept: application/json` on every request. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+[Read your build first](14-Breaking-Changes.md#reading-the-middleware-version) — it decides which row applies.
 
-### Alternating 500 / 409 "Session already exists" (2026.1)
+**Entry 9 is the one to suspect on a current build.** A `400 "Unable to find datawindow named X"` destroys the *next* request on that window — `/v2/change`, `/v2/data` and `/v2/tab` alike — returning an empty 500 that applies nothing. Exactly one request; the one after it succeeds. A `Column is disabled` 400 does not do this. If your log shows a datawindow 400 shortly before the 500, that is your answer.
 
-The failed session create above still **half-creates the session** server-side, so retries hit **409 `{"ErrorMessage":"Session already exists."}`**. If you see this pattern on 2026.1, check the `Accept` header first — it is not a session-pool problem.
+**Solution**: fix the datawindow name (from `GET /api/v2/definition/{Service}` or [`definitions/`](../definitions/README.md)), and treat the request that followed the 400 as lost — re-send it and check the result.
+
+### Missing `Accept: application/json` — an XML 200 that breaks your parser
+
+**Send `Accept: application/json` on every P21 request.** This has always been the rule; only the consequence of breaking it has changed.
+
+On **26.1.5940.0**, a request whose `Accept` does not include `application/json` returns **HTTP 200 with a DataContract XML body** rather than the empty 500 older builds gave. That includes `Accept: */*`, the default of httpx and .NET `HttpClient`.
+
+```http
+POST {uiserver}/api/ui/interactive/sessions/     # Accept: */*
+HTTP/1.1 200 OK
+Content-Type: application/xml; charset=utf-8
+
+<Session xmlns="http://schemas.datacontract.org/2004/07/P21.UI.Service.Request">
+  <Id>70e67fa6-...</Id>
+  ...
+```
+
+The failure now lands one frame deeper, in the parser rather than the status code:
+
+| Client | Symptom |
+|---|---|
+| Python `httpx` | `response.json()` raises `JSONDecodeError` |
+| .NET `System.Text.Json` | `JsonDocument.Parse` raises `JsonException` |
+
+A 200 in your access log looks like the call worked, so this can read as a client-side deserialization bug rather than a header problem. **Check `Content-Type` on the response** — `application/xml` means the header, not your model.
+
+The rule is *"`application/json` must be present"*, not *"`*/*` is rejected"* — `Accept: application/json, */*` returns JSON. Full per-build matrix: [Breaking Changes entry 1](14-Breaking-Changes.md#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header).
+
+### Alternating 500 / 409 "Session already exists" (2026.1 builds up to 5910.3)
+
+> **Not reachable on 26.1.5940.0** — this needs a *failed* session create to produce the ghost, and creates no longer fail that way. The `DELETE` guidance below is still correct and still worth knowing; the alternating pattern is what has gone.
+
+The failed session create above still **half-creates the session** server-side, so retries hit **409 `{"ErrorMessage":"Session already exists."}`**. If you see this pattern on an affected build, check the `Accept` header first — it is not a session-pool problem.
 
 **Clear the ghost with `DELETE {uiserver}/api/ui/interactive/sessions`** — it returns 200 and a clean create succeeds immediately after. Waiting out `SessionCleanupExpiration` (~6 min) also works but is unnecessary.
 
+> **The delete is scoped to the bearer token, on every build.** A session left by a *previous* token — a crashed worker, a retry path that re-authenticated before cleaning up — cannot be deleted at all; every id-carrying form returns `400 {"ErrorMessage":"Invalid session"}` and only `SessionCleanupExpiration` will reap it. Keep the token alive until the session is closed. Re-verified on 26.1.5940.0.
+
 > **The ghost masks the diagnosis.** Once a call has poisoned the session, *every* subsequent create returns 409 no matter what headers it sends — so the header experiment you would run to confirm the cause reports the wrong answer. `DELETE` the session before each attempt when testing this. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
 
-### Batched `/v2/change` Partially Applied After a 400 (2026.1)
+### Batched `/v2/change` Is Sequential and Fail-Fast (2026.1)
 
-A `PUT /v2/change` carrying multiple fields is **not atomic**. If one field is rejected, the response is an HTTP 400 error envelope with **no `Status` field** — but the other fields in the same batch **have already been applied** to the window buffer. Treating the 400 as "nothing happened" and retrying or saving commits a partially-applied edit.
+A `PUT /v2/change` carrying multiple fields is **not atomic**, and the way it fails is worth knowing precisely: **the list is applied in order and stops at the first rejection.** Fields before the rejected one are applied and stay applied; fields after it are never attempted. The response is an HTTP 400 error envelope with **no `Status` field**.
 
-**Solution**: one field per `/change` call, check every call's status, and read back out-of-band. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
+So the same two-field batch gives opposite results depending only on the order you wrote it in:
+
+| Batch | Response | First field afterwards |
+|---|---|---|
+| `[good, disabled]` | `400 Column is disabled: ...` | **applied** |
+| `[disabled, good]` | `400 Column is disabled: ...` | never attempted |
+
+Treating the 400 as "nothing happened" and retrying or saving commits a partially-applied edit.
+
+**Solution**: one field per `/change` call, check every call's status, and read back out-of-band. Details: [Breaking Changes entry 6](14-Breaking-Changes.md#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast).
 
 ### Session Errors
 
@@ -578,7 +632,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -752,7 +806,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     ui_server = get_ui_server(client, token)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -1008,7 +1062,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     token = get_token(client)
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/json",       # 2026.1 returns an empty 500 without this
+        "Accept": "application/json",       # without this you get XML, not JSON
         "Content-Type": "application/json",
     }
 
@@ -1109,7 +1163,7 @@ static string ReadField(string payload, string field)
 
 <!-- /tabs -->
 
-> **Not all 500s are transient.** Some HTTP 500s are deterministic and will fail on every retry — notably Transaction API `Status: "Existing"` (`NullReferenceException`) and XML payloads with wrong DataContract element order. Fix the payload instead of retrying those.
+> **Not all 500s are transient.** Some HTTP 500s are deterministic and will fail on every retry — notably Transaction API `Status: "Existing"` on builds before 26.1.5940.0 (`NullReferenceException`; a clean 400 on 5940.0 and later) and XML payloads with wrong DataContract element order. Fix the payload instead of retrying those.
 
 ---
 
@@ -1280,7 +1334,7 @@ void CheckTokenExpiry(string token)
 | 307 Redirect | Entity | Add `follow_redirects=True` (list endpoints) |
 | Request timeout | All | Increase timeout, check network |
 | "Unexpected window" | Transaction | Use async endpoint, add delays |
-| 500 NullReferenceException on `Status: "Existing"` | Transaction | Use `Status: "New"` + key fields (upsert) — [details](03-Transaction-API.md#updating-an-existing-contract) |
+| `Status: "Existing"` rejected — 400 on 5940.0, 500 `NullReferenceException` on older builds | Transaction | `"New"` is the only value the enum accepts; use it + key fields (upsert) — [details](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
 | `services?type=report` empty (other `type` values 400) | Transaction | Expected — report services are hidden; run via `/api/v2/process/pdfreport` |
 | m_* report returns Succeeded, no output | Transaction | Use `POST /api/v2/process/pdfreport`, not `/transaction` — [details](03-Transaction-API.md#pdf-report-generation) |
 | Session expired | Interactive | Start new session |
