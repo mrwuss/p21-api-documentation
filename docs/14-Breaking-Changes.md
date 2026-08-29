@@ -249,7 +249,11 @@ Found while re-verifying the above on 26.1.5894.1, and re-checked on 26.1.5940.0
 
 #### Reading the middleware version
 
-There is no version endpoint (`/api/version`, `/api/v2/version` and friends all 404). The **session-create response** carries the build:
+**There is a version endpoint — it is just not where you would look for it.** `/api/version`, `/api/v2/version`, `/api/ui/version` and `/version` all 404 on the UI server. The build is reported by **`GET {uiserver}/ui/common/v1/serverinfo`** (undocumented, same bearer auth, `Accept: application/json` or you get XML), and by the **session-create response**.
+
+**Prefer `serverinfo`: it needs no session.** That matters precisely here, because the interactive surface is what these entries break — if session-create is failing you cannot read the version from it, which is exactly when you need to know which entries apply. Read `Version/Application Version`, not `Monitoring/shortversion` — the latter returned `"0.0"` on 26.1.5930.1 while carrying a real value on 26.1.5940.0. Full response shape, key table and runnable examples: [Authentication § Server Info Endpoint](00-Authentication.md#server-info-endpoint-version-environment-detection).
+
+The **session-create response** carries the same build, and is worth knowing as the fallback:
 
 ```jsonc
 POST {uiserver}/api/ui/interactive/sessions   // Accept: application/json
@@ -265,7 +269,7 @@ This is the most reliable way to confirm which build you are actually talking to
 
 The same response also carries the session-handling configuration you will want when debugging [entry 2](#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409) — `SessionHandling.SessionCleanupExpiration` (`00:06:00` on the tenants we have measured), `TimedCleanupInterval`, `PoolSize` and `WarmStartCount`.
 
-**If you cannot open a session, you cannot read the version.** The probe is only available on the interactive surface, so a tenant that is refusing session-create for any reason will not tell you which build it is — which is precisely when you most want to know. `/api/version`, `/api/v2/version`, `/api/ui/version` and `/version` were all re-probed on 5940.0 and all four still 404.
+**This probe needs a session; `serverinfo` above does not.** A tenant refusing session-create will not tell you its build this way — which is precisely when you most want to know — so reach for `serverinfo` first and keep this as the fallback. `/api/version`, `/api/v2/version`, `/api/ui/version` and `/version` were all re-probed on 5940.0 and all four still 404.
 
 #### The middleware runtime, and what it does not dictate
 

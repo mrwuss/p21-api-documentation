@@ -691,6 +691,13 @@
 </ul>
 </li>
 <li><a href="#common-tables">Common Tables</a></li>
+<li><a href="#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views (p21_view_es_*)</a><ul>
+<li><a href="#search-source-views-18">Search-source views (18)</a></li>
+<li><a href="#index-configuration-views-7">Index configuration views (7)</a></li>
+<li><a href="#example-querying-p21_view_es_item">Example: querying p21_view_es_item</a></li>
+<li><a href="#example-querying-p21_view_es_ship_to-the-case-for-these-views">Example: querying p21_view_es_ship_to — the case for these views</a></li>
+</ul>
+</li>
 <li><a href="#undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed / Unlicensed Windows: Readable Tables, No API Surface</a></li>
 <li><a href="#examples">Examples</a><ul>
 <li><a href="#basic-query">Basic Query</a></li>
@@ -1562,6 +1569,253 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </tr>
 </tbody>
 </table></div>
+<hr />
+<h2 id="enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views (<code>p21_view_es_*</code>)</h2>
+<blockquote>
+<p><strong>Added August 2026</strong> — discovered and verified live against a 26.1.5930.1 tenant.</p>
+</blockquote>
+<p>25 views share a <code>p21_view_es_*</code> prefix and back P21's in-app global search feature (the <code>es</code> reads as "enterprise search"; not an officially documented expansion, inferred from the schema below). They are <strong>not</strong> part of the curated 118-view <a href="#the-other-odata-surface-dataerpviewsv1"><code>/data/erp/views/v1</code></a> surface — query them the normal way, at <code>/odataservice/odata/view/{viewname}</code>, and the same <a href="#skip-pagination"><code>$top</code> is mandatory</a> guidance applies.</p>
+<p>They split cleanly into two groups by what their columns look like.</p>
+<h3 id="search-source-views-18">Search-source views (18)</h3>
+<p>Denormalized, heavily-joined views of a single business entity — one row per record, with lookups (class codes, descriptions, salesrep names, etc.) already resolved. All 18 share two trailing fields useful for incremental sync: <code>unique_id</code> (a per-view natural key, often composite — e.g. <code>p21_view_es_item</code>'s is <code>{item_id}--{supplier_id}</code>, since the view fans an item out to one row per supplier) and <code>max_date_last_modified</code> (the latest modification timestamp across every joined table, so <code>$filter=max_date_last_modified gt {timestamp}</code> catches changes anywhere in the join, not just on the primary table).</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>View</th>
+<th>Source entity</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>p21_view_es_customer</code></td>
+<td>Customer</td>
+<td>58</td>
+</tr>
+<tr>
+<td><code>p21_view_es_contacts</code></td>
+<td>Contact</td>
+<td>87</td>
+</tr>
+<tr>
+<td><code>p21_view_es_vendor</code></td>
+<td>Vendor</td>
+<td>75</td>
+</tr>
+<tr>
+<td><code>p21_view_es_item</code></td>
+<td>Item</td>
+<td>15</td>
+</tr>
+<tr>
+<td><code>p21_view_es_item_supplier</code></td>
+<td>Item × Supplier</td>
+<td>57</td>
+</tr>
+<tr>
+<td><code>p21_view_es_sales_order</code></td>
+<td>Sales order header</td>
+<td>115</td>
+</tr>
+<tr>
+<td><code>p21_view_es_sales_order_line</code></td>
+<td>Sales order line</td>
+<td>157</td>
+</tr>
+<tr>
+<td><code>p21_view_es_quote</code></td>
+<td>Quote</td>
+<td>89</td>
+</tr>
+<tr>
+<td><code>p21_view_es_invoice_hdr</code></td>
+<td>Invoice header</td>
+<td>137</td>
+</tr>
+<tr>
+<td><code>p21_view_es_invoice_line</code></td>
+<td>Invoice line</td>
+<td>139</td>
+</tr>
+<tr>
+<td><code>p21_view_es_vendor_invoice</code></td>
+<td>Vendor invoice</td>
+<td>49</td>
+</tr>
+<tr>
+<td><code>p21_view_es_ship_to</code></td>
+<td>Ship-to</td>
+<td>63</td>
+</tr>
+<tr>
+<td><code>p21_view_es_pick_ticket_hdr</code></td>
+<td>Pick ticket header</td>
+<td>21</td>
+</tr>
+<tr>
+<td><code>p21_view_es_pick_ticket_line</code></td>
+<td>Pick ticket line</td>
+<td>16</td>
+</tr>
+<tr>
+<td><code>p21_view_es_production_order</code></td>
+<td>Production order</td>
+<td>85</td>
+</tr>
+<tr>
+<td><code>p21_view_es_production_order_component</code></td>
+<td>Production order component</td>
+<td>61</td>
+</tr>
+<tr>
+<td><code>p21_view_es_service_order</code></td>
+<td>Service order</td>
+<td>93</td>
+</tr>
+<tr>
+<td><code>p21_view_es_work_in_process</code></td>
+<td>WIP stage</td>
+<td>45</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="index-configuration-views-7">Index configuration views (7)</h3>
+<p>These carry no business data — they configure the search feature itself. Every one of them returned <code>"value": []</code> on the tenant this was verified against (no custom indexes had been configured), but the schema is always present and the relationships below are legible from the foreign-key-shaped column names:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>View</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>p21_view_es_index_hdr</code></td>
+<td>One row per named search index — <code>index_name</code> plus the source view it indexes (<code>view_name</code>), display panel layout (<code>line1_panel</code>…<code>line3_extended</code>), and refresh schedule (<code>refresh_rate_seconds</code>, <code>last_sync_date</code>)</td>
+</tr>
+<tr>
+<td><code>p21_view_es_index_field</code></td>
+<td>One row per indexed column (FK <code>es_index_hdr_uid</code>) — <code>searchable_flag</code> / <code>display_in_search_flag</code> / <code>filter_in_search_flag</code> per field, plus <code>data_type</code></td>
+</tr>
+<tr>
+<td><code>p21_view_es_index_priority_hdr</code></td>
+<td>A named priority/ranking profile</td>
+</tr>
+<tr>
+<td><code>p21_view_es_index_priority_field</code></td>
+<td>Per-profile override of an index field's searchable/display/filter flags (FKs to both the profile and the field)</td>
+</tr>
+<tr>
+<td><code>p21_view_es_index_priority_ranking</code></td>
+<td>Result ordering — assigns a <code>rank</code> to an (profile, index) pair</td>
+</tr>
+<tr>
+<td><code>p21_view_es_index_priority_role</code></td>
+<td>Links a priority profile to a role (<code>role_uid</code>)</td>
+</tr>
+<tr>
+<td><code>p21_view_es_index_priority_user</code></td>
+<td>Links a priority profile to a user (<code>users_uid</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>Inferred, not confirmed:</strong> the hdr→field and priority-hdr→field/ranking/role/user relationships above are read off the column names and <code>$metadata</code> types (<code>Edm.Int32</code> FK-shaped columns), not off live data — every <code>*_priority_*</code> view was empty on the verification tenant, so the actual row shape and what "priority" changes about search ranking were not directly observed.</p>
+</blockquote>
+<h3 id="example-querying-p21_view_es_item">Example: querying <code>p21_view_es_item</code></h3>
+<p>Verified live, 26.1.5930.1:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/view/p21_view_es_item?$top=1</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Accept: application/json</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;@odata.context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{base}/odataservice/odata/view/$metadata#p21_view_es_item&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;item_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;item_desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;extended_desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard Widget Assembly - full description text&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;supplier_part_no&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;upc_code&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;catalog_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;contract_number&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ean_code&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;purchase_discount_group&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Default&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;discount_group_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Default&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;alternate_code&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;alternate_code_desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;supplier_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10143</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;unique_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001--10143&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_date_last_modified&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-07-24T11:22:14.747-04:00&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p>Some rows on the verification tenant had a stray leading space on <code>item_id</code> (e.g. <code>" EX21-NI"</code>). It isn't consistent padding — row lengths on the same column varied freely (7 to 19 characters) with no fixed width, so this reads as pre-existing data-entry noise in that specific database rather than a behavior of the view or column type. Not included as a documented gotcha; if you see it on your tenant, treat it as a data-quality issue, not an API contract.</p>
+</blockquote>
+<h3 id="example-querying-p21_view_es_ship_to-the-case-for-these-views">Example: querying <code>p21_view_es_ship_to</code> — the case for these views</h3>
+<p><code>p21_view_es_item</code> above is deliberately the simplest of the 18 (15 fields). <code>p21_view_es_ship_to</code> (63 fields) is a better demonstration of what these views are <em>for</em>: one row already joins ship-to, customer, tax group, freight/carrier, payment terms, branch, salesrep, and both customer- and ship-to-level class codes — a query that would otherwise mean separately reading <code>ship_to</code>, <code>customer</code>, <code>tax_group</code>, <code>freight_code</code>, <code>terms</code>, <code>company</code>, and the class-code tables and joining them client-side (OData has <a href="#no-joins-chain-queries-by-uid">no server-side joins</a>).</p>
+<p>Verified live, 26.1.5930.1:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/view/p21_view_es_ship_to?$top=1</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Accept: application/json</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;@odata.context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{base}/odataservice/odata/view/$metadata#p21_view_es_ship_to&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;ship_to_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ship_to_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Address 1&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;customer_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10397</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;customer_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Plumbing Supply&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;phys_address1&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;phys_address2&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;phys_city&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;phys_state&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;phys_postal_code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;08701&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;company_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;company_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Distribution Inc.&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;default_branch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;01&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;tax_group_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NJ UEZ TAX&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;terms_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;default_carrier_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;delivery_instructions&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;freight_code_uid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;tax_group_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NJ UEZ Sales Tax&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;freight_cd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IN/OUT&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;freight_desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Customer Pays Incoming and Outgoing Freight&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;branch_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Main Branch&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;carrier_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;terms_desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;COD&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cust_class_1id&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cust_class_1desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cust_class_2id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;NOT INSU&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;cust_class_2desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Not Insured&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ship_to_class1_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;ship_to_class1_desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;date_created&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2019-03-27T15:12:13.623-04:00&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;date_last_modified&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2021-04-26T13:09:15.507-04:00&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;created_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;apiuser&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;last_maintained_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;apiuser&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;corp_address_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10397</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;corp_address_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Plumbing Supply&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;salesrep_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1002&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;salesrep_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Jane Smith&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;freight_charge_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;unique_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME-1-1002&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_date_last_modified&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-08-19T15:00:00-04:00&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<blockquote>
+<p>Trimmed to the fields that make the point; the live response carries all 63 (mailing address, all five customer- and ship-to-level class code pairs, <code>route_description</code>, <code>shipping_route_uid</code>, etc.). Note <code>unique_id</code>'s shape here is <code>{company_id}-{ship_to_id}-{salesrep_id}</code> — a different composite pattern than <code>p21_view_es_item</code>'s <code>{item_id}--{supplier_id}</code> (double dash). <strong><code>unique_id</code> composition is per-view; don't assume one view's key shape for another.</strong></p>
+</blockquote>
 <hr />
 <h2 id="undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed / Unlicensed Windows: Readable Tables, No API Surface</h2>
 <p>OData exposes the <strong>schema</strong>, not the deployment state. A table can be fully readable over OData while the feature that populates it is <strong>undeployed or unlicensed</strong> — its maintenance window is classic-desktop-only and it has no Transaction/Interactive API surface. The rows you read are then <strong>dead storage</strong>: nothing writes them and no business logic consults them.</p>
@@ -2590,6 +2844,13 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 </ul>
 </li>
 <li><a href="#common-tables">Common Tables</a></li>
+<li><a href="#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views (p21_view_es_*)</a><ul>
+<li><a href="#search-source-views-18">Search-source views (18)</a></li>
+<li><a href="#index-configuration-views-7">Index configuration views (7)</a></li>
+<li><a href="#example-querying-p21_view_es_item">Example: querying p21_view_es_item</a></li>
+<li><a href="#example-querying-p21_view_es_ship_to-the-case-for-these-views">Example: querying p21_view_es_ship_to — the case for these views</a></li>
+</ul>
+</li>
 <li><a href="#undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed / Unlicensed Windows: Readable Tables, No API Surface</a></li>
 <li><a href="#examples">Examples</a><ul>
 <li><a href="#basic-query">Basic Query</a></li>

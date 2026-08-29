@@ -693,6 +693,7 @@
 <li><a href="#verified-pricing-response">Verified Pricing Response</a></li>
 <li><a href="#pricing-error-response">Pricing Error Response</a></li>
 <li><a href="#url-encoding-for-special-characters">URL Encoding for Special Characters</a></li>
+<li><a href="#batch-pricing">Batch Pricing</a></li>
 </ul>
 </li>
 <li><a href="#known-limitations">Known Limitations</a></li>
@@ -799,8 +800,14 @@
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/inventory/parts/prices</code></td>
-<td>Batch pricing</td>
-<td>Not tested</td>
+<td>Batch pricing (JSON or XML, see <a href="#batch-pricing">Batch Pricing</a>)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inventory/v2/parts/prices</code></td>
+<td>Batch pricing (alternative path, identical behavior)</td>
+<td>Yes</td>
 </tr>
 </tbody>
 </table></div>
@@ -2916,6 +2923,324 @@
 <p><strong>Known Issue</strong>: Forward slash (<code>/</code>) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets <code>%2F</code> as a literal path separator, returning 404. There is no known workaround for items containing <code>/</code> in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)</p>
 </blockquote>
 <hr />
+<h3 id="batch-pricing">Batch Pricing</h3>
+<blockquote>
+<p><strong>Added August 2026</strong> — Live-verified against Prophet21Play (26.1).</p>
+</blockquote>
+<p><code>POST /api/inventory/parts/prices</code> (and the identical <code>POST /api/inventory/v2/parts/prices</code>) price and check availability for <strong>multiple items in one call</strong>. Unlike single-item pricing, <code>ItemId</code> is in the request body, not the URL — so the <a href="#url-encoding-for-special-characters">forward-slash URL-encoding limitation</a> above does not apply here.</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/inventory/parts/prices?companyId=ACME&amp;customerId=10&amp;salesLocId=100</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Content-Type: application/json</span>
+<span class="err">Accept: application/json</span>
+
+<span class="err">[</span>
+<span class="err">    { &quot;ItemId&quot;: &quot;WIDGET-001&quot;, &quot;SourceLocId&quot;: 100 },</span>
+<span class="err">    { &quot;ItemId&quot;: &quot;WIDGET-002&quot;, &quot;SourceLocId&quot;: 100 }</span>
+<span class="err">]</span>
+</code></pre></div>
+
+<p><strong>Required query parameters</strong> (verified — omitting any one produces a distinct error naming exactly that parameter, checked in this order):</p>
+<ol>
+<li><code>companyId</code></li>
+<li><code>customerId</code></li>
+<li><code>salesLocId</code></li>
+</ol>
+<p>P21 validates these one at a time and fails on the first missing one, so an incomplete request appears to fail "progressively" as you add parameters — each retry reveals the next missing one rather than listing all of them up front:</p>
+<div class="highlight"><pre><span></span><code><span class="err">HTTP</span><span class="w"> </span><span class="mi">500</span>
+<span class="p">{</span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Please provide a value for required parameter companyId.&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;System.ArgumentException&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">}</span>
+</code></pre></div>
+
+<p>Note it is an <strong>HTTP 500</strong>, not a 400 — a missing query parameter surfaces as a server error here, so do not filter these out of your logs as transient.</p>
+<p>Three further query parameters are optional: <strong><code>shipToId</code>, <code>orderDate</code> and <code>jobNo</code></strong> — all three accepted without error on 26.1.5940.0. Note the names: the WCF <em>method</em> parameters are <code>optionalShipToId</code> / <code>optionalOrderDate</code> / <code>optionalJobNo</code> (that is how they appear in a stack trace), but the <strong>query string</strong> spells them without the <code>optional</code> prefix. The tenant's own help page gives the authoritative template:</p>
+<div class="highlight"><pre><span></span><code>GET {base}/api/inventory/parts/help/operations/GetItemPrices
+→ .../parts/prices?companyId={}&amp;customerId={}&amp;salesLocId={}&amp;shipToId={}&amp;orderDate={}&amp;jobNo={}
+</code></pre></div>
+
+<p>That help page is also where the XML request/response schemas come from, and it is per-tenant — prefer it over this table if the two ever disagree.</p>
+<p><strong>Request body</strong> — a JSON array or an XML <code>ArrayOfItemPriceInfo</code> of per-item objects. Verified minimum: <code>ItemId</code> + <code>SourceLocId</code>. Also accepted per item: <code>CustomerPartNo</code>, <code>UnitQuantity</code>, <code>UnitSize</code>, <code>UOM</code>, <code>PriceUom</code> (all optional — P21 defaults <code>UOM</code>/<code>PriceUom</code> to the item's base unit when omitted).</p>
+<p><strong>Response</strong> — a JSON array or an XML <code>ArrayOfItemPrice</code>, one entry per requested item, in the same shape as <a href="#verified-pricing-response">single-item pricing</a> (pricing <strong>and</strong> availability fields together).</p>
+<h4 id="content-type-must-match-the-body-this-is-not-xml-only-verified">Content-Type must match the body — this is not "XML only" (verified)</h4>
+<p>This endpoint is often mistaken for XML-only. <strong>It is not</strong> — both JSON and XML request/response bodies work. It's a WCF REST endpoint that selects its (de)serializer from the <code>Content-Type</code> header, not by inspecting the body, so sending a body that doesn't match <code>Content-Type</code> produces a confusing failure that looks like a format rejection:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>Content-Type</code> sent</th>
+<th>Actual body</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>application/json</code></td>
+<td>JSON</td>
+<td><strong>200</strong> — works</td>
+</tr>
+<tr>
+<td><code>application/xml</code></td>
+<td>XML</td>
+<td><strong>200</strong> — works</td>
+</tr>
+<tr>
+<td><em>(omitted, <code>Accept: application/json</code>)</em></td>
+<td>JSON</td>
+<td><strong>200</strong> — works (defaults to JSON)</td>
+</tr>
+<tr>
+<td><code>application/xml</code></td>
+<td>JSON</td>
+<td><strong>400</strong> — generic WCF "Request Error" HTML page pointing at <code>/help</code>; no P21 error, no mention of a header mismatch</td>
+</tr>
+<tr>
+<td><code>application/json</code></td>
+<td>XML</td>
+<td><strong>400</strong> — at least a real P21 error: <code>Invalid JSON or request body for parameter 'itemInfo'. Unexpected character encountered while parsing value: &lt;...</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>Accept</code> is negotiated independently of <code>Content-Type</code>: an XML body with <code>Accept: application/json</code> returns JSON, and vice versa. All of the above re-verified on <strong>26.1.5940.0</strong>.</p>
+<blockquote>
+<p><strong>The XML body takes no namespace, and getting that wrong looks exactly like "XML is rejected".</strong> <code>&lt;ArrayOfItemPriceInfo&gt;</code> must be bare — as the tenant's own <code>.../parts/help/operations/GetItemPrices</code> page shows it. Adding a plausible DataContract namespace (<code>http://schemas.datacontract.org/2004/07/P21.Inventory.Model</code>, the shape used elsewhere in this API) makes the element fail to bind and returns the <strong>same generic WCF 400 HTML page</strong> as the header mismatch above. Two different mistakes, one indistinguishable error — which is most of why this endpoint has its reputation.</p>
+</blockquote>
+<p>The <code>application/xml</code> + JSON-body case is what creates the "XML only" impression: the response gives no hint that the body was even parsed, let alone that the fix is the <code>Content-Type</code> header rather than the body format. If a batch pricing POST comes back as that generic WCF "Request Error" page, check that <code>Content-Type</code> matches what you actually sent before concluding the endpoint rejects JSON.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Batch price + availability lookup via the Inventory REST API (JSON body).&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
+<span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
+<span class="n">COMPANY_ID</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>                       <span class="c1"># required query param</span>
+<span class="n">CUSTOMER_ID</span> <span class="o">=</span> <span class="s2">&quot;10&quot;</span>                        <span class="c1"># required query param</span>
+<span class="n">SALES_LOC_ID</span> <span class="o">=</span> <span class="s2">&quot;100&quot;</span>                      <span class="c1"># required query param</span>
+<span class="n">ITEMS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;ItemId&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span> <span class="s2">&quot;SourceLocId&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+    <span class="p">{</span><span class="s2">&quot;ItemId&quot;</span><span class="p">:</span> <span class="s2">&quot;WIDGET-002&quot;</span><span class="p">,</span> <span class="s2">&quot;SourceLocId&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+<span class="p">]</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;v2 token endpoint — credentials go in the body, never in headers.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/security/token/v2&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">PASSWORD</span><span class="p">},</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;AccessToken&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>  <span class="c1"># some middleware answers in XML</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;AccessToken&gt;([^&lt;]+)&lt;/AccessToken&gt;&quot;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No AccessToken in response: </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">[:</span><span class="mi">200</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+        <span class="c1"># Content-Type must match the body -- application/json here because ITEMS</span>
+        <span class="c1"># is sent as JSON. Sending application/xml with a JSON body 400s (see above).</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/inventory/parts/prices&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;companyId&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">,</span> <span class="s2">&quot;customerId&quot;</span><span class="p">:</span> <span class="n">CUSTOMER_ID</span><span class="p">,</span> <span class="s2">&quot;salesLocId&quot;</span><span class="p">:</span> <span class="n">SALES_LOC_ID</span><span class="p">},</span>
+        <span class="n">json</span><span class="o">=</span><span class="n">ITEMS</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">price</span> <span class="ow">in</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">price</span><span class="p">[</span><span class="s1">&#39;ItemId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: UnitPrice=</span><span class="si">{</span><span class="n">price</span><span class="p">[</span><span class="s1">&#39;UnitPrice&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;QtyAvailable=</span><span class="si">{</span><span class="n">price</span><span class="p">[</span><span class="s1">&#39;QuantityAvailable&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
+
+<span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// required query param</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">;</span><span class="w">                         </span><span class="c1">// required query param</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">SalesLocId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// required query param</span>
+<span class="c1">// ---------------------------------------------------------------------------</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Test tenants often present a self-signed cert. Delete this line in production.</span>
+<span class="w">    </span><span class="n">ServerCertificateCustomValidationCallback</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="n">HttpClientHandler</span><span class="p">.</span><span class="n">DangerousAcceptAnyServerCertificateValidator</span><span class="p">,</span>
+<span class="p">};</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">items</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JsonArray</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">JsonObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ItemId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;SourceLocId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">JsonObject</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;ItemId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-002&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;SourceLocId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="w"> </span><span class="p">},</span>
+<span class="p">};</span>
+
+<span class="c1">// Content-Type must match the body -- application/json here because items is</span>
+<span class="c1">// sent as JSON. Sending application/xml with a JSON body 400s (see above).</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$&quot;{BaseUrl}/api/inventory/parts/prices&quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">          </span><span class="s">$&quot;?companyId={CompanyId}&amp;customerId={CustomerId}&amp;salesLocId={SalesLocId}&quot;</span><span class="p">;</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span><span class="n">items</span><span class="p">.</span><span class="n">ToJsonString</span><span class="p">(),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="n">url</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">);</span>
+<span class="n">resp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">prices</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonNode</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">())</span><span class="o">!</span><span class="p">.</span><span class="n">AsArray</span><span class="p">();</span>
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">price</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">prices</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{price![&quot;</span><span class="n">ItemId</span><span class="s">&quot;]}: UnitPrice={price[&quot;</span><span class="n">UnitPrice</span><span class="s">&quot;]} &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">$&quot;QtyAvailable={price[&quot;</span><span class="n">QuantityAvailable</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// --- helpers ---------------------------------------------------------------</span>
+
+<span class="c1">// v2 token endpoint — credentials go in the body, never in headers.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetTokenAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Username</span><span class="p">,</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/api/security/token/v2&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="nf">StringContent</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;AccessToken&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Some middleware answers this endpoint in XML even when asked for JSON.</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">payload</span><span class="p">).</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="n">field</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="k">value</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="k">value</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">Exception</span><span class="w"> </span><span class="n">ex</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">ex</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">JsonException</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">KeyNotFoundException</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="n">Text</span><span class="p">.</span><span class="n">RegularExpressions</span><span class="p">.</span><span class="n">Regex</span><span class="p">.</span><span class="n">Match</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;&lt;{field}&gt;([^&lt;]+)&lt;/{field}&gt;&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">match</span><span class="p">.</span><span class="n">Success</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
+<span class="w">            </span><span class="s">$&quot;No {field} in response: {payload[..Math.Min(200, payload.Length)]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">match</span><span class="p">.</span><span class="n">Groups</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">Value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<p><strong>Sample response</strong> (one entry per requested item, same fields as <a href="#verified-pricing-response">single-item pricing</a>):</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;UnitPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10.780000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;BaseUnitPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10.780000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;UOM&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EA&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;UOMUnitSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.000000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PricePageUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PriceUOM&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EA&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PriceUnitSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.000000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;ExtendedPrice&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10.780000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CalcValue&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.000000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;UnitCommissionCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.308224600</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;UnitOtherCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.390000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;UnitSalesCost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.308224600</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;LotCosted&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;LocationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;QuantityAvailable&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">41.000000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;QuantityOnHand&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">41.000000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;QuantityAllocated&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.000000000</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;QuantityNonPickable&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;QuantityQuarantined&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;QuantityFrozen&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;LocationType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Standard&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;ItemId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-002&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;PricePageUid&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">813</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;...&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;one object per requested item, same shape&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Note:</strong> As with single-item pricing, <code>CompanyId</code> in the response can be <code>null</code> even though it was required in the request.</p>
+</blockquote>
+<h4 id="equivalent-xml-requestresponse">Equivalent XML request/response</h4>
+<p>The same call, sent as XML instead — only the <code>Content-Type</code>/<code>Accept</code> headers and body format change; the query parameters and URL are identical:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/inventory/parts/prices?companyId=ACME&amp;customerId=10&amp;salesLocId=100</span>
+<span class="err">Authorization: Bearer {token}</span>
+<span class="err">Content-Type: application/xml</span>
+<span class="err">Accept: application/xml</span>
+
+<span class="err">&lt;ArrayOfItemPriceInfo&gt;</span>
+<span class="err">    &lt;ItemPriceInfo&gt;</span>
+<span class="err">        &lt;ItemId&gt;WIDGET-001&lt;/ItemId&gt;</span>
+<span class="err">        &lt;SourceLocId&gt;100&lt;/SourceLocId&gt;</span>
+<span class="err">    &lt;/ItemPriceInfo&gt;</span>
+<span class="err">    &lt;ItemPriceInfo&gt;</span>
+<span class="err">        &lt;ItemId&gt;WIDGET-002&lt;/ItemId&gt;</span>
+<span class="err">        &lt;SourceLocId&gt;100&lt;/SourceLocId&gt;</span>
+<span class="err">    &lt;/ItemPriceInfo&gt;</span>
+<span class="err">&lt;/ArrayOfItemPriceInfo&gt;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;ArrayOfItemPrice</span><span class="w"> </span><span class="na">xmlns:xsd=</span><span class="s">&quot;http://www.w3.org/2001/XMLSchema&quot;</span><span class="w"> </span><span class="na">xmlns:xsi=</span><span class="s">&quot;http://www.w3.org/2001/XMLSchema-instance&quot;</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;ItemPrice&gt;</span>
+<span class="w">    </span><span class="nt">&lt;ItemId&gt;</span>WIDGET-001<span class="nt">&lt;/ItemId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;LocationId&gt;</span>100<span class="nt">&lt;/LocationId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;QuantityAvailable&gt;</span>41.000000000<span class="nt">&lt;/QuantityAvailable&gt;</span>
+<span class="w">    </span><span class="nt">&lt;QuantityOnHand&gt;</span>41.000000000<span class="nt">&lt;/QuantityOnHand&gt;</span>
+<span class="w">    </span><span class="nt">&lt;QuantityAllocated&gt;</span>0.000000000<span class="nt">&lt;/QuantityAllocated&gt;</span>
+<span class="w">    </span><span class="nt">&lt;QuantityNonPickable&gt;</span>0<span class="nt">&lt;/QuantityNonPickable&gt;</span>
+<span class="w">    </span><span class="nt">&lt;QuantityQuarantined&gt;</span>0<span class="nt">&lt;/QuantityQuarantined&gt;</span>
+<span class="w">    </span><span class="nt">&lt;QuantityFrozen&gt;</span>0<span class="nt">&lt;/QuantityFrozen&gt;</span>
+<span class="w">    </span><span class="nt">&lt;LocationType&gt;</span>Standard<span class="nt">&lt;/LocationType&gt;</span>
+<span class="w">    </span><span class="nt">&lt;UnitPrice&gt;</span>10.780000000<span class="nt">&lt;/UnitPrice&gt;</span>
+<span class="w">    </span><span class="nt">&lt;BaseUnitPrice&gt;</span>10.780000000<span class="nt">&lt;/BaseUnitPrice&gt;</span>
+<span class="w">    </span><span class="nt">&lt;UOM&gt;</span>EA<span class="nt">&lt;/UOM&gt;</span>
+<span class="w">    </span><span class="nt">&lt;UOMUnitSize&gt;</span>1.000000000<span class="nt">&lt;/UOMUnitSize&gt;</span>
+<span class="w">    </span><span class="nt">&lt;PricePageUid&gt;</span>0<span class="nt">&lt;/PricePageUid&gt;</span>
+<span class="w">    </span><span class="nt">&lt;PriceUOM&gt;</span>EA<span class="nt">&lt;/PriceUOM&gt;</span>
+<span class="w">    </span><span class="nt">&lt;PriceUnitSize&gt;</span>1.000000000<span class="nt">&lt;/PriceUnitSize&gt;</span>
+<span class="w">    </span><span class="nt">&lt;ExtendedPrice&gt;</span>10.780000000<span class="nt">&lt;/ExtendedPrice&gt;</span>
+<span class="w">    </span><span class="nt">&lt;CalcValue&gt;</span>1.000000000<span class="nt">&lt;/CalcValue&gt;</span>
+<span class="w">    </span><span class="nt">&lt;UnitCommissionCost&gt;</span>5.308224600<span class="nt">&lt;/UnitCommissionCost&gt;</span>
+<span class="w">    </span><span class="nt">&lt;UnitOtherCost&gt;</span>5.390000000<span class="nt">&lt;/UnitOtherCost&gt;</span>
+<span class="w">    </span><span class="nt">&lt;UnitSalesCost&gt;</span>5.308224600<span class="nt">&lt;/UnitSalesCost&gt;</span>
+<span class="w">    </span><span class="nt">&lt;LotCosted&gt;</span>N<span class="nt">&lt;/LotCosted&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/ItemPrice&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- one &lt;ItemPrice&gt; per requested item --&gt;</span>
+<span class="nt">&lt;/ArrayOfItemPrice&gt;</span>
+</code></pre></div>
+
+<blockquote>
+<p>Full runnable version: adapt the <a href="#batch-pricing">Python/C# example above</a> — swap the JSON body/headers for the XML shown here, no other change needed.</p>
+</blockquote>
+<hr />
 <h2 id="known-limitations">Known Limitations</h2>
 <ol>
 <li>
@@ -3000,6 +3325,7 @@
 <li><a href="#verified-pricing-response">Verified Pricing Response</a></li>
 <li><a href="#pricing-error-response">Pricing Error Response</a></li>
 <li><a href="#url-encoding-for-special-characters">URL Encoding for Special Characters</a></li>
+<li><a href="#batch-pricing">Batch Pricing</a></li>
 </ul>
 </li>
 <li><a href="#known-limitations">Known Limitations</a></li>

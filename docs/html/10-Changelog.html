@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-29-v1110">2026-08-29 — v1.11.0</a></li>
 <li><a href="#2026-08-29-v1100">2026-08-29 — v1.10.0</a></li>
 <li><a href="#2026-08-26-v190">2026-08-26 — v1.9.0</a></li>
 <li><a href="#2026-08-25-v1811">2026-08-25 — v1.8.11</a></li>
@@ -718,6 +719,25 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-08-29-v1110">2026-08-29 — v1.11.0</h2>
+<p>Three undocumented surfaces from <a href="https://github.com/yeshayak">@yeshayak</a>, verified against a live 26.1.5930.1 tenant and re-verified here on 26.1.5940.0 before merge. Two of the findings turn out to be <strong>build-dependent</strong>, which is recorded rather than smoothed over.</p>
+<ul>
+<li>
+<p><strong>feat:</strong> <strong><a href="11-Inventory-REST-API.html#batch-pricing">Batch Pricing</a></strong> — <code>POST /api/inventory/parts/prices</code> (and the identical <code>/api/inventory/v2/parts/prices</code>) is commonly mistaken for XML-only. <strong>It isn't</strong> — both JSON and XML bodies work, re-verified on 5940.0. The "XML only" reputation comes from a WCF quirk: the service picks its (de)serializer from <code>Content-Type</code> rather than by inspecting the body, so a JSON body sent with <code>Content-Type: application/xml</code> returns a generic "Request Error" HTML page that gives no hint the fix is a <em>header</em>. <strong>A second, indistinguishable trap was found while verifying:</strong> the XML body must be a <strong>bare <code>&lt;ArrayOfItemPriceInfo&gt;</code> with no namespace</strong>, and adding a plausible DataContract namespace produces <em>the same</em> generic 400 page — two different mistakes, one useless error, which is most of the reason for the reputation. Also documented: <code>companyId</code> / <code>customerId</code> / <code>salesLocId</code> are required and validated one at a time (surfacing as <strong>HTTP 500</strong>, not 400), and <code>shipToId</code> / <code>orderDate</code> / <code>jobNo</code> are optional and now verified — note the query string omits the <code>optional</code> prefix the WCF method parameters carry. The tenant's own <code>parts/help/operations/GetItemPrices</code> page is the authoritative schema — <em>@yeshayak, verified @mrwuss</em></p>
+</li>
+<li>
+<p><strong>feat:</strong> <strong><a href="02-OData-API.html#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views</a></strong> — <strong>25</strong> views under a <code>p21_view_es_*</code> prefix, discovered via the tenant's full OData <code>$metadata</code> and not listed anywhere else in this documentation. Count and split confirmed independently on 5940.0: <strong>18</strong> denormalized search-source views (<code>es_customer</code>, <code>es_item</code>, <code>es_sales_order</code>, …) ending in a consistent <code>unique_id</code> / <code>max_date_last_modified</code> pair useful for incremental sync, and <strong>7</strong> index-configuration views (<code>es_index_hdr</code>, <code>es_index_field</code>, <code>es_index_priority_*</code>) describing the search feature rather than carrying business data. Not part of the curated 118-view <code>/data/erp/views/v1</code> surface. The <code>p21_view_es_ship_to</code> example makes the case for them — one row (63 columns) already joins customer, tax group, freight/carrier, terms, branch, salesrep and class codes that would otherwise take 6+ reads and client-side joins — <em>@yeshayak, verified @mrwuss</em></p>
+</li>
+<li>
+<p><strong>feat:</strong> <strong><a href="00-Authentication.html#server-info-endpoint-version-environment-detection">There is a version endpoint after all</a></strong> — <code>GET {uiserver}/ui/common/v1/serverinfo</code>, undocumented, same bearer auth, XML by default and JSON with <code>Accept: application/json</code>. This corrects <a href="14-Breaking-Changes.html#reading-the-middleware-version">doc 14</a>, which said flatly that no version endpoint exists and pushed readers to the session-create response. <strong><code>serverinfo</code> is the better probe precisely for this page's purpose: it needs no session.</strong> A tenant refusing session-create cannot tell you its build the other way — which is exactly when you need to know which breaking-change entries apply. Session-create is now documented as the fallback — <em>@yeshayak, reconciled @mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong><code>Monitoring/shortversion</code> is not the field to read, and the reason is build-dependent.</strong> Reported as returning <code>"0.0"</code> on a direct API call against 26.1.5930.1 while the web app's own traffic showed a real value. On <strong>26.1.5940.0 it is populated correctly</strong> (<code>"26.1"</code> / <code>"26.1.5940.0"</code>), so the entry is now a per-build table rather than a flat "not populated" claim. The advice survives either way and is what matters: <strong><code>Version/Application Version</code> was correct on both builds</strong> — note the literal space in the key. Also recorded from the re-verification: <code>Monitoring/cloudroleinstance</code> reads <code>...prophet21play.production</code> <strong>on a play tenant</strong>, because it names the Azure role instance and not the business environment — do not pattern-match it to decide whether you are pointed at live data. A C# compile error in the original example (a <code>record</code> declared before a local function, invalid under top-level statements) was fixed by the contributor — <em>@yeshayak, corrected @mrwuss</em></p>
+</li>
+<li>
+<p><strong>chore:</strong> <code>.gitignore</code> now excludes local Prettier config, so a contributor's format-on-save cannot silently reformat <code>docs/*.md</code> into a style the repo's tables and emphasis don't survive — <em>@yeshayak</em></p>
+</li>
+</ul>
 <h2 id="2026-08-29-v1100">2026-08-29 — v1.10.0</h2>
 <p>Four open issues closed. The v1.9.0 findings finally swept through the pages people land on, the <code>definitions/</code> folder made to agree with itself, the cookbook's coverage claim made true, and a direct-ship date hazard documented on both the read and write sides.</p>
 <ul>
@@ -1376,6 +1396,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-29-v1110">2026-08-29 — v1.11.0</a></li>
 <li><a href="#2026-08-29-v1100">2026-08-29 — v1.10.0</a></li>
 <li><a href="#2026-08-26-v190">2026-08-26 — v1.9.0</a></li>
 <li><a href="#2026-08-25-v1811">2026-08-25 — v1.8.11</a></li>

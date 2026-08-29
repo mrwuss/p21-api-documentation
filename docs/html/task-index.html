@@ -689,6 +689,10 @@
 <td><a href="00-Authentication.html#token-lifetime-and-reuse">00 § Token Lifetime and Reuse</a></td>
 </tr>
 <tr>
+<td>Detect P21 server version / production flag (undocumented endpoint)</td>
+<td><a href="00-Authentication.html#server-info-endpoint-version-environment-detection">00 § Server Info Endpoint</a></td>
+</tr>
+<tr>
 <td>Fix "not authorized" (P21 user permissions)</td>
 <td><a href="00-Authentication.html#p21-permissions-user-credential-auth">00 § P21 Permissions</a></td>
 </tr>
@@ -750,6 +754,10 @@
 <tr>
 <td>Table reads fine but is empty/inert (undeployed feature, e.g. zip→rep)</td>
 <td><a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">02 § Undeployed / Unlicensed Windows</a></td>
+</tr>
+<tr>
+<td>Denormalized, search-friendly views (<code>p21_view_es_*</code>: customer, item, order, invoice, etc.)</td>
+<td><a href="02-OData-API.html#enterpriseglobal-search-views-p21_view_es_">02 § Enterprise/Global Search Views</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -1097,6 +1105,11 @@
 <td>Customer-specific <strong>price + availability</strong> lookup</td>
 <td>—</td>
 <td><a href="11-Inventory-REST-API.html#pricing-endpoints">11 § Pricing Endpoints</a></td>
+</tr>
+<tr>
+<td><strong>Batch</strong> price + availability lookup (multiple items in one call, JSON <em>or</em> XML)</td>
+<td>—</td>
+<td><a href="11-Inventory-REST-API.html#batch-pricing">11 § Batch Pricing</a></td>
 </tr>
 <tr>
 <td>User-defined tables (UDT) rows</td>
