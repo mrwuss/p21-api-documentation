@@ -761,7 +761,7 @@
 <p><strong>There are two OData surfaces on a P21 server.</strong> This document covers <code>/odataservice/odata/</code> — the current one, which reaches every exposed table and view. A second, older surface at <code>/data/erp/views/v1</code> exposes a curated set of ~118 views with single-row key addressing. See <a href="#the-other-odata-surface-dataerpviewsv1">The other OData surface</a>.</p>
 </blockquote>
 <h3 id="protocol-version">Protocol version</h3>
-<p>Verified against a 26.1 tenant (August 2026) and re-verified on <strong>26.1.5940.0</strong> — the service answers as OData <strong>4.0</strong>:</p>
+<p>Verified against a 26.1 tenant (August 2026) and re-verified on <strong>26.1.5940.0</strong> — the service answers as OData <strong>4.0</strong>, and it answers the same on a <strong>production and a test tenant</strong> (both checked, August 2026), so this is not an environment-specific setting:</p>
 <div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/</span>
 <span class="err">    OData-Version: 4.0</span>
 <span class="err">    Content-Type: application/json; odata.metadata=minimal; odata.streaming=true</span>

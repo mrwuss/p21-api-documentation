@@ -20,7 +20,7 @@ The OData API provides **read-only** access to P21 data using the OData **v4** p
 
 ### Protocol version
 
-Verified against a 26.1 tenant (August 2026) and re-verified on **26.1.5940.0** — the service answers as OData **4.0**:
+Verified against a 26.1 tenant (August 2026) and re-verified on **26.1.5940.0** — the service answers as OData **4.0**, and it answers the same on a **production and a test tenant** (both checked, August 2026), so this is not an environment-specific setting:
 
 ```http
 GET {base}/odataservice/odata/table/
