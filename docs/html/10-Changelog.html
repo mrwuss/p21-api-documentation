@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-30-v1121">2026-08-30 — v1.12.1</a></li>
 <li><a href="#2026-08-30-v1120">2026-08-30 — v1.12.0</a></li>
 <li><a href="#2026-08-29-v1110">2026-08-29 — v1.11.0</a></li>
 <li><a href="#2026-08-29-v1100">2026-08-29 — v1.10.0</a></li>
@@ -720,6 +721,16 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-08-30-v1121">2026-08-30 — v1.12.1</h2>
+<p>Two corrections to how this repo describes itself, both prompted by questions the docs could not answer from their own text.</p>
+<ul>
+<li>
+<p><strong>docs:</strong> <strong><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/CONTRIBUTING.md#provenance-and-attribution">Provenance and attribution is now written down</a>.</strong> A large share of doc 03 originates in P21WWUG forum topics and community conference sessions, and doc 05's taxonomy correction came straight from the forum — but the rule governing that material lived only in the habit of whoever wrote each section. It is now explicit: <strong>a community claim is a lead, not a fact, until it is verified here</strong>; state the build you verified on; say so inline when you <em>could not</em> verify, and why; credit both the finder and the verifier. The citation shapes already in use are given as templates, along with the two link rules — cite public sources even when they need a membership to read, and when a source is a private or internal repository credit <strong>the person, not the repository</strong>. The community is now listed as a fourth content source in the README and <code>CLAUDE.md</code>, where only the SDK, working code and live testing appeared before — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>docs:</strong> <strong><a href="02-OData-API.html#protocol-version">The OData version claim now rests on two tenants</a>, not one.</strong> A production and a test tenant both return <code>OData-Version: 4.0</code> on <code>$metadata</code> and on ordinary data calls, with <code>"$Version": "4.0"</code> in the JSON CSDL — so v4 is not an environment-specific setting, and a v3 label anywhere is a stale string rather than a different service. Re-confirmed on the way: <code>/odataservice/odata/$metadata</code> 404s on both, and only the collection path <code>/odataservice/odata/table/$metadata</code> answers — <em>@mrwuss</em></p>
+</li>
+</ul>
 <h2 id="2026-08-30-v1120">2026-08-30 — v1.12.0</h2>
 <p>A fourth window-driving surface, three findings verified on top of it, and a payload this repo has been shipping broken. Everything below was re-run live on <strong>26.1.5940.0</strong> before it was written down; patterns and first verification from <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
 <ul>
@@ -1422,6 +1433,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-30-v1121">2026-08-30 — v1.12.1</a></li>
 <li><a href="#2026-08-30-v1120">2026-08-30 — v1.12.0</a></li>
 <li><a href="#2026-08-29-v1110">2026-08-29 — v1.11.0</a></li>
 <li><a href="#2026-08-29-v1100">2026-08-29 — v1.10.0</a></li>

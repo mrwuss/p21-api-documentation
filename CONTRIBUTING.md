@@ -36,6 +36,35 @@ Thank you for your interest in improving P21 API documentation! This project aim
 - **Note limitations** - Document known issues and workarounds
 - **Keep the routing layer in sync** - new task-worthy sections get a row in [docs/INDEX.md](docs/INDEX.md); renaming a heading must update its index anchors
 
+### Provenance and Attribution
+
+Much of this documentation starts as someone else's finding — a [P21WWUG](https://forums.p21ww.org/Forum104.aspx) forum post, a community conference session, a colleague's working script. That is a source like any other, and it is treated as one: **a community claim is a lead, not a fact, until it has been verified here.**
+
+How to handle one:
+
+1. **Verify it live** against a P21 tenant before writing it as fact, and say which build you verified on. Record the result honestly — several sections in this repo note where testing *corrected* the original claim, which is more useful to a reader than a clean-looking agreement.
+2. **If you cannot verify it, say so inline and give the reason.** "Deliberately not re-tested — the record it creates cannot be cleaned up through the UI" is a complete and acceptable answer. An unverified claim presented as verified is the one thing this repo cannot recover from.
+3. **Credit the person, and keep the credit after verification.** Both belong in the text: who found it, and who confirmed it. Verifying someone's finding does not make it yours.
+
+Citation shapes already in use — match them:
+
+```markdown
+*(Community session, Felipe Maurer, 2026; verified against a 26.1 tenant, August 2026.)*
+
+*Credit: Felipe Maurer ([P21WWUG profile](https://forums.p21ww.org/UserInfo10045.aspx)) — taxonomy
+correction and 25.1 middleware evidence in [this forum topic](https://forums.p21ww.org/Topic245514-3.aspx).*
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in
+> production (July–August 2026).
+```
+
+Two rules about links:
+
+- **Link the source when it is public.** A forum topic or profile URL lets a reader follow the discussion; P21WWUG requires membership to read, which is fine — cite it anyway.
+- **When the source is a private or internal repository, credit the person, not the repository.** Link a public profile only. A link nobody outside one company can open is not a citation, and the repository may hold data its owner never intended to publish.
+
+Changelog entries name both parties the same way — `— *Alex Westemeier, verified @mrwuss*`.
+
 ### Code Examples
 
 Every example that calls P21 is a **complete program**: paste it into a file, edit the constants at the top, run it. No repo clone, no `.env`, no helper imported from another page. A reader should never have to assemble an example from two places.
@@ -67,4 +96,4 @@ Use [GitHub Discussions](../../discussions) for questions and community help.
 
 ## Recognition
 
-Contributors will be recognized in the project. Thank you for helping the P21 community!
+Contributors are credited in the page their finding lands on and in [the changelog](docs/10-Changelog.md), by name — see [Provenance and Attribution](#provenance-and-attribution). That applies whether the contribution arrives as a pull request, an issue, a forum post someone verified here, or a script shared privately. Thank you for helping the P21 community.

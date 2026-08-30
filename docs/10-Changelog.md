@@ -18,6 +18,14 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-30 — v1.12.1
+
+Two corrections to how this repo describes itself, both prompted by questions the docs could not answer from their own text.
+
+- **docs:** **[Provenance and attribution is now written down](https://github.com/mrwuss/p21-api-documentation/blob/master/CONTRIBUTING.md#provenance-and-attribution).** A large share of doc 03 originates in P21WWUG forum topics and community conference sessions, and doc 05's taxonomy correction came straight from the forum — but the rule governing that material lived only in the habit of whoever wrote each section. It is now explicit: **a community claim is a lead, not a fact, until it is verified here**; state the build you verified on; say so inline when you *could not* verify, and why; credit both the finder and the verifier. The citation shapes already in use are given as templates, along with the two link rules — cite public sources even when they need a membership to read, and when a source is a private or internal repository credit **the person, not the repository**. The community is now listed as a fourth content source in the README and `CLAUDE.md`, where only the SDK, working code and live testing appeared before — *@mrwuss*
+
+- **docs:** **[The OData version claim now rests on two tenants](02-OData-API.md#protocol-version), not one.** A production and a test tenant both return `OData-Version: 4.0` on `$metadata` and on ordinary data calls, with `"$Version": "4.0"` in the JSON CSDL — so v4 is not an environment-specific setting, and a v3 label anywhere is a stale string rather than a different service. Re-confirmed on the way: `/odataservice/odata/$metadata` 404s on both, and only the collection path `/odataservice/odata/table/$metadata` answers — *@mrwuss*
+
 ## 2026-08-30 — v1.12.0
 
 A fourth window-driving surface, three findings verified on top of it, and a payload this repo has been shipping broken. Everything below was re-run live on **26.1.5940.0** before it was written down; patterns and first verification from [Alex Westemeier](https://github.com/AWestemeier).

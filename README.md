@@ -89,6 +89,7 @@ All documentation is derived from:
 - **Official SDK**: Epicor P21 SDK documentation
 - **Working Code**: Verified implementations from production projects
 - **Actual Testing**: Tested against P21 test environments — disputed or community-reported behavior is live-verified before it's documented
+- **The community**: P21WWUG forum topics, conference sessions and shared scripts — credited by name, and treated as a lead to verify rather than a fact to repeat ([how we handle it](CONTRIBUTING.md#provenance-and-attribution))
 
 ## Contributing
 

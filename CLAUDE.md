@@ -123,6 +123,7 @@ All documentation is derived from:
 1. **Official SDK Docs**: Epicor P21 SDK documentation
 2. **Working Code**: Verified production implementations
 3. **Actual Testing**: Verified against P21 test environments
+4. **The community**: P21WWUG forum topics, conference sessions, and colleagues' scripts — a **lead, never a fact until re-verified here**. Cite the person (public profile only; never link a private repo), state the build you verified on, and say so inline when you *couldn't* verify. See [CONTRIBUTING § Provenance and Attribution](https://github.com/mrwuss/p21-api-documentation/blob/master/CONTRIBUTING.md#provenance-and-attribution).
 
 ---
 
