@@ -49,8 +49,8 @@
             <Row>
               <Edits>
                 <Edit>
-                  <Name>bin</Name>
-                  <Value>A01-02</Value>
+                  <Name>track_bins</Name>
+                  <Value>ON</Value>
                 </Edit>
               </Edits>
               <RelativeDateEdits />

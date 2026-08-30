@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-30-v1120">2026-08-30 — v1.12.0</a></li>
 <li><a href="#2026-08-29-v1110">2026-08-29 — v1.11.0</a></li>
 <li><a href="#2026-08-29-v1100">2026-08-29 — v1.10.0</a></li>
 <li><a href="#2026-08-26-v190">2026-08-26 — v1.9.0</a></li>
@@ -719,6 +720,31 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-08-30-v1120">2026-08-30 — v1.12.0</h2>
+<p>A fourth window-driving surface, three findings verified on top of it, and a payload this repo has been shipping broken. Everything below was re-run live on <strong>26.1.5940.0</strong> before it was written down; patterns and first verification from <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
+<ul>
+<li>
+<p><strong>feat:</strong> <strong><a href="04-Interactive-API.html#the-uifull-surface-the-web-clients-own-rest-api">The ui/full surface</a></strong> — the Angular web client does not use the service registry. It opens windows by <strong>menu class name</strong> (<code>m_*</code>) over its own REST routes on the UI server, with the same bearer token and <strong>no <code>/api/</code> prefix</strong> (<code>{ui}/ui/full/v1/window/</code>; with the prefix, 404). That reaches windows the Transaction and Interactive APIs cannot open at all. Verified end-to-end by creating a supplier group through Supplier Group Maintenance — a window whose <code>frame_menu.service_name</code> is NULL — and confirming both rows over OData. Documented with the endpoint table, the <code>Success</code>/<code>State</code> envelope (there is no <code>Status</code> 1/2/3 here), Python and C# examples, and the gotchas: the open body must be <strong>a raw JSON string</strong>, a refused call returns <strong>HTTP 200 with <code>Success: false</code> and no messages at all</strong>, <code>GET .../window/tools</code> is 405, and a fabricated menu class is indistinguishable from a real window you cannot reach. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/151">#151</a> — <em>Alex Westemeier, verified @mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong>"NULL <code>service_name</code> means no API surface" was too strong</strong>, in <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">04 § Window→Service Discovery</a>, <a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">02</a> and <a href="08-SalesPricePage-Codes.html#purchase-side-pricing-services">08</a>. It means no <em>Transaction or Interactive</em> surface. Read <code>service_name</code> together with <code>new_ui_enabled</code> / <code>angular_enabled</code>: NULL <strong>and</strong> web-disabled is what leaves a window unreachable. The doc's two standing examples survive the correction — <code>m_zipcodemaintenance</code> and <code>m_postalcodegroupmaintenance</code> were probed on <code>ui/full</code> and 400 exactly like a menu name that does not exist — but Supplier Group Maintenance is the counter-case, and <code>frame_menu.class_name</code> is now in the discovery query as the second route out. Also documented: in <code>Cannot open window  because is not available...</code>, a <strong>blank</strong> window name means the <code>ServiceName</code> never resolved in the registry, while an echoed name means it resolved and was refused — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>feat:</strong> <strong><a href="04-Interactive-API.html#production-order-notes-header">Production order notes</a></strong> — the <code>ProductionOrder</code> window writes header notes through the same Notepad Entry popup as the Order and PurchaseOrder windows (<code>prod_order_hdr_note_tab&amp;&amp;cb_addnote</code> / <code>cb_editnote</code>, popup datawindow <code>_dw_hdr</code>). They land in <code>note</code> with <code>note_type_cd 2758</code> and <code>document_uid = prod_order_number</code>, classless, attributed to whichever account holds the token. Verified end to end. Two traps recorded with it: without <code>ResponseWindowHandlingEnabled: true</code> the tool call fails outright with <strong>HTTP 400 <code>Unexpected response window: Notepad Entry Window</code></strong>, and the window carries <strong>four</strong> note grids, not one (header, process, process PO line, route). Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/152">#152</a> — <em>Alex Westemeier, verified @mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong><a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing"><code>IgnoreDisabled</code> entry 8 now names four services</a>, and finally shows both outcomes side by side.</strong> The <code>ProductionOrder</code> note grid reproduces the signature exactly: <code>Column is disabled: note</code> without the flag; <code>Succeeded: 1</code>, <code>Status: "Passed"</code>, no messages and <strong>nothing written</strong> with it, the echoed transaction reduced to the header element alone. Minutes later on the same build, the same flag <em>genuinely</em> inserted a location supplier row on the <code>Item</code> window. Same tenant, same build, opposite outcomes, identical-looking responses — which is the entry's whole point, now demonstrable rather than asserted. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/153">#153</a> — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>fix:</strong> <strong>The primary-bin payload this repo ships has been failing.</strong> It repeats <code>location_id</code> inside the <code>TABPAGE_18.inv_loc_detail</code> <strong>Edits</strong> as well as its <code>Keys</code>; <code>location_id</code> is a disabled column on that form, so the transaction dies with <code>General Exception: Column is disabled: location_id</code> and writes nothing. Corrected in <a href="03-Transaction-API.html#item-service-nested-location-edits">03 § Item Service</a>, the <a href="recipes/set-primary-bin-supplier.html">set-primary-bin-supplier recipe</a>, both payload files and both language recipes — five copies, the <a href="14-Breaking-Changes.html">propagation pattern</a> this repo keeps tripping over. <code>IgnoreDisabled: true</code> also makes the error go away and is explicitly called out as the wrong fix. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/154">#154</a> — <em>@mrwuss</em></p>
+</li>
+<li>
+<p><strong>feat:</strong> <strong><a href="03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">Adding a location supplier row</a></strong> — the silent no-op documented since v1.8 named its fix in prose ("add the location supplier row first") without ever showing it. The payload keys on <strong>both</strong> <code>location_id</code> and <code>supplier_id</code> and needs <code>IgnoreDisabled: true</code>, because both columns are disabled on that grid; the single-key control fails loudly and writes nothing. P21 creates the item-level <code>inventory_supplier</code> record in the same call. New payload files, a recipe section, and a note that <code>inventory_supplier_x_loc</code> may not be OData-exposed — read it back through <code>POST /transaction/get</code> — <em>Alex Westemeier, verified @mrwuss</em></p>
+</li>
+<li>
+<p><strong>feat:</strong> <strong><a href="03-Transaction-API.html#enabling-bin-tracking-at-a-location-track_bins">Enabling bin tracking</a></strong> — <code>track_bins</code> was a field name in a table and nothing more. It is a checkbox (<code>"ON"</code>/<code>"OFF"</code>), and enabling it <strong>assigns a primary bin when the item has none</strong> — <code>NEEDS_BIN</code> here, <code>0</code> on another tenant, so the value is environment-specific and the assignment is not. <code>"OFF"</code> reverts and clears that bin again. Other-charge and subtotal items are refused outright, a <em>different</em> location's row can block the save, and items with stock on hand want a decision rather than a batch. New payload files; the Item window's location element map now includes <code>TABPAGE_23.tp_23_dw_23</code> (location-level <code>purchase_class_id</code>) — <em>Alex Westemeier, verified @mrwuss</em></p>
+</li>
+</ul>
 <h2 id="2026-08-29-v1110">2026-08-29 — v1.11.0</h2>
 <p>Three undocumented surfaces from <a href="https://github.com/yeshayak">@yeshayak</a>, verified against a live 26.1.5930.1 tenant and re-verified here on 26.1.5940.0 before merge. Two of the findings turn out to be <strong>build-dependent</strong>, which is recorded rather than smoothed over.</p>
 <ul>
@@ -1396,6 +1422,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-08-30-v1120">2026-08-30 — v1.12.0</a></li>
 <li><a href="#2026-08-29-v1110">2026-08-29 — v1.11.0</a></li>
 <li><a href="#2026-08-29-v1100">2026-08-29 — v1.10.0</a></li>
 <li><a href="#2026-08-26-v190">2026-08-26 — v1.9.0</a></li>

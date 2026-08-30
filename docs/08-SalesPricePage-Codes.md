@@ -2455,7 +2455,7 @@ Where to find them in the desktop client (from `frame_menu.service_name`, verifi
 | `PurchasePricingPageSupplierItem` | Page Maintenance By Supplier ID/Item ID | `m_bysupplieriditemid` |
 | `PurchasePricingPageSupplierDiscGrp` | Page Maintenance By Supplier ID/Discount Group | `m_bysupplieriddiscountgroup` |
 
-`frame_menu` is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A `NULL` `service_name` means the window has no API surface.
+`frame_menu` is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A `NULL` `service_name` means no Transaction or Interactive surface — the window may still be drivable through [the `ui/full` surface](04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) if its `new_ui_enabled`/`angular_enabled` flags say the web client can open it.
 
 All three key on the same five fields — `company_id`, `purchase_pricing_book_id`, `supplier_id`, `effective_date`, `expiration_date` — and the item and discount-group variants add one more:
 

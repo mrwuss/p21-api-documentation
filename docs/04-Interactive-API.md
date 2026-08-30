@@ -221,6 +221,8 @@ Response:
 > ```
 >
 > Despite the "not available or user does not have permission" wording, this is the same [undeployed/unavailable-window signal](03-Transaction-API.md#endpoints) seen on the Transaction API — a window is only reliably API-openable through a **registered service name**. Discover the service name for a window via `frame_menu.service_name` (see [Window→Service Discovery](#8-window-to-service-discovery-frame_menu)). Prefer `ServiceName` for every open.
+>
+> **Read the window name in the error — the blank is the diagnostic.** The message interpolates whatever name the middleware resolved, so an **empty** name means the identifier you sent resolved to nothing in the service registry, while an echoed name means it resolved and the window was refused. `{"ServiceName": "SupplierGroup"}` on a service that does not exist returns `Cannot open window  because is not available...` with two spaces where the name belongs; `{"Name": "w_supplier_group_maint"}` on the same window echoes the name back. A blank is your cue to check `frame_menu` for a NULL `service_name` and, if the window is web-enabled, to reach for [the `ui/full` surface](#the-uifull-surface-the-web-clients-own-rest-api) instead (verified 26.1.5940.0, August 2026).
 
 ### 3. Change Data
 
@@ -752,7 +754,8 @@ Because [opening by `Name`/`Title` is unreliable](#2-open-window) and only a reg
 ```sql
 SELECT menu_item_name,      -- the menu label ("Territory Maintenance")
        stringparm,          -- the w_* window name ("w_territory_maint")
-       service_name,        -- the ServiceName to open it with ("Territory") — NULL = no API surface
+       class_name,          -- the m_* menu class ("m_territorymaintenance") — the ui/full route
+       service_name,        -- the ServiceName ("Territory") — NULL = no Transaction/Interactive surface
        enabled,             -- menu item enabled
        new_ui_enabled,      -- available in the new (web) UI
        angular_enabled      -- available in the Angular client
@@ -761,7 +764,8 @@ WHERE  stringparm LIKE 'w[_]%';
 ```
 
 - **`service_name`** is the identifier to pass as `ServiceName` — e.g. Territory Maintenance → `Territory`, Territory Group Maintenance → `TerritoryGroup`.
-- **`service_name IS NULL`** marks a window with **no API surface at all** — it 500s on `GET /api/v2/definition/{guess}` and 400s on an Interactive by-Name open. On the tested 26.1 system, Zip Code Maintenance (`w_zip_code_maint`) and Postal Code Group Maintenance (`w_postal_code_group_maint`) are both NULL — classic-desktop-only, undeployed windows (see [Undeployed/unavailable windows](02-OData-API.md#undeployed-unlicensed-windows-readable-tables-no-api-surface)).
+- **`service_name IS NULL`** marks a window with **no Transaction or Interactive surface** — it 500s on `GET /api/v2/definition/{guess}` and 400s on an Interactive by-Name open. It does *not* mean the window is unreachable: a NULL-service window that the web client can open is still drivable through [the `ui/full` surface](#the-uifull-surface-the-web-clients-own-rest-api) by its menu class name. Read the two columns together — **`service_name` NULL *and* `new_ui_enabled`/`angular_enabled` `'N'`** is the combination that means no API can reach it. On the tested 26.1 system, Zip Code Maintenance (`w_zip_code_maint`) and Postal Code Group Maintenance (`w_postal_code_group_maint`) are both NULL *and* web-disabled — classic-desktop-only, undeployed windows, refused on `ui/full` as well (see [Undeployed/unavailable windows](02-OData-API.md#undeployed-unlicensed-windows-readable-tables-no-api-surface)). Supplier Group Maintenance (`w_supplier_group_maint`) is the other case: NULL service name, web-enabled, and it opens on `ui/full`.
+- **`class_name`** is the column you need for that fallback — the `m_*` menu class the `ui/full` surface opens windows by. Select it alongside `service_name` and you get both routes out of one query.
 - This complements the [`window_x_menu` discovery path](03-Transaction-API.md#pdf-report-generation) documented for report (`m_*`) services: `window_x_menu` finds callable report names; `frame_menu.service_name` finds the interactive/transaction service name behind a maintenance window.
 
 > Environment: verified on 26.1.5894.1 (play), July 2026. (The "does not have permission" wording names whichever user is calling — it's an availability signal, not a grantable permission.)
@@ -2909,6 +2913,51 @@ Verified sequence (session created with `"ResponseWindowHandlingEnabled": true`)
 > GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'
 > ```
 
+## Production Order Notes (Header)
+
+The **ProductionOrder window uses the same Notepad Entry popup** as the Order and PurchaseOrder windows, and for the same reason: its note grid is display-only, so the popup is the editor. Verified end-to-end on 26.1.5940.0 (August 2026) — note written, read back from `Prophet21.dbo.note`.
+
+Production-order notes land in the generic `note` table rather than a `*_notepad` table of their own:
+
+| | Value |
+|---|---|
+| **Table** | `note` |
+| **`note_type_cd`** | `2758` (production order header) |
+| **`document_uid`** | the `prod_order_number` |
+| **Tab (`PageName`)** | `PROD_ORDER_HDR_NOTE_TAB` |
+| **Add / edit tools** | `prod_order_hdr_note_tab&&cb_addnote` / `...&&cb_editnote` |
+| **Popup datawindow** | `_dw_hdr` — `topic`, `note`, `notepad_class_id`, `mandatory`, activation/expiration dates |
+
+Verified sequence (session created with `"ResponseWindowHandlingEnabled": true`):
+
+1. Open `{"ServiceName": "ProductionOrder"}` and load the order — `TabName: "TABPAGE_1"`, `DatawindowName: "tp_1_dw_1"`, `prod_order_number`.
+2. `PUT /v2/tab` `{"PageName": "PROD_ORDER_HDR_NOTE_TAB"}`.
+3. `POST /v2/tools` `{"ToolName": "prod_order_hdr_note_tab&&cb_addnote"}` — returns `Status: 3` with the popup's window ID in the `windowopened` event.
+4. `PUT /v2/change` against the **popup's** window ID: `DatawindowName: "_dw_hdr"`, `TabName: null`, fields `topic` and `note`.
+5. `POST /v2/tools` `{"ToolName": "cb_ok"}` on the popup, then save the main window (`PUT /v2/data`, bare window-GUID body).
+6. Read back over OData: `note?$filter=document_uid eq {prod_order_number} and note_type_cd eq 2758`.
+
+To **edit** an existing note, select its row in the grid first (`PUT /v2/row` on `prod_order_hdr_note_tab`) and run `...&&cb_editnote` instead; the popup opens on that note.
+
+Three things worth knowing before you drive it:
+
+- **Omit `ResponseWindowHandlingEnabled` and the tool call fails outright** with HTTP 400 `Unexpected response window: Notepad Entry Window. Window class: w_notepad_response_lite` — the popup is not handed back, so there is nothing to fill.
+- **The display area is pre-selected.** Unlike the [standalone notepad windows](#standalone-notepad-windows-itemcustomersupplier), which force an area choice, the production-order popup opens with its area already picked and `notepad_class_id` left NULL — the note saves without touching either.
+- **Attribution is the calling user.** `note.created_by` is whichever account holds the token, so a service account writes every note under its own name. Put the real user in the `topic` if you need it recorded.
+
+**The window carries four note grids, not one.** `GET /v2/tools?windowId=` (a bare JSON array on this build) lists an add/edit pair for each:
+
+| Datawindow prefix | Notes it edits |
+|---|---|
+| `prod_order_hdr_note_tab` | production order header |
+| `processnotestabpage` | process |
+| `processpolinenote_tabpage` | process PO line |
+| `routenotestabpage` | route |
+
+Only the header pair is verified here; the other three follow the same `{datawindow}&&cb_addnote` shape.
+
+> **Transaction API cannot substitute.** The same grid is closed to `/transaction`: without `IgnoreDisabled` it refuses with `Column is disabled: note` (or `topic`), and **with** the flag it returns `Succeeded: 1` while writing nothing — see [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
+
 ## Standalone Notepad Windows (Item/Customer/Supplier)
 
 The standalone notepad services (`ItemNotepad`, `CustomerNotepad`, `SupplierNotepad`, `VendorNotepad`) are **closed to the Transaction API** — their mandatory "where does this note display" area selector is a drag-and-drop control ([03 § Limitations](03-Transaction-API.md#limitations)). The Interactive API opens them: **the same picker is exposed as ordinary button tools** — `cb_select`, `cb_selectall`, `cb_deselect`, `cb_deselectall`, present in the tool list from the moment the window opens.
@@ -3066,6 +3115,315 @@ The C# SDK (`P21.UI.Service.Client`) calls these V1 REST endpoints internally. T
 > **Note:** The `uiserver0` prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check `GET /api/ui/router/v1/?urlType=external` to obtain the correct base URL.
 
 ---
+
+## The ui/full Surface (the Web Client's Own REST API)
+
+The Angular web client at `/prophet21/` does not resolve windows through the service registry the way the Transaction and Interactive APIs do. It opens them by **menu class name** (`frame_menu.class_name`, the `m_*` values) over its own REST surface on the same UI server, with the same bearer token. That makes it the way in to windows the registry does not expose — the ones whose `frame_menu.service_name` is NULL, which [neither TAPI nor the Interactive API can open under any name](#8-window-to-service-discovery-frame_menu).
+
+Verified end-to-end on 26.1.5940.0 (August 2026): created a supplier group (`supplier_group_hdr` + `supplier_group_line`) through Supplier Group Maintenance, a window with **no service name at all**, and confirmed both rows over OData.
+
+> **When to reach for it.** Prefer a registered service and the Interactive API whenever one exists — this surface is less documented and its failure reporting is thinner (see the gotchas below). Reach for `ui/full` when `frame_menu.service_name` is NULL and the window is web-client enabled.
+
+### Base URL and route shape
+
+The base is the **UI server** from the [router handshake](00-Authentication.md#ui-server-url) — the same host the Interactive API uses. The routes, however, carry **no `/api/` prefix**:
+
+```http
+POST {ui-server}/ui/full/v1/window/          ← correct
+POST {ui-server}/api/ui/full/v1/window/      ← 404
+```
+
+That 404 is the easiest way to conclude the surface does not exist. It does; the prefix does not belong.
+
+| Step | Call | Body |
+|---|---|---|
+| Create session | `POST {ui}/ui/common/v1/sessions/` | `{"ClientPlatformApp": "Web", "SessionType": "User"}` |
+| Open window | `POST {ui}/ui/full/v1/window/` | **a raw JSON string** — `"m_suppliergroupmaintenance"` |
+| Read a datawindow | `GET {ui}/ui/full/v2/data/data?id={windowId}&dw={datawindow}` | — |
+| Get window state | `GET {ui}/ui/full/v2/window?id={windowId}` | — |
+| Set a field | `PUT {ui}/ui/full/v2/data/data` | `{WindowId, DatawindowName, FieldName, Value[, Row]}` |
+| Add a grid row | `POST {ui}/ui/full/v2/data/row` | `{WindowId, DatawindowName, PageName}` |
+| Select a row | `PUT {ui}/ui/full/v2/data/row` | `{WindowId, DatawindowName, PageName, Row}` |
+| Change tab | `POST {ui}/ui/full/v2/window/page` | `{WindowId, PageName}` |
+| Run a tool / save | `POST {ui}/ui/full/v2/window/tools` | `{WindowId, ToolName, DatawindowName, FieldName, Row, Text}` |
+| Close window | `DELETE {ui}/ui/common/v1/sessions/windowmenu?menuId={m_class}` | — |
+| End session | `DELETE {ui}/ui/common/v1/sessions/` | — |
+
+Setting a field takes **no `TabName`** — unlike [`/v2/change`](#3-change-data) on the Interactive API, the datawindow name alone identifies the target.
+
+### Reading the response
+
+The envelope is not the Interactive API's. There is no `Status` 1/2/3 here:
+
+```jsonc
+{
+  "Result": "81bbf4ea-d84e-4c03-a16e-df6d4fe93f52",   // the WindowId, on open
+  "Events": [ /* preopen, windowopened, dwcontentchanged, ... */ ],
+  "Messages": [],
+  "Data": {},
+  "DataInformation": {},
+  "Success": true,
+  "State": "Normal"
+}
+```
+
+**Check `Success == true` and `State == "Normal"`.** Be strict about it, because:
+
+> **A failure here is silent.** A refused call returns HTTP **200** with `Success: false` and an **empty `Messages` array** — no error text at all. Adding a grid row before the header fields are populated does exactly this. If you only check the HTTP status, or only look for messages, you will read a failure as a success.
+
+Events also arrive in a different shape from the Interactive API's, which matters if you share parsing code between the two:
+
+| Surface | Event payload |
+|---|---|
+| `ui/full` | `Events[].EventData` — a plain object (`{"windowid": "...", "window_classname": "w_supplier_group_maint"}`) |
+| `api/ui/interactive/v2` | `Events[].Data` — a list of `{"Key": ..., "Value": ...}` pairs |
+
+### Worked example: create a supplier group
+
+The window (`w_supplier_group_maint`, menu class `m_suppliergroupmaintenance`) is a header plus a supplier grid:
+
+| Part | Tab page | Datawindow | Fields |
+|---|---|---|---|
+| Header | `TP_SUPPLIERGRPHDR` | `suppliergrphdr` | `supplier_group_id` (the key), `supplier_group_desc` |
+| Lines | `TP_SUPPLIERGRPLINE` | `suppliergrpline` | `supplier_id`, `supplier_name` (display autofill), `delete_flag` |
+
+It opens with one empty line row already present, so the first supplier goes onto row 1 and only the second and later ones need `POST /v2/data/row`. `Quick.Save` commits, and the window clears back to `(New)` — visible in the `Caption` from `GET /v2/window`, which is the cheapest confirmation that the save happened.
+
+<!-- tabs -->
+
+#### Python
+
+```python
+"""Create a P21 supplier group through the web client's ui/full surface.
+
+Assumes `token` and `ui_server` from the standard handshake - see
+docs/00-Authentication.md. Nothing here needs a browser session.
+"""
+import json
+
+import httpx
+
+MENU = "m_suppliergroupmaintenance"
+HDR, LINE, LINE_TAB = "suppliergrphdr", "suppliergrpline", "TP_SUPPLIERGRPLINE"
+
+
+def check(response: httpx.Response, step: str) -> dict:
+    """Success on this surface is Success + State, not the HTTP status."""
+    body = response.json() if response.text else {}
+    if not (body.get("Success") and body.get("State") == "Normal"):
+        raise RuntimeError(
+            f"{step} failed: Success={body.get('Success')} "
+            f"State={body.get('State')} Messages={body.get('Messages')}"
+        )
+    return body
+
+
+def create_supplier_group(
+    client: httpx.Client,
+    ui_server: str,
+    headers: dict,
+    group_id: str,
+    description: str,
+    supplier_ids: list[str],
+) -> None:
+    client.post(
+        f"{ui_server}/ui/common/v1/sessions/",
+        headers=headers,
+        json={"ClientPlatformApp": "Web", "SessionType": "User"},
+    )
+    try:
+        # The open body is a bare JSON string, not an object.
+        opened = check(
+            client.post(
+                f"{ui_server}/ui/full/v1/window/",
+                headers=headers,
+                content=json.dumps(MENU),
+            ),
+            "open window",
+        )
+        window_id = opened["Result"]
+
+        def set_field(datawindow: str, field: str, value: str, row: int | None = None) -> None:
+            body = {
+                "WindowId": window_id,
+                "DatawindowName": datawindow,
+                "FieldName": field,
+                "Value": value,
+            }
+            if row is not None:
+                body["Row"] = row
+            check(
+                client.put(f"{ui_server}/ui/full/v2/data/data", headers=headers, json=body),
+                f"set {datawindow}.{field}",
+            )
+
+        set_field(HDR, "supplier_group_id", group_id)
+        set_field(HDR, "supplier_group_desc", description)
+
+        for row, supplier_id in enumerate(supplier_ids, start=1):
+            if row > 1:  # row 1 already exists when the window opens
+                check(
+                    client.post(
+                        f"{ui_server}/ui/full/v2/data/row",
+                        headers=headers,
+                        json={
+                            "WindowId": window_id,
+                            "DatawindowName": LINE,
+                            "PageName": LINE_TAB,
+                        },
+                    ),
+                    "add line row",
+                )
+            set_field(LINE, "supplier_id", supplier_id, row=row)
+
+        check(
+            client.post(
+                f"{ui_server}/ui/full/v2/window/tools",
+                headers=headers,
+                json={
+                    "WindowId": window_id,
+                    "ToolName": "Quick.Save",
+                    "DatawindowName": None,
+                    "FieldName": None,
+                    "Row": 0,
+                    "Text": None,
+                },
+            ),
+            "Quick.Save",
+        )
+
+        state = client.get(
+            f"{ui_server}/ui/full/v2/window", headers=headers, params={"id": window_id}
+        ).json()
+        print("after save:", state["Result"]["Caption"])  # "...: (New)" once committed
+    finally:
+        client.delete(
+            f"{ui_server}/ui/common/v1/sessions/windowmenu",
+            headers=headers,
+            params={"menuId": MENU},
+        )
+        client.delete(f"{ui_server}/ui/common/v1/sessions/", headers=headers)
+```
+
+#### C#
+
+```csharp
+// Create a P21 supplier group through the web client's ui/full surface.
+// Assumes `token` and `uiServer` from the standard handshake - see
+// docs/00-Authentication.md.
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+
+const string Menu = "m_suppliergroupmaintenance";
+const string Hdr = "suppliergrphdr";
+const string Line = "suppliergrpline";
+const string LineTab = "TP_SUPPLIERGRPLINE";
+
+static async Task<JsonElement> CheckAsync(HttpResponseMessage response, string step)
+{
+    // Success on this surface is Success + State, not the HTTP status.
+    var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+    var ok = body.TryGetProperty("Success", out var success) && success.GetBoolean()
+             && body.TryGetProperty("State", out var state) && state.GetString() == "Normal";
+    if (!ok)
+    {
+        throw new InvalidOperationException($"{step} failed: {body}");
+    }
+
+    return body;
+}
+
+async Task CreateSupplierGroupAsync(
+    HttpClient client,
+    string uiServer,
+    string groupId,
+    string description,
+    IReadOnlyList<string> supplierIds)
+{
+    await client.PostAsJsonAsync(
+        $"{uiServer}/ui/common/v1/sessions/",
+        new { ClientPlatformApp = "Web", SessionType = "User" });
+
+    try
+    {
+        // The open body is a bare JSON string, not an object.
+        var openBody = new StringContent(
+            JsonSerializer.Serialize(Menu), Encoding.UTF8, "application/json");
+        var opened = await CheckAsync(
+            await client.PostAsync($"{uiServer}/ui/full/v1/window/", openBody), "open window");
+        var windowId = opened.GetProperty("Result").GetString();
+
+        async Task SetFieldAsync(string datawindow, string field, string value, int? row = null)
+        {
+            var body = new Dictionary<string, object?>
+            {
+                ["WindowId"] = windowId,
+                ["DatawindowName"] = datawindow,
+                ["FieldName"] = field,
+                ["Value"] = value,
+            };
+            if (row is not null)
+            {
+                body["Row"] = row;
+            }
+
+            await CheckAsync(
+                await client.PutAsJsonAsync($"{uiServer}/ui/full/v2/data/data", body),
+                $"set {datawindow}.{field}");
+        }
+
+        await SetFieldAsync(Hdr, "supplier_group_id", groupId);
+        await SetFieldAsync(Hdr, "supplier_group_desc", description);
+
+        for (var row = 1; row <= supplierIds.Count; row++)
+        {
+            if (row > 1) // row 1 already exists when the window opens
+            {
+                await CheckAsync(
+                    await client.PostAsJsonAsync(
+                        $"{uiServer}/ui/full/v2/data/row",
+                        new { WindowId = windowId, DatawindowName = Line, PageName = LineTab }),
+                    "add line row");
+            }
+
+            await SetFieldAsync(Line, "supplier_id", supplierIds[row - 1], row);
+        }
+
+        await CheckAsync(
+            await client.PostAsJsonAsync(
+                $"{uiServer}/ui/full/v2/window/tools",
+                new
+                {
+                    WindowId = windowId,
+                    ToolName = "Quick.Save",
+                    DatawindowName = (string?)null,
+                    FieldName = (string?)null,
+                    Row = 0,
+                    Text = (string?)null,
+                }),
+            "Quick.Save");
+    }
+    finally
+    {
+        await client.DeleteAsync($"{uiServer}/ui/common/v1/sessions/windowmenu?menuId={Menu}");
+        await client.DeleteAsync($"{uiServer}/ui/common/v1/sessions/");
+    }
+}
+```
+
+<!-- /tabs -->
+
+### Gotchas
+
+- **The open body must be a raw JSON string.** `"m_suppliergroupmaintenance"`, quoted — not `{"menuSearchString": "..."}`. An object body returns 400 with both halves of the complaint: `Unexpected character encountered while parsing value: {. Path '', line 1, position 1.` and `The menuSearchString field is required.`
+- **No session, no window.** Skip `POST /ui/common/v1/sessions/` and the open returns an **empty response body** — no JSON, nothing to parse.
+- **`GET .../window/tools` is 405.** Tools are POST-only here; there is no listing endpoint the way [`GET /v2/tools`](#running-tools-buttons) works on the Interactive API. Take the tool names from the web client's own network traffic, or from the equivalent Interactive window.
+- **A bad menu class is indistinguishable from a window you cannot reach.** Both return `400 {"ErrorMessage":"Window <<m_whatever>> is not available or user does not have permission to open it."}` — verified identical for a fabricated name and for `m_zipcodemaintenance`, a real window that is classic-desktop-only. Check `frame_menu` before concluding the name is wrong.
+- **It is not only an escape hatch.** Windows that *do* have service names open here too (`m_customermaintenance` → `w_customer_maint_sheet`, verified), so the surface is a general one. That is not a reason to prefer it over a registered service.
+- **Verify the write independently**, as everywhere else in this repo. The cleared caption tells you the window committed, not what it wrote.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — surface reverse-engineered from the web client and first verified in production (August 2026); re-verified here on 26.1.5940.0.
 
 ## Verifying Writes (Don't Trust Save Status Alone)
 

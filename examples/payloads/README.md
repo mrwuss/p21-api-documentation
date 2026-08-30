@@ -22,6 +22,8 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Create a requisition PO | [json](json/create-requisition-po.json) | [xml](xml/create-requisition-po.xml) | `POST /api/v2/transaction` |
 | Set an item's primary bin | [json](json/set-primary-bin.json) | [xml](xml/set-primary-bin.xml) | `POST /api/v2/transaction` |
 | Set an item's primary supplier | [json](json/set-primary-supplier.json) | [xml](xml/set-primary-supplier.xml) | `POST /api/v2/transaction` |
+| Add a supplier to an item's location list (prerequisite for the flip) | [json](json/add-supplier-x-loc.json) | [xml](xml/add-supplier-x-loc.xml) | `POST /api/v2/transaction` |
+| Enable bin tracking at a location | [json](json/set-track-bins.json) | [xml](xml/set-track-bins.xml) | `POST /api/v2/transaction` |
 | Record labor time | [json](json/record-labor-time.json) | [xml](xml/record-labor-time.xml) | `POST /api/v2/transaction` |
 | Inventory adjustment (write-off) | [json](json/inventory-adjustment.json) | [xml](xml/inventory-adjustment.xml) | `POST /api/v2/transaction` |
 | Reassign a customer's salesrep (promote new, delete old) | [json](json/reassign-salesrep.json) | [xml](xml/reassign-salesrep.xml) | `POST /api/v2/transaction` |

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <TransactionSet xmlns="http://schemas.datacontract.org/2004/07/P21.Transactions.Model.V2">
+  <IgnoreDisabled>true</IgnoreDisabled>
   <Name>Item</Name>
   <Transactions>
     <Transaction>
@@ -43,20 +44,25 @@
         <DataElement>
           <Keys xmlns:a="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
             <a:string>location_id</a:string>
+            <a:string>supplier_id</a:string>
           </Keys>
-          <Name>TABPAGE_18.inv_loc_detail</Name>
+          <Name>SUPPLIER_X_LOCATION.supplier_x_location</Name>
           <Rows>
             <Row>
               <Edits>
                 <Edit>
-                  <Name>bin</Name>
-                  <Value>A01-02</Value>
+                  <Name>location_id</Name>
+                  <Value>10</Value>
+                </Edit>
+                <Edit>
+                  <Name>supplier_id</Name>
+                  <Value>10050</Value>
                 </Edit>
               </Edits>
               <RelativeDateEdits />
             </Row>
           </Rows>
-          <Type>Form</Type>
+          <Type>List</Type>
         </DataElement>
       </DataElements>
       <Status>New</Status>

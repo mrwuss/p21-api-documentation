@@ -695,6 +695,13 @@
 <li><a href="#example-use-cases_5">Example Use Cases</a></li>
 </ul>
 </li>
+<li><a href="#uifull-the-web-clients-surface-last-resort">ui/full — the Web Client's Surface (Last Resort)</a><ul>
+<li><a href="#best-for_6">Best For</a></li>
+<li><a href="#characteristics_6">Characteristics</a></li>
+<li><a href="#use-when_6">Use When</a></li>
+<li><a href="#dont-use-when_6">Don't Use When</a></li>
+</ul>
+</li>
 <li><a href="#decision-flowchart">Decision Flowchart</a></li>
 <li><a href="#hybrid-approaches">Hybrid Approaches</a><ul>
 <li><a href="#read-with-odata-write-with-transactioninteractive">Read with OData, Write with Transaction/Interactive</a></li>
@@ -1126,6 +1133,30 @@
 </ul>
 <p>See <a href="13-UDT-Service-API.html">UDT Service API</a> for full details.</p>
 <hr />
+<h2 id="uifull-the-web-clients-surface-last-resort">ui/full — the Web Client's Surface (Last Resort)</h2>
+<h3 id="best-for_6">Best For</h3>
+<ul>
+<li>Windows the service registry does not expose — <code>frame_menu.service_name</code> is NULL, so no <code>ServiceName</code> exists to open them with</li>
+</ul>
+<h3 id="characteristics_6">Characteristics</h3>
+<ul>
+<li><strong>Stateful</strong>, like the Interactive API, but a separate session (<code>{ui}/ui/common/v1/sessions/</code>)</li>
+<li><strong>Opens by menu class name</strong> (<code>m_*</code>), not by service name</li>
+<li><strong>No <code>/api/</code> prefix</strong> on its routes — <code>{ui}/ui/full/v2/...</code></li>
+<li><strong>Different envelope</strong> — <code>Success</code> + <code>State</code>, not <code>Status</code> 1/2/3</li>
+<li><strong>Thin failure reporting</strong> — a refused call is HTTP 200, <code>Success: false</code>, no message</li>
+</ul>
+<h3 id="use-when_6">Use When</h3>
+<ul>
+<li>The window you need has a NULL <code>service_name</code> <em>and</em> the web client can open it</li>
+</ul>
+<h3 id="dont-use-when_6">Don't Use When</h3>
+<ul>
+<li>A registered service exists. Prefer the Transaction API, then the Interactive API — both are better documented and report failures properly.</li>
+<li>The window is classic-desktop-only (<code>new_ui_enabled</code> / <code>angular_enabled</code> = <code>'N'</code>). Nothing reaches it.</li>
+</ul>
+<p>See <a href="04-Interactive-API.html#the-uifull-surface-the-web-clients-own-rest-api">The ui/full Surface</a> for the endpoint table and worked example.</p>
+<hr />
 <h2 id="decision-flowchart">Decision Flowchart</h2>
 <div class="highlight"><pre><span></span><code>Start
   │
@@ -1328,6 +1359,13 @@ three-API hybrid pattern.</p>
 <li><a href="#use-when_5">Use When</a></li>
 <li><a href="#dont-use-when_5">Don't Use When</a></li>
 <li><a href="#example-use-cases_5">Example Use Cases</a></li>
+</ul>
+</li>
+<li><a href="#uifull-the-web-clients-surface-last-resort">ui/full — the Web Client's Surface (Last Resort)</a><ul>
+<li><a href="#best-for_6">Best For</a></li>
+<li><a href="#characteristics_6">Characteristics</a></li>
+<li><a href="#use-when_6">Use When</a></li>
+<li><a href="#dont-use-when_6">Don't Use When</a></li>
 </ul>
 </li>
 <li><a href="#decision-flowchart">Decision Flowchart</a></li>

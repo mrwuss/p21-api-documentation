@@ -29,10 +29,7 @@ The `Item` service (Item Maintenance window) supports **nested DataElement navig
             { "Name": "TABPAGE_17.invloclist", "Type": "List", "Keys": ["location_id"],
               "Rows": [{ "Edits": [ {"Name": "location_id", "Value": "10"} ] }] },
             { "Name": "TABPAGE_18.inv_loc_detail", "Type": "Form", "Keys": ["location_id"],
-              "Rows": [{ "Edits": [
-                  {"Name": "location_id", "Value": "10"},
-                  {"Name": "bin", "Value": "A01-02"}
-              ] }] }
+              "Rows": [{ "Edits": [ {"Name": "bin", "Value": "A01-02"} ] }] }
         ]
     }]
 }
@@ -342,14 +339,49 @@ static string ReadField(string payload, string field)
 
 ## Gotchas
 
-- **Silent no-op — the big one.** The target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the transaction still returns `Succeeded = 1` but **nothing flips** — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) **Always verify `inv_loc.primary_supplier_id` after writing** — do not trust `Succeeded`. Fix: add the location supplier row first, then set the flag.
+- **Silent no-op — the big one.** The target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the transaction still returns `Succeeded = 1` but **nothing flips** — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) **Always verify `inv_loc.primary_supplier_id` after writing** — do not trust `Succeeded`. Fix: [add the location supplier row first](#adding-the-missing-location-supplier-row), then set the flag.
 - **Write the flag, read the id.** `primary_supplier` maps to `inventory_supplier_x_loc.primary_supplier` (Y/N), not `inv_loc.primary_supplier_id`; setting it `ON` auto-unsets the previous primary and updates `inv_loc.primary_supplier_id`. Verify against the id.
 - **"Item Issues Detected" popup.** Items with data problems return `Unexpected response window: Item Issues Detected` (`w_rule_callback_response`) in the response `Messages`. The Transaction API cannot get past this popup — it effectively answers "No" and discards the change. **Interactive fallback** ([worked example](../04-Interactive-API.md#worked-example-item-issues-detected-rule-callback)): start the session with `ResponseWindowHandlingEnabled: true`; open the `Item` window and set `item_id` on `TABPAGE_1.tp_1_dw_1` — **some items pop the dialog at retrieve time**, blocking the location list, so answer it immediately, not just at save; make your edits; `save()` — a blocked save returns Status 3 with a `windowopened` event carrying the popup's window ID; discover buttons via `GET /v2/tools?windowId={popupId}` (`cb_1` = **"Yes, Proceed Anyway"**, `cb_2` = "No, Cancel") and run `cb_1` via `POST /v2/tools`; the save then commits.
 - **Which items trip the rule differs per environment** — it fires on each item's data state. Don't hard-code a fallback list: run transaction-first, verify, and fall back to the Interactive API for whatever didn't stick.
-- **`SUPPLIER_X_LOCATION` keying is safe here** — it's keyed by `supplier_id` scoped to the selected location row in the Transaction API. The equivalent *interactive* flow must match rows on both `location_id` and `supplier_id`, because the grid holds every location's rows.
+- **`SUPPLIER_X_LOCATION` keying is safe for an update** — it's keyed by `supplier_id` scoped to the selected location row in the Transaction API. Creating a row is different: key on both `location_id` and `supplier_id` and send `IgnoreDisabled: true`, or the edits are refused as disabled columns ([below](#adding-the-missing-location-supplier-row)). The equivalent *interactive* flow must match rows on both columns too, because the grid holds every location's rows.
 - **Interactive fallback trap — never `select_row` on the detail form itself.** A single-row detail form (e.g. `inv_loc_detail`) is *bound* to the currently-selected parent list row. Sending `PUT /v2/row` against the **detail** datawindow re-selects the *parent* list (row N on the detail = row N on `invloclist`) and **silently flips which record the detail is bound to**, typically to the list's first row — the edit lands on the wrong location while every call reports success. Select only the parent list row, edit the detail directly, and assert the detail shows exactly the intended record before and after the change (abort without saving on mismatch). The Transaction API's nested pattern keys by `location_id` and has no such trap.
 - `Status: "New"` with populated `Keys` **updates** the existing keyed record — it does not create a new item.
+- **Never repeat `location_id` in the detail form's `Edits`.** It belongs in `Keys`; as an edit it is a disabled column and fails the whole transaction with `General Exception: Column is disabled: location_id` (verified 26.1.5940.0, August 2026). Reaching for `IgnoreDisabled: true` to silence it is the wrong fix — that flag [can report success while writing nothing](../14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing). Drop the field.
 - **Primary bin has a lighter REST path.** `Locations.list[].PrimaryBin` is writable via the Inventory REST API's GET → modify → PUT (verified across 276 rows in production; the bin must already exist at that location) and handles both of an item's locations in one call — see [11 § Location-Append & Update Gotchas](../11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale). The Transaction path in this recipe remains the one to use when you're already in a TAPI batch or need the supplier flag in the same transaction.
+
+## Adding the missing location supplier row
+
+When the supplier has no row at that location there is nothing to promote, and the flip is the silent no-op above. Create the row first — same window, one element swapped, and two things that are easy to get wrong:
+
+```json
+{
+    "Name": "Item",
+    "UseCodeValues": false,
+    "IgnoreDisabled": true,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["item_id"],
+              "Rows": [{ "Edits": [ {"Name": "item_id", "Value": "WIDGET-001"} ] }] },
+            { "Name": "TABPAGE_17.invloclist", "Type": "List", "Keys": ["location_id"],
+              "Rows": [{ "Edits": [ {"Name": "location_id", "Value": "10"} ] }] },
+            { "Name": "SUPPLIER_X_LOCATION.supplier_x_location", "Type": "List",
+              "Keys": ["location_id", "supplier_id"],
+              "Rows": [{ "Edits": [
+                  {"Name": "location_id", "Value": "10"},
+                  {"Name": "supplier_id", "Value": "10050"}
+              ] }] }
+        ]
+    }]
+}
+```
+
+- **Both keys.** `location_id` *and* `supplier_id` — with both, a keyed row that does not exist is inserted; with `supplier_id` alone the write targets the wrong identity.
+- **`IgnoreDisabled: true`.** Both columns are disabled on this grid, so without the flag the transaction fails with `Column is disabled: location_id` and writes nothing. This is one of the cases where the flag genuinely unlocks the write — but read the row back anyway, because [the response looks identical when it does not](../14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
+
+P21 creates the item-level `inventory_supplier` record too when it is missing. The new row lands with `primary_supplier = 'N'`; run the flip afterwards to promote it. Read it back with [`POST /api/v2/transaction/get`](../03-Transaction-API.md#reading-one-record-post-transactionget) on `Item` — `inventory_supplier_x_loc` is not necessarily exposed over OData.
+
+> **Payload files:** [JSON](../../examples/payloads/json/add-supplier-x-loc.json) · [XML](../../examples/payloads/xml/add-supplier-x-loc.xml)
 
 ## Verify
 

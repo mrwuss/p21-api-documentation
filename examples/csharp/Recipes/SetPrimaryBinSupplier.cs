@@ -67,8 +67,9 @@ public static class SetPrimaryBinSupplier
         PrintPayload("Primary-supplier payload", payload);
         Console.WriteLine(
             "\nPrimary-BIN variant: swap the third element for\n" +
-            "  TABPAGE_18.inv_loc_detail (Form, key location_id) with edits\n" +
-            "  location_id + bin, then verify inv_loc.primary_bin the same way.");
+            "  TABPAGE_18.inv_loc_detail (Form, key location_id) with a single bin edit -\n" +
+            "  location_id belongs in Keys only; as an edit it is a disabled column -" +
+            "  then verify inv_loc.primary_bin the same way.");
 
         if (!ConfirmExecute())
             return;

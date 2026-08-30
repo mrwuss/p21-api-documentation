@@ -30,6 +30,7 @@ When editing docs, keep INDEX.md's anchors in sync (renaming a heading breaks it
 | **Entity API** | REST CRUD — `/api/entity/` (4 entities) plus other endpoint families (e.g. `/api/sales/orders`) | Simple record operations on 4 entities | Working (`/api/entity/`) |
 | **Inventory REST API** | CRUD on inventory items, multi-company workflows | Item reads, appending locations/suppliers | Working (`/api/inventory/parts`) |
 | **Production & Labor** | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking | Working (Transaction + Interactive) |
+| **ui/full (web client)** | Drives any *web-enabled* window by menu class name | The window has no `service_name` — no TAPI/Interactive route | Working (`{ui}/ui/full/`) |
 | **UDT Service API** | CRUD on user-defined tables | Custom table maintenance | Working (`/udtservice/api/udtdata/`) |
 
 ---
@@ -145,13 +146,14 @@ All documentation is derived from:
 | Transaction `Status` — **`"New"` is the only string the enum accepts** (case-insensitive); `"Existing"`/`"Update"`/etc. are HTTP 400 on 5940.0, HTTP 500 on older builds; integers bind silently, never send one | [docs/03 § Status: "New" is the only value](docs/03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
 | **P21 supports both .NET and .NET Framework for business rules, for now** — the middleware's own .NET 10 move did not drag rule code with it; client runtime is unconstrained (`net8.0`+) | [docs/14 § The middleware runtime](docs/14-Breaking-Changes.md#the-middleware-runtime-and-what-it-does-not-dictate) |
 | **25.2** — `DatawindowName` required in change requests | [docs/14 § 25.2](docs/14-Breaking-Changes.md#p21-252) |
-| `IgnoreDisabled: true` reports success on writes that write nothing (3 services confirmed) — never trust a `Passed` under this flag, read the record back | [docs/14 entry 8](docs/14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) · [docs/03 § IgnoreDisabled](docs/03-Transaction-API.md#ignoredisabled) |
+| `IgnoreDisabled: true` reports success on writes that write nothing — and on other elements the same flag genuinely unlocks the write, with an identical-looking response. Never trust a `Passed` under this flag; read the record back | [docs/14 entry 8](docs/14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) · [docs/03 § IgnoreDisabled](docs/03-Transaction-API.md#ignoredisabled) |
 | Updates go through keyed `Status: "New"` upserts (there is no separate update status) | [docs/03 § Upsert Semantics](docs/03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) · [§ Updating an Existing Contract](docs/03-Transaction-API.md#updating-an-existing-contract) |
 | `Keys` row collapse (same-key rows fold, last value wins, `Succeeded: 1`) and over-keying turning updates into inserts | [docs/03 § Keys — Row Identity and the Collapse Trap](docs/03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) |
 | Reading records / cloning via `POST /transaction/get`; the three discovery endpoints (`definition` / `defaults` / `basics`) | [docs/03 § Reading One Record](docs/03-Transaction-API.md#reading-one-record-post-transactionget) · [§ Endpoints](docs/03-Transaction-API.md#endpoints) |
 | **Notes: three surfaces, three answers** — `/transaction` refuses everywhere; `/commands` writes the standalone `*Notepad` services (verified); Interactive writes both order and standalone notes | [docs/03 § Limitations](docs/03-Transaction-API.md#limitations) (comparison table) · [docs/04 § Sales Order Notepad Writes](docs/04-Interactive-API.md#sales-order-notepad-writes-header-vs-line) |
 | `/api/v2/commands` request shape + `Action` codes (sanctioned path for commands-only services) | [docs/03 § Commands Endpoint](docs/03-Transaction-API.md#commands-endpoint) |
 | **OData is v4** (not v3), no server-driven paging; second surface `/data/erp/views/v1` does single-row key lookups | [docs/02 § Protocol version](docs/02-OData-API.md#protocol-version) · [docs/02 § The other OData surface](docs/02-OData-API.md#the-other-odata-surface-dataerpviewsv1) |
+| **A window with `frame_menu.service_name` NULL is not out of reach** — the web client's `ui/full` surface opens windows by menu class (`m_*`), no `/api/` prefix, raw-JSON-string body; NULL *and* web-disabled is what means no API surface | [docs/04 § The ui/full Surface](docs/04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) · [docs/04 § Window→Service Discovery](docs/04-Interactive-API.md#8-window-to-service-discovery-frame_menu) |
 | Which REST families a tenant exposes (`apiref.aspx`, per-family `/help`) | [docs/05 § Discovering what your tenant actually exposes](docs/05-Entity-API.md#discovering-what-your-tenant-actually-exposes) |
 | Application Security settings that gate API access (*Access to SOA Admin Page*, audit-trail user override) | [docs/00 § Application Security settings](docs/00-Authentication.md#application-security-settings-that-affect-api-access) |
 | **Router URL needs its trailing slash** — `/api/ui/router/v1?urlType=external` 307s, and .NET `HttpClient` **strips `Authorization` on any redirect**, so the call 401s with a perfectly good token | [docs/00 § UI Server URL](docs/00-Authentication.md#ui-server-url) · [docs/06 § 401 Authorization header was not present](docs/06-Error-Handling.md#401-authorization-header-was-not-present-or-bearer-was-missing) |
@@ -169,4 +171,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-08-29*
+*Last updated: 2026-08-30*

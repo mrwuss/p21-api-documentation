@@ -1,6 +1,7 @@
 {
   "Name": "Item",
   "UseCodeValues": false,
+  "IgnoreDisabled": true,
   "Transactions": [
     {
       "Status": "New",
@@ -42,17 +43,22 @@
           ]
         },
         {
-          "Name": "TABPAGE_18.inv_loc_detail",
-          "Type": "Form",
+          "Name": "SUPPLIER_X_LOCATION.supplier_x_location",
+          "Type": "List",
           "Keys": [
-            "location_id"
+            "location_id",
+            "supplier_id"
           ],
           "Rows": [
             {
               "Edits": [
                 {
-                  "Name": "bin",
-                  "Value": "A01-02"
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "supplier_id",
+                  "Value": "10050"
                 }
               ],
               "RelativeDateEdits": []

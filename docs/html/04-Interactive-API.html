@@ -715,6 +715,7 @@
 </ul>
 </li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
+<li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
@@ -727,6 +728,13 @@
 </li>
 <li><a href="#self-documenting-help-endpoints">Self-Documenting Help Endpoints</a></li>
 <li><a href="#v1-rest-endpoint-reference-sdk-internal">V1 REST Endpoint Reference (SDK Internal)</a></li>
+<li><a href="#the-uifull-surface-the-web-clients-own-rest-api">The ui/full Surface (the Web Client's Own REST API)</a><ul>
+<li><a href="#base-url-and-route-shape">Base URL and route shape</a></li>
+<li><a href="#reading-the-response">Reading the response</a></li>
+<li><a href="#worked-example-create-a-supplier-group">Worked example: create a supplier group</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+</ul>
+</li>
 <li><a href="#verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</a></li>
 <li><a href="#best-practices">Best Practices</a></li>
 <li><a href="#common-errors">Common Errors</a></li>
@@ -1172,6 +1180,7 @@
 {"Name": "w_territory_maint"}                -&gt; 400 "Cannot open window w_territory_maint because is not available or user &lt;API_USER&gt; does not have permission."
 {"Title": "Postal Code Group Maintenance"}   -&gt; 400 (the window name resolves to empty in the error text)</code></p>
 <p>Despite the "not available or user does not have permission" wording, this is the same <a href="03-Transaction-API.html#endpoints">undeployed/unavailable-window signal</a> seen on the Transaction API — a window is only reliably API-openable through a <strong>registered service name</strong>. Discover the service name for a window via <code>frame_menu.service_name</code> (see <a href="#8-window-to-service-discovery-frame_menu">Window→Service Discovery</a>). Prefer <code>ServiceName</code> for every open.</p>
+<p><strong>Read the window name in the error — the blank is the diagnostic.</strong> The message interpolates whatever name the middleware resolved, so an <strong>empty</strong> name means the identifier you sent resolved to nothing in the service registry, while an echoed name means it resolved and the window was refused. <code>{"ServiceName": "SupplierGroup"}</code> on a service that does not exist returns <code>Cannot open window  because is not available...</code> with two spaces where the name belongs; <code>{"Name": "w_supplier_group_maint"}</code> on the same window echoes the name back. A blank is your cue to check <code>frame_menu</code> for a NULL <code>service_name</code> and, if the window is web-enabled, to reach for <a href="#the-uifull-surface-the-web-clients-own-rest-api">the <code>ui/full</code> surface</a> instead (verified 26.1.5940.0, August 2026).</p>
 </blockquote>
 <h3 id="3-change-data">3. Change Data</h3>
 <p><strong>v2 Format (Recommended):</strong></p>
@@ -1753,7 +1762,8 @@
 <p>Because <a href="#2-open-window">opening by <code>Name</code>/<code>Title</code> is unreliable</a> and only a registered <strong>service name</strong> reliably opens a window, you need a way to map a menu item / <code>w_*</code> window to its service name. The <code>Prophet21.dbo.frame_menu</code> table is that map:</p>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">menu_item_name</span><span class="p">,</span><span class="w">      </span><span class="c1">-- the menu label (&quot;Territory Maintenance&quot;)</span>
 <span class="w">       </span><span class="n">stringparm</span><span class="p">,</span><span class="w">          </span><span class="c1">-- the w_* window name (&quot;w_territory_maint&quot;)</span>
-<span class="w">       </span><span class="n">service_name</span><span class="p">,</span><span class="w">        </span><span class="c1">-- the ServiceName to open it with (&quot;Territory&quot;) — NULL = no API surface</span>
+<span class="w">       </span><span class="n">class_name</span><span class="p">,</span><span class="w">          </span><span class="c1">-- the m_* menu class (&quot;m_territorymaintenance&quot;) — the ui/full route</span>
+<span class="w">       </span><span class="n">service_name</span><span class="p">,</span><span class="w">        </span><span class="c1">-- the ServiceName (&quot;Territory&quot;) — NULL = no Transaction/Interactive surface</span>
 <span class="w">       </span><span class="n">enabled</span><span class="p">,</span><span class="w">             </span><span class="c1">-- menu item enabled</span>
 <span class="w">       </span><span class="n">new_ui_enabled</span><span class="p">,</span><span class="w">      </span><span class="c1">-- available in the new (web) UI</span>
 <span class="w">       </span><span class="n">angular_enabled</span><span class="w">      </span><span class="c1">-- available in the Angular client</span>
@@ -1763,7 +1773,8 @@
 
 <ul>
 <li><strong><code>service_name</code></strong> is the identifier to pass as <code>ServiceName</code> — e.g. Territory Maintenance → <code>Territory</code>, Territory Group Maintenance → <code>TerritoryGroup</code>.</li>
-<li><strong><code>service_name IS NULL</code></strong> marks a window with <strong>no API surface at all</strong> — it 500s on <code>GET /api/v2/definition/{guess}</code> and 400s on an Interactive by-Name open. On the tested 26.1 system, Zip Code Maintenance (<code>w_zip_code_maint</code>) and Postal Code Group Maintenance (<code>w_postal_code_group_maint</code>) are both NULL — classic-desktop-only, undeployed windows (see <a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed/unavailable windows</a>).</li>
+<li><strong><code>service_name IS NULL</code></strong> marks a window with <strong>no Transaction or Interactive surface</strong> — it 500s on <code>GET /api/v2/definition/{guess}</code> and 400s on an Interactive by-Name open. It does <em>not</em> mean the window is unreachable: a NULL-service window that the web client can open is still drivable through <a href="#the-uifull-surface-the-web-clients-own-rest-api">the <code>ui/full</code> surface</a> by its menu class name. Read the two columns together — <strong><code>service_name</code> NULL <em>and</em> <code>new_ui_enabled</code>/<code>angular_enabled</code> <code>'N'</code></strong> is the combination that means no API can reach it. On the tested 26.1 system, Zip Code Maintenance (<code>w_zip_code_maint</code>) and Postal Code Group Maintenance (<code>w_postal_code_group_maint</code>) are both NULL <em>and</em> web-disabled — classic-desktop-only, undeployed windows, refused on <code>ui/full</code> as well (see <a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">Undeployed/unavailable windows</a>). Supplier Group Maintenance (<code>w_supplier_group_maint</code>) is the other case: NULL service name, web-enabled, and it opens on <code>ui/full</code>.</li>
+<li><strong><code>class_name</code></strong> is the column you need for that fallback — the <code>m_*</code> menu class the <code>ui/full</code> surface opens windows by. Select it alongside <code>service_name</code> and you get both routes out of one query.</li>
 <li>This complements the <a href="03-Transaction-API.html#pdf-report-generation"><code>window_x_menu</code> discovery path</a> documented for report (<code>m_*</code>) services: <code>window_x_menu</code> finds callable report names; <code>frame_menu.service_name</code> finds the interactive/transaction service name behind a maintenance window.</li>
 </ul>
 <blockquote>
@@ -4039,6 +4050,90 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1519092'
 GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</code></p>
 </blockquote>
+<h2 id="production-order-notes-header">Production Order Notes (Header)</h2>
+<p>The <strong>ProductionOrder window uses the same Notepad Entry popup</strong> as the Order and PurchaseOrder windows, and for the same reason: its note grid is display-only, so the popup is the editor. Verified end-to-end on 26.1.5940.0 (August 2026) — note written, read back from <code>Prophet21.dbo.note</code>.</p>
+<p>Production-order notes land in the generic <code>note</code> table rather than a <code>*_notepad</code> table of their own:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Table</strong></td>
+<td><code>note</code></td>
+</tr>
+<tr>
+<td><strong><code>note_type_cd</code></strong></td>
+<td><code>2758</code> (production order header)</td>
+</tr>
+<tr>
+<td><strong><code>document_uid</code></strong></td>
+<td>the <code>prod_order_number</code></td>
+</tr>
+<tr>
+<td><strong>Tab (<code>PageName</code>)</strong></td>
+<td><code>PROD_ORDER_HDR_NOTE_TAB</code></td>
+</tr>
+<tr>
+<td><strong>Add / edit tools</strong></td>
+<td><code>prod_order_hdr_note_tab&amp;&amp;cb_addnote</code> / <code>...&amp;&amp;cb_editnote</code></td>
+</tr>
+<tr>
+<td><strong>Popup datawindow</strong></td>
+<td><code>_dw_hdr</code> — <code>topic</code>, <code>note</code>, <code>notepad_class_id</code>, <code>mandatory</code>, activation/expiration dates</td>
+</tr>
+</tbody>
+</table></div>
+<p>Verified sequence (session created with <code>"ResponseWindowHandlingEnabled": true</code>):</p>
+<ol>
+<li>Open <code>{"ServiceName": "ProductionOrder"}</code> and load the order — <code>TabName: "TABPAGE_1"</code>, <code>DatawindowName: "tp_1_dw_1"</code>, <code>prod_order_number</code>.</li>
+<li><code>PUT /v2/tab</code> <code>{"PageName": "PROD_ORDER_HDR_NOTE_TAB"}</code>.</li>
+<li><code>POST /v2/tools</code> <code>{"ToolName": "prod_order_hdr_note_tab&amp;&amp;cb_addnote"}</code> — returns <code>Status: 3</code> with the popup's window ID in the <code>windowopened</code> event.</li>
+<li><code>PUT /v2/change</code> against the <strong>popup's</strong> window ID: <code>DatawindowName: "_dw_hdr"</code>, <code>TabName: null</code>, fields <code>topic</code> and <code>note</code>.</li>
+<li><code>POST /v2/tools</code> <code>{"ToolName": "cb_ok"}</code> on the popup, then save the main window (<code>PUT /v2/data</code>, bare window-GUID body).</li>
+<li>Read back over OData: <code>note?$filter=document_uid eq {prod_order_number} and note_type_cd eq 2758</code>.</li>
+</ol>
+<p>To <strong>edit</strong> an existing note, select its row in the grid first (<code>PUT /v2/row</code> on <code>prod_order_hdr_note_tab</code>) and run <code>...&amp;&amp;cb_editnote</code> instead; the popup opens on that note.</p>
+<p>Three things worth knowing before you drive it:</p>
+<ul>
+<li><strong>Omit <code>ResponseWindowHandlingEnabled</code> and the tool call fails outright</strong> with HTTP 400 <code>Unexpected response window: Notepad Entry Window. Window class: w_notepad_response_lite</code> — the popup is not handed back, so there is nothing to fill.</li>
+<li><strong>The display area is pre-selected.</strong> Unlike the <a href="#standalone-notepad-windows-itemcustomersupplier">standalone notepad windows</a>, which force an area choice, the production-order popup opens with its area already picked and <code>notepad_class_id</code> left NULL — the note saves without touching either.</li>
+<li><strong>Attribution is the calling user.</strong> <code>note.created_by</code> is whichever account holds the token, so a service account writes every note under its own name. Put the real user in the <code>topic</code> if you need it recorded.</li>
+</ul>
+<p><strong>The window carries four note grids, not one.</strong> <code>GET /v2/tools?windowId=</code> (a bare JSON array on this build) lists an add/edit pair for each:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Datawindow prefix</th>
+<th>Notes it edits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prod_order_hdr_note_tab</code></td>
+<td>production order header</td>
+</tr>
+<tr>
+<td><code>processnotestabpage</code></td>
+<td>process</td>
+</tr>
+<tr>
+<td><code>processpolinenote_tabpage</code></td>
+<td>process PO line</td>
+</tr>
+<tr>
+<td><code>routenotestabpage</code></td>
+<td>route</td>
+</tr>
+</tbody>
+</table></div>
+<p>Only the header pair is verified here; the other three follow the same <code>{datawindow}&amp;&amp;cb_addnote</code> shape.</p>
+<blockquote>
+<p><strong>Transaction API cannot substitute.</strong> The same grid is closed to <code>/transaction</code>: without <code>IgnoreDisabled</code> it refuses with <code>Column is disabled: note</code> (or <code>topic</code>), and <strong>with</strong> the flag it returns <code>Succeeded: 1</code> while writing nothing — see <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a>.</p>
+</blockquote>
 <h2 id="standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</h2>
 <p>The standalone notepad services (<code>ItemNotepad</code>, <code>CustomerNotepad</code>, <code>SupplierNotepad</code>, <code>VendorNotepad</code>) are <strong>closed to the Transaction API</strong> — their mandatory "where does this note display" area selector is a drag-and-drop control (<a href="03-Transaction-API.html#limitations">03 § Limitations</a>). The Interactive API opens them: <strong>the same picker is exposed as ordinary button tools</strong> — <code>cb_select</code>, <code>cb_selectall</code>, <code>cb_deselect</code>, <code>cb_deselectall</code>, present in the tool list from the moment the window opens.</p>
 <p>Verified end-to-end on <code>ItemNotepad</code> (26.1, August 2026; note confirmed in the <code>note</code> table):</p>
@@ -4396,6 +4491,384 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</cod
 <p><strong>Note:</strong> The <code>uiserver0</code> prefix is the UI server instance name assigned during routing. Your environment may use a different instance name — check <code>GET /api/ui/router/v1/?urlType=external</code> to obtain the correct base URL.</p>
 </blockquote>
 <hr />
+<h2 id="the-uifull-surface-the-web-clients-own-rest-api">The ui/full Surface (the Web Client's Own REST API)</h2>
+<p>The Angular web client at <code>/prophet21/</code> does not resolve windows through the service registry the way the Transaction and Interactive APIs do. It opens them by <strong>menu class name</strong> (<code>frame_menu.class_name</code>, the <code>m_*</code> values) over its own REST surface on the same UI server, with the same bearer token. That makes it the way in to windows the registry does not expose — the ones whose <code>frame_menu.service_name</code> is NULL, which <a href="#8-window-to-service-discovery-frame_menu">neither TAPI nor the Interactive API can open under any name</a>.</p>
+<p>Verified end-to-end on 26.1.5940.0 (August 2026): created a supplier group (<code>supplier_group_hdr</code> + <code>supplier_group_line</code>) through Supplier Group Maintenance, a window with <strong>no service name at all</strong>, and confirmed both rows over OData.</p>
+<blockquote>
+<p><strong>When to reach for it.</strong> Prefer a registered service and the Interactive API whenever one exists — this surface is less documented and its failure reporting is thinner (see the gotchas below). Reach for <code>ui/full</code> when <code>frame_menu.service_name</code> is NULL and the window is web-client enabled.</p>
+</blockquote>
+<h3 id="base-url-and-route-shape">Base URL and route shape</h3>
+<p>The base is the <strong>UI server</strong> from the <a href="00-Authentication.html#ui-server-url">router handshake</a> — the same host the Interactive API uses. The routes, however, carry <strong>no <code>/api/</code> prefix</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {ui-server}/ui/full/v1/window/          ← correct</span>
+<span class="err">POST {ui-server}/api/ui/full/v1/window/      ← 404</span>
+</code></pre></div>
+
+<p>That 404 is the easiest way to conclude the surface does not exist. It does; the prefix does not belong.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Call</th>
+<th>Body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create session</td>
+<td><code>POST {ui}/ui/common/v1/sessions/</code></td>
+<td><code>{"ClientPlatformApp": "Web", "SessionType": "User"}</code></td>
+</tr>
+<tr>
+<td>Open window</td>
+<td><code>POST {ui}/ui/full/v1/window/</code></td>
+<td><strong>a raw JSON string</strong> — <code>"m_suppliergroupmaintenance"</code></td>
+</tr>
+<tr>
+<td>Read a datawindow</td>
+<td><code>GET {ui}/ui/full/v2/data/data?id={windowId}&amp;dw={datawindow}</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Get window state</td>
+<td><code>GET {ui}/ui/full/v2/window?id={windowId}</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Set a field</td>
+<td><code>PUT {ui}/ui/full/v2/data/data</code></td>
+<td><code>{WindowId, DatawindowName, FieldName, Value[, Row]}</code></td>
+</tr>
+<tr>
+<td>Add a grid row</td>
+<td><code>POST {ui}/ui/full/v2/data/row</code></td>
+<td><code>{WindowId, DatawindowName, PageName}</code></td>
+</tr>
+<tr>
+<td>Select a row</td>
+<td><code>PUT {ui}/ui/full/v2/data/row</code></td>
+<td><code>{WindowId, DatawindowName, PageName, Row}</code></td>
+</tr>
+<tr>
+<td>Change tab</td>
+<td><code>POST {ui}/ui/full/v2/window/page</code></td>
+<td><code>{WindowId, PageName}</code></td>
+</tr>
+<tr>
+<td>Run a tool / save</td>
+<td><code>POST {ui}/ui/full/v2/window/tools</code></td>
+<td><code>{WindowId, ToolName, DatawindowName, FieldName, Row, Text}</code></td>
+</tr>
+<tr>
+<td>Close window</td>
+<td><code>DELETE {ui}/ui/common/v1/sessions/windowmenu?menuId={m_class}</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>End session</td>
+<td><code>DELETE {ui}/ui/common/v1/sessions/</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>Setting a field takes <strong>no <code>TabName</code></strong> — unlike <a href="#3-change-data"><code>/v2/change</code></a> on the Interactive API, the datawindow name alone identifies the target.</p>
+<h3 id="reading-the-response">Reading the response</h3>
+<p>The envelope is not the Interactive API's. There is no <code>Status</code> 1/2/3 here:</p>
+<div class="highlight"><pre><span></span><code>{
+  &quot;Result&quot;: &quot;81bbf4ea-d84e-4c03-a16e-df6d4fe93f52&quot;,   // the WindowId, on open
+  &quot;Events&quot;: [ /* preopen, windowopened, dwcontentchanged, ... */ ],
+  &quot;Messages&quot;: [],
+  &quot;Data&quot;: {},
+  &quot;DataInformation&quot;: {},
+  &quot;Success&quot;: true,
+  &quot;State&quot;: &quot;Normal&quot;
+}
+</code></pre></div>
+
+<p><strong>Check <code>Success == true</code> and <code>State == "Normal"</code>.</strong> Be strict about it, because:</p>
+<blockquote>
+<p><strong>A failure here is silent.</strong> A refused call returns HTTP <strong>200</strong> with <code>Success: false</code> and an <strong>empty <code>Messages</code> array</strong> — no error text at all. Adding a grid row before the header fields are populated does exactly this. If you only check the HTTP status, or only look for messages, you will read a failure as a success.</p>
+</blockquote>
+<p>Events also arrive in a different shape from the Interactive API's, which matters if you share parsing code between the two:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Event payload</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ui/full</code></td>
+<td><code>Events[].EventData</code> — a plain object (<code>{"windowid": "...", "window_classname": "w_supplier_group_maint"}</code>)</td>
+</tr>
+<tr>
+<td><code>api/ui/interactive/v2</code></td>
+<td><code>Events[].Data</code> — a list of <code>{"Key": ..., "Value": ...}</code> pairs</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="worked-example-create-a-supplier-group">Worked example: create a supplier group</h3>
+<p>The window (<code>w_supplier_group_maint</code>, menu class <code>m_suppliergroupmaintenance</code>) is a header plus a supplier grid:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Tab page</th>
+<th>Datawindow</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Header</td>
+<td><code>TP_SUPPLIERGRPHDR</code></td>
+<td><code>suppliergrphdr</code></td>
+<td><code>supplier_group_id</code> (the key), <code>supplier_group_desc</code></td>
+</tr>
+<tr>
+<td>Lines</td>
+<td><code>TP_SUPPLIERGRPLINE</code></td>
+<td><code>suppliergrpline</code></td>
+<td><code>supplier_id</code>, <code>supplier_name</code> (display autofill), <code>delete_flag</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>It opens with one empty line row already present, so the first supplier goes onto row 1 and only the second and later ones need <code>POST /v2/data/row</code>. <code>Quick.Save</code> commits, and the window clears back to <code>(New)</code> — visible in the <code>Caption</code> from <code>GET /v2/window</code>, which is the cheapest confirmation that the save happened.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Create a P21 supplier group through the web client&#39;s ui/full surface.</span>
+
+<span class="sd">Assumes `token` and `ui_server` from the standard handshake - see</span>
+<span class="sd">docs/00-Authentication.md. Nothing here needs a browser session.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">MENU</span> <span class="o">=</span> <span class="s2">&quot;m_suppliergroupmaintenance&quot;</span>
+<span class="n">HDR</span><span class="p">,</span> <span class="n">LINE</span><span class="p">,</span> <span class="n">LINE_TAB</span> <span class="o">=</span> <span class="s2">&quot;suppliergrphdr&quot;</span><span class="p">,</span> <span class="s2">&quot;suppliergrpline&quot;</span><span class="p">,</span> <span class="s2">&quot;TP_SUPPLIERGRPLINE&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Response</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Success on this surface is Success + State, not the HTTP status.&quot;&quot;&quot;</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span> <span class="k">else</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Success&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;State&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Normal&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2"> failed: Success=</span><span class="si">{</span><span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Success&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;State=</span><span class="si">{</span><span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;State&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> Messages=</span><span class="si">{</span><span class="n">body</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Messages&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">body</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_supplier_group</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span>
+    <span class="n">ui_server</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">headers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">group_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">supplier_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/common/v1/sessions/&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ClientPlatformApp&quot;</span><span class="p">:</span> <span class="s2">&quot;Web&quot;</span><span class="p">,</span> <span class="s2">&quot;SessionType&quot;</span><span class="p">:</span> <span class="s2">&quot;User&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># The open body is a bare JSON string, not an object.</span>
+        <span class="n">opened</span> <span class="o">=</span> <span class="n">check</span><span class="p">(</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/full/v1/window/&quot;</span><span class="p">,</span>
+                <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+                <span class="n">content</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">MENU</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;open window&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">window_id</span> <span class="o">=</span> <span class="n">opened</span><span class="p">[</span><span class="s2">&quot;Result&quot;</span><span class="p">]</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">set_field</span><span class="p">(</span><span class="n">datawindow</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span>
+                <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">datawindow</span><span class="p">,</span>
+                <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="n">field</span><span class="p">,</span>
+                <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">body</span><span class="p">[</span><span class="s2">&quot;Row&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span>
+            <span class="n">check</span><span class="p">(</span>
+                <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/full/v2/data/data&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">body</span><span class="p">),</span>
+                <span class="sa">f</span><span class="s2">&quot;set </span><span class="si">{</span><span class="n">datawindow</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">set_field</span><span class="p">(</span><span class="n">HDR</span><span class="p">,</span> <span class="s2">&quot;supplier_group_id&quot;</span><span class="p">,</span> <span class="n">group_id</span><span class="p">)</span>
+        <span class="n">set_field</span><span class="p">(</span><span class="n">HDR</span><span class="p">,</span> <span class="s2">&quot;supplier_group_desc&quot;</span><span class="p">,</span> <span class="n">description</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="n">supplier_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">supplier_ids</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">row</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># row 1 already exists when the window opens</span>
+                <span class="n">check</span><span class="p">(</span>
+                    <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/full/v2/data/row&quot;</span><span class="p">,</span>
+                        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+                        <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                            <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span>
+                            <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="n">LINE</span><span class="p">,</span>
+                            <span class="s2">&quot;PageName&quot;</span><span class="p">:</span> <span class="n">LINE_TAB</span><span class="p">,</span>
+                        <span class="p">},</span>
+                    <span class="p">),</span>
+                    <span class="s2">&quot;add line row&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">set_field</span><span class="p">(</span><span class="n">LINE</span><span class="p">,</span> <span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="n">supplier_id</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="n">row</span><span class="p">)</span>
+
+        <span class="n">check</span><span class="p">(</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/full/v2/window/tools&quot;</span><span class="p">,</span>
+                <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+                <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;WindowId&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">,</span>
+                    <span class="s2">&quot;ToolName&quot;</span><span class="p">:</span> <span class="s2">&quot;Quick.Save&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;DatawindowName&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">&quot;FieldName&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">&quot;Row&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;Text&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;Quick.Save&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">state</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/full/v2/window&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">window_id</span><span class="p">}</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;after save:&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;Result&quot;</span><span class="p">][</span><span class="s2">&quot;Caption&quot;</span><span class="p">])</span>  <span class="c1"># &quot;...: (New)&quot; once committed</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/common/v1/sessions/windowmenu&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;menuId&quot;</span><span class="p">:</span> <span class="n">MENU</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/ui/common/v1/sessions/&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">// Create a P21 supplier group through the web client&#39;s ui/full surface.</span>
+<span class="c1">// Assumes `token` and `uiServer` from the standard handshake - see</span>
+<span class="c1">// docs/00-Authentication.md.</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Menu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;m_suppliergroupmaintenance&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Hdr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;suppliergrphdr&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;suppliergrpline&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">LineTab</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TP_SUPPLIERGRPLINE&quot;</span><span class="p">;</span>
+
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CheckAsync</span><span class="p">(</span><span class="n">HttpResponseMessage</span><span class="w"> </span><span class="n">response</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">step</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="c1">// Success on this surface is Success + State, not the HTTP status.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">()).</span><span class="n">RootElement</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">ok</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">body</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;Success&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">success</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">success</span><span class="p">.</span><span class="n">GetBoolean</span><span class="p">()</span>
+<span class="w">             </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">body</span><span class="p">.</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;State&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">state</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">state</span><span class="p">.</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Normal&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">ok</span><span class="p">)</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;{step} failed: {body}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">body</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">CreateSupplierGroupAsync</span><span class="p">(</span>
+<span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">uiServer</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">groupId</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">description</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IReadOnlyList</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">supplierIds</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsJsonAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{uiServer}/ui/common/v1/sessions/&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">ClientPlatformApp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Web&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">SessionType</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;User&quot;</span><span class="w"> </span><span class="p">});</span>
+
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// The open body is a bare JSON string, not an object.</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">openBody</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringContent</span><span class="p">(</span>
+<span class="w">            </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Serialize</span><span class="p">(</span><span class="n">Menu</span><span class="p">),</span><span class="w"> </span><span class="n">Encoding</span><span class="p">.</span><span class="n">UTF8</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">opened</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">CheckAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsync</span><span class="p">(</span><span class="s">$&quot;{uiServer}/ui/full/v1/window/&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">openBody</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;open window&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opened</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;Result&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">();</span>
+
+<span class="w">        </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">SetFieldAsync</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">datawindow</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">field</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">,</span><span class="w"> </span><span class="kt">int?</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="kt">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">object?</span><span class="o">&gt;</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="na">[&quot;WindowId&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;DatawindowName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">datawindow</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;FieldName&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">field</span><span class="p">,</span>
+<span class="w">                </span><span class="na">[&quot;Value&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span><span class="p">,</span>
+<span class="w">            </span><span class="p">};</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">row</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">)</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="n">body</span><span class="p">[</span><span class="s">&quot;Row&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">;</span>
+<span class="w">            </span><span class="p">}</span>
+
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="nf">CheckAsync</span><span class="p">(</span>
+<span class="w">                </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsJsonAsync</span><span class="p">(</span><span class="s">$&quot;{uiServer}/ui/full/v2/data/data&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">body</span><span class="p">),</span>
+<span class="w">                </span><span class="s">$&quot;set {datawindow}.{field}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">SetFieldAsync</span><span class="p">(</span><span class="n">Hdr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;supplier_group_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">groupId</span><span class="p">);</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">SetFieldAsync</span><span class="p">(</span><span class="n">Hdr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;supplier_group_desc&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">supplierIds</span><span class="p">.</span><span class="n">Count</span><span class="p">;</span><span class="w"> </span><span class="n">row</span><span class="o">++</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">row</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="c1">// row 1 already exists when the window opens</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="k">await</span><span class="w"> </span><span class="nf">CheckAsync</span><span class="p">(</span>
+<span class="w">                    </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsJsonAsync</span><span class="p">(</span>
+<span class="w">                        </span><span class="s">$&quot;{uiServer}/ui/full/v2/data/row&quot;</span><span class="p">,</span>
+<span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="n">DatawindowName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Line</span><span class="p">,</span><span class="w"> </span><span class="n">PageName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LineTab</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">                    </span><span class="s">&quot;add line row&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="nf">SetFieldAsync</span><span class="p">(</span><span class="n">Line</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;supplier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">supplierIds</span><span class="p">[</span><span class="n">row</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="n">row</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="nf">CheckAsync</span><span class="p">(</span>
+<span class="w">            </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsJsonAsync</span><span class="p">(</span>
+<span class="w">                </span><span class="s">$&quot;{uiServer}/ui/full/v2/window/tools&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="k">new</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">WindowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">windowId</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">ToolName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Quick.Save&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">DatawindowName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">string?</span><span class="p">)</span><span class="k">null</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">FieldName</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">string?</span><span class="p">)</span><span class="k">null</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">string?</span><span class="p">)</span><span class="k">null</span><span class="p">,</span>
+<span class="w">                </span><span class="p">}),</span>
+<span class="w">            </span><span class="s">&quot;Quick.Save&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">finally</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{uiServer}/ui/common/v1/sessions/windowmenu?menuId={Menu}&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">DeleteAsync</span><span class="p">(</span><span class="s">$&quot;{uiServer}/ui/common/v1/sessions/&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<h3 id="gotchas">Gotchas</h3>
+<ul>
+<li><strong>The open body must be a raw JSON string.</strong> <code>"m_suppliergroupmaintenance"</code>, quoted — not <code>{"menuSearchString": "..."}</code>. An object body returns 400 with both halves of the complaint: <code>Unexpected character encountered while parsing value: {. Path '', line 1, position 1.</code> and <code>The menuSearchString field is required.</code></li>
+<li><strong>No session, no window.</strong> Skip <code>POST /ui/common/v1/sessions/</code> and the open returns an <strong>empty response body</strong> — no JSON, nothing to parse.</li>
+<li><strong><code>GET .../window/tools</code> is 405.</strong> Tools are POST-only here; there is no listing endpoint the way <a href="#running-tools-buttons"><code>GET /v2/tools</code></a> works on the Interactive API. Take the tool names from the web client's own network traffic, or from the equivalent Interactive window.</li>
+<li><strong>A bad menu class is indistinguishable from a window you cannot reach.</strong> Both return <code>400 {"ErrorMessage":"Window &lt;&lt;m_whatever&gt;&gt; is not available or user does not have permission to open it."}</code> — verified identical for a fabricated name and for <code>m_zipcodemaintenance</code>, a real window that is classic-desktop-only. Check <code>frame_menu</code> before concluding the name is wrong.</li>
+<li><strong>It is not only an escape hatch.</strong> Windows that <em>do</em> have service names open here too (<code>m_customermaintenance</code> → <code>w_customer_maint_sheet</code>, verified), so the surface is a general one. That is not a reason to prefer it over a registered service.</li>
+<li><strong>Verify the write independently</strong>, as everywhere else in this repo. The cleared caption tells you the window committed, not what it wrote.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — surface reverse-engineered from the web client and first verified in production (August 2026); re-verified here on 26.1.5940.0.</p>
+</blockquote>
 <h2 id="verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</h2>
 <p>An Interactive save (<code>PUT /api/ui/interactive/v2/data</code>) can return <code>Status: 1</code> with a <code>savesucceeded</code> event for the <strong>primary</strong> datawindow (<code>tp_1_dw_1</code>) even when a change staged into a <strong>child grid</strong> on another tab never actually persisted. The overall call looks fully successful.</p>
 <p>Why status alone is not a reliable "it persisted" signal:</p>
@@ -5259,6 +5732,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </ul>
 </li>
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
+<li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
@@ -5271,6 +5745,13 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </li>
 <li><a href="#self-documenting-help-endpoints">Self-Documenting Help Endpoints</a></li>
 <li><a href="#v1-rest-endpoint-reference-sdk-internal">V1 REST Endpoint Reference (SDK Internal)</a></li>
+<li><a href="#the-uifull-surface-the-web-clients-own-rest-api">The ui/full Surface (the Web Client's Own REST API)</a><ul>
+<li><a href="#base-url-and-route-shape">Base URL and route shape</a></li>
+<li><a href="#reading-the-response">Reading the response</a></li>
+<li><a href="#worked-example-create-a-supplier-group">Worked example: create a supplier group</a></li>
+<li><a href="#gotchas">Gotchas</a></li>
+</ul>
+</li>
 <li><a href="#verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</a></li>
 <li><a href="#best-practices">Best Practices</a></li>
 <li><a href="#common-errors">Common Errors</a></li>

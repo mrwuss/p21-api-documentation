@@ -60,8 +60,9 @@ def build_payload(target: str) -> dict:
     else:
         detail = {"Name": "TABPAGE_18.inv_loc_detail", "Type": "Form",
                   "Keys": ["location_id"],
+                  # location_id identifies the row via Keys; as an edit it is a
+                  # disabled column and fails the transaction.
                   "Rows": [{"Edits": [
-                      {"Name": "location_id", "Value": LOCATION_ID},
                       {"Name": "bin", "Value": PRIMARY_BIN},
                   ]}]}
     return {

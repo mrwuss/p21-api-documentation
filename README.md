@@ -37,6 +37,7 @@ The repo is built for **progressive disclosure**: this README routes you, each a
 | [Inventory REST API](docs/11-Inventory-REST-API.md) | Inventory item CRUD, multi-company workflows | Item reads, appending locations/suppliers |
 | [Production & Labor](docs/12-Production-Labor-API.md) | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking |
 | [UDT Service API](docs/13-UDT-Service-API.md) | CRUD on user-defined tables | Custom table maintenance |
+| [ui/full (web client)](docs/04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) | Drives web-enabled windows by menu class name | A window has no service name — no Transaction/Interactive route |
 
 ## Quick Start
 

@@ -867,6 +867,10 @@
 <td><a href="04-Interactive-API.html#sales-order-notepad-writes-header-vs-line">04 § Sales Order Notepad Writes</a> · <a href="04-Interactive-API.html#purchaseorder-notepad-writes-header-vs-line">04 § PurchaseOrder Notepad Writes</a> — Interactive only; <code>/transaction</code> refuses (<a href="03-Transaction-API.html#limitations">why</a>)</td>
 </tr>
 <tr>
+<td>Write a <strong>note on a production order</strong> (<code>note_type_cd</code> 2758)</td>
+<td><a href="04-Interactive-API.html#production-order-notes-header">04 § Production Order Notes</a> — Interactive only; <code>/transaction</code> reports success and writes nothing (<a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">why</a>)</td>
+</tr>
+<tr>
 <td>Write an <strong>item / customer / supplier note</strong></td>
 <td><a href="03-Transaction-API.html#request-shape">03 § Commands Endpoint</a> — one stateless POST · or <a href="04-Interactive-API.html#standalone-notepad-windows-itemcustomersupplier">04 § Standalone Notepad Windows</a>, where the mandatory area picker is <code>cb_selectall</code> via <code>/tools</code></td>
 </tr>
@@ -1000,6 +1004,16 @@
 <td>Item: <strong>primary bin / primary supplier</strong> at a location</td>
 <td><a href="recipes/set-primary-bin-supplier.html">set-primary-bin-supplier</a></td>
 <td><a href="03-Transaction-API.html#item-service-nested-location-edits">03 § Item Service</a></td>
+</tr>
+<tr>
+<td>Item: <strong>add a supplier to a location's list</strong> (the flip's prerequisite — both keys + <code>IgnoreDisabled</code>)</td>
+<td><a href="recipes/set-primary-bin-supplier.html#adding-the-missing-location-supplier-row">set-primary-bin-supplier</a></td>
+<td><a href="03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">03 § Adding a Location Supplier Row</a></td>
+</tr>
+<tr>
+<td>Item: <strong>enable bin tracking</strong> at a location (<code>track_bins</code>, and the bin it auto-assigns)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#enabling-bin-tracking-at-a-location-track_bins">03 § Enabling Bin Tracking</a></td>
 </tr>
 <tr>
 <td><strong>Create warehouse bins</strong></td>
@@ -1152,6 +1166,14 @@
 <tr>
 <td>Open a window (use <code>ServiceName</code> — Name/Title can 400) · map window→service</td>
 <td><a href="04-Interactive-API.html#2-open-window">04 § Open Window</a> · <a href="04-Interactive-API.html#8-window-to-service-discovery-frame_menu">04 § Window→Service Discovery</a></td>
+</tr>
+<tr>
+<td><strong>The window has no service name</strong> (<code>frame_menu.service_name</code> NULL) — drive it by menu class instead</td>
+<td><a href="04-Interactive-API.html#the-uifull-surface-the-web-clients-own-rest-api">04 § The ui/full Surface</a></td>
+</tr>
+<tr>
+<td>"Cannot open window **  ** because is not available" — the name came back blank</td>
+<td><a href="04-Interactive-API.html#2-open-window">04 § Open Window</a> — blank means the <code>ServiceName</code> never resolved</td>
 </tr>
 <tr>
 <td><strong>Handle popups / response windows</strong> (Status 3, windowopened)</td>

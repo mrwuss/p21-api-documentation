@@ -210,9 +210,19 @@ Add `IgnoreDisabled: true` and the identical payload returns `Summary: {"Failed"
 General Exception: Column is disabled: note
 ```
 
-Add `IgnoreDisabled: true` — payload otherwise byte-identical — and it returns `Summary: {"Failed": 0, "Succeeded": 1}`, `Status: "Passed"` and no messages, while a `/transaction/get` read-back shows the note **unchanged**. The echoed transaction drops the `LINE_NOTE.line_note` element entirely and returns only `TABPAGE_1.order`, so nothing in the response marks the omission. That makes three unrelated services showing the same false success, which is what marks this as a platform behavior rather than a `JobContractPricing` quirk.
+Add `IgnoreDisabled: true` — payload otherwise byte-identical — and it returns `Summary: {"Failed": 0, "Succeeded": 1}`, `Status: "Passed"` and no messages, while a `/transaction/get` read-back shows the note **unchanged**. The echoed transaction drops the `LINE_NOTE.line_note` element entirely and returns only `TABPAGE_1.order`, so nothing in the response marks the omission. That was three unrelated services showing the same false success, which is what marked this as a platform behavior rather than a `JobContractPricing` quirk.
 
-So `IgnoreDisabled` has two outcomes that are **indistinguishable in the response**: it genuinely unlocks the write (as it does for contract BINS quantities and JOBPRICECOST commission fields), or it swallows the refusal and writes nothing. You cannot tell which you got without reading the record back.
+**A fourth service, and the same signature again** (26.1.5940.0, 2026-08-30). The `ProductionOrder` window's header-note grid — `PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab`, keyed `note_uid` — behaves identically. Without the flag:
+
+```text
+General Exception: Column is disabled: note
+```
+
+With `IgnoreDisabled: true`: `Summary: {"Failed": 0, "Succeeded": 1}`, `Status: "Passed"`, no messages, the echoed transaction reduced to `TABPAGE_1.tp_1_dw_1` alone — and the note's `date_last_modified` still reading its original value five weeks earlier. Row *creation* on the same grid behaves the same way (`Column is disabled: topic` without the flag, clean false success with it), with or without `Keys`. The working path for those notes is the [Interactive popup](04-Interactive-API.md#production-order-notes-header).
+
+**The contrast case matters as much as the failures.** On the same build, minutes apart, `IgnoreDisabled: true` genuinely unlocked a write: inserting a location supplier row on the `Item` window (`SUPPLIER_X_LOCATION.supplier_x_location`, keyed on **both** `location_id` and `supplier_id`) returned `Succeeded: 1` and the row was really there on read-back. The control — same element, `Keys: ["supplier_id"]` alone and no flag — failed loudly with `Column is disabled: location_id` and wrote nothing. So the flag's two outcomes are not split by service, or by window, or by anything you can see in the request: [the same service](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert) produces both.
+
+So `IgnoreDisabled` has two outcomes that are **indistinguishable in the response**: it genuinely unlocks the write (as it does for contract BINS quantities, JOBPRICECOST commission fields and the location supplier insert above), or it swallows the refusal and writes nothing. You cannot tell which you got without reading the record back.
 
 **Mitigation:** always read back after any write that used `IgnoreDisabled: true`, on any service — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat `Status: "Passed"` under `IgnoreDisabled` as **unverified** until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write `VALUES.values` at all, on any of the three paths. See [Transaction API § IgnoreDisabled](03-Transaction-API.md#ignoredisabled) and [Verifying Writes](04-Interactive-API.md#verifying-writes-dont-trust-save-status-alone) for the same read-back discipline applied elsewhere in this repo.
 

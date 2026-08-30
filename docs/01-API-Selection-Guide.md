@@ -273,6 +273,29 @@ See [UDT Service API](13-UDT-Service-API.md) for full details.
 
 ---
 
+## ui/full — the Web Client's Surface (Last Resort)
+
+### Best For
+- Windows the service registry does not expose — `frame_menu.service_name` is NULL, so no `ServiceName` exists to open them with
+
+### Characteristics
+- **Stateful**, like the Interactive API, but a separate session (`{ui}/ui/common/v1/sessions/`)
+- **Opens by menu class name** (`m_*`), not by service name
+- **No `/api/` prefix** on its routes — `{ui}/ui/full/v2/...`
+- **Different envelope** — `Success` + `State`, not `Status` 1/2/3
+- **Thin failure reporting** — a refused call is HTTP 200, `Success: false`, no message
+
+### Use When
+- The window you need has a NULL `service_name` *and* the web client can open it
+
+### Don't Use When
+- A registered service exists. Prefer the Transaction API, then the Interactive API — both are better documented and report failures properly.
+- The window is classic-desktop-only (`new_ui_enabled` / `angular_enabled` = `'N'`). Nothing reaches it.
+
+See [The ui/full Surface](04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) for the endpoint table and worked example.
+
+---
+
 ## Decision Flowchart
 
 ```

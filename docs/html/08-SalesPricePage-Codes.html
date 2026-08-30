@@ -3464,7 +3464,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 </tr>
 </tbody>
 </table></div>
-<p><code>frame_menu</code> is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A <code>NULL</code> <code>service_name</code> means the window has no API surface.</p>
+<p><code>frame_menu</code> is the window-to-service map generally — query it over OData to find the service name behind any window, or the window behind any service. A <code>NULL</code> <code>service_name</code> means no Transaction or Interactive surface — the window may still be drivable through <a href="04-Interactive-API.html#the-uifull-surface-the-web-clients-own-rest-api">the <code>ui/full</code> surface</a> if its <code>new_ui_enabled</code>/<code>angular_enabled</code> flags say the web client can open it.</p>
 <p>All three key on the same five fields — <code>company_id</code>, <code>purchase_pricing_book_id</code>, <code>supplier_id</code>, <code>effective_date</code>, <code>expiration_date</code> — and the item and discount-group variants add one more:</p>
 <div class="table-wrap"><table>
 <thead>

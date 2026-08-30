@@ -846,7 +846,7 @@ The clearest verified example (26.1.5894.1, play, July 2026) is the **native zip
 
 **Why there's no write path:**
 
-- **Window:** "Postal Code Group Maintenance" (`w_postal_code_group_maint`), AR › Maintenance — **classic desktop only** (`frame_menu`: `new_ui_enabled='N'`, `angular_enabled='N'`, `service_name` **NULL**). A NULL `service_name` is the tell that there is no API surface (see [Window→Service Discovery](04-Interactive-API.md#8-window-to-service-discovery-frame_menu)).
+- **Window:** "Postal Code Group Maintenance" (`w_postal_code_group_maint`), AR › Maintenance — **classic desktop only** (`frame_menu`: `new_ui_enabled='N'`, `angular_enabled='N'`, `service_name` **NULL**). A NULL `service_name` rules out the Transaction and Interactive APIs; the `'N'` web flags rule out the [`ui/full` surface](04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) as well, and that combination is what leaves the window with no API surface at all — confirmed by an `ui/full` open of `m_postalcodegroupmaintenance`, which 400s exactly like a menu name that does not exist (see [Window→Service Discovery](04-Interactive-API.md#8-window-to-service-discovery-frame_menu)).
 - **Transaction API:** no service — absent from `/api/v2/services`; plausible hidden names all 500 on `/definition`.
 - **Interactive API:** by-Name open returns 400 *"not available or user does not have permission"* — the [undeployed-window signal](03-Transaction-API.md#endpoints), not a grantable permission.
 

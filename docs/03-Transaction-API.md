@@ -3114,16 +3114,15 @@ The `Item` service (Item Maintenance window) supports **nested DataElement navig
             { "Name": "TABPAGE_17.invloclist", "Type": "List", "Keys": ["location_id"],
               "Rows": [{ "Edits": [ {"Name": "location_id", "Value": "10"} ] }] },
             { "Name": "TABPAGE_18.inv_loc_detail", "Type": "Form", "Keys": ["location_id"],
-              "Rows": [{ "Edits": [
-                  {"Name": "location_id", "Value": "10"},
-                  {"Name": "bin", "Value": "A01-02"}
-              ] }] }
+              "Rows": [{ "Edits": [ {"Name": "bin", "Value": "A01-02"} ] }] }
         ]
     }]
 }
 ```
 
 `Status: "New"` with populated `Keys` updates the existing keyed record (it does not create a new item).
+
+> **Do not repeat `location_id` in the detail form's `Edits`.** It identifies the row and belongs in `Keys` only; as an edit it is a disabled column and fails the whole transaction — `General Exception: Column is disabled: location_id`, `Failed: 1` (verified 26.1.5940.0, August 2026). `IgnoreDisabled: true` silences the error, which is the wrong fix: it is [the flag whose success proves nothing](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing). Drop the field instead. The same applies to `track_bins` and every other edit on this form.
 
 #### Set an item's primary supplier at a location (Form → List → List)
 
@@ -3142,14 +3141,68 @@ What this writes, and the cascade (verified on a 68-item production run):
 - `primary_supplier` maps to `inventory_supplier_x_loc.primary_supplier` (a Y/N flag) — **not** `inv_loc.primary_supplier_id`.
 - Setting it `ON` makes P21 auto-unset the previous primary at that location **and** update `inv_loc.primary_supplier_id` to the new supplier. So the flag is the field to **write**; `inv_loc.primary_supplier_id` is the field to **read** when verifying.
 
+#### Adding a Location Supplier Row (the Prerequisite Insert)
+
+The flip above promotes a supplier that is **already** on the location's supplier list. When the row does not exist there is nothing to promote, and the transaction reports success while doing nothing — the [silent no-op](#item-service-gotchas) below. This is the payload that creates the missing row, verified on 26.1.5940.0 (August 2026):
+
+```json
+{ "Name": "SUPPLIER_X_LOCATION.supplier_x_location", "Type": "List",
+  "Keys": ["location_id", "supplier_id"],
+  "Rows": [{ "Edits": [
+      {"Name": "location_id", "Value": "10"},
+      {"Name": "supplier_id", "Value": "10050"}
+  ] }] }
+```
+
+Two differences from the flip, and both are load-bearing:
+
+- **Key on `location_id` *and* `supplier_id`.** With both keys and no matching row, the [keyed upsert](#upsert-semantics-keyed-rows-insert-when-absent) inserts one. Keyed on `supplier_id` alone, the write targets the wrong identity — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap).
+- **Send `IgnoreDisabled: true` at the payload top level.** `location_id` and `supplier_id` are disabled columns on this grid, so without the flag the edits are refused outright: `General Exception: Column is disabled: location_id`, `Failed: 1`, nothing written (verified control run).
+
+P21 creates the item-level `inventory_supplier` record too when it is missing, so one call covers both. The new row lands with `primary_supplier = 'N'`; promote it with the [flip payload](#set-an-items-primary-supplier-at-a-location-form-list-list) afterwards.
+
+> **This is the flag's *other* outcome.** The same `IgnoreDisabled: true` that genuinely inserts here is the one that reports success while writing nothing on other elements — see [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing). Nothing in either response tells you which you got. Read the row back.
+>
+> **Reading it back:** `inventory_supplier_x_loc` is not necessarily exposed over OData (404 on the tested tenant). [`POST /api/v2/transaction/get`](#reading-one-record-post-transactionget) on `Item` returns `SUPPLIER_X_LOCATION.supplier_x_location` with every location's rows, which is the reliable check.
+
+#### Enabling Bin Tracking at a Location (`track_bins`)
+
+`inv_loc.track_bins` is a checkbox on the same location detail form, so it takes the checkbox spelling — `"ON"` / `"OFF"`, not `Y`/`N`:
+
+```json
+{ "Name": "TABPAGE_18.inv_loc_detail", "Type": "Form", "Keys": ["location_id"],
+  "Rows": [{ "Edits": [ {"Name": "track_bins", "Value": "ON"} ] }] }
+```
+
+Verified on 26.1.5940.0 (August 2026), and at scale across ~14,700 item-locations in a test environment. What to expect:
+
+- **Enabling it assigns a primary bin when the item has none.** P21 fills `inv_loc.primary_bin` from the location's default as part of the flip — `NEEDS_BIN` on the tested tenant, `0` on another. Treat the value as environment-specific; treat the *assignment* as certain, and snapshot the old `primary_bin` before a bulk run.
+- **`"OFF"` reverts cleanly**, and clears that auto-assigned bin back to NULL.
+- **Other-charge items are refused** — `Other charge items cannot track bins.` — as are subtotal/total pseudo-items. `inv_mast.other_charge_item = 'Y'` pre-filters the first group; there is no equivalent flag for the second, so those simply error out harmlessly.
+- **A different location's row can block the save.** `Required value missing for primary bin on row N` refers to another `invloclist` row on the same item, not the one being edited.
+- **Items with stock on hand deserve a decision, not a batch.** Turning on bin tracking where quantity already exists implies bin placement; exclude them and handle them individually.
+- **Items that trip the ["Item Issues Detected" popup](#item-issues-detected-popup-root-cause-and-data-fix) fail here**, as they do for every Item write. The Interactive API answers that popup (`cb_1`); the Transaction API cannot.
+
+#### Item Window Element Map (Locations)
+
+The location-side elements chain Form → List → Form/List, and the tab numbers are not guessable:
+
+| Data element | Type | Carries |
+|---|---|---|
+| `TABPAGE_1.tp_1_dw_1` | Form | the item header — `item_id` |
+| `TABPAGE_17.invloclist` | List | the location rows; selects which location the elements below apply to |
+| `TABPAGE_18.inv_loc_detail` | Form | that location's detail — `bin`, `track_bins`, … |
+| `TABPAGE_23.tp_23_dw_23` | Form | that location's `purchase_class_id` (ABC class) |
+| `SUPPLIER_X_LOCATION.supplier_x_location` | List | that location's supplier rows — `supplier_id`, `primary_supplier` |
+
 #### Item Service Gotchas
 
-- **Silent no-op — the big one.** The target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the transaction still returns `Succeeded = 1` but **nothing flips** — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) **Always verify `inv_loc.primary_supplier_id` after writing** — do not trust `Succeeded`. Fix: add the location supplier row first, then set the flag.
+- **Silent no-op — the big one.** The target supplier must already have a *location-level* row (`inventory_supplier_x_loc`) at that location. If it doesn't, the transaction still returns `Succeeded = 1` but **nothing flips** — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) **Always verify `inv_loc.primary_supplier_id` after writing** — do not trust `Succeeded`. Fix: [add the location supplier row first](#adding-a-location-supplier-row-the-prerequisite-insert), then set the flag.
 - **"Item Issues Detected" popup — a data defect you can fix, not an API limitation.** Affected items return an `Unexpected response window: Item Issues Detected` (`w_rule_callback_response`) in the response `Messages`. The Transaction API cannot answer the popup, so the transaction aborts and the edit is discarded. The popup comes from a **site-configured DynaChange business rule with `apply_during_save_flag = 'Y'`**, which fires on *every* save of the Item window — so it blocks **all** Item-service writes, not just `product_group_id` changes. The behavior is **deterministic, not per-run session state**: retries fail every time until the underlying data is corrected, and once it is corrected the identical transaction succeeds. Identify the rule and its trigger, fix the data, re-run — see [Item Issues Detected Popup Root Cause and Data Fix](#item-issues-detected-popup-root-cause-and-data-fix). For items you cannot data-fix, fall back to the Interactive API and answer the popup with `cb_1` ("Yes, Proceed Anyway") — see [Item window popups](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback).
 - **Uppercase your `item_id` yourself — the API will not.** The P21 client folds a typed item ID to uppercase before it saves, so lowercase item IDs cannot be created through the UI. **The Transaction API applies no such conversion**: a lowercase `item_id` is accepted and the item is created successfully. The resulting record is then effectively unusable — opening it in **Item Maintenance / Item Master Inquiry crashes the client** (reported by maintainers as crashing the browser in the web client), and it is not clear that item-repair tooling detects it. Normalize `item_id` to uppercase in your own code before every create; there is no API-side guard. This is the one place where the Transaction API is known to accept input the application itself would reject. *(Community session, Felipe Maurer, 2026; independently confirmed from production experience. Deliberately **not** re-tested for this documentation — the item it creates cannot be cleaned up through the UI, so do not reproduce it to check, on production or anywhere else.)*
-- `SUPPLIER_X_LOCATION` is keyed by `supplier_id` scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent *interactive* flow must match rows on both `location_id` and `supplier_id` — the grid holds every location's rows.)
+- `SUPPLIER_X_LOCATION` is keyed by `supplier_id` scoped to the selected location row in the Transaction API, so the nested pattern is safe **for updating a row that exists**. It is not enough to *create* one: an insert has to key on both `location_id` and `supplier_id`, and carry `IgnoreDisabled` — see [Adding a Location Supplier Row](#adding-a-location-supplier-row-the-prerequisite-insert). (The equivalent *interactive* flow must match rows on both columns too — the grid holds every location's rows.)
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July 2026).
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July–August 2026).
 
 ### BinLocation Service -- Creating Bins
 

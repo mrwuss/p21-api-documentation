@@ -4634,16 +4634,16 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_17.invloclist&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">],</span>
 <span class="w">              </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
 <span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_18.inv_loc_detail&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">],</span>
-<span class="w">              </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">                  </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
-<span class="w">                  </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bin&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A01-02&quot;</span><span class="p">}</span>
-<span class="w">              </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">              </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bin&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A01-02&quot;</span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
 <span class="w">        </span><span class="p">]</span>
 <span class="w">    </span><span class="p">}]</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <p><code>Status: "New"</code> with populated <code>Keys</code> updates the existing keyed record (it does not create a new item).</p>
+<blockquote>
+<p><strong>Do not repeat <code>location_id</code> in the detail form's <code>Edits</code>.</strong> It identifies the row and belongs in <code>Keys</code> only; as an edit it is a disabled column and fails the whole transaction — <code>General Exception: Column is disabled: location_id</code>, <code>Failed: 1</code> (verified 26.1.5940.0, August 2026). <code>IgnoreDisabled: true</code> silences the error, which is the wrong fix: it is <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">the flag whose success proves nothing</a>. Drop the field instead. The same applies to <code>track_bins</code> and every other edit on this form.</p>
+</blockquote>
 <h4 id="set-an-items-primary-supplier-at-a-location-form-list-list">Set an item's primary supplier at a location (Form → List → List)</h4>
 <p>Same window, one level different — the third element is the supplier list:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SUPPLIER_X_LOCATION.supplier_x_location&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;supplier_id&quot;</span><span class="p">],</span>
@@ -4658,15 +4658,88 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <li><code>primary_supplier</code> maps to <code>inventory_supplier_x_loc.primary_supplier</code> (a Y/N flag) — <strong>not</strong> <code>inv_loc.primary_supplier_id</code>.</li>
 <li>Setting it <code>ON</code> makes P21 auto-unset the previous primary at that location <strong>and</strong> update <code>inv_loc.primary_supplier_id</code> to the new supplier. So the flag is the field to <strong>write</strong>; <code>inv_loc.primary_supplier_id</code> is the field to <strong>read</strong> when verifying.</li>
 </ul>
+<h4 id="adding-a-location-supplier-row-the-prerequisite-insert">Adding a Location Supplier Row (the Prerequisite Insert)</h4>
+<p>The flip above promotes a supplier that is <strong>already</strong> on the location's supplier list. When the row does not exist there is nothing to promote, and the transaction reports success while doing nothing — the <a href="#item-service-gotchas">silent no-op</a> below. This is the payload that creates the missing row, verified on 26.1.5940.0 (August 2026):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SUPPLIER_X_LOCATION.supplier_x_location&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;supplier_id&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10050&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<p>Two differences from the flip, and both are load-bearing:</p>
+<ul>
+<li><strong>Key on <code>location_id</code> <em>and</em> <code>supplier_id</code>.</strong> With both keys and no matching row, the <a href="#upsert-semantics-keyed-rows-insert-when-absent">keyed upsert</a> inserts one. Keyed on <code>supplier_id</code> alone, the write targets the wrong identity — see <a href="#keys-row-identity-and-the-collapse-trap">Keys — Row Identity and the Collapse Trap</a>.</li>
+<li><strong>Send <code>IgnoreDisabled: true</code> at the payload top level.</strong> <code>location_id</code> and <code>supplier_id</code> are disabled columns on this grid, so without the flag the edits are refused outright: <code>General Exception: Column is disabled: location_id</code>, <code>Failed: 1</code>, nothing written (verified control run).</li>
+</ul>
+<p>P21 creates the item-level <code>inventory_supplier</code> record too when it is missing, so one call covers both. The new row lands with <code>primary_supplier = 'N'</code>; promote it with the <a href="#set-an-items-primary-supplier-at-a-location-form-list-list">flip payload</a> afterwards.</p>
+<blockquote>
+<p><strong>This is the flag's <em>other</em> outcome.</strong> The same <code>IgnoreDisabled: true</code> that genuinely inserts here is the one that reports success while writing nothing on other elements — see <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a>. Nothing in either response tells you which you got. Read the row back.</p>
+<p><strong>Reading it back:</strong> <code>inventory_supplier_x_loc</code> is not necessarily exposed over OData (404 on the tested tenant). <a href="#reading-one-record-post-transactionget"><code>POST /api/v2/transaction/get</code></a> on <code>Item</code> returns <code>SUPPLIER_X_LOCATION.supplier_x_location</code> with every location's rows, which is the reliable check.</p>
+</blockquote>
+<h4 id="enabling-bin-tracking-at-a-location-track_bins">Enabling Bin Tracking at a Location (<code>track_bins</code>)</h4>
+<p><code>inv_loc.track_bins</code> is a checkbox on the same location detail form, so it takes the checkbox spelling — <code>"ON"</code> / <code>"OFF"</code>, not <code>Y</code>/<code>N</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_18.inv_loc_detail&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;track_bins&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<p>Verified on 26.1.5940.0 (August 2026), and at scale across ~14,700 item-locations in a test environment. What to expect:</p>
+<ul>
+<li><strong>Enabling it assigns a primary bin when the item has none.</strong> P21 fills <code>inv_loc.primary_bin</code> from the location's default as part of the flip — <code>NEEDS_BIN</code> on the tested tenant, <code>0</code> on another. Treat the value as environment-specific; treat the <em>assignment</em> as certain, and snapshot the old <code>primary_bin</code> before a bulk run.</li>
+<li><strong><code>"OFF"</code> reverts cleanly</strong>, and clears that auto-assigned bin back to NULL.</li>
+<li><strong>Other-charge items are refused</strong> — <code>Other charge items cannot track bins.</code> — as are subtotal/total pseudo-items. <code>inv_mast.other_charge_item = 'Y'</code> pre-filters the first group; there is no equivalent flag for the second, so those simply error out harmlessly.</li>
+<li><strong>A different location's row can block the save.</strong> <code>Required value missing for primary bin on row N</code> refers to another <code>invloclist</code> row on the same item, not the one being edited.</li>
+<li><strong>Items with stock on hand deserve a decision, not a batch.</strong> Turning on bin tracking where quantity already exists implies bin placement; exclude them and handle them individually.</li>
+<li><strong>Items that trip the <a href="#item-issues-detected-popup-root-cause-and-data-fix">"Item Issues Detected" popup</a> fail here</strong>, as they do for every Item write. The Interactive API answers that popup (<code>cb_1</code>); the Transaction API cannot.</li>
+</ul>
+<h4 id="item-window-element-map-locations">Item Window Element Map (Locations)</h4>
+<p>The location-side elements chain Form → List → Form/List, and the tab numbers are not guessable:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Data element</th>
+<th>Type</th>
+<th>Carries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TABPAGE_1.tp_1_dw_1</code></td>
+<td>Form</td>
+<td>the item header — <code>item_id</code></td>
+</tr>
+<tr>
+<td><code>TABPAGE_17.invloclist</code></td>
+<td>List</td>
+<td>the location rows; selects which location the elements below apply to</td>
+</tr>
+<tr>
+<td><code>TABPAGE_18.inv_loc_detail</code></td>
+<td>Form</td>
+<td>that location's detail — <code>bin</code>, <code>track_bins</code>, …</td>
+</tr>
+<tr>
+<td><code>TABPAGE_23.tp_23_dw_23</code></td>
+<td>Form</td>
+<td>that location's <code>purchase_class_id</code> (ABC class)</td>
+</tr>
+<tr>
+<td><code>SUPPLIER_X_LOCATION.supplier_x_location</code></td>
+<td>List</td>
+<td>that location's supplier rows — <code>supplier_id</code>, <code>primary_supplier</code></td>
+</tr>
+</tbody>
+</table></div>
 <h4 id="item-service-gotchas">Item Service Gotchas</h4>
 <ul>
-<li><strong>Silent no-op — the big one.</strong> The target supplier must already have a <em>location-level</em> row (<code>inventory_supplier_x_loc</code>) at that location. If it doesn't, the transaction still returns <code>Succeeded = 1</code> but <strong>nothing flips</strong> — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) <strong>Always verify <code>inv_loc.primary_supplier_id</code> after writing</strong> — do not trust <code>Succeeded</code>. Fix: add the location supplier row first, then set the flag.</li>
+<li><strong>Silent no-op — the big one.</strong> The target supplier must already have a <em>location-level</em> row (<code>inventory_supplier_x_loc</code>) at that location. If it doesn't, the transaction still returns <code>Succeeded = 1</code> but <strong>nothing flips</strong> — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) <strong>Always verify <code>inv_loc.primary_supplier_id</code> after writing</strong> — do not trust <code>Succeeded</code>. Fix: <a href="#adding-a-location-supplier-row-the-prerequisite-insert">add the location supplier row first</a>, then set the flag.</li>
 <li><strong>"Item Issues Detected" popup — a data defect you can fix, not an API limitation.</strong> Affected items return an <code>Unexpected response window: Item Issues Detected</code> (<code>w_rule_callback_response</code>) in the response <code>Messages</code>. The Transaction API cannot answer the popup, so the transaction aborts and the edit is discarded. The popup comes from a <strong>site-configured DynaChange business rule with <code>apply_during_save_flag = 'Y'</code></strong>, which fires on <em>every</em> save of the Item window — so it blocks <strong>all</strong> Item-service writes, not just <code>product_group_id</code> changes. The behavior is <strong>deterministic, not per-run session state</strong>: retries fail every time until the underlying data is corrected, and once it is corrected the identical transaction succeeds. Identify the rule and its trigger, fix the data, re-run — see <a href="#item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected Popup Root Cause and Data Fix</a>. For items you cannot data-fix, fall back to the Interactive API and answer the popup with <code>cb_1</code> ("Yes, Proceed Anyway") — see <a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Item window popups</a>.</li>
 <li><strong>Uppercase your <code>item_id</code> yourself — the API will not.</strong> The P21 client folds a typed item ID to uppercase before it saves, so lowercase item IDs cannot be created through the UI. <strong>The Transaction API applies no such conversion</strong>: a lowercase <code>item_id</code> is accepted and the item is created successfully. The resulting record is then effectively unusable — opening it in <strong>Item Maintenance / Item Master Inquiry crashes the client</strong> (reported by maintainers as crashing the browser in the web client), and it is not clear that item-repair tooling detects it. Normalize <code>item_id</code> to uppercase in your own code before every create; there is no API-side guard. This is the one place where the Transaction API is known to accept input the application itself would reject. <em>(Community session, Felipe Maurer, 2026; independently confirmed from production experience. Deliberately </em><em>not</em><em> re-tested for this documentation — the item it creates cannot be cleaned up through the UI, so do not reproduce it to check, on production or anywhere else.)</em></li>
-<li><code>SUPPLIER_X_LOCATION</code> is keyed by <code>supplier_id</code> scoped to the selected location row in the Transaction API, so the nested pattern is safe here. (The equivalent <em>interactive</em> flow must match rows on both <code>location_id</code> and <code>supplier_id</code> — the grid holds every location's rows.)</li>
+<li><code>SUPPLIER_X_LOCATION</code> is keyed by <code>supplier_id</code> scoped to the selected location row in the Transaction API, so the nested pattern is safe <strong>for updating a row that exists</strong>. It is not enough to <em>create</em> one: an insert has to key on both <code>location_id</code> and <code>supplier_id</code>, and carry <code>IgnoreDisabled</code> — see <a href="#adding-a-location-supplier-row-the-prerequisite-insert">Adding a Location Supplier Row</a>. (The equivalent <em>interactive</em> flow must match rows on both columns too — the grid holds every location's rows.)</li>
 </ul>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — patterns and gotchas verified in production (July 2026).</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — patterns and gotchas verified in production (July–August 2026).</p>
 </blockquote>
 <h3 id="binlocation-service-creating-bins">BinLocation Service -- Creating Bins</h3>
 <p>The <code>BinLocation</code> service <em>is</em> the <strong>Bin Location Maintenance</strong> window: its form element <code>FORM.form</code> is business object <code>bin</code> (datawindow <code>d_dw_bin_form</code>), and every field in the payload is a real field on that screen. Bulk bin creation is a clean Transaction API use case — verified in production at hundreds of bins per run.</p>

@@ -51,8 +51,8 @@
             {
               "Edits": [
                 {
-                  "Name": "bin",
-                  "Value": "A01-02"
+                  "Name": "track_bins",
+                  "Value": "ON"
                 }
               ],
               "RelativeDateEdits": []
