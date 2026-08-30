@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-08-30 — v1.12.2
+
+- **docs:** **Alex Westemeier is now credited as an original author, not only per section.** Roughly thirty section-level credits already named him, which is accurate but leaves a reader with no sense of the scale: docs [03](03-Transaction-API.md), [04](04-Interactive-API.md) and [12](12-Production-Labor-API.md) now carry an **Original source** line under the disclaimer naming what in each document began as his process work — upsert semantics and `Keys`, `IgnoreDisabled`, report-service discovery, the Item window's nested location edits, the buy-side build → receive → vouch cycle, the response-window and popup mechanics, the in-window wizard, the `ui/full` surface, and the production order lifecycle end to end. The README gains an **Acknowledgments** section saying the same thing in one place, alongside Felipe Maurer's contributions through P21WWUG and community sessions, and his row in the contributors table below now reflects the actual scope. Re-verification here does not transfer authorship of a discovery — *@mrwuss*
+
 ## 2026-08-30 — v1.12.1
 
 Two corrections to how this repo describes itself, both prompted by questions the docs could not answer from their own text.
@@ -622,7 +626,7 @@ First tagged release. This wave cross-checked the docs against a community proce
 | Sibin Francis | [@sibinfrancisaj](https://github.com/sibinfrancisaj) | Inventory REST API documentation ([PR #23](https://github.com/mrwuss/p21-api-documentation/pull/23)) |
 | NextTWis | [@NextTWis](https://github.com/NextTWis) | Postman Collection for P21 API verification ([PR #24](https://github.com/mrwuss/p21-api-documentation/pull/24)) |
 | Rob Landham | [@roblandham](https://github.com/roblandham) | `POST /api/sales/orders/` order creation — payload shape, required trailing slash, `Lines.list` nesting ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) |
-| Alex Westemeier | [@AWestemeier](https://github.com/AWestemeier) | Report-service discovery, Transaction upsert + IgnoreDisabled findings, production lifecycle verification |
+| Alex Westemeier | [@AWestemeier](https://github.com/AWestemeier) | **Original author of much of the verified material in docs 03, 04 and 12**, and of the recipes cookbook and schema-library patterns — report-service discovery, upsert semantics and `Keys`, `IgnoreDisabled`, Item nested location edits, the production order lifecycle, the buy-side build → receive → vouch cycle, the in-window wizard, and the `ui/full` surface |
 | Jeff Poss | | PDF Report Generation endpoint discovery |
 | Felipe Maurer | | Entity API taxonomy correction, UDT Service API discovery and testing, Inventory pricing endpoints, Stored Procedure Executor UID discovery, DynaChange enforcement in TAPI, Keys/row-collapse and `/transaction/get` session material (v1.6.0) |
 | Kevin Landry | | Stored Procedure Executor execution via Interactive API |

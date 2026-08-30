@@ -2,6 +2,8 @@
 
 > **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
 
+> **Original source:** a large share of what this document verifies — upsert semantics and the `Keys` rules, `IgnoreDisabled`, report-service discovery, the Item window's nested location edits, the buy-side build → receive → vouch cycle — originates in [Alex Westemeier](https://github.com/AWestemeier)'s process work, re-verified here before publication. Section-level credits appear throughout.
+
 ---
 
 ## Overview

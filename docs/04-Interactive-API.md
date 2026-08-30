@@ -2,6 +2,8 @@
 
 > **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
 
+> **Original source:** much of this document's verified material — the response-window and popup mechanics, the in-window wizard, the `ui/full` surface — originates in [Alex Westemeier](https://github.com/AWestemeier)'s process work, re-verified here before publication. Section-level credits appear throughout.
+
 ---
 
 ## Overview

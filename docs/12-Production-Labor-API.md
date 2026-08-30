@@ -2,6 +2,8 @@
 
 > **Disclaimer:** This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.
 
+> **Original source:** the production order lifecycle documented here — stock netting, pick-ticket printing, shell confirm, completion and costing — was first worked out and verified end-to-end by [Alex Westemeier](https://github.com/AWestemeier), then re-verified here. Section-level credits appear throughout.
+
 ---
 
 ## Overview

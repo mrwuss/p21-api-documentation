@@ -91,6 +91,16 @@ All documentation is derived from:
 - **Actual Testing**: Tested against P21 test environments — disputed or community-reported behavior is live-verified before it's documented
 - **The community**: P21WWUG forum topics, conference sessions and shared scripts — credited by name, and treated as a lead to verify rather than a fact to repeat ([how we handle it](CONTRIBUTING.md#provenance-and-attribution))
 
+## Acknowledgments
+
+This documentation exists because people who solved these problems in production wrote down what they found.
+
+**[Alex Westemeier](https://github.com/AWestemeier)** is the original author of a large share of the verified material here — the Transaction API's upsert semantics and `Keys` rules, `IgnoreDisabled`, report-service discovery, the Item window's nested location edits, the buy-side build → receive → vouch cycle, the production order lifecycle end to end, the in-window wizard, and the web client's `ui/full` surface. The [recipes cookbook](docs/recipes/README.md) and the [schema library](definitions/README.md) follow patterns from his process work. Those findings were re-verified against a live tenant before they were published here; the discovery is his.
+
+**Felipe Maurer** contributed the Entity API taxonomy correction, the `Keys` row-collapse and `/transaction/get` material, UDT Service discovery, and much else, through [P21WWUG](https://forums.p21ww.org/Forum104.aspx) and community conference sessions.
+
+Everyone who has contributed a finding, a correction or code is listed in the [changelog's contributors table](docs/10-Changelog.md#contributors), and credited in the section their work appears in. See [Provenance and Attribution](CONTRIBUTING.md#provenance-and-attribution) for how sourcing works here.
+
 ## Contributing
 
 This documentation is a community effort! We welcome contributions:
