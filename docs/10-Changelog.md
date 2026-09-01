@@ -18,6 +18,13 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-09-01 — v1.13.0
+
+`w_message` dialogs are controllable, not just auto-answered — this doc said otherwise in three places.
+
+- **fix:** **[`w_message` is drivable under `ResponseWindowHandlingEnabled: true`](04-Interactive-API.md#response-windows).** `GET /window?id={id}` returns its `Definition.Name: "w_message"`, `Title`, and empty `Datawindows`/`TabPageList`; `GET /tools?windowId={id}` lists real buttons (`cb_1`/`cb_2`/`cb_3` — Yes/No/Cancel); `POST /tools` answers it — the same mechanism as every other response window type. It has no fields, so `TabName: null` doesn't apply, but "no form" isn't "no control." Corrected the "no dedicated answer endpoint" note, the `TabName: null` note, and the [Response Window Types](04-Interactive-API.md#response-window-types) table, which listed it as "Cannot be inspected" / "Default-answered" without qualifying that as `ResponseWindowHandlingEnabled: false`-only behavior.
+- **feat:** **[New worked example: "Save changes before closing?"](04-Interactive-API.md#worked-example-w_message-save-changes-before-closing).** Built on the existing PurchaseOrder Notepad Writes recipe — stage a header note, close the window instead of saving it, and the `w_message` blocks. Answering `cb_1` (Yes) saves the note first; `cb_2` (No) discards it — confirmed both directions via a fresh window reload against the same PO. `ResponseWindowHandlingEnabled: false` on the identical sequence skips the window entirely: `Status: 2`, no `windowopened` event, and the answer P21 gave itself is echoed in `Messages` as `"<question text> [Response: Yes]"`.
+
 ## 2026-08-30 — v1.12.2
 
 - **docs:** **Alex Westemeier is now credited as an original author, not only per section.** Roughly thirty section-level credits already named him, which is accurate but leaves a reader with no sense of the scale: docs [03](03-Transaction-API.md), [04](04-Interactive-API.md) and [12](12-Production-Labor-API.md) now carry an **Original source** line under the disclaimer naming what in each document began as his process work — upsert semantics and `Keys`, `IgnoreDisabled`, report-service discovery, the Item window's nested location edits, the buy-side build → receive → vouch cycle, the response-window and popup mechanics, the in-window wizard, the `ui/full` surface, and the production order lifecycle end to end. The README gains an **Acknowledgments** section saying the same thing in one place, alongside Felipe Maurer's contributions through P21WWUG and community sessions, and his row in the contributors table below now reflects the actual scope. Re-verification here does not transfer authorship of a discovery — *@mrwuss*
