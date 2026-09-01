@@ -786,7 +786,7 @@ Response windows (dialogs) can pop up during operations. When this happens:
 
 > **The popup's id lives in `Events` — not in the top-level `ResponseWindowId`.** That field exists in the response and is **empty on real 26.1 responses**, so a client that reads it gets `""` and concludes there is no popup to answer. A production integration had *every* blocked save fail this way before switching to the event. Read `Events[] → windowopened → Data[] → windowid`; check the top-level field first only as forward-compatibility, never as the primary source.
 
-> **There is no dedicated "answer this dialog" endpoint** — message boxes (`w_message`) cannot be answered programmatically. Probed and dead (January 2026): `PUT /api/ui/interactive/v2/responsewindow` → 404, `PUT /api/ui/interactive/v2/responsewindows` → 404, `POST /api/ui/interactive/v2/button` → 404, `DELETE /api/ui/interactive/v2/window?button=No` → 400. With `ResponseWindowHandlingEnabled: false` a `w_message` is auto-answered with its default (usually "Yes") — e.g. changing `product_group_id` on `inv_loc` triggers a "update GL accounts?" dialog whose default **overwrites the location's GL, revenue, and COS accounts**. Non-message-box popups ARE drivable: discover buttons via `GET /tools?windowId={id}` and click via `POST /tools` (see [Response Window Types](#response-window-types)).
+> **There is no *dedicated* "answer this dialog" endpoint.** Probed and dead (January 2026): `PUT /api/ui/interactive/v2/responsewindow` → 404, `PUT /api/ui/interactive/v2/responsewindows` → 404, `POST /api/ui/interactive/v2/button` → 404, `DELETE /api/ui/interactive/v2/window?button=No` → 400. Answer any response window, `w_message` included, through the general mechanism instead: discover buttons via `GET /tools?windowId={id}`, click one via `POST /tools` (see [Response Window Types](#response-window-types), [worked example](#worked-example-w_message-save-changes-before-closing)). This requires `ResponseWindowHandlingEnabled: true`. With `false`, a `w_message` is auto-answered with its default (usually "Yes") before it becomes a window you can query at all — e.g. changing `product_group_id` on `inv_loc` triggers a "update GL accounts?" dialog whose default **overwrites the location's GL, revenue, and COS accounts**. The answer given is echoed in the response's `Messages` array as `"<question text> [Response: Yes]"`.
 
 > **Status codes** match the `ResultStatus` enum in `P21.UI.Service.Model.Interactive.V2.ResultWrapper`:
 > `None=0, Success=1, Failure=2, Blocked=3`.
@@ -920,7 +920,7 @@ public async Task<JsonElement> ChangeResponseWindowFieldAsync(
 
 <!-- /tabs -->
 
-> **Note:** The `TabName: null` pattern applies to response windows that accept change requests (editable dialogs with Status: 3/Blocked). `w_message` dialogs cannot be edited programmatically. Use `ResponseWindowHandlingEnabled: false` in the session configuration to auto-answer message box dialogs with their default button.
+> **Note:** The `TabName: null` pattern applies to response windows that accept change requests (editable dialogs with Status: 3/Blocked). `w_message` dialogs have no fields — `GET /window?id={popupId}` returns an empty `Datawindows`/`TabPageList`, only a `Title` — so dismiss them with `POST /tools` instead (see the [worked example](#worked-example-w_message-save-changes-before-closing) below). Use `ResponseWindowHandlingEnabled: false` only when the default answer is acceptable unconfirmed — the GL-account prompt's default overwrites GL/revenue/COS accounts.
 
 **Common response window buttons:** `cb_ok`, `cb_cancel`, `cb_finish`, `cb_yes`, `cb_no`
 
@@ -941,6 +941,18 @@ A concrete `w_rule_callback_response` case from the Item window. Items with data
 Which items trip the rule is **deterministic**, not environmental luck: a site-configured DynaChange rule fires on every save of the Item window, and you can identify it — and usually fix the data instead — before writing any code. See [Item Issues Detected — Root Cause and Data Fix](03-Transaction-API.md#item-issues-detected-popup-root-cause-and-data-fix). Use this interactive path for the cases you cannot data-fix; don't hard-code a fallback list of items.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier).
+
+### Worked Example: `w_message` ("Save changes before closing?")
+
+Every window can pop a `w_message` the same way: close it with an unsaved change pending. Built on the [PurchaseOrder Notepad Writes](#recipe-add-a-header-note) recipe — same window, same `cb_add` popup — extended by one step. Verified end-to-end (26.1.5930.1, September 2026):
+
+1. Run steps 1–5 of [Recipe: Add a Header Note](#recipe-add-a-header-note): open `PurchaseOrder` (session with `ResponseWindowHandlingEnabled: true`), load a PO, add a header note through the `w_notepad_response_lite` popup (`cb_add` → fill `topic`/`note` → `cb_select_all` → `cb_ok`) — but stop before step 6's save. The note is staged in the window, not in the database yet.
+2. Close the window instead of saving it: `DELETE /v2/window?id={windowId}`. Result: `Status: 3` (Blocked) with a `windowopened` event.
+3. `GET /v2/window?id={popupId}` → `Definition.Name: "w_message"`, `Title: "Epicor Prophet 21 - Startup"`, empty `Datawindows`/`TabPageList`.
+4. `GET /v2/tools?windowId={popupId}` → button set: `cb_1` (&Yes), `cb_2` (&No), `cb_3` (Cancel), plus the standard `cb_print`/`cb_userinput`/`cb_copy` chrome.
+5. `POST /v2/tools` with `ToolName: "cb_1"` saves the note, then closes — a fresh window load shows it on file. `ToolName: "cb_2"` closes without saving — the fresh reload shows no such note.
+
+With `ResponseWindowHandlingEnabled: false` on the identical sequence: `Status: 2` (Failure, not Blocked), no `windowopened` event, no window to query. The answer P21 gave itself is echoed in `Messages` as `"<question text> [Response: Yes]"` — verified on a different `w_message` trigger, the Item window's GL-account sync prompt (fired by changing a location's `product_group_id`).
 
 ---
 
@@ -3970,16 +3982,18 @@ public async Task<JsonElement> AddRowTolerantAsync(
 
 ### Response Window Types
 
-Response windows fall into distinct categories based on what interactions they support. Tool-capable dialogs can be dismissed via `POST /tools`, but message boxes (`w_message`) are auto-answered based on `ResponseWindowHandlingEnabled` configuration.
+Response windows fall into distinct categories based on what interactions they support. All four types are `POST /tools`-drivable under `ResponseWindowHandlingEnabled: true`; what varies is whether there's a *form* to fill in before dismissing.
 
 | Type | Example | Buttons | Field Input | Dismiss Method |
 |------|---------|---------|-------------|----------------|
 | **Button-only dialog** | `w_rule_callback_response` | `cb_1` through `cb_5` | N/A | `POST /tools` with button name |
 | **Form + button dialog** | `w_inventory_scan_lookup` | `cb_ok`, `cb_cancel` | See editability note below | `POST /tools` with button name |
 | **Editable form dialog** | `w_notepad_response_lite` | `cb_select_all`, `cb_ok` | **Editable with `TabName: null`** | Fill fields, then `POST /tools` |
-| **Message box** | `w_message` | Default-answered | Cannot be inspected | Auto-answered when `ResponseWindowHandlingEnabled: false` |
+| **Message box** | `w_message` | `cb_1`/`cb_2`/`cb_3` (Yes/No/Cancel, varies) — discoverable via `GET /tools` | N/A — `GET /window?id={id}` returns empty `Datawindows`/`TabPageList` | `POST /tools` with button name when `true`; auto-answered with the default when `false` |
 
-**Editability (reconciled July 2026):** earlier testing (April 2026) concluded form-type response windows could only be dismissed — `GET /data` returned 400 and `PUT /change` returned 500 with *"Tab with name FORM does not exist"*. Those change attempts addressed the popup's fields with `TabName: "FORM"`. Later work showed form-style response windows **are editable** when the change request uses **`TabName: null`** with the popup's window ID — verified end-to-end on `w_notepad_response_lite` (see [PurchaseOrder Notepad Writes](#purchaseorder-notepad-writes-header-vs-line)). If a popup's fields reject edits, retry with `TabName: null` before concluding the window is dismiss-only. `w_message` boxes remain uneditable and are auto-answered.
+**Editability (reconciled July 2026):** earlier testing (April 2026) concluded form-type response windows could only be dismissed — `GET /data` returned 400 and `PUT /change` returned 500 with *"Tab with name FORM does not exist"*. Those change attempts addressed the popup's fields with `TabName: "FORM"`. Later work showed form-style response windows **are editable** when the change request uses **`TabName: null`** with the popup's window ID — verified end-to-end on `w_notepad_response_lite` (see [PurchaseOrder Notepad Writes](#purchaseorder-notepad-writes-header-vs-line)). If a popup's fields reject edits, retry with `TabName: null` before concluding the window is dismiss-only.
+
+**Message box (`w_message`) — reconciled September 2026:** under `ResponseWindowHandlingEnabled: true`, a `w_message` blocks (`Status: 3`, `windowopened` event), `GET /window?id={id}` returns its `Definition.Name: "w_message"` and `Title`, `GET /tools?windowId={id}` lists its buttons, and `POST /tools` answers it — the same four calls as every other row. It has no fields, so it's the one type `TabName: null` doesn't apply to. See the [worked example](#worked-example-w_message-save-changes-before-closing) above.
 
 **Inspecting and dismissing response windows** — takes the `response_window_id` from a `windowopened` event, so it only runs once something has opened a popup:
 

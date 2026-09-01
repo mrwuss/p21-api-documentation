@@ -165,11 +165,11 @@ All documentation is derived from:
 | **Grid deletes are not all `delete_flag`** — the Customer salesrep grid deletes via `row_status_flag: "Delete"` (label, not the `700` code); soft delete, so both OData *and* `/transaction/get` still return the row | [docs/03 § Removing a Salesrep Grid Row](docs/03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
 | What `Failed` guarantees (Transaction atomic; Transactions in one POST are **not**) and why `Required`/`basics` mislead | [docs/03 § What Failed actually guarantees](docs/03-Transaction-API.md#what-failed-actually-guarantees) · [§ What Required actually means](docs/03-Transaction-API.md#what-required-actually-means) |
 | Driving an **in-window wizard** (direct-ship PO) — commits at `cb_next` | [docs/04 § Driving an In-Window Wizard](docs/04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) |
-| Response windows: no answer-a-dialog endpoint, `w_message` auto-answered (GL-overwrite trap), drivable popups via `/tools`, editable popups via `TabName: null` | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) · [§ Response Window Types](docs/04-Interactive-API.md#response-window-types) |
+| Response windows: no dedicated answer-a-dialog endpoint — every type, **`w_message` included**, is driven via `GET`/`POST /tools` under `ResponseWindowHandlingEnabled: true`; `false` auto-answers and skips the window entirely (GL-overwrite trap); editable popups via `TabName: null` | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) · [§ Worked Example: w_message](docs/04-Interactive-API.md#worked-example-w_message-save-changes-before-closing) · [§ Response Window Types](docs/04-Interactive-API.md#response-window-types) |
 | `ResultStatus` enum (`None=0, Success=1, Failure=2, Blocked=3` — 2 is Failure, not Blocked) | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) |
 | `inv_loc` read/append/update paths (all resolved); Item-window GL fields stay read-only | [docs/11 § Updating Existing Location Fields](docs/11-Inventory-REST-API.md#updating-existing-location-fields) |
 | UDT Service quirks (errorMessage/errorNo, SQL-keyword filter, row_uid conditions) and the 2026.1 Bulk Data API (headerless-CSV silent zero-insert, scale rounding) | [docs/13-UDT-Service-API.md](docs/13-UDT-Service-API.md) · [§ Bulk Data API](docs/13-UDT-Service-API.md#bulk-data-api-20261) |
 
 ---
 
-*Last updated: 2026-08-30*
+*Last updated: 2026-09-01*

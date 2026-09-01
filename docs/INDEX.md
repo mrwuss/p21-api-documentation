@@ -140,6 +140,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | "Cannot open window **  ** because is not available" — the name came back blank | [04 § Open Window](04-Interactive-API.md#2-open-window) — blank means the `ServiceName` never resolved |
 | **Handle popups / response windows** (Status 3, windowopened) | [04 § Response Windows](04-Interactive-API.md#response-windows) · [04 § Response Window Types](04-Interactive-API.md#response-window-types) |
 | Answer a rule-callback dialog ("Item Issues Detected") | [04 § Worked Example](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) — but fix the data first: [03 § Root Cause and Data Fix](03-Transaction-API.md#item-issues-detected-popup-root-cause-and-data-fix) |
+| Answer a `w_message` dialog — it's fully controllable, not just auto-answered | [04 § Worked Example: w_message](04-Interactive-API.md#worked-example-w_message-save-changes-before-closing) |
 | Fill fields in a popup (`TabName: null`) | [04 § Response Window Handling (Tabless)](04-Interactive-API.md#response-window-handling-tabless-windows) |
 | Buttons / tools (`?windowId=`, not `?id=`) | [04 § Running Tools](04-Interactive-API.md#running-tools-buttons) |
 | Unlock a disabled tab | [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences) |
