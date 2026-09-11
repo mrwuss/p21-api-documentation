@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1160">2026-09-11 — v1.16.0</a></li>
 <li><a href="#2026-09-11-v1150">2026-09-11 — v1.15.0</a></li>
 <li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>
 <li><a href="#2026-09-11-v1130">2026-09-11 — v1.13.0</a></li>
@@ -725,6 +726,13 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-11-v1160">2026-09-11 — v1.16.0</h2>
+<p>A <code>$filter</code> cannot compare two columns, and on string columns it does not tell you so.</p>
+<ul>
+<li><strong>fix:</strong> <strong><a href="02-OData-API.html#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">The right-hand side of a <code>$filter</code> is always a literal</a>.</strong> Naming a second column on the right does not compare the two — the service takes the name as a literal and converts it to the left column's type. On typed columns that 404s (<code>total_amount gt amount_paid</code> → <code>Failed to convert parameter value from a String to a Decimal.</code>; <code>order_date lt invoice_date</code> → the same for <code>DateTime</code>), and arithmetic across columns fails identically. <strong>On string columns it returns HTTP 200 and the wrong answer:</strong> <code>bill2_name eq ship2_name</code> came back <code>@odata.count: 0</code> against a tenant where the same predicate matches <strong>739,355</strong> rows in SQL, because it was evaluated as <code>bill2_name eq 'ship2_name'</code>. Nothing in the response separates "no rows match" from "your filter did not mean what you wrote" — the same silent-success shape as <a href="02-OData-API.html#logical-operators"><code>in</code> being accepted and ignored</a>. Filter server-side on literals and on the flags P21 already maintains, and compare columns in your own code — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="02-OData-API.html#customerterms_id-is-the-default-for-the-next-document-not-the-terms-on-an-existing-one"><code>customer.terms_id</code> is the default for the <em>next</em> document, not the terms on an existing one</a>.</strong> The terms an invoice was billed on live on the invoice (<code>invoice_hdr.terms_id</code>, <code>net_due_date</code>), and one account can carry several sets across its open items. Ageing against the master value silently describes a document that does not exist: on a production tenant, an account whose master read <code>Net 180</code> held two invoices 142 and 149 days past due that had been billed <code>Net 30</code> before the terms changed — comfortably inside terms by the master, the oldest receivables on the account by their own due dates — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong>AR tables added to <a href="02-OData-API.html#common-tables">Common Tables</a></strong> — <code>invoice_hdr</code>/<code>invoice_line</code> (credit memos are ordinary rows with a negative <code>total_amount</code>), <code>ar_receipts</code>/<code>ar_receipts_detail</code> (where the cash application and its date live), <code>terms</code>/<code>customer_terms</code>, and <code>credit_status</code>, which decodes <code>customer.credit_status</code> and carries the order-entry action each code triggers — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-11-v1150">2026-09-11 — v1.15.0</h2>
 <p>The salesrep on an order is not on the order, and two schema columns mean something other than what they are called.</p>
 <ul>
@@ -1394,6 +1402,11 @@
 <td><code>POST /api/sales/orders/</code> order creation — payload shape, required trailing slash, <code>Lines.list</code> nesting (<a href="https://github.com/mrwuss/p21-api-documentation/issues/108">issue #108</a>)</td>
 </tr>
 <tr>
+<td>Yeshaya Kohn</td>
+<td><a href="https://github.com/yeshayak">@yeshayak</a></td>
+<td><a href="11-Inventory-REST-API.html#batch-pricing">Batch Pricing</a> — JSON <em>and</em> XML bodies, the <code>Content-Type</code> trap behind its "XML only" reputation, and the bare <code>&lt;ArrayOfItemPriceInfo&gt;</code> namespace trap; the 25 <a href="02-OData-API.html#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search views</a>; the <a href="00-Authentication.html#server-info-endpoint-version-environment-detection"><code>serverinfo</code> version endpoint</a>, which corrected doc 14's "no version endpoint exists"; the build-dependence of <code>Monitoring/shortversion</code> (<a href="https://github.com/mrwuss/p21-api-documentation/pull/150">PR #150</a>). <strong><a href="04-Interactive-API.html#worked-example-w_message-save-changes-before-closing"><code>w_message</code> dialogs are drivable</a></strong> via <code>GET</code>/<code>POST /tools</code> — this documentation had called them unanswerable in three places and in both response-window example programs since January (<a href="https://github.com/mrwuss/p21-api-documentation/pull/155">PR #155</a>)</td>
+</tr>
+<tr>
 <td>Alex Westemeier</td>
 <td><a href="https://github.com/AWestemeier">@AWestemeier</a></td>
 <td><strong>Original author of much of the verified material in docs 03, 04 and 12</strong>, and of the recipes cookbook and schema-library patterns — report-service discovery, upsert semantics and <code>Keys</code>, <code>IgnoreDisabled</code>, Item nested location edits, the production order lifecycle, the buy-side build → receive → vouch cycle, the in-window wizard, and the <code>ui/full</code> surface</td>
@@ -1465,6 +1478,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1160">2026-09-11 — v1.16.0</a></li>
 <li><a href="#2026-09-11-v1150">2026-09-11 — v1.15.0</a></li>
 <li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>
 <li><a href="#2026-09-11-v1130">2026-09-11 — v1.13.0</a></li>

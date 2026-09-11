@@ -670,6 +670,7 @@
 <li><a href="#logical-operators">Logical Operators</a></li>
 <li><a href="#string-functions">String Functions</a></li>
 <li><a href="#null-checks">Null Checks</a></li>
+<li><a href="#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">The right-hand side is always a literal — you cannot compare two columns</a></li>
 </ul>
 </li>
 <li><a href="#common-patterns">Common Patterns</a><ul>
@@ -1108,6 +1109,49 @@
 <span class="err">$filter=notes ne null</span>
 </code></pre></div>
 
+<h3 id="the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">The right-hand side is always a literal — you cannot compare two columns</h3>
+<p>Every comparison in <code>$filter</code> is <em>column operator literal</em>. Naming a second column on the right does not compare the two; the service takes the name as a literal value and tries to convert it to the left column's type. <strong>On a typed column that fails loudly. On a string column it succeeds and quietly returns the wrong answer.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>total_amount gt 0</code></td>
+<td>200 — literal, works as expected</td>
+</tr>
+<tr>
+<td><code>total_amount gt amount_paid</code></td>
+<td><strong>404</strong> <code>Failed to convert parameter value from a String to a Decimal.</code></td>
+</tr>
+<tr>
+<td><code>order_date lt invoice_date</code></td>
+<td><strong>404</strong> <code>Failed to convert parameter value from a String to a DateTime.</code></td>
+</tr>
+<tr>
+<td><code>total_amount sub amount_paid gt 0</code></td>
+<td><strong>404</strong> — same conversion error; arithmetic across two columns is not a way around it</td>
+</tr>
+<tr>
+<td><code>bill2_name eq ship2_name</code></td>
+<td><strong>200 — and zero rows</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>That last row is the hazard. The same predicate in SQL matches <strong>739,355</strong> rows on the tenant it was measured against; over OData it returns HTTP 200, <code>@odata.count: 0</code>, and an empty <code>value</code> array, because it was evaluated as <code>bill2_name eq 'ship2_name'</code>. Nothing in the response distinguishes "no rows match" from "your filter did not mean what you wrote" — this is the same class of silent-success trap as <a href="#logical-operators"><code>in</code> being accepted and ignored</a>.</p>
+<p><strong>Do the comparison client-side.</strong> Filter server-side on what the service <em>can</em> evaluate — literals, and flag columns that already encode the answer — then compare columns in your own code:</p>
+<div class="highlight"><pre><span></span><code><span class="err"># wrong: silently or loudly fails</span>
+<span class="err">$filter=total_amount gt amount_paid</span>
+
+<span class="err"># right: filter on the flag P21 maintains for exactly this question,</span>
+<span class="err"># then compute the balance yourself</span>
+<span class="err">$filter=paid_in_full_flag eq &#39;N&#39; and invoice_type eq &#39;IN&#39;</span>
+</code></pre></div>
+
+<p>Where a derived comparison has to happen in the database — an aging report, a reconciliation — that is a reason to reach for SQL or a purpose-built view rather than OData.</p>
 <hr />
 <h2 id="common-patterns">Common Patterns</h2>
 <h3 id="active-record-filter">Active Record Filter</h3>
@@ -1227,6 +1271,10 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <hr />
 <h3 id="columns-that-dont-mean-what-their-name-says">Columns that don't mean what their name says</h3>
 <p>A column name is a claim about intent, and P21 has a few where the stored value stops matching the intent once a downstream process touches the row. These are read hazards specifically: the value is present, well-typed and plausible, so nothing in the response tells you it is no longer the thing you asked for.</p>
+<h4 id="customerterms_id-is-the-default-for-the-next-document-not-the-terms-on-an-existing-one"><code>customer.terms_id</code> is the default for the <em>next</em> document, not the terms on an existing one</h4>
+<p><code>customer.terms_id</code> is the master-file default applied when a document is created. The terms a given invoice was actually billed on live on that invoice: <code>invoice_hdr.terms_id</code>, with the resulting date in <code>invoice_hdr.net_due_date</code>. The two disagree whenever an account's terms have changed, and an account can carry several sets of terms across its open invoices at once.</p>
+<p>This is a read hazard because the master value is the easier one to join to and looks authoritative. Age an invoice against the customer's current terms and the arithmetic silently describes a document that does not exist. A worked case from a production tenant: an account whose master record read <code>Net 180</code> had two invoices sitting 142 and 149 days past due — both billed <code>Net 30</code>, months before the terms changed. Judged against the master's 180 days they looked comfortably inside terms; judged against their own <code>net_due_date</code> they were the oldest receivables on the account.</p>
+<p><strong>Age every invoice on its own <code>net_due_date</code>.</strong> Reach for <code>customer.terms_id</code> only when you want to know what the <em>next</em> document will be billed on. The same applies to <code>terms_desc</code>, which is denormalized onto <code>invoice_hdr</code> — the invoice's copy is the historical truth, and <code>terms.terms_id</code> → <code>terms.net_days</code> resolves the master's current meaning.</p>
 <h4 id="oe_hdrcompleted-is-not-a-boolean-t-is-a-real-third-value"><code>oe_hdr.completed</code> is not a boolean — <code>'T'</code> is a real third value</h4>
 <p><code>Y</code> and <code>N</code> are what you expect. <strong><code>T</code> marks a document left in an in-progress editing state</strong>, and it is rare enough to miss in a sample: company-wide on a production tenant (September 2026), <code>Y</code> 639,247 · <code>N</code> 184,408 · <strong><code>T</code> 308</strong>. It matters for two reasons. A filter written as <code>= 'N'</code> and one written as <code>&lt;&gt; 'Y'</code> disagree on every <code>T</code> row, so the choice is never cosmetic. And a <code>T</code> row <strong>refuses Transaction API writes</strong> — the record-lock prompt fires and the stateless API answers it <code>No</code> — which makes <code>WHERE completed &lt;&gt; 'T'</code> the pre-screen for any batch write against orders. See <a href="03-Transaction-API.html#order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</a>.</p>
 <p>Do not reach for <code>process_in_progress_lock</code> to find these: it was empty (0 rows) on the same tenant while the prompt was firing, and does not back this behaviour.</p>
@@ -1617,6 +1665,22 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <tr>
 <td><code>product_group</code></td>
 <td>Product groups</td>
+</tr>
+<tr>
+<td><code>invoice_hdr</code> / <code>invoice_line</code></td>
+<td>AR invoices and their lines. <code>invoice_type</code> <code>'IN'</code>; credit memos are ordinary rows with a negative <code>total_amount</code></td>
+</tr>
+<tr>
+<td><code>ar_receipts</code> / <code>ar_receipts_detail</code></td>
+<td>Cash receipts and their per-invoice application. <code>ar_receipts_detail.invoice_no</code> joins to <code>invoice_hdr</code>; <code>ar_receipts.date_received</code> is when the money landed</td>
+</tr>
+<tr>
+<td><code>terms</code> / <code>customer_terms</code></td>
+<td>Terms definitions (<code>net_days</code>, <code>discount_days</code>, <code>discount_pct</code>) and per-customer assignments</td>
+</tr>
+<tr>
+<td><code>credit_status</code></td>
+<td>Decodes <code>customer.credit_status</code> (<code>GOOD</code>, <code>ACA</code>, <code>WATCH</code>, <code>TRC</code>, <code>PRC</code>, <code>COD</code>, <code>TBD</code>) and carries the order-entry action each one triggers</td>
 </tr>
 </tbody>
 </table></div>
@@ -2874,6 +2938,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#logical-operators">Logical Operators</a></li>
 <li><a href="#string-functions">String Functions</a></li>
 <li><a href="#null-checks">Null Checks</a></li>
+<li><a href="#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">The right-hand side is always a literal — you cannot compare two columns</a></li>
 </ul>
 </li>
 <li><a href="#common-patterns">Common Patterns</a><ul>

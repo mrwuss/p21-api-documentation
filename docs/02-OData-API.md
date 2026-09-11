@@ -283,6 +283,33 @@ $filter=expiration_date eq null
 $filter=notes ne null
 ```
 
+### The right-hand side is always a literal — you cannot compare two columns
+
+Every comparison in `$filter` is *column operator literal*. Naming a second column on the right does not compare the two; the service takes the name as a literal value and tries to convert it to the left column's type. **On a typed column that fails loudly. On a string column it succeeds and quietly returns the wrong answer.**
+
+| Filter | Result |
+|---|---|
+| `total_amount gt 0` | 200 — literal, works as expected |
+| `total_amount gt amount_paid` | **404** `Failed to convert parameter value from a String to a Decimal.` |
+| `order_date lt invoice_date` | **404** `Failed to convert parameter value from a String to a DateTime.` |
+| `total_amount sub amount_paid gt 0` | **404** — same conversion error; arithmetic across two columns is not a way around it |
+| `bill2_name eq ship2_name` | **200 — and zero rows** |
+
+That last row is the hazard. The same predicate in SQL matches **739,355** rows on the tenant it was measured against; over OData it returns HTTP 200, `@odata.count: 0`, and an empty `value` array, because it was evaluated as `bill2_name eq 'ship2_name'`. Nothing in the response distinguishes "no rows match" from "your filter did not mean what you wrote" — this is the same class of silent-success trap as [`in` being accepted and ignored](#logical-operators).
+
+**Do the comparison client-side.** Filter server-side on what the service *can* evaluate — literals, and flag columns that already encode the answer — then compare columns in your own code:
+
+```http
+# wrong: silently or loudly fails
+$filter=total_amount gt amount_paid
+
+# right: filter on the flag P21 maintains for exactly this question,
+# then compute the balance yourself
+$filter=paid_in_full_flag eq 'N' and invoice_type eq 'IN'
+```
+
+Where a derived comparison has to happen in the database — an aging report, a reconciliation — that is a reason to reach for SQL or a purpose-built view rather than OData.
+
 ---
 
 ## Common Patterns
@@ -394,6 +421,14 @@ Two ways to avoid long chains:
 ### Columns that don't mean what their name says
 
 A column name is a claim about intent, and P21 has a few where the stored value stops matching the intent once a downstream process touches the row. These are read hazards specifically: the value is present, well-typed and plausible, so nothing in the response tells you it is no longer the thing you asked for.
+
+#### `customer.terms_id` is the default for the *next* document, not the terms on an existing one
+
+`customer.terms_id` is the master-file default applied when a document is created. The terms a given invoice was actually billed on live on that invoice: `invoice_hdr.terms_id`, with the resulting date in `invoice_hdr.net_due_date`. The two disagree whenever an account's terms have changed, and an account can carry several sets of terms across its open invoices at once.
+
+This is a read hazard because the master value is the easier one to join to and looks authoritative. Age an invoice against the customer's current terms and the arithmetic silently describes a document that does not exist. A worked case from a production tenant: an account whose master record read `Net 180` had two invoices sitting 142 and 149 days past due — both billed `Net 30`, months before the terms changed. Judged against the master's 180 days they looked comfortably inside terms; judged against their own `net_due_date` they were the oldest receivables on the account.
+
+**Age every invoice on its own `net_due_date`.** Reach for `customer.terms_id` only when you want to know what the *next* document will be billed on. The same applies to `terms_desc`, which is denormalized onto `invoice_hdr` — the invoice's copy is the historical truth, and `terms.terms_id` → `terms.net_days` resolves the master's current meaning.
 
 #### `oe_hdr.completed` is not a boolean — `'T'` is a real third value
 
@@ -709,6 +744,10 @@ static string ReadField(string payload, string field)
 | `price_book` | Price book records |
 | `price_library` | Price library definitions |
 | `product_group` | Product groups |
+| `invoice_hdr` / `invoice_line` | AR invoices and their lines. `invoice_type` `'IN'`; credit memos are ordinary rows with a negative `total_amount` |
+| `ar_receipts` / `ar_receipts_detail` | Cash receipts and their per-invoice application. `ar_receipts_detail.invoice_no` joins to `invoice_hdr`; `ar_receipts.date_received` is when the money landed |
+| `terms` / `customer_terms` | Terms definitions (`net_days`, `discount_days`, `discount_pct`) and per-customer assignments |
+| `credit_status` | Decodes `customer.credit_status` (`GOOD`, `ACA`, `WATCH`, `TRC`, `PRC`, `COD`, `TBD`) and carries the order-entry action each one triggers |
 
 ---
 

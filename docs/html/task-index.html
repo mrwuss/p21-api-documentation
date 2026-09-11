@@ -728,6 +728,14 @@
 <td><a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a> — soft-deleted rows keep their old values and dominate some tables</td>
 </tr>
 <tr>
+<td><strong>Compare two columns in a <code>$filter</code></strong> (<code>total_amount gt amount_paid</code>)</td>
+<td><a href="02-OData-API.html#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">02 § The right-hand side is always a literal</a> — 404 on typed columns, <strong>silently zero rows</strong> on strings</td>
+</tr>
+<tr>
+<td>Age open AR / "how late is this invoice?"</td>
+<td><a href="02-OData-API.html#customerterms_id-is-the-default-for-the-next-document-not-the-terms-on-an-existing-one">02 § <code>customer.terms_id</code> is the default for the <em>next</em> document</a> — age on the invoice's own <code>net_due_date</code></td>
+</tr>
+<tr>
 <td>Filter 404s on a value that looks right (<code>Edm.Decimal</code> vs <code>Edm.String</code>)</td>
 <td><a href="02-OData-API.html#active-record-filter">02 § Active Record Filter</a> — many <code>*_id</code> columns are numeric; don't quote them</td>
 </tr>
