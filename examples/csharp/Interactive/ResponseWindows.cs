@@ -32,11 +32,15 @@ namespace P21Examples.Interactive;
 /// 4. Form-style response windows (e.g., w_notepad_response_lite) are fully
 ///    EDITABLE: change their fields with TabName: null, then click their tools.
 ///
-/// 5. REMAINING LIMITATION — scoped to w_message ONLY: plain message boxes
-///    (w_message) expose no usable tools and are auto-answered with the
-///    default button. Historical note: PUT /v2/responsewindow,
-///    PUT /v2/responsewindows, DELETE /v2/window?button=No and
-///    POST /v2/button were all tested and do NOT exist (404/400).
+/// 5. Message boxes (w_message) answer the same way. They are the one type
+///    with no form — GET /v2/window returns an empty Definition.Datawindows
+///    and TabPageList — but GET /v2/tools lists real buttons. Map them by
+///    each entry's Text ("&Yes"/"&No"/"Cancel"), not by position, and note
+///    the identifier field is ToolName (reading Name yields null for every
+///    button, which looks like "no tools"). Historical note:
+///    PUT /v2/responsewindow, PUT /v2/responsewindows,
+///    DELETE /v2/window?button=No and POST /v2/button were all tested and
+///    do NOT exist (404/400).
 ///
 /// 6. Attempting to continue while a dialog is open results in error:
 ///    "Unable to process request on window X since response window Y blocks it"
@@ -51,8 +55,8 @@ public static class ResponseWindows
         Console.WriteLine(new string('=', 60));
         Console.WriteLine();
         Console.WriteLine("  Popups are answered via GET/POST /v2/tools using the POPUP's");
-        Console.WriteLine("  window ID from the 'windowopened' event. Only w_message boxes");
-        Console.WriteLine("  remain unanswerable (auto-answered with the default button).");
+        Console.WriteLine("  window ID from the 'windowopened' event. This works for every");
+        Console.WriteLine("  popup type, w_message included.");
         Console.WriteLine();
 
         // ==================================================================
@@ -200,9 +204,11 @@ Key findings:
    to click one (verified: w_inventory_scan_lookup, w_rule_callback_response)
 4. Form-style response windows (e.g., w_notepad_response_lite) are fully
    editable — change their fields with TabName: null, then click their tools
-5. Remaining limitation is scoped to w_message boxes ONLY: they expose no
-   usable tools and get the default answer. (Historical: /v2/responsewindow,
-   /v2/responsewindows, DELETE window?button=, /v2/button all 404/400.)
+5. w_message boxes answer the same way — they are simply the one type with
+   no form, so TabName: null has nothing to act on. Read each tool's Text
+   ("&Yes"/"&No"/"Cancel") to map cb_1/cb_2/cb_3. (Historical:
+   /v2/responsewindow, /v2/responsewindows, DELETE window?button=,
+   /v2/button all 404/400.)
 6. Dialogs block the main window until dismissed
 
 Impact on Product Group changes:
@@ -221,7 +227,7 @@ Recommendation:
     /// popup's window ID (from the "windowopened" event), discover its
     /// buttons via GET /v2/tools?windowId={popupId}, then click one via
     /// POST /v2/tools. Works for popups like w_inventory_scan_lookup and
-    /// w_rule_callback_response; w_message boxes expose no usable tools.
+    /// w_rule_callback_response and w_message alike.
     /// Form-style response windows (e.g., w_notepad_response_lite) can also
     /// have their fields edited first, using TabName: null.
     /// </summary>
@@ -278,11 +284,12 @@ Recommendation:
         }
         else
         {
-            // w_message boxes land here: no usable tools are exposed.
-            Console.WriteLine("  No usable tools returned - this is a w_message box.");
-            Console.WriteLine("  w_message dialogs cannot be answered via the API; they are");
-            Console.WriteLine("  auto-answered with the default button. For inv_loc changes,");
-            Console.WriteLine("  prefer the Inventory REST API (docs/11) to avoid the dialog.");
+            // Genuinely toolless, or the identifier was read from the wrong
+            // field: the tools array names each button in ToolName, not Name.
+            Console.WriteLine("  No usable tools returned. Check that the button name was read");
+            Console.WriteLine("  from ToolName - reading Name yields null for every entry and");
+            Console.WriteLine("  is indistinguishable from an empty tool set. For inv_loc");
+            Console.WriteLine("  changes, prefer the Inventory REST API (docs/11) anyway.");
         }
     }
 
@@ -497,10 +504,12 @@ Recommendation:
 
         if (toolNames.Count == 0)
         {
-            // w_message boxes land here: no usable tools.
-            Console.WriteLine("  No usable tools - this is a w_message box (cannot be answered");
-            Console.WriteLine("  via the API; it gets the default answer). For inv_loc changes,");
-            Console.WriteLine("  prefer the Inventory REST API (docs/11) to avoid the dialog.");
+            // Genuinely toolless, or the identifier was read from the wrong
+            // field: the tools array names each button in ToolName, not Name.
+            Console.WriteLine("  No usable tools. Check that the button name was read from");
+            Console.WriteLine("  ToolName - reading Name yields null for every entry and is");
+            Console.WriteLine("  indistinguishable from an empty tool set. For inv_loc changes,");
+            Console.WriteLine("  prefer the Inventory REST API (docs/11) anyway.");
             return;
         }
 
