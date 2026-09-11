@@ -1366,6 +1366,10 @@
 <td><a href="14-Breaking-Changes.html#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">14 § entry 9</a> — a bad <code>DatawindowName</code> on the previous request; <strong>not</strong> the <code>Accept</code> header on current builds</td>
 </tr>
 <tr>
+<td>Token call returns HTTP 500 <code>Unable to generate client token.</code></td>
+<td><a href="06-Error-Handling.html#token-endpoint-errors">06 § Token Endpoint Errors</a> — the consumer key is not registered on that tenant; read <code>InnerException</code>, not <code>ErrorMessage</code>. Common after a test-tenant refresh from production (<a href="00-Authentication.html#when-the-key-is-not-registered-on-that-tenant">00</a>)</td>
+</tr>
+<tr>
 <td><code>Status: "Existing"</code> / <code>"Update"</code> rejected on a transaction</td>
 <td><a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">03 § <code>Status: "New"</code> is the only value</a> — one-member enum; 400 on 5940.0 and later, 500 on older builds</td>
 </tr>

@@ -56,13 +56,34 @@ This guide covers error handling across all P21 APIs, including HTTP status code
 }
 ```
 
-**401 - Invalid Consumer Key**
+**500 - Unrecognized Consumer Key** — *not* a 401
+
+An unregistered consumer key does not fail as an authentication error. `POST /api/security/token/v2` returns **HTTP 500** with a `TokenException`, and the reason is buried in `InnerException`:
+
+```jsonc
+HTTP 500
+{
+  "ErrorMessage": "Unable to generate client token.",
+  "ErrorType": "P21.Business.Common.TokenException",
+  "HostName": "p21web-22",
+  "InnerException": "P21.Business.Common.TokenException: Unable to generate client token. ---> P21.Common.Exceptions.NotFoundException: Your query did not yield any results.  No resources found for query string \"Consumer Key: {your-guid}\". at P21.Business.Security.ConsumerManager.GetConsumer(String consumerId) ..."
+}
+```
+
+Verified on 26.1.5950.0 (September 2026) against two hosts, with an unregistered key and with an all-zeros GUID — identical response both times, with and without `username` in the body. **Read `InnerException`, not `ErrorMessage`:** the top-level text is the same generic string you would get for any token failure, and `NotFoundException ... No resources found for query string "Consumer Key:"` is the only part that says the key is unknown to the tenant.
+
+The practical trap is that a 500 reads as "the server is broken" and sends you to the middleware logs, when it means "this tenant has never heard of this key". Its most common cause is a **tenant refresh**: a play environment restored from production comes back carrying production's consumer-key registrations, so the key that worked on play yesterday is now the one the tenant does not recognize.
+
+> **The error body echoes the key's GUID.** A consumer key is [effectively unlimited access](00-Authentication.md#method-2-consumer-key), so a failed token call writes a live secret into whatever captures that response — your logs, an error tracker, a support ticket. Redact the body before forwarding it.
+
+**401 - Invalid Consumer Key** (reported shape, not reproduced here)
 ```json
 {
     "error": "invalid_client",
     "error_description": "Client authentication failed."
 }
 ```
+Kept because it is the OAuth-standard shape and may be what a registered-but-rejected key returns; every unknown key we have tested on 26.1 produced the 500 above instead.
 
 **403 - API Scope Not Granted**
 ```json

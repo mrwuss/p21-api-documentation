@@ -655,6 +655,7 @@
 </li>
 <li><a href="#method-2-consumer-key">Method 2: Consumer Key</a><ul>
 <li><a href="#creating-a-consumer-key">Creating a Consumer Key</a></li>
+<li><a href="#when-the-key-is-not-registered-on-that-tenant">When the Key Is Not Registered on That Tenant</a></li>
 <li><a href="#basic-request-no-username">Basic Request (No Username)</a></li>
 <li><a href="#request-with-username-required-for-interactive-api">Request with Username (Required for Interactive API)</a></li>
 <li><a href="#jwt-token-claims">JWT Token Claims</a></li>
@@ -916,6 +917,19 @@
 </tr>
 </tbody>
 </table></div>
+<h3 id="when-the-key-is-not-registered-on-that-tenant">When the Key Is Not Registered on That Tenant</h3>
+<p>A consumer key is registered per tenant, and a key the tenant does not know fails as an <strong>HTTP 500</strong>, not a 401:</p>
+<div class="highlight"><pre><span></span><code>POST /api/security/token/v2   // {&quot;ClientSecret&quot;: &quot;{unknown-guid}&quot;, &quot;GrantType&quot;: &quot;client_credentials&quot;}
+HTTP 500
+{&quot;ErrorMessage&quot;: &quot;Unable to generate client token.&quot;,
+ &quot;ErrorType&quot;: &quot;P21.Business.Common.TokenException&quot;,
+ &quot;InnerException&quot;: &quot;... NotFoundException: Your query did not yield any results.  No resources found for query string \&quot;Consumer Key: {unknown-guid}\&quot; ...&quot;}
+</code></pre></div>
+
+<p><code>ErrorMessage</code> is generic — <strong>the diagnosis is in <code>InnerException</code></strong>. Verified on 26.1.5950.0 (September 2026); full detail and the log-hygiene caveat in <a href="06-Error-Handling.html#token-endpoint-errors">Error Handling § Token Endpoint Errors</a>.</p>
+<blockquote>
+<p><strong>Expect this after a tenant refresh.</strong> A test environment restored from production comes back with <strong>production's</strong> consumer-key registrations, so the test tenant's old key stops working and production's key starts working there instead. Re-check which key each host accepts after any refresh rather than assuming the environments keep separate keys — and note that a key which now opens both environments no longer distinguishes them, so whatever stops a test run from pointing at production has to be the <strong>base URL</strong>, not the credential.</p>
+</blockquote>
 <h3 id="basic-request-no-username">Basic Request (No Username)</h3>
 <p>Returns a token tied to the consumer key with no P21 user context. Sufficient for read-only operations (OData, Entity API, Inventory REST API).</p>
 <div class="highlight"><pre><span></span><code><span class="nf">POST</span> <span class="nn">/api/security/token/v2</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
@@ -2369,6 +2383,7 @@
 </li>
 <li><a href="#method-2-consumer-key">Method 2: Consumer Key</a><ul>
 <li><a href="#creating-a-consumer-key">Creating a Consumer Key</a></li>
+<li><a href="#when-the-key-is-not-registered-on-that-tenant">When the Key Is Not Registered on That Tenant</a></li>
 <li><a href="#basic-request-no-username">Basic Request (No Username)</a></li>
 <li><a href="#request-with-username-required-for-interactive-api">Request with Username (Required for Interactive API)</a></li>
 <li><a href="#jwt-token-claims">JWT Token Claims</a></li>

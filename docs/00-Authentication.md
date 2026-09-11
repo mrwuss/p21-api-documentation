@@ -209,6 +209,22 @@ Use for service accounts and automated integrations. Consumer keys bypass P21 us
 | **Token Expire** | Key validity duration | `Never Expire` for service accounts |
 | **API Scope** | Semicolon-delimited paths (see [Scopes](#api-scopes)) | `/api` for full access |
 
+### When the Key Is Not Registered on That Tenant
+
+A consumer key is registered per tenant, and a key the tenant does not know fails as an **HTTP 500**, not a 401:
+
+```jsonc
+POST /api/security/token/v2   // {"ClientSecret": "{unknown-guid}", "GrantType": "client_credentials"}
+HTTP 500
+{"ErrorMessage": "Unable to generate client token.",
+ "ErrorType": "P21.Business.Common.TokenException",
+ "InnerException": "... NotFoundException: Your query did not yield any results.  No resources found for query string \"Consumer Key: {unknown-guid}\" ..."}
+```
+
+`ErrorMessage` is generic — **the diagnosis is in `InnerException`**. Verified on 26.1.5950.0 (September 2026); full detail and the log-hygiene caveat in [Error Handling § Token Endpoint Errors](06-Error-Handling.md#token-endpoint-errors).
+
+> **Expect this after a tenant refresh.** A test environment restored from production comes back with **production's** consumer-key registrations, so the test tenant's old key stops working and production's key starts working there instead. Re-check which key each host accepts after any refresh rather than assuming the environments keep separate keys — and note that a key which now opens both environments no longer distinguishes them, so whatever stops a test run from pointing at production has to be the **base URL**, not the credential.
+
 ### Basic Request (No Username)
 
 Returns a token tied to the consumer key with no P21 user context. Sufficient for read-only operations (OData, Entity API, Inventory REST API).

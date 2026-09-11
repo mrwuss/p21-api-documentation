@@ -848,13 +848,30 @@
 <span class="p">}</span>
 </code></pre></div>
 
-<p><strong>401 - Invalid Consumer Key</strong></p>
+<p><strong>500 - Unrecognized Consumer Key</strong> — <em>not</em> a 401</p>
+<p>An unregistered consumer key does not fail as an authentication error. <code>POST /api/security/token/v2</code> returns <strong>HTTP 500</strong> with a <code>TokenException</code>, and the reason is buried in <code>InnerException</code>:</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+{
+  &quot;ErrorMessage&quot;: &quot;Unable to generate client token.&quot;,
+  &quot;ErrorType&quot;: &quot;P21.Business.Common.TokenException&quot;,
+  &quot;HostName&quot;: &quot;p21web-22&quot;,
+  &quot;InnerException&quot;: &quot;P21.Business.Common.TokenException: Unable to generate client token. ---&gt; P21.Common.Exceptions.NotFoundException: Your query did not yield any results.  No resources found for query string \&quot;Consumer Key: {your-guid}\&quot;. at P21.Business.Security.ConsumerManager.GetConsumer(String consumerId) ...&quot;
+}
+</code></pre></div>
+
+<p>Verified on 26.1.5950.0 (September 2026) against two hosts, with an unregistered key and with an all-zeros GUID — identical response both times, with and without <code>username</code> in the body. <strong>Read <code>InnerException</code>, not <code>ErrorMessage</code>:</strong> the top-level text is the same generic string you would get for any token failure, and <code>NotFoundException ... No resources found for query string "Consumer Key:"</code> is the only part that says the key is unknown to the tenant.</p>
+<p>The practical trap is that a 500 reads as "the server is broken" and sends you to the middleware logs, when it means "this tenant has never heard of this key". Its most common cause is a <strong>tenant refresh</strong>: a play environment restored from production comes back carrying production's consumer-key registrations, so the key that worked on play yesterday is now the one the tenant does not recognize.</p>
+<blockquote>
+<p><strong>The error body echoes the key's GUID.</strong> A consumer key is <a href="00-Authentication.html#method-2-consumer-key">effectively unlimited access</a>, so a failed token call writes a live secret into whatever captures that response — your logs, an error tracker, a support ticket. Redact the body before forwarding it.</p>
+</blockquote>
+<p><strong>401 - Invalid Consumer Key</strong> (reported shape, not reproduced here)</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;invalid_client&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;error_description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Client authentication failed.&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
+<p>Kept because it is the OAuth-standard shape and may be what a registered-but-rejected key returns; every unknown key we have tested on 26.1 produced the 500 above instead.</p>
 <p><strong>403 - API Scope Not Granted</strong></p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;insufficient_scope&quot;</span><span class="p">,</span>
