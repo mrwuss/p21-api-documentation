@@ -34,6 +34,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
 | New table/column missing from OData | [02 § OData Schema Refresh](02-OData-API.md#odata-schema-refresh) |
+| **Empty-bodied 404 on a table you know exists** | [02 § The table/view split](02-OData-API.md#the-tableview-split-and-the-404-it-produces) — views live on `/view/`, base tables on `/table/`; asking the wrong one 404s exactly like a missing object |
+| Read a **view** (`p21_view_*`), or a **user-defined** table (`*_ud`, site-custom) | [02 § The table/view split](02-OData-API.md#the-tableview-split-and-the-404-it-produces) — views on `/view/`; `*_ud` are ordinary base tables on `/table/` |
 | Table reads fine but is empty/inert (undeployed feature, e.g. zip→rep) | [02 § Undeployed / Unlicensed Windows](02-OData-API.md#undeployed-unlicensed-windows-readable-tables-no-api-surface) |
 | Denormalized, search-friendly views (`p21_view_es_*`: customer, item, order, invoice, etc.) | [02 § Enterprise/Global Search Views](02-OData-API.md#enterpriseglobal-search-views-p21_view_es_) |
 
@@ -70,6 +72,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Call a **commands-only** service (notepads, reverse payment, slab adjustment) | [03 § Commands Endpoint](03-Transaction-API.md#commands-endpoint) — request shape and `Action` codes |
 | Get an async **callback** instead of polling | [03 § Callbacks instead of polling](03-Transaction-API.md#callbacks-instead-of-polling) |
 | Fetch **one record by key** over OData | [02 § The other OData surface](02-OData-API.md#the-other-odata-surface-dataerpviewsv1) — `/data/erp/views/v1/{view}('key')` |
+| Consumer key 401s on a table you just granted it | [00 § The OData allow-list is baked into the token](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire) — scope is fixed at issue time and the tokens last ~20 years; mint a new one |
 | Which **OData version / what's supported** | [02 § Protocol version](02-OData-API.md#protocol-version) · [02 § What the service supports](02-OData-API.md#what-the-service-supports) — v4; **no server-driven paging** |
 | **Does my server have endpoint X?** | [05 § Discovering what your tenant actually exposes](05-Entity-API.md#discovering-what-your-tenant-actually-exposes) — `apiref.aspx` + per-family `/help` |
 | Valid P21 login **rejected by the middleware admin site** | [00 § Application Security settings](00-Authentication.md#application-security-settings-that-affect-api-access) — needs *Access to SOA Admin Page* |

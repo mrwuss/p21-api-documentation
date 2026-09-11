@@ -281,13 +281,31 @@ Consumer key tokens contain these claims:
 | Claim | Description | Example |
 |-------|-------------|---------|
 | `sub` | P21 username (if provided) or empty | `"api_user"` |
-| `aud` | Scope from consumer config (not the request) | `"/api;/p21sdk"` |
+| `aud` | Scope from consumer config (not the request); an OData allow-list rides in it | `"/api;/p21sdk;/odata:po_hdr,po_line,inv_mast,…"` |
 | `P21.ConsumerUid` | Consumer key identifier | `"8"` |
 | `P21.SessionId` | Middleware session ID | `"a1b2c3d4-..."` |
 | `iss` | Token issuer | `"P21.Soa"` |
 | `exp` | Expiration timestamp | `2147483647` (Never Expire) |
 
 > **Note:** The `Scope` in the token response (and the `aud` JWT claim) is determined by the consumer key's configuration in SOA Admin — not by any `Scope` field in the request. Requesting a different scope is silently ignored.
+
+#### The OData allow-list is baked into the token, and these tokens never expire
+
+When a consumer key is granted named OData tables, the allow-list travels **inside the token** as a suffix on the `aud` claim:
+
+```
+/api;/p21sdk;/odata:po_hdr,po_line,inv_mast,oe_hdr,oe_hdr_ud,customer_ud,…
+```
+
+Enforcement is per object and behaves as you would expect: an in-scope table returns 200, and an out-of-scope one returns **401** —
+
+```
+You are not authorized to access API. Please contact administrator to get access.
+```
+
+— where the same request under a username/password token returns 200. That 401 is a genuine permissions signal, and worth contrasting with the **empty-bodied 404** that OData returns for a wrong object, a wrong column, or the [wrong collection path](02-OData-API.md#the-tableview-split-and-the-404-it-produces).
+
+> **Re-mint the token after any scope change.** The allow-list is fixed at issue time, and consumer key tokens are effectively permanent — `ExpiresIn: 630720000` (~20 years) with `exp: 2147483647`. A client holding a cached token keeps enforcing the **old** allow-list indefinitely, so a scope change made in SOA Admin looks like it did nothing. Password-grant tokens expire in 86400s and pick the change up on their own within a day; consumer-key clients will not. If a newly granted table still 401s, get a fresh token before looking anywhere else.
 
 ### API-Specific Behavior (Verified)
 

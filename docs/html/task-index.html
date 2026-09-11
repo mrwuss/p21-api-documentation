@@ -752,6 +752,14 @@
 <td><a href="02-OData-API.html#odata-schema-refresh">02 § OData Schema Refresh</a></td>
 </tr>
 <tr>
+<td><strong>Empty-bodied 404 on a table you know exists</strong></td>
+<td><a href="02-OData-API.html#the-tableview-split-and-the-404-it-produces">02 § The table/view split</a> — views live on <code>/view/</code>, base tables on <code>/table/</code>; asking the wrong one 404s exactly like a missing object</td>
+</tr>
+<tr>
+<td>Read a <strong>view</strong> (<code>p21_view_*</code>), or a <strong>user-defined</strong> table (<code>*_ud</code>, site-custom)</td>
+<td><a href="02-OData-API.html#the-tableview-split-and-the-404-it-produces">02 § The table/view split</a> — views on <code>/view/</code>; <code>*_ud</code> are ordinary base tables on <code>/table/</code></td>
+</tr>
+<tr>
 <td>Table reads fine but is empty/inert (undeployed feature, e.g. zip→rep)</td>
 <td><a href="02-OData-API.html#undeployed-unlicensed-windows-readable-tables-no-api-surface">02 § Undeployed / Unlicensed Windows</a></td>
 </tr>
@@ -885,6 +893,10 @@
 <tr>
 <td>Fetch <strong>one record by key</strong> over OData</td>
 <td><a href="02-OData-API.html#the-other-odata-surface-dataerpviewsv1">02 § The other OData surface</a> — <code>/data/erp/views/v1/{view}('key')</code></td>
+</tr>
+<tr>
+<td>Consumer key 401s on a table you just granted it</td>
+<td><a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">00 § The OData allow-list is baked into the token</a> — scope is fixed at issue time and the tokens last ~20 years; mint a new one</td>
 </tr>
 <tr>
 <td>Which <strong>OData version / what's supported</strong></td>

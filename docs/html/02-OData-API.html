@@ -649,6 +649,7 @@
 <li><a href="#endpoints">Endpoints</a><ul>
 <li><a href="#base-url-example">Base URL Example</a></li>
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
+<li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 </ul>
 </li>
 <li><a href="#authentication">Authentication</a><ul>
@@ -828,22 +829,25 @@
 <tbody>
 <tr>
 <td><code>/odataservice/odata/table/{tablename}</code></td>
-<td>Query a database table</td>
+<td>Query a database <strong>base table</strong></td>
 </tr>
 <tr>
 <td><code>/odataservice/odata/view/{viewname}</code></td>
-<td>Query a database view</td>
+<td>Query a database <strong>view</strong></td>
 </tr>
 <tr>
 <td><code>/odataservice/odata/table/$metadata</code></td>
-<td>Schema document — every exposed table and column</td>
+<td>Schema document — every exposed base table and column</td>
 </tr>
 <tr>
 <td><code>/odataservice/odata/view/$metadata</code></td>
-<td>Schema document for views</td>
+<td>Schema document — every exposed view and column</td>
 </tr>
 </tbody>
 </table></div>
+<blockquote>
+<p><strong><code>table</code> and <code>view</code> are two separate surfaces, and an object appears on exactly one of them.</strong> Ask for a view on the <code>table</code> path, or a base table on the <code>view</code> path, and you get an <strong>empty-bodied 404</strong> — the same response as a name that does not exist at all. See <a href="#the-tableview-split-and-the-404-it-produces">The table/view split</a>.</p>
+</blockquote>
 <h3 id="base-url-example">Base URL Example</h3>
 <div class="highlight"><pre><span></span><code><span class="err">https://play.p21server.com/odataservice/odata/table/supplier</span>
 </code></pre></div>
@@ -908,6 +912,47 @@
 <blockquote>
 <p><strong>Newly created tables need a manual refresh.</strong> A table added after the service started (e.g. a new UDT) is absent from <code>$metadata</code> and 404s on query until <strong>SOA Admin → Refresh OData API service</strong> is run. See <a href="#odata-schema-refresh">Schema Refresh</a>.</p>
 </blockquote>
+<h3 id="the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</h3>
+<p>The two collection paths partition the database exactly, by <code>INFORMATION_SCHEMA.TABLES.TABLE_TYPE</code>. Measured on a production tenant (September 2026) and matched against the SQL catalogue on the same database:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><code>table/$metadata</code></th>
+<th><code>view/$metadata</code></th>
+<th>SQL catalogue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entity types exposed</td>
+<td><strong>3,409</strong></td>
+<td><strong>3,759</strong></td>
+<td>3,409 <code>BASE TABLE</code>, 3,759 <code>VIEW</code></td>
+</tr>
+<tr>
+<td>Objects on both surfaces</td>
+<td>-</td>
+<td>-</td>
+<td><strong>0 overlap</strong></td>
+</tr>
+<tr>
+<td>Payload size</td>
+<td>~4.1 MB</td>
+<td>~6.3 MB</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<p>Every base table is on <code>table</code>, every view is on <code>view</code>, and nothing is on both. The practical consequences:</p>
+<ul>
+<li><strong>Asking the wrong path returns an empty-bodied 404</strong>, identical to the response for a name that doesn't exist. <code>GET /odataservice/odata/table/p21_view_oe_hdr</code> → 404; <code>GET /odataservice/odata/view/p21_view_oe_hdr</code> → 200. <code>GET /odataservice/odata/view/oe_hdr</code> → 404; on <code>table</code> it returns 252 columns. A 404 here means <em>wrong surface, wrong column name, or wrong object</em> — it is not a permissions signal.</li>
+<li><strong>Don't infer the surface from the name.</strong> <code>class_expansion_view</code> is a <code>BASE TABLE</code> despite the suffix, so it lives on <code>table</code> and 404s on <code>view</code>. The object's <code>TABLE_TYPE</code> decides, never its name.</li>
+<li><strong>Check the matching <code>$metadata</code> before concluding something is unexposed.</strong> A view missing from <code>table/$metadata</code> proves nothing — all 3,759 of them are missing from it.</li>
+<li><strong>User-defined tables are fully readable</strong>, and this is not obvious from the table list: P21's own <code>*_ud</code> tables (<code>oe_hdr_ud</code>, <code>oe_line_ud</code>, <code>inv_mast_ud</code>, <code>customer_ud</code>, <code>supplier_ud</code>, <code>location_ud</code>, <code>po_line_ud</code>) and site-custom base tables alike are ordinary base tables on the <code>table</code> surface.</li>
+<li><strong>Object names are case-insensitive.</strong> <code>ifp_G21_Alerts</code>, <code>ifp_g21_alerts</code> and <code>IFP_G21_ALERTS</code> all resolve.</li>
+</ul>
+<p>The 25 <a href="#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search views</a> documented below are on the <code>view</code> surface, which is why they do not appear in <code>table/$metadata</code>.</p>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
@@ -2802,6 +2847,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#endpoints">Endpoints</a><ul>
 <li><a href="#base-url-example">Base URL Example</a></li>
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
+<li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 </ul>
 </li>
 <li><a href="#authentication">Authentication</a><ul>

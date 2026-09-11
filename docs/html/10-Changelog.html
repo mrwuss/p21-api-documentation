@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>
 <li><a href="#2026-09-11-v1130">2026-09-11 — v1.13.0</a></li>
 <li><a href="#2026-08-30-v1122">2026-08-30 — v1.12.2</a></li>
 <li><a href="#2026-08-30-v1121">2026-08-30 — v1.12.1</a></li>
@@ -723,6 +724,13 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-11-v1140">2026-09-11 — v1.14.0</h2>
+<p>The OData service is two surfaces, not one, and the empty-bodied 404 that fact produces is easy to read as "not exposed".</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="02-OData-API.html#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a>.</strong> <code>/odataservice/odata/table/</code> and <code>/odataservice/odata/view/</code> partition the database exactly by <code>TABLE_TYPE</code>, with <strong>no overlap</strong>: measured on a production tenant, <code>table/$metadata</code> carries <strong>3,409</strong> entity types against 3,409 <code>BASE TABLE</code> rows in the SQL catalogue, and <code>view/$metadata</code> carries <strong>3,759</strong> against 3,759 <code>VIEW</code> rows. Ask for a view on the <code>table</code> path and you get an <strong>empty-bodied 404</strong> — indistinguishable from a name that doesn't exist, and from the 404 a bad <code>$select</code> column produces. Don't infer the surface from the name: <code>class_expansion_view</code> is a base table and lives on <code>table</code>. Also recorded: P21's <code>*_ud</code> tables and site-custom base tables are ordinary <code>table</code> objects and fully readable, and object names are case-insensitive — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> <strong>This corrects <a href="https://github.com/mrwuss/p21-api-documentation/issues/158">#158</a>, which this project filed.</strong> That issue reported "only BASE TABLES are exposed — every VIEW returns 404" and proposed removing the view surface from the docs, on the strength of <code>p21_view_*</code> objects 404ing. They 404 on the <code>table</code> path only; every one of them answers on <code>view</code>. Had it been applied as filed it would have deleted a working surface and the 25 <a href="02-OData-API.html#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search views</a> documented in v1.11.0, which are <code>view</code>-surface objects and are confirmed reachable. Verified on both a production and a play tenant — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">The OData allow-list is baked into the token, and these tokens never expire</a>.</strong> A consumer key's named-table grants ride inside the JWT <code>aud</code> claim as <code>/api;/p21sdk;/odata:po_hdr,po_line,…</code>, enforced per object — out-of-scope returns <strong>401</strong> with <code>"You are not authorized to access API"</code>, which is a real permissions signal and worth contrasting with the empty 404 above. The operational trap: the allow-list is fixed at issue time and consumer-key tokens run <code>ExpiresIn: 630720000</code> (~20 years, <code>exp: 2147483647</code>), so a client holding a cached token keeps enforcing the <strong>old</strong> list and a scope change in SOA Admin appears to do nothing. Password-grant tokens expire in 86400s and pick changes up on their own — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-11-v1130">2026-09-11 — v1.13.0</h2>
 <p><code>w_message</code> dialogs are controllable, not just auto-answered — this documentation said otherwise in three places and in both response-window example programs.</p>
 <ul>
@@ -1448,6 +1456,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>
 <li><a href="#2026-09-11-v1130">2026-09-11 — v1.13.0</a></li>
 <li><a href="#2026-08-30-v1122">2026-08-30 — v1.12.2</a></li>
 <li><a href="#2026-08-30-v1121">2026-08-30 — v1.12.1</a></li>

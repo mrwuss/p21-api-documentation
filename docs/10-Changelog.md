@@ -18,6 +18,14 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-09-11 — v1.14.0
+
+The OData service is two surfaces, not one, and the empty-bodied 404 that fact produces is easy to read as "not exposed".
+
+- **feat:** **[The table/view split, and the 404 it produces](02-OData-API.md#the-tableview-split-and-the-404-it-produces).** `/odataservice/odata/table/` and `/odataservice/odata/view/` partition the database exactly by `TABLE_TYPE`, with **no overlap**: measured on a production tenant, `table/$metadata` carries **3,409** entity types against 3,409 `BASE TABLE` rows in the SQL catalogue, and `view/$metadata` carries **3,759** against 3,759 `VIEW` rows. Ask for a view on the `table` path and you get an **empty-bodied 404** — indistinguishable from a name that doesn't exist, and from the 404 a bad `$select` column produces. Don't infer the surface from the name: `class_expansion_view` is a base table and lives on `table`. Also recorded: P21's `*_ud` tables and site-custom base tables are ordinary `table` objects and fully readable, and object names are case-insensitive — *@mrwuss*
+- **fix:** **This corrects [#158](https://github.com/mrwuss/p21-api-documentation/issues/158), which this project filed.** That issue reported "only BASE TABLES are exposed — every VIEW returns 404" and proposed removing the view surface from the docs, on the strength of `p21_view_*` objects 404ing. They 404 on the `table` path only; every one of them answers on `view`. Had it been applied as filed it would have deleted a working surface and the 25 [Enterprise/Global Search views](02-OData-API.md#enterpriseglobal-search-views-p21_view_es_) documented in v1.11.0, which are `view`-surface objects and are confirmed reachable. Verified on both a production and a play tenant — *@mrwuss*
+- **feat:** **[The OData allow-list is baked into the token, and these tokens never expire](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire).** A consumer key's named-table grants ride inside the JWT `aud` claim as `/api;/p21sdk;/odata:po_hdr,po_line,…`, enforced per object — out-of-scope returns **401** with `"You are not authorized to access API"`, which is a real permissions signal and worth contrasting with the empty 404 above. The operational trap: the allow-list is fixed at issue time and consumer-key tokens run `ExpiresIn: 630720000` (~20 years, `exp: 2147483647`), so a client holding a cached token keeps enforcing the **old** list and a scope change in SOA Admin appears to do nothing. Password-grant tokens expire in 86400s and pick changes up on their own — *@mrwuss*
+
 ## 2026-09-11 — v1.13.0
 
 `w_message` dialogs are controllable, not just auto-answered — this documentation said otherwise in three places and in both response-window example programs.

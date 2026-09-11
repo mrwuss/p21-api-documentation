@@ -27,6 +27,10 @@ Thank you for your interest in improving P21 API documentation! This project aim
 4. Test any code examples
 5. Submit a PR
 
+**Leave the version number out.** Don't put one in the PR title, the commit subject, or the changelog heading you add — write the heading as the date alone (`## 2026-09-11`). Two people working at once both reach for the same next version, and whoever merges second has to rewrite it. The maintainer assigns the version at merge, when it is knowable.
+
+**Expect your branch to be edited.** Leave *Allow edits by maintainers* on. Findings get re-verified here before they land, and where re-verification sharpens or corrects something the usual outcome is a commit pushed onto your branch rather than a round trip — you keep authorship, and the changelog records who found what and who verified it.
+
 ## Guidelines
 
 ### Documentation Standards

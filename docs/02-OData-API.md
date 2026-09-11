@@ -61,10 +61,12 @@ Epicor publishes an explicit capability list for this implementation. The negati
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/odataservice/odata/table/{tablename}` | Query a database table |
-| `/odataservice/odata/view/{viewname}` | Query a database view |
-| `/odataservice/odata/table/$metadata` | Schema document — every exposed table and column |
-| `/odataservice/odata/view/$metadata` | Schema document for views |
+| `/odataservice/odata/table/{tablename}` | Query a database **base table** |
+| `/odataservice/odata/view/{viewname}` | Query a database **view** |
+| `/odataservice/odata/table/$metadata` | Schema document — every exposed base table and column |
+| `/odataservice/odata/view/$metadata` | Schema document — every exposed view and column |
+
+> **`table` and `view` are two separate surfaces, and an object appears on exactly one of them.** Ask for a view on the `table` path, or a base table on the `view` path, and you get an **empty-bodied 404** — the same response as a name that does not exist at all. See [The table/view split](#the-tableview-split-and-the-404-it-produces).
 
 ### Base URL Example
 
@@ -134,6 +136,26 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 This is the quickest way to answer "is this table actually exposed to Data Services?" before debugging a 404 — and to find the real name of a table you're guessing at.
 
 > **Newly created tables need a manual refresh.** A table added after the service started (e.g. a new UDT) is absent from `$metadata` and 404s on query until **SOA Admin → Refresh OData API service** is run. See [Schema Refresh](#odata-schema-refresh).
+
+### The table/view split, and the 404 it produces
+
+The two collection paths partition the database exactly, by `INFORMATION_SCHEMA.TABLES.TABLE_TYPE`. Measured on a production tenant (September 2026) and matched against the SQL catalogue on the same database:
+
+| | `table/$metadata` | `view/$metadata` | SQL catalogue |
+|---|---|---|---|
+| Entity types exposed | **3,409** | **3,759** | 3,409 `BASE TABLE`, 3,759 `VIEW` |
+| Objects on both surfaces | \- | \- | **0 overlap** |
+| Payload size | ~4.1 MB | ~6.3 MB | — |
+
+Every base table is on `table`, every view is on `view`, and nothing is on both. The practical consequences:
+
+- **Asking the wrong path returns an empty-bodied 404**, identical to the response for a name that doesn't exist. `GET /odataservice/odata/table/p21_view_oe_hdr` → 404; `GET /odataservice/odata/view/p21_view_oe_hdr` → 200. `GET /odataservice/odata/view/oe_hdr` → 404; on `table` it returns 252 columns. A 404 here means *wrong surface, wrong column name, or wrong object* — it is not a permissions signal.
+- **Don't infer the surface from the name.** `class_expansion_view` is a `BASE TABLE` despite the suffix, so it lives on `table` and 404s on `view`. The object's `TABLE_TYPE` decides, never its name.
+- **Check the matching `$metadata` before concluding something is unexposed.** A view missing from `table/$metadata` proves nothing — all 3,759 of them are missing from it.
+- **User-defined tables are fully readable**, and this is not obvious from the table list: P21's own `*_ud` tables (`oe_hdr_ud`, `oe_line_ud`, `inv_mast_ud`, `customer_ud`, `supplier_ud`, `location_ud`, `po_line_ud`) and site-custom base tables alike are ordinary base tables on the `table` surface.
+- **Object names are case-insensitive.** `ifp_G21_Alerts`, `ifp_g21_alerts` and `IFP_G21_ALERTS` all resolve.
+
+The 25 [Enterprise/Global Search views](#enterpriseglobal-search-views-p21_view_es_) documented below are on the `view` surface, which is why they do not appear in `table/$metadata`.
 
 ---
 

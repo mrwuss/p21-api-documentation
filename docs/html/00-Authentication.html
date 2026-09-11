@@ -991,8 +991,8 @@
 </tr>
 <tr>
 <td><code>aud</code></td>
-<td>Scope from consumer config (not the request)</td>
-<td><code>"/api;/p21sdk"</code></td>
+<td>Scope from consumer config (not the request); an OData allow-list rides in it</td>
+<td><code>"/api;/p21sdk;/odata:po_hdr,po_line,inv_mast,…"</code></td>
 </tr>
 <tr>
 <td><code>P21.ConsumerUid</code></td>
@@ -1018,6 +1018,19 @@
 </table></div>
 <blockquote>
 <p><strong>Note:</strong> The <code>Scope</code> in the token response (and the <code>aud</code> JWT claim) is determined by the consumer key's configuration in SOA Admin — not by any <code>Scope</code> field in the request. Requesting a different scope is silently ignored.</p>
+</blockquote>
+<h4 id="the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">The OData allow-list is baked into the token, and these tokens never expire</h4>
+<p>When a consumer key is granted named OData tables, the allow-list travels <strong>inside the token</strong> as a suffix on the <code>aud</code> claim:</p>
+<div class="highlight"><pre><span></span><code>/api;/p21sdk;/odata:po_hdr,po_line,inv_mast,oe_hdr,oe_hdr_ud,customer_ud,…
+</code></pre></div>
+
+<p>Enforcement is per object and behaves as you would expect: an in-scope table returns 200, and an out-of-scope one returns <strong>401</strong> —</p>
+<div class="highlight"><pre><span></span><code>You are not authorized to access API. Please contact administrator to get access.
+</code></pre></div>
+
+<p>— where the same request under a username/password token returns 200. That 401 is a genuine permissions signal, and worth contrasting with the <strong>empty-bodied 404</strong> that OData returns for a wrong object, a wrong column, or the <a href="02-OData-API.html#the-tableview-split-and-the-404-it-produces">wrong collection path</a>.</p>
+<blockquote>
+<p><strong>Re-mint the token after any scope change.</strong> The allow-list is fixed at issue time, and consumer key tokens are effectively permanent — <code>ExpiresIn: 630720000</code> (~20 years) with <code>exp: 2147483647</code>. A client holding a cached token keeps enforcing the <strong>old</strong> allow-list indefinitely, so a scope change made in SOA Admin looks like it did nothing. Password-grant tokens expire in 86400s and pick the change up on their own within a day; consumer-key clients will not. If a newly granted table still 401s, get a fresh token before looking anywhere else.</p>
 </blockquote>
 <h3 id="api-specific-behavior-verified">API-Specific Behavior (Verified)</h3>
 <div class="table-wrap"><table>
