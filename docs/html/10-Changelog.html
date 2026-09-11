@@ -610,9 +610,10 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">16</span></summary>
+            <summary>Recipes <span class="nav-count">17</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
+            <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
@@ -641,6 +642,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1170">2026-09-11 — v1.17.0</a></li>
 <li><a href="#2026-09-11-v1160">2026-09-11 — v1.16.0</a></li>
 <li><a href="#2026-09-11-v1150">2026-09-11 — v1.15.0</a></li>
 <li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>
@@ -726,6 +728,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-11-v1170">2026-09-11 — v1.17.0</h2>
+<ul>
+<li><strong>feat:</strong> <strong><a href="recipes/ar-aging.html">New recipe: Age Open AR on Each Invoice's Own Terms</a>.</strong> The first receivables page in this cookbook: page <code>invoice_hdr</code> over OData, compute the balance client-side, and bucket every open item against its own <code>net_due_date</code> rather than the customer's current terms. Both programs were run side by side against a production tenant of ~6,200 open invoices and produce identical figures; the C# builds clean on <code>net8.0</code>. It doubles as the worked case for two constraints documented in v1.16.0 — why the obvious <code>total_amount gt amount_paid</code> filter cannot be sent, and why the customer master's terms are the wrong clock. Gotchas cover credit memos ageing as negative rows, <code>paid_in_full_flag</code> not meaning "has a balance", the <code>Edm.String</code>/<code>Edm.Decimal</code> split between <code>invoice_hdr.customer_id</code> and <code>customer.customer_id</code> that silently blanks a client-side join, and stable-<code>$orderby</code> paging — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-11-v1160">2026-09-11 — v1.16.0</h2>
 <p>A <code>$filter</code> cannot compare two columns, and on string columns it does not tell you so.</p>
 <ul>
@@ -1478,6 +1484,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1170">2026-09-11 — v1.17.0</a></li>
 <li><a href="#2026-09-11-v1160">2026-09-11 — v1.16.0</a></li>
 <li><a href="#2026-09-11-v1150">2026-09-11 — v1.15.0</a></li>
 <li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>

@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-09-11 — v1.17.0
+
+- **feat:** **[New recipe: Age Open AR on Each Invoice's Own Terms](recipes/ar-aging.md).** The first receivables page in this cookbook: page `invoice_hdr` over OData, compute the balance client-side, and bucket every open item against its own `net_due_date` rather than the customer's current terms. Both programs were run side by side against a production tenant of ~6,200 open invoices and produce identical figures; the C# builds clean on `net8.0`. It doubles as the worked case for two constraints documented in v1.16.0 — why the obvious `total_amount gt amount_paid` filter cannot be sent, and why the customer master's terms are the wrong clock. Gotchas cover credit memos ageing as negative rows, `paid_in_full_flag` not meaning "has a balance", the `Edm.String`/`Edm.Decimal` split between `invoice_hdr.customer_id` and `customer.customer_id` that silently blanks a client-side join, and stable-`$orderby` paging — *@mrwuss*
+
 ## 2026-09-11 — v1.16.0
 
 A `$filter` cannot compare two columns, and on string columns it does not tell you so.

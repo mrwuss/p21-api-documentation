@@ -610,9 +610,10 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">16</span></summary>
+            <summary>Recipes <span class="nav-count">17</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
+            <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
             <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
@@ -730,6 +731,10 @@
 <tr>
 <td><strong>Compare two columns in a <code>$filter</code></strong> (<code>total_amount gt amount_paid</code>)</td>
 <td><a href="02-OData-API.html#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns">02 § The right-hand side is always a literal</a> — 404 on typed columns, <strong>silently zero rows</strong> on strings</td>
+</tr>
+<tr>
+<td><strong>Age open AR / build a receivables aging</strong></td>
+<td><a href="recipes/ar-aging.html">recipes/ar-aging</a> — runnable, pages <code>invoice_hdr</code>, buckets on each invoice's own <code>net_due_date</code></td>
 </tr>
 <tr>
 <td>Age open AR / "how late is this invoice?"</td>

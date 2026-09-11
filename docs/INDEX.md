@@ -29,6 +29,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Filter syntax, operators, string functions | [02 § Filter Expressions](02-OData-API.md#filter-expressions) |
 | Only active rows — `row_status_flag` **or** `delete_flag`, depending on the table | [02 § Active Record Filter](02-OData-API.md#active-record-filter) — soft-deleted rows keep their old values and dominate some tables |
 | **Compare two columns in a `$filter`** (`total_amount gt amount_paid`) | [02 § The right-hand side is always a literal](02-OData-API.md#the-right-hand-side-is-always-a-literal-you-cannot-compare-two-columns) — 404 on typed columns, **silently zero rows** on strings |
+| **Age open AR / build a receivables aging** | [recipes/ar-aging](recipes/ar-aging.md) — runnable, pages `invoice_hdr`, buckets on each invoice's own `net_due_date` |
 | Age open AR / "how late is this invoice?" | [02 § `customer.terms_id` is the default for the *next* document](02-OData-API.md#customerterms_id-is-the-default-for-the-next-document-not-the-terms-on-an-existing-one) — age on the invoice's own `net_due_date` |
 | Filter 404s on a value that looks right (`Edm.Decimal` vs `Edm.String`) | [02 § Active Record Filter](02-OData-API.md#active-record-filter) — many `*_id` columns are numeric; don't quote them |
 | Company column is `company_id` on some tables, `company_no` on others | [02 § Company Scoping](02-OData-API.md#company-scoping-company_id-vs-company_no) |
