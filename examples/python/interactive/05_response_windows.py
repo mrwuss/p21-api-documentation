@@ -26,11 +26,13 @@ HOW IT WORKS (verified February 2026):
    against the popup's window ID with TabName: null (verified on
    w_notepad_response_lite - see docs/04-Interactive-API.md).
 
-5. REMAINING LIMITATION: message box dialogs (w_message windows) are the
-   weak spot - their fields are NOT editable, the cb_1/cb_2/cb_3 button
-   names carry no documented Yes/No mapping (verify the effect with a
-   read-back before trusting an answer), and with handling disabled they
-   auto-answer with the default.
+5. Message boxes (w_message) are answerable too, by the same four calls.
+   They are the one type with no form: GET /v2/window returns an empty
+   Definition.Datawindows/TabPageList, so TabName: null has nothing to
+   act on. GET /v2/tools still lists real buttons - read each entry's
+   "Text" ("&Yes", "&No", "Cancel") to map cb_1/cb_2/cb_3 at runtime
+   rather than assuming the order. With handling disabled they
+   auto-answer with the default instead.
 
 6. Attempting to continue on the parent while a dialog is open errors:
    "Unable to process request on window X since response window Y blocks it"
@@ -250,7 +252,7 @@ def main():
     print()
     print("Verified path: after a Blocked (Status 3) result, answer the")
     print("dialog via GET/POST /v2/tools using the POPUP's window ID.")
-    print("w_message boxes are the remaining weak spot (see summary).")
+    print("This works for every popup type, w_message included.")
     print()
 
     config = load_config()
@@ -337,9 +339,10 @@ def main():
                           "(1=Success)")
                     print("  Dialog dismissed - the parent window is unblocked.")
                     if dialog_name == "w_message":
-                        print("  CAUTION: on w_message boxes the cb_N-to-Yes/No")
-                        print("  mapping is undocumented - verify the effect with")
-                        print("  a read-back before trusting the chosen answer.")
+                        print("  NOTE: w_message has no fields, but its buttons are")
+                        print("  real - each tool entry's 'Text' ('&Yes'/'&No'/")
+                        print("  'Cancel') is what maps cb_N to an answer. Do not")
+                        print("  assume the order; read Text, then read back.")
                 elif tool_names:
                     print("  No cancel/no-style button found; available buttons")
                     print("  can be clicked the same way via run_tool().")
@@ -392,10 +395,10 @@ Key findings:
 3. Answer the popup via GET /v2/tools?windowId={popupId} to discover
    buttons, then POST /v2/tools with the chosen ToolName
 4. Form-style response windows are editable with TabName: null
-5. REMAINING LIMITATION: w_message boxes - fields are not editable, the
-   cb_1/cb_2/cb_3 button names have no documented Yes/No mapping (verify
-   with a read-back before trusting an answer), and with handling
-   disabled they auto-answer with the default
+5. w_message boxes answer the same way - they are simply the one type
+   with no form, so TabName: null has nothing to act on. Map cb_1/cb_2/
+   cb_3 by each tool entry's "Text" ("&Yes"/"&No"/"Cancel") rather than
+   by position; with handling disabled they auto-answer with the default
 
 Historical note (January 2026): PUT /v2/responsewindow(s),
 DELETE /v2/window?button=No, and POST /v2/button were all probed and

@@ -944,15 +944,25 @@ Which items trip the rule is **deterministic**, not environmental luck: a site-c
 
 ### Worked Example: `w_message` ("Save changes before closing?")
 
-Every window can pop a `w_message` the same way: close it with an unsaved change pending. Built on the [PurchaseOrder Notepad Writes](#recipe-add-a-header-note) recipe — same window, same `cb_add` popup — extended by one step. Verified end-to-end (26.1.5930.1, September 2026):
+Every window can pop a `w_message` the same way: close it with an unsaved change pending. Built on the [PurchaseOrder Notepad Writes](#recipe-add-a-header-note) recipe — same window, same `cb_add` popup — extended by one step. Verified end-to-end on 26.1.5930.1 and re-run in full on 26.1.5950.0 (September 2026):
 
 1. Run steps 1–5 of [Recipe: Add a Header Note](#recipe-add-a-header-note): open `PurchaseOrder` (session with `ResponseWindowHandlingEnabled: true`), load a PO, add a header note through the `w_notepad_response_lite` popup (`cb_add` → fill `topic`/`note` → `cb_select_all` → `cb_ok`) — but stop before step 6's save. The note is staged in the window, not in the database yet.
 2. Close the window instead of saving it: `DELETE /v2/window?id={windowId}`. Result: `Status: 3` (Blocked) with a `windowopened` event.
-3. `GET /v2/window?id={popupId}` → `Definition.Name: "w_message"`, `Title: "Epicor Prophet 21 - Startup"`, empty `Datawindows`/`TabPageList`.
+3. `GET /v2/window?id={popupId}` → `Definition.Name: "w_message"`, `Definition.Title: "Epicor Prophet 21 - Startup"`, and `Definition.Datawindows` / `Definition.TabPageList` both empty.
 4. `GET /v2/tools?windowId={popupId}` → button set: `cb_1` (&Yes), `cb_2` (&No), `cb_3` (Cancel), plus the standard `cb_print`/`cb_userinput`/`cb_copy` chrome.
 5. `POST /v2/tools` with `ToolName: "cb_1"` saves the note, then closes — a fresh window load shows it on file. `ToolName: "cb_2"` closes without saving — the fresh reload shows no such note.
 
-With `ResponseWindowHandlingEnabled: false` on the identical sequence: `Status: 2` (Failure, not Blocked), no `windowopened` event, no window to query. The answer P21 gave itself is echoed in `Messages` as `"<question text> [Response: Yes]"` — verified on a different `w_message` trigger, the Item window's GL-account sync prompt (fired by changing a location's `product_group_id`).
+> **Both of these responses nest the fields you want one level down, and neither key is named what you would guess.** The `GET /window` payload is `{"Definition": {…}, "Data": []}` — `Name`, `Title`, `Datawindows` and `TabPageList` are all inside `Definition`, so a client reading top-level `Title` gets `null` and concludes the popup is anonymous. The `GET /tools` array identifies each button as **`ToolName`**, not `Name` — read `Name` and every button comes back `null`, which looks exactly like "this window exposes no usable tools" and is the likeliest way to re-derive the old, wrong conclusion below.
+
+With `ResponseWindowHandlingEnabled: false` this sequence never reaches the `w_message` at all: step 1's `cb_add` fails first, with **HTTP 400** naming the window it refused to open —
+
+```json
+{"ErrorMessage": "Unexpected response window: Notepad Entry Window. Window class: w_notepad_response_lite"}
+```
+
+Under `false`, a response window that is *not* a plain message box is a hard error carrying its class name rather than a silent auto-answer — noisy, but far easier to diagnose than the message-box case. A `w_message` reached by some other route is auto-answered with its default, and the answer P21 gave itself is echoed in `Messages` as `"<question text> [Response: Yes]"` — observed on the Item window's GL-account sync prompt, fired by changing a location's `product_group_id`.
+
+> **Credit:** [@yeshayak](https://github.com/yeshayak) found that `w_message` is drivable and wrote this example; re-verified here on 26.1.5950.0, which is where the `false`-mode behaviour above and the two nesting traps were added.
 
 ---
 
