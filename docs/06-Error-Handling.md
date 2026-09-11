@@ -246,13 +246,13 @@ The column accepts a fixed set of values and yours isn't one of them. Under the 
 
 Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a `List` element that agree on the element's key fields are folded into one, last value wins. See [Transaction API - Keys](03-Transaction-API.md#keys-row-identity-and-the-collapse-trap) for the debugging loop.
 
-**`Status: "Existing"` is rejected — HTTP 400 on 5940.0, HTTP 500 on older builds**
+**`Status: "Existing"` is rejected — HTTP 400 on 5940.0 and later, HTTP 500 on older builds**
 
 `P21.Transactions.Model.V2.TransactionStatus` has **exactly one member**: `New`. Every other string is refused, and how it is refused depends on your build:
 
 | Build | Response |
 |---|---|
-| 26.1.5940.0 | `400` — `Error converting value "Existing" to type 'P21.Transactions.Model.V2.TransactionStatus'` |
+| 26.1.5940.0, 26.1.5950.0 | `400` — `Error converting value "Existing" to type 'P21.Transactions.Model.V2.TransactionStatus'` |
 | Earlier builds | `500` `NullReferenceException` at `ToInternalBeSpecification` — a server-fault shape for what was always a bad request |
 
 Neither is a payload-content problem you can fix by adjusting fields; the value itself is not in the enum. `"Update"`, `"Delete"`, `"Modified"` and the rest fail identically.
@@ -316,7 +316,7 @@ See [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for detai
 
 **Send `Accept: application/json` on every P21 request.** This has always been the rule; only the consequence of breaking it has changed.
 
-On **26.1.5940.0**, a request whose `Accept` does not include `application/json` returns **HTTP 200 with a DataContract XML body** rather than the empty 500 older builds gave. That includes `Accept: */*`, the default of httpx and .NET `HttpClient`.
+On **26.1.5940.0 and 26.1.5950.0**, a request whose `Accept` does not include `application/json` returns **HTTP 200 with a DataContract XML body** rather than the empty 500 older builds gave. That includes `Accept: */*`, the default of httpx and .NET `HttpClient`.
 
 ```http
 POST {uiserver}/api/ui/interactive/sessions/     # Accept: */*
@@ -341,13 +341,13 @@ The rule is *"`application/json` must be present"*, not *"`*/*` is rejected"* �
 
 ### Alternating 500 / 409 "Session already exists" (2026.1 builds up to 5910.3)
 
-> **Not reachable on 26.1.5940.0** — this needs a *failed* session create to produce the ghost, and creates no longer fail that way. The `DELETE` guidance below is still correct and still worth knowing; the alternating pattern is what has gone.
+> **Not reachable on 26.1.5940.0 or 26.1.5950.0** — this needs a *failed* session create to produce the ghost, and creates no longer fail that way. The `DELETE` guidance below is still correct and still worth knowing; the alternating pattern is what has gone.
 
 The failed session create above still **half-creates the session** server-side, so retries hit **409 `{"ErrorMessage":"Session already exists."}`**. If you see this pattern on an affected build, check the `Accept` header first — it is not a session-pool problem.
 
 **Clear the ghost with `DELETE {uiserver}/api/ui/interactive/sessions`** — it returns 200 and a clean create succeeds immediately after. Waiting out `SessionCleanupExpiration` (~6 min) also works but is unnecessary.
 
-> **The delete is scoped to the bearer token, on every build.** A session left by a *previous* token — a crashed worker, a retry path that re-authenticated before cleaning up — cannot be deleted at all; every id-carrying form returns `400 {"ErrorMessage":"Invalid session"}` and only `SessionCleanupExpiration` will reap it. Keep the token alive until the session is closed. Re-verified on 26.1.5940.0.
+> **The delete is scoped to the bearer token, on every build.** A session left by a *previous* token — a crashed worker, a retry path that re-authenticated before cleaning up — cannot be deleted at all; every id-carrying form returns `400 {"ErrorMessage":"Invalid session"}` and only `SessionCleanupExpiration` will reap it. Keep the token alive until the session is closed. Re-verified on 26.1.5940.0 and 26.1.5950.0 — note that a second token for the same user can still *see* the session in `GET /sessions`; only the delete is token-scoped.
 
 > **The ghost masks the diagnosis.** Once a call has poisoned the session, *every* subsequent create returns 409 no matter what headers it sends — so the header experiment you would run to confirm the cause reports the wrong answer. `DELETE` the session before each attempt when testing this. Details: [Breaking Changes § 2026.1](14-Breaking-Changes.md#p21-20261).
 
@@ -1334,7 +1334,7 @@ void CheckTokenExpiry(string token)
 | 307 Redirect | Entity | Add `follow_redirects=True` (list endpoints) |
 | Request timeout | All | Increase timeout, check network |
 | "Unexpected window" | Transaction | Use async endpoint, add delays |
-| `Status: "Existing"` rejected — 400 on 5940.0, 500 `NullReferenceException` on older builds | Transaction | `"New"` is the only value the enum accepts; use it + key fields (upsert) — [details](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
+| `Status: "Existing"` rejected — 400 on 5940.0 and later, 500 `NullReferenceException` on older builds | Transaction | `"New"` is the only value the enum accepts; use it + key fields (upsert) — [details](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
 | `services?type=report` empty (other `type` values 400) | Transaction | Expected — report services are hidden; run via `/api/v2/process/pdfreport` |
 | m_* report returns Succeeded, no output | Transaction | Use `POST /api/v2/process/pdfreport`, not `/transaction` — [details](03-Transaction-API.md#pdf-report-generation) |
 | Session expired | Interactive | Start new session |

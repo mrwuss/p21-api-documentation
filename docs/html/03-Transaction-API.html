@@ -1015,7 +1015,7 @@
 </table></div>
 <h4 id="status-new-is-the-only-value-the-enum-accepts"><code>Status: "New"</code> is the only value the enum accepts</h4>
 <p><code>Status</code> looks like it should have a create/update/delete vocabulary. It does not. <code>P21.Transactions.Model.V2.TransactionStatus</code> has <strong>exactly one string member — <code>New</code></strong> — and the API's create/update distinction is carried by the keys, not by this field (see <a href="#upsert-semantics-keyed-rows-insert-when-absent">Upsert Semantics</a>).</p>
-<p>Enumerated on 26.1.5940.0 by posting each candidate with an <strong>empty <code>DataElements</code> list</strong>, so the probe measures only whether the model binder accepts the value and nothing can be written:</p>
+<p>Enumerated on 26.1.5940.0 by posting each candidate with an <strong>empty <code>DataElements</code> list</strong>, so the probe measures only whether the model binder accepts the value and nothing can be written, and re-run unchanged on 26.1.5950.0:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -1048,7 +1048,8 @@ HTTP 400
 </code></pre></div>
 
 <blockquote>
-<p><strong>This used to be an HTTP 500.</strong> On builds before 26.1.5940.0 the same payload produced a <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code> with no indication of the cause — a 500 that looked like a server fault rather than a bad request, and sent more than one integration hunting for a middleware bug. If you are on an older build you will still see the 500; the fix is the same either way.</p>
+<p><strong>This used to be an HTTP 500.</strong> On builds before 26.1.5940.0 the same payload produced a <code>NullReferenceException</code> at <code>ToInternalBeSpecification</code> with no indication of the cause — a 500 that looked like a server fault rather than a bad request, and sent more than one integration hunting for a middleware bug. If you are on an older build you will still see the 500; the fix is the same either way. The 400 shape is unchanged on 26.1.5950.0.</p>
+<p><strong>The 400 body carries two errors, and the useful one is second.</strong> Alongside <code>Transactions[0].Status</code> the response also lists <code>content: ["The content field is required."]</code> — an artifact of the body failing to bind as a whole, not a separate problem with your payload. A client that logs only the first <code>errors</code> entry will report a missing body for what is actually a bad enum value.</p>
 <p><strong>Do not send <code>Status</code> as an integer.</strong> The binder accepts any integer because that is how .NET binds enums — it does not range-check, so out-of-range values bind silently to an undefined member rather than erroring. Every integer we probed returned HTTP 200. <strong>Send the string <code>"New"</code></strong>, which is the only value with defined behavior, and let a wrong value fail loudly at the binder instead of undefined-behaving inside the transaction.</p>
 </blockquote>
 <h3 id="dataelement-fields">DataElement Fields</h3>
@@ -1199,7 +1200,7 @@ HTTP 400
 <td><code>Status: "Existing"</code></td>
 <td>—</td>
 <td><code>"Status": "New"</code></td>
-<td>Rejected — HTTP 400 on 26.1.5940.0, HTTP 500 <code>NullReferenceException</code> on earlier builds. <a href="#status-new-is-the-only-value-the-enum-accepts"><code>"New"</code> is the only accepted value</a></td>
+<td>Rejected — HTTP 400 on 26.1.5940.0 and later, HTTP 500 <code>NullReferenceException</code> on earlier builds. <a href="#status-new-is-the-only-value-the-enum-accepts"><code>"New"</code> is the only accepted value</a></td>
 </tr>
 <tr>
 <td>Report payload to <code>/transaction</code></td>

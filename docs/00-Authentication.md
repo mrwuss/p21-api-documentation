@@ -1151,8 +1151,9 @@ Twelve keys in total on 26.1.5940.0 — the rest are `Monitoring/*` telemetry (`
 > |---|---|---|---|
 > | 26.1.5930.1 | `"0.0"` | `"0.0.0.0"` | `"26.1.5930.1"` |
 > | 26.1.5940.0 | `"26.1"` | `"26.1.5940.0"` | `"26.1.5940.0"` |
+> | 26.1.5950.0 | `"26.1"` | `"26.1.5950.0"` | `"26.1.5950.0"` |
 >
-> Same call shape both times — fresh token, no browser session. On 5930.1 the two `Monitoring/*` fields came back as zeros while the web app's own session traffic showed real values in them; on 5940.0 they are populated correctly. Whatever drives the difference, the lesson is the same: **`Version/Application Version` was right on both builds and is the field to read.** Note the literal space in the key, and that it carries the **full** build number, not a bare major.minor — parse the first two dot-segments if you only need `"26.1"`-style gating.
+> Same call shape every time — fresh token, no browser session. On 5930.1 the two `Monitoring/*` fields came back as zeros while the web app's own session traffic showed real values in them; on 5940.0 and 5950.0 they are populated correctly. Whatever drives the difference, the lesson is the same: **`Version/Application Version` was right on all three builds and is the field to read.** Note the literal space in the key, and that it carries the **full** build number, not a bare major.minor — parse the first two dot-segments if you only need `"26.1"`-style gating.
 
 Two keys are useful in practice:
 

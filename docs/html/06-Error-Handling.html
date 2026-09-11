@@ -1017,7 +1017,7 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 <p>The column accepts a fixed set of values and yours isn't one of them. Under the default <code>UseCodeValues: false</code> the API wants the <strong>display label</strong>, not the <code>code_p21</code> integer the database stores — so <code>Invalid row_status_flag value: 700</code> is what sending the <em>code</em> for <code>Delete</code> looks like, and <code>700</code>, <code>704</code> and <code>Inactive</code> all fail the same way where <code>Delete</code> and <code>Active</code> pass. The accepted set is published per field as <code>ValidValues</code> in the <a href="03-Transaction-API.html#get-service-definition">service definition</a>. See <a href="03-Transaction-API.html#usecodevalues">UseCodeValues</a> and <a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">Labels vs What the Database Stores</a>.</p>
 <p><strong>Write reported <code>Succeeded: 1</code> but the data is wrong (a line missing, a value on the wrong line)</strong></p>
 <p>Not an error response at all — this is row collapse or a mis-keyed upsert. Rows in a <code>List</code> element that agree on the element's key fields are folded into one, last value wins. See <a href="03-Transaction-API.html#keys-row-identity-and-the-collapse-trap">Transaction API - Keys</a> for the debugging loop.</p>
-<p><strong><code>Status: "Existing"</code> is rejected — HTTP 400 on 5940.0, HTTP 500 on older builds</strong></p>
+<p><strong><code>Status: "Existing"</code> is rejected — HTTP 400 on 5940.0 and later, HTTP 500 on older builds</strong></p>
 <p><code>P21.Transactions.Model.V2.TransactionStatus</code> has <strong>exactly one member</strong>: <code>New</code>. Every other string is refused, and how it is refused depends on your build:</p>
 <div class="table-wrap"><table>
 <thead>
@@ -1028,7 +1028,7 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 </thead>
 <tbody>
 <tr>
-<td>26.1.5940.0</td>
+<td>26.1.5940.0, 26.1.5950.0</td>
 <td><code>400</code> — <code>Error converting value "Existing" to type 'P21.Transactions.Model.V2.TransactionStatus'</code></td>
 </tr>
 <tr>
@@ -1093,7 +1093,7 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 <p><strong>Solution</strong>: fix the datawindow name (from <code>GET /api/v2/definition/{Service}</code> or <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/</code></a>), and treat the request that followed the 400 as lost — re-send it and check the result.</p>
 <h3 id="missing-accept-applicationjson-an-xml-200-that-breaks-your-parser">Missing <code>Accept: application/json</code> — an XML 200 that breaks your parser</h3>
 <p><strong>Send <code>Accept: application/json</code> on every P21 request.</strong> This has always been the rule; only the consequence of breaking it has changed.</p>
-<p>On <strong>26.1.5940.0</strong>, a request whose <code>Accept</code> does not include <code>application/json</code> returns <strong>HTTP 200 with a DataContract XML body</strong> rather than the empty 500 older builds gave. That includes <code>Accept: */*</code>, the default of httpx and .NET <code>HttpClient</code>.</p>
+<p>On <strong>26.1.5940.0 and 26.1.5950.0</strong>, a request whose <code>Accept</code> does not include <code>application/json</code> returns <strong>HTTP 200 with a DataContract XML body</strong> rather than the empty 500 older builds gave. That includes <code>Accept: */*</code>, the default of httpx and .NET <code>HttpClient</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="err">POST {uiserver}/api/ui/interactive/sessions/     # Accept: */*</span>
 <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
 <span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/xml; charset=utf-8</span>
@@ -1126,12 +1126,12 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 <p>The rule is <em>"<code>application/json</code> must be present"</em>, not <em>"<code>*/*</code> is rejected"</em> — <code>Accept: application/json, */*</code> returns JSON. Full per-build matrix: <a href="14-Breaking-Changes.html#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">Breaking Changes entry 1</a>.</p>
 <h3 id="alternating-500-409-session-already-exists-20261-builds-up-to-59103">Alternating 500 / 409 "Session already exists" (2026.1 builds up to 5910.3)</h3>
 <blockquote>
-<p><strong>Not reachable on 26.1.5940.0</strong> — this needs a <em>failed</em> session create to produce the ghost, and creates no longer fail that way. The <code>DELETE</code> guidance below is still correct and still worth knowing; the alternating pattern is what has gone.</p>
+<p><strong>Not reachable on 26.1.5940.0 or 26.1.5950.0</strong> — this needs a <em>failed</em> session create to produce the ghost, and creates no longer fail that way. The <code>DELETE</code> guidance below is still correct and still worth knowing; the alternating pattern is what has gone.</p>
 </blockquote>
 <p>The failed session create above still <strong>half-creates the session</strong> server-side, so retries hit <strong>409 <code>{"ErrorMessage":"Session already exists."}</code></strong>. If you see this pattern on an affected build, check the <code>Accept</code> header first — it is not a session-pool problem.</p>
 <p><strong>Clear the ghost with <code>DELETE {uiserver}/api/ui/interactive/sessions</code></strong> — it returns 200 and a clean create succeeds immediately after. Waiting out <code>SessionCleanupExpiration</code> (~6 min) also works but is unnecessary.</p>
 <blockquote>
-<p><strong>The delete is scoped to the bearer token, on every build.</strong> A session left by a <em>previous</em> token — a crashed worker, a retry path that re-authenticated before cleaning up — cannot be deleted at all; every id-carrying form returns <code>400 {"ErrorMessage":"Invalid session"}</code> and only <code>SessionCleanupExpiration</code> will reap it. Keep the token alive until the session is closed. Re-verified on 26.1.5940.0.</p>
+<p><strong>The delete is scoped to the bearer token, on every build.</strong> A session left by a <em>previous</em> token — a crashed worker, a retry path that re-authenticated before cleaning up — cannot be deleted at all; every id-carrying form returns <code>400 {"ErrorMessage":"Invalid session"}</code> and only <code>SessionCleanupExpiration</code> will reap it. Keep the token alive until the session is closed. Re-verified on 26.1.5940.0 and 26.1.5950.0 — note that a second token for the same user can still <em>see</em> the session in <code>GET /sessions</code>; only the delete is token-scoped.</p>
 <p><strong>The ghost masks the diagnosis.</strong> Once a call has poisoned the session, <em>every</em> subsequent create returns 409 no matter what headers it sends — so the header experiment you would run to confirm the cause reports the wrong answer. <code>DELETE</code> the session before each attempt when testing this. Details: <a href="14-Breaking-Changes.html#p21-20261">Breaking Changes § 2026.1</a>.</p>
 </blockquote>
 <h3 id="batched-v2change-is-sequential-and-fail-fast-20261">Batched <code>/v2/change</code> Is Sequential and Fail-Fast (2026.1)</h3>
@@ -2091,7 +2091,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Use async endpoint, add delays</td>
 </tr>
 <tr>
-<td><code>Status: "Existing"</code> rejected — 400 on 5940.0, 500 <code>NullReferenceException</code> on older builds</td>
+<td><code>Status: "Existing"</code> rejected — 400 on 5940.0 and later, 500 <code>NullReferenceException</code> on older builds</td>
 <td>Transaction</td>
 <td><code>"New"</code> is the only value the enum accepts; use it + key fields (upsert) — <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">details</a></td>
 </tr>

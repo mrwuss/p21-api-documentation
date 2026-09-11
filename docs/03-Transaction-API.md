@@ -153,7 +153,7 @@ The main request body for create/update operations:
 
 `Status` looks like it should have a create/update/delete vocabulary. It does not. `P21.Transactions.Model.V2.TransactionStatus` has **exactly one string member — `New`** — and the API's create/update distinction is carried by the keys, not by this field (see [Upsert Semantics](#upsert-semantics-keyed-rows-insert-when-absent)).
 
-Enumerated on 26.1.5940.0 by posting each candidate with an **empty `DataElements` list**, so the probe measures only whether the model binder accepts the value and nothing can be written:
+Enumerated on 26.1.5940.0 by posting each candidate with an **empty `DataElements` list**, so the probe measures only whether the model binder accepts the value and nothing can be written, and re-run unchanged on 26.1.5950.0:
 
 | Sent | Result |
 |---|---|
@@ -172,7 +172,9 @@ HTTP 400
  "title": "One or more validation errors occurred.", "status": 400}
 ```
 
-> **This used to be an HTTP 500.** On builds before 26.1.5940.0 the same payload produced a `NullReferenceException` at `ToInternalBeSpecification` with no indication of the cause — a 500 that looked like a server fault rather than a bad request, and sent more than one integration hunting for a middleware bug. If you are on an older build you will still see the 500; the fix is the same either way.
+> **This used to be an HTTP 500.** On builds before 26.1.5940.0 the same payload produced a `NullReferenceException` at `ToInternalBeSpecification` with no indication of the cause — a 500 that looked like a server fault rather than a bad request, and sent more than one integration hunting for a middleware bug. If you are on an older build you will still see the 500; the fix is the same either way. The 400 shape is unchanged on 26.1.5950.0.
+
+> **The 400 body carries two errors, and the useful one is second.** Alongside `Transactions[0].Status` the response also lists `content: ["The content field is required."]` — an artifact of the body failing to bind as a whole, not a separate problem with your payload. A client that logs only the first `errors` entry will report a missing body for what is actually a bad enum value.
 
 > **Do not send `Status` as an integer.** The binder accepts any integer because that is how .NET binds enums — it does not range-check, so out-of-range values bind silently to an undefined member rather than erroring. Every integer we probed returned HTTP 200. **Send the string `"New"`**, which is the only value with defined behavior, and let a wrong value fail loudly at the binder instead of undefined-behaving inside the transaction.
 
@@ -243,7 +245,7 @@ Most first-integration failures are payload **shape** mistakes, not wrong endpoi
 | Boolean in quotes | `"UseCodeValues": "false"` | `"UseCodeValues": false` | The string `"false"` is truthy-ish to some binders — behavior undefined |
 | `Rows`/`Edits` as an object | `"Rows": { "Edits": ... }` | `"Rows": [ { "Edits": [...] } ]` | Deserialization error or empty save |
 | `Value` as a number | `"Value": 36.58` | `"Value": "36.58"` | Every verified example sends **strings**; other types are untested territory |
-| `Status: "Existing"` | — | `"Status": "New"` | Rejected — HTTP 400 on 26.1.5940.0, HTTP 500 `NullReferenceException` on earlier builds. [`"New"` is the only accepted value](#status-new-is-the-only-value-the-enum-accepts) |
+| `Status: "Existing"` | — | `"Status": "New"` | Rejected — HTTP 400 on 26.1.5940.0 and later, HTTP 500 `NullReferenceException` on earlier builds. [`"New"` is the only accepted value](#status-new-is-the-only-value-the-enum-accepts) |
 | Report payload to `/transaction` | — | `POST /api/v2/process/pdfreport` | Returns `Succeeded`, emits **nothing** ([details](#pdf-report-generation)) |
 | Wrong property case | `"transactions": [...]` | `"Transactions": [...]` | Property silently unbound — behaves like it was never sent |
 | Fields in UI-cascade-breaking order | `price` before `pricing_method` | Match the UI order | Value silently cleared while reporting Succeeded ([details](#field-order-matters)) |

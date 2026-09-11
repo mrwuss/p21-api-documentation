@@ -347,7 +347,7 @@ DELETE /api/ui/interactive/sessions
 
 No body, no query parameter. The endpoint deletes **the session belonging to the bearer token you send** — which is why it needs neither.
 
-> **A session can only be deleted by the token that created it.** Verified on 26.1.5910.3 (2026-08-11): create a session and `DELETE` it on the same token and you get `200` and the session is gone. Present a **different** token — a fresh login after your process restarted, another worker, a retry that re-authenticated — and *every* form is refused with `400 {"ErrorMessage":"Invalid session"}`:
+> **A session can only be deleted by the token that created it.** Verified on 26.1.5910.3 (2026-08-11) and re-verified on 26.1.5950.0 (2026-09-11): create a session and `DELETE` it on the same token and you get `200` and the session is gone. Present a **different** token — a fresh login after your process restarted, another worker, a retry that re-authenticated — and *every* form is refused with `400 {"ErrorMessage":"Invalid session"}`:
 >
 > | Attempt (different token) | Result |
 > |---|---|
@@ -358,7 +358,7 @@ No body, no query parameter. The endpoint deletes **the session belonging to the
 > | `DELETE /sessions` body `{"SessionId": "..."}` | `400 Invalid session` |
 > | `DELETE /v2/sessions?id={sessionId}` | `404` (no such endpoint) |
 >
-> The orphan stays visible in `GET /api/ui/interactive/sessions` and there is no documented way to reap it early — you wait out `SessionCleanupExpiration`. The practical rule: **delete the session on the token that opened it, in a `finally`, before that token goes out of scope.** Once the token is gone, so is your ability to clean up.
+> The orphan stays visible in `GET /api/ui/interactive/sessions` — the listing is scoped to the **user**, not the token, so a second token for the same login sees the session it cannot delete — and there is no documented way to reap it early: you wait out `SessionCleanupExpiration`. The practical rule: **delete the session on the token that opened it, in a `finally`, before that token goes out of scope.** Once the token is gone, so is your ability to clean up.
 
 ---
 
