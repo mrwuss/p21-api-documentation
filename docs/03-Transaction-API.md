@@ -1565,7 +1565,7 @@ Add-then-retire works the way it does for ship-tos, and this grid has a real `de
         "Name": "TABPAGE_1.order",
         "Type": "Form",
         "Keys": ["order_no"],
-        "Rows": [{"Edits": [{"Name": "order_no", "Value": "1534186"}], "RelativeDateEdits": []}]
+        "Rows": [{"Edits": [{"Name": "order_no", "Value": "123456"}], "RelativeDateEdits": []}]
       },
       {
         "Name": "TP_SALESREPS.tp_salesreps",
@@ -1573,12 +1573,12 @@ Add-then-retire works the way it does for ship-tos, and this grid has a real `de
         "Keys": ["salesrep_id"],
         "Rows": [
           {"Edits": [
-            {"Name": "salesrep_id", "Value": "4419"},
+            {"Name": "salesrep_id", "Value": "1001"},
             {"Name": "primary_salesrep", "Value": "Y"},
             {"Name": "commission_split", "Value": "100"}
           ], "RelativeDateEdits": []},
           {"Edits": [
-            {"Name": "salesrep_id", "Value": "4415"},
+            {"Name": "salesrep_id", "Value": "1002"},
             {"Name": "delete_flag", "Value": "Y"}
           ], "RelativeDateEdits": []}
         ]
@@ -1599,7 +1599,7 @@ Add-then-retire works the way it does for ship-tos, and this grid has a real `de
 If the document is in an in-progress editing state, the write raises a record-lock prompt that the stateless API auto-answers `No`:
 
 ```
-Transaction 1:: General Exception: Order 1520421 may currently be edited by ECARLSON.
+Transaction 1:: General Exception: Order 123456 may currently be edited by JSMITH.
 Please verify with that user first, otherwise your change to this order may not be saved
 successfully. Do you want to continue to retrieve? [Response: No]
 ```
