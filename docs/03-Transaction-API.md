@@ -1546,6 +1546,72 @@ All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 - **RMAs are not `Order` records.** An order with `rma_flag = 'Y'` is refused outright: `General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.` Use the [`RMA` service](#rma-service-orders-the-order-service-refuses).
 - **The same item on two lines collapses to one** with `Keys: []` — `TP_ITEMS.items` folds rows on its declared key (`oe_order_item_id`), last value wins, `Succeeded: 1`, no warning. Add `Keys: ["unit_quantity"]` (or another differing column) when an order legitimately repeats an item — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap).
 - The created `order_no` comes back in the result rows; check `Summary.Succeeded`, not the HTTP status.
+- **A document with `oe_hdr.completed = 'T'` refuses every write** — the record-lock prompt fires and the stateless API answers it `No`. See [Order Service — Reassigning the Salesrep](#order-service-reassigning-the-salesrep) for the pre-screen.
+
+#### Order Service — Reassigning the Salesrep
+
+**There is no salesrep column on `oe_hdr`.** The rep on a sales order or quote lives in the `oe_hdr_salesrep` grid, which the `Order` service exposes as `TP_SALESREPS.tp_salesreps` — `Type: List`, keyed on `salesrep_id` in the service definition. Per-line splits live in `oe_line_salesrep`. Verified live on production 26.1 across 66 successful writes (sales orders and quotes).
+
+Add-then-retire works the way it does for ship-tos, and this grid has a real `delete_flag` — unlike [`customer_salesrep`](#customer-service-removing-a-salesrep-grid-row), which needs `row_status_flag: "Delete"`:
+
+```json
+{
+  "Name": "Order",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [
+      {
+        "Name": "TABPAGE_1.order",
+        "Type": "Form",
+        "Keys": ["order_no"],
+        "Rows": [{"Edits": [{"Name": "order_no", "Value": "1534186"}], "RelativeDateEdits": []}]
+      },
+      {
+        "Name": "TP_SALESREPS.tp_salesreps",
+        "Type": "List",
+        "Keys": ["salesrep_id"],
+        "Rows": [
+          {"Edits": [
+            {"Name": "salesrep_id", "Value": "4419"},
+            {"Name": "primary_salesrep", "Value": "Y"},
+            {"Name": "commission_split", "Value": "100"}
+          ], "RelativeDateEdits": []},
+          {"Edits": [
+            {"Name": "salesrep_id", "Value": "4415"},
+            {"Name": "delete_flag", "Value": "Y"}
+          ], "RelativeDateEdits": []}
+        ]
+      }
+    ]
+  }]
+}
+```
+
+`TABPAGE_1.order` only loads the document — `order_no` is its sole edit and nothing on the order itself is modified. **Have the incoming rep inherit the outgoing row's `primary_salesrep` and `commission_split`** rather than hardcoding `100`, or a split-commission order silently becomes a single-rep order.
+
+##### Failure detail is in the top-level `Messages`, not on the transaction
+
+`Results.Transactions[0]` comes back `Status: "Failed"` with its own `Messages` set to **null**. The reason is in the *sibling* top-level `Messages` array on the response object. Read the wrong one and the API looks like it failed for no stated reason, which sends you hunting for a payload bug that isn't there.
+
+##### `oe_hdr.completed = 'T'` is what blocks the write
+
+If the document is in an in-progress editing state, the write raises a record-lock prompt that the stateless API auto-answers `No`:
+
+```
+Transaction 1:: General Exception: Order 1520421 may currently be edited by ECARLSON.
+Please verify with that user first, otherwise your change to this order may not be saved
+successfully. Do you want to continue to retrieve? [Response: No]
+```
+
+`completed` is **not a boolean** — it has a rarely-seen third state. Company-wide on production (September 2026): `Y` 639,247 · `N` 184,408 · **`T` 308**. In a 66-write run, the single failure was the single `T`.
+
+- **Pre-screen with `WHERE completed <> 'T'`.** This is the check that works; `process_in_progress_lock` is the wrong table and was empty throughout (0 rows) while the prompt fired, so it cannot be used to screen a batch.
+- **These locks are usually abandoned, not live.** The `T` rows on production were last modified across every year from **2011 to 2026**, only 31 of the 308 in the current year, under usernames that in many cases have long since left. "Wait for the user to finish" is generally wrong advice, and retrying never clears it on its own.
+- **To clear one:** have someone open and properly close the document in P21, or drive it through the Interactive API, which *can* answer the response window.
+- Both `<> 'Y'` and `= 'N'` filters treat `T` differently — pick deliberately.
+
+> **Credit:** *@mrwuss* — filed as [#156](https://github.com/mrwuss/p21-api-documentation/issues/156); element name, keys, `delete_flag`, and the `completed` distribution re-verified here against the service definition and the production catalogue.
 
 ---
 

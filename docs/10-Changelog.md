@@ -18,6 +18,15 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-09-11 — v1.15.0
+
+The salesrep on an order is not on the order, and two schema columns mean something other than what they are called.
+
+- **feat:** **[Order Service — Reassigning the Salesrep](03-Transaction-API.md#order-service-reassigning-the-salesrep).** There is **no salesrep column on `oe_hdr`** — the rep lives in the `oe_hdr_salesrep` grid, exposed by the `Order` service as `TP_SALESREPS.tp_salesreps` (`Type: List`, keyed on `salesrep_id`, confirmed against the service definition). Add-then-retire in one transaction, and this grid has a real `delete_flag`, unlike [`customer_salesrep`](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row), which needs `row_status_flag: "Delete"`. `TABPAGE_1.order` only loads the document. Have the incoming rep inherit the outgoing row's `primary_salesrep` and `commission_split` rather than hardcoding `100`, or a split-commission order quietly becomes a single-rep order. Verified across 66 successful writes — *@mrwuss*
+- **fix:** **[Failure detail is in the top-level `Messages`, not on the transaction](03-Transaction-API.md#failure-detail-is-in-the-top-level-messages-not-on-the-transaction).** `Results.Transactions[0]` returns `Status: "Failed"` with its own `Messages` set to **null**; the reason is in the sibling top-level array. Reading the wrong one makes the API look like it failed for no stated reason — *@mrwuss*
+- **feat:** **[`oe_hdr.completed = 'T'` is what blocks the write](03-Transaction-API.md#oe_hdrcompleted--t-is-what-blocks-the-write),** and [`completed` is not a boolean](02-OData-API.md#oe_hdrcompleted-is-not-a-boolean--t-is-a-real-third-value). A document in an in-progress editing state raises *"may currently be edited by USER"*, which the stateless API auto-answers `No`. Production distribution: `Y` 639,247 · `N` 184,408 · **`T` 308**. Pre-screen a batch with `WHERE completed <> 'T'` — **`process_in_progress_lock` is the wrong table** and was empty (0 rows) while the prompt was firing. These locks are usually abandoned rather than live: the `T` rows span every year from **2011 to 2026**, only 31 of 308 in the current year, so "wait for the user to finish" is generally wrong and retrying never clears it — *@mrwuss*
+- **feat:** **[Quotes are `oe_hdr.projected_order = 'Y'`](02-OData-API.md#quotes-are-oe_hdrprojected_order--y--quote_type-is-empty-and-there-is-no-quote_flag).** `quote_type` is NULL on every row and there is no `quote_flag`. Over three months of production orders, `projected_order = 'Y'` → **0 of 5,469 ever invoiced**; `'N'` → 66.8% invoiced. A live-document query that doesn't exclude `'Y'` mixes a third of the book in as quotes, and a quote query filtered on `quote_type` returns nothing and looks like the site doesn't use them — *@mrwuss*
+
 ## 2026-09-11 — v1.14.0
 
 The OData service is two surfaces, not one, and the empty-bodied 404 that fact produces is easy to read as "not exposed".

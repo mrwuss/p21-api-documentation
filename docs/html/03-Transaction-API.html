@@ -2765,7 +2765,64 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <li><strong>RMAs are not <code>Order</code> records.</strong> An order with <code>rma_flag = 'Y'</code> is refused outright: <code>General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.</code> Use the <a href="#rma-service-orders-the-order-service-refuses"><code>RMA</code> service</a>.</li>
 <li><strong>The same item on two lines collapses to one</strong> with <code>Keys: []</code> — <code>TP_ITEMS.items</code> folds rows on its declared key (<code>oe_order_item_id</code>), last value wins, <code>Succeeded: 1</code>, no warning. Add <code>Keys: ["unit_quantity"]</code> (or another differing column) when an order legitimately repeats an item — see <a href="#keys-row-identity-and-the-collapse-trap">Keys — Row Identity and the Collapse Trap</a>.</li>
 <li>The created <code>order_no</code> comes back in the result rows; check <code>Summary.Succeeded</code>, not the HTTP status.</li>
+<li><strong>A document with <code>oe_hdr.completed = 'T'</code> refuses every write</strong> — the record-lock prompt fires and the stateless API answers it <code>No</code>. See <a href="#order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</a> for the pre-screen.</li>
 </ul>
+<h4 id="order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</h4>
+<p><strong>There is no salesrep column on <code>oe_hdr</code>.</strong> The rep on a sales order or quote lives in the <code>oe_hdr_salesrep</code> grid, which the <code>Order</code> service exposes as <code>TP_SALESREPS.tp_salesreps</code> — <code>Type: List</code>, keyed on <code>salesrep_id</code> in the service definition. Per-line splits live in <code>oe_line_salesrep</code>. Verified live on production 26.1 across 66 successful writes (sales orders and quotes).</p>
+<p>Add-then-retire works the way it does for ship-tos, and this grid has a real <code>delete_flag</code> — unlike <a href="#customer-service-removing-a-salesrep-grid-row"><code>customer_salesrep</code></a>, which needs <code>row_status_flag: "Delete"</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Order&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;order_no&quot;</span><span class="p">],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;order_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1534186&quot;</span><span class="p">}],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]}]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TP_SALESREPS.tp_salesreps&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">],</span>
+<span class="w">        </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4419&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;primary_salesrep&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;commission_split&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100&quot;</span><span class="p">}</span>
+<span class="w">          </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]},</span>
+<span class="w">          </span><span class="p">{</span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4415&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;delete_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">}</span>
+<span class="w">          </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>TABPAGE_1.order</code> only loads the document — <code>order_no</code> is its sole edit and nothing on the order itself is modified. <strong>Have the incoming rep inherit the outgoing row's <code>primary_salesrep</code> and <code>commission_split</code></strong> rather than hardcoding <code>100</code>, or a split-commission order silently becomes a single-rep order.</p>
+<h5 id="failure-detail-is-in-the-top-level-messages-not-on-the-transaction">Failure detail is in the top-level <code>Messages</code>, not on the transaction</h5>
+<p><code>Results.Transactions[0]</code> comes back <code>Status: "Failed"</code> with its own <code>Messages</code> set to <strong>null</strong>. The reason is in the <em>sibling</em> top-level <code>Messages</code> array on the response object. Read the wrong one and the API looks like it failed for no stated reason, which sends you hunting for a payload bug that isn't there.</p>
+<h5 id="oe_hdrcompleted-t-is-what-blocks-the-write"><code>oe_hdr.completed = 'T'</code> is what blocks the write</h5>
+<p>If the document is in an in-progress editing state, the write raises a record-lock prompt that the stateless API auto-answers <code>No</code>:</p>
+<div class="highlight"><pre><span></span><code>Transaction 1:: General Exception: Order 1520421 may currently be edited by ECARLSON.
+Please verify with that user first, otherwise your change to this order may not be saved
+successfully. Do you want to continue to retrieve? [Response: No]
+</code></pre></div>
+
+<p><code>completed</code> is <strong>not a boolean</strong> — it has a rarely-seen third state. Company-wide on production (September 2026): <code>Y</code> 639,247 · <code>N</code> 184,408 · <strong><code>T</code> 308</strong>. In a 66-write run, the single failure was the single <code>T</code>.</p>
+<ul>
+<li><strong>Pre-screen with <code>WHERE completed &lt;&gt; 'T'</code>.</strong> This is the check that works; <code>process_in_progress_lock</code> is the wrong table and was empty throughout (0 rows) while the prompt fired, so it cannot be used to screen a batch.</li>
+<li><strong>These locks are usually abandoned, not live.</strong> The <code>T</code> rows on production were last modified across every year from <strong>2011 to 2026</strong>, only 31 of the 308 in the current year, under usernames that in many cases have long since left. "Wait for the user to finish" is generally wrong advice, and retrying never clears it on its own.</li>
+<li><strong>To clear one:</strong> have someone open and properly close the document in P21, or drive it through the Interactive API, which <em>can</em> answer the response window.</li>
+<li>Both <code>&lt;&gt; 'Y'</code> and <code>= 'N'</code> filters treat <code>T</code> differently — pick deliberately.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — filed as <a href="https://github.com/mrwuss/p21-api-documentation/issues/156">#156</a>; element name, keys, <code>delete_flag</code>, and the <code>completed</code> distribution re-verified here against the service definition and the production catalogue.</p>
+</blockquote>
 <hr />
 <h2 id="service-reference">Service Reference</h2>
 <h3 id="jobcontractpricing-service">JobContractPricing Service</h3>

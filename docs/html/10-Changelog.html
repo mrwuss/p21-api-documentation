@@ -641,6 +641,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1150">2026-09-11 — v1.15.0</a></li>
 <li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>
 <li><a href="#2026-09-11-v1130">2026-09-11 — v1.13.0</a></li>
 <li><a href="#2026-08-30-v1122">2026-08-30 — v1.12.2</a></li>
@@ -724,6 +725,14 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-11-v1150">2026-09-11 — v1.15.0</h2>
+<p>The salesrep on an order is not on the order, and two schema columns mean something other than what they are called.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</a>.</strong> There is <strong>no salesrep column on <code>oe_hdr</code></strong> — the rep lives in the <code>oe_hdr_salesrep</code> grid, exposed by the <code>Order</code> service as <code>TP_SALESREPS.tp_salesreps</code> (<code>Type: List</code>, keyed on <code>salesrep_id</code>, confirmed against the service definition). Add-then-retire in one transaction, and this grid has a real <code>delete_flag</code>, unlike <a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row"><code>customer_salesrep</code></a>, which needs <code>row_status_flag: "Delete"</code>. <code>TABPAGE_1.order</code> only loads the document. Have the incoming rep inherit the outgoing row's <code>primary_salesrep</code> and <code>commission_split</code> rather than hardcoding <code>100</code>, or a split-commission order quietly becomes a single-rep order. Verified across 66 successful writes — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#failure-detail-is-in-the-top-level-messages-not-on-the-transaction">Failure detail is in the top-level <code>Messages</code>, not on the transaction</a>.</strong> <code>Results.Transactions[0]</code> returns <code>Status: "Failed"</code> with its own <code>Messages</code> set to <strong>null</strong>; the reason is in the sibling top-level array. Reading the wrong one makes the API look like it failed for no stated reason — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#oe_hdrcompleted--t-is-what-blocks-the-write"><code>oe_hdr.completed = 'T'</code> is what blocks the write</a>,</strong> and <a href="02-OData-API.html#oe_hdrcompleted-is-not-a-boolean--t-is-a-real-third-value"><code>completed</code> is not a boolean</a>. A document in an in-progress editing state raises <em>"may currently be edited by USER"</em>, which the stateless API auto-answers <code>No</code>. Production distribution: <code>Y</code> 639,247 · <code>N</code> 184,408 · <strong><code>T</code> 308</strong>. Pre-screen a batch with <code>WHERE completed &lt;&gt; 'T'</code> — <strong><code>process_in_progress_lock</code> is the wrong table</strong> and was empty (0 rows) while the prompt was firing. These locks are usually abandoned rather than live: the <code>T</code> rows span every year from <strong>2011 to 2026</strong>, only 31 of 308 in the current year, so "wait for the user to finish" is generally wrong and retrying never clears it — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="02-OData-API.html#quotes-are-oe_hdrprojected_order--y--quote_type-is-empty-and-there-is-no-quote_flag">Quotes are <code>oe_hdr.projected_order = 'Y'</code></a>.</strong> <code>quote_type</code> is NULL on every row and there is no <code>quote_flag</code>. Over three months of production orders, <code>projected_order = 'Y'</code> → <strong>0 of 5,469 ever invoiced</strong>; <code>'N'</code> → 66.8% invoiced. A live-document query that doesn't exclude <code>'Y'</code> mixes a third of the book in as quotes, and a quote query filtered on <code>quote_type</code> returns nothing and looks like the site doesn't use them — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-11-v1140">2026-09-11 — v1.14.0</h2>
 <p>The OData service is two surfaces, not one, and the empty-bodied 404 that fact produces is easy to read as "not exposed".</p>
 <ul>
@@ -1456,6 +1465,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-11-v1150">2026-09-11 — v1.15.0</a></li>
 <li><a href="#2026-09-11-v1140">2026-09-11 — v1.14.0</a></li>
 <li><a href="#2026-09-11-v1130">2026-09-11 — v1.13.0</a></li>
 <li><a href="#2026-08-30-v1122">2026-08-30 — v1.12.2</a></li>

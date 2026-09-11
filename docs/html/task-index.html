@@ -843,6 +843,22 @@
 <td><a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">04 § Driving an In-Window Wizard</a> — needs a Buyer ID; commits at <code>cb_next</code></td>
 </tr>
 <tr>
+<td><strong>Change the salesrep on an order or quote</strong></td>
+<td><a href="03-Transaction-API.html#order-service-reassigning-the-salesrep">03 § Order Service — Reassigning the Salesrep</a> — <code>TP_SALESREPS.tp_salesreps</code>; <code>oe_hdr</code> has no salesrep column</td>
+</tr>
+<tr>
+<td>Transaction <code>Failed</code> with no reason on the transaction</td>
+<td><a href="03-Transaction-API.html#failure-detail-is-in-the-top-level-messages-not-on-the-transaction">03 § Failure detail is in the top-level Messages</a></td>
+</tr>
+<tr>
+<td>"may currently be edited by USER" — write refused</td>
+<td><a href="03-Transaction-API.html#oe_hdrcompleted--t-is-what-blocks-the-write">03 § <code>oe_hdr.completed = 'T'</code></a> — pre-screen <code>WHERE completed &lt;&gt; 'T'</code>; usually an abandoned lock</td>
+</tr>
+<tr>
+<td>Telling <strong>quotes</strong> from live orders</td>
+<td><a href="02-OData-API.html#quotes-are-oe_hdrprojected_order--y--quote_type-is-empty-and-there-is-no-quote_flag">02 § Quotes are <code>projected_order = 'Y'</code></a> — <code>quote_type</code> is NULL everywhere</td>
+</tr>
+<tr>
 <td>"When did the supplier say this would ship?"</td>
 <td><a href="02-OData-API.html#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise">02 § <code>po_line.supplier_ship_date</code></a> — <strong>not a promise on direct-ship POs</strong>; use <code>date_due</code></td>
 </tr>

@@ -395,6 +395,18 @@ Two ways to avoid long chains:
 
 A column name is a claim about intent, and P21 has a few where the stored value stops matching the intent once a downstream process touches the row. These are read hazards specifically: the value is present, well-typed and plausible, so nothing in the response tells you it is no longer the thing you asked for.
 
+#### `oe_hdr.completed` is not a boolean — `'T'` is a real third value
+
+`Y` and `N` are what you expect. **`T` marks a document left in an in-progress editing state**, and it is rare enough to miss in a sample: company-wide on a production tenant (September 2026), `Y` 639,247 · `N` 184,408 · **`T` 308**. It matters for two reasons. A filter written as `= 'N'` and one written as `<> 'Y'` disagree on every `T` row, so the choice is never cosmetic. And a `T` row **refuses Transaction API writes** — the record-lock prompt fires and the stateless API answers it `No` — which makes `WHERE completed <> 'T'` the pre-screen for any batch write against orders. See [Order Service — Reassigning the Salesrep](03-Transaction-API.md#order-service-reassigning-the-salesrep).
+
+Do not reach for `process_in_progress_lock` to find these: it was empty (0 rows) on the same tenant while the prompt was firing, and does not back this behaviour.
+
+#### Quotes are `oe_hdr.projected_order = 'Y'` — `quote_type` is empty and there is no `quote_flag`
+
+Looking for the obvious column gets you nothing: `quote_type` is **NULL on every row** in the table, and no `quote_flag` column exists. The flag that actually separates a quote from a live order is `projected_order`. Measured over three months of orders on production: `projected_order = 'Y'` → **0 of 5,469 ever invoiced (0.0%)**; `projected_order = 'N'` → 7,266 of 10,878 invoiced (66.8%, the rest still open or cancelled).
+
+The practical consequence runs in both directions. A query for live documents that does not exclude `'Y'` silently mixes quotes into the order book — 5,469 of 16,347 documents in that window. A query for quotes that filters on `quote_type` returns nothing at all and looks like the site does not use quotes.
+
 #### `po_line.supplier_ship_date` is last-shipment-observed on direct-ship POs, not a supplier promise
 
 On a **direct-ship PO (`po_hdr.po_type = 'D'`)**, confirming the shipment writes the confirmation's ship date down onto `po_line.supplier_ship_date` for **every line on that confirmation** — including quantity that has not shipped. Read the column afterwards and you get the date of the last confirmation, not the date the supplier promised.
