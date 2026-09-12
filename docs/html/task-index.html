@@ -1366,6 +1366,10 @@
 <td><a href="14-Breaking-Changes.html#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">14 § entry 9</a> — a bad <code>DatawindowName</code> on the previous request; <strong>not</strong> the <code>Accept</code> header on current builds</td>
 </tr>
 <tr>
+<td>Which REST endpoints/families does my tenant actually have?</td>
+<td><a href="05-Entity-API.html#discovering-what-your-tenant-actually-exposes">05 § Discovering what your tenant actually exposes</a> — <code>/docs/apiref.aspx</code> lists every family (takes a bearer token); confirm one with <code>/help</code>, <strong>never <code>/ping</code></strong>. Plus <code>/api/v2/services</code> (Transaction) and the OData service document</td>
+</tr>
+<tr>
 <td>Token call returns HTTP 500 <code>Unable to generate client token.</code></td>
 <td><a href="06-Error-Handling.html#token-endpoint-errors">06 § Token Endpoint Errors</a> — the consumer key is not registered on that tenant; read <code>InnerException</code>, not <code>ErrorMessage</code>. Common after a test-tenant refresh from production (<a href="00-Authentication.html#when-the-key-is-not-registered-on-that-tenant">00</a>)</td>
 </tr>

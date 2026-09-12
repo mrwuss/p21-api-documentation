@@ -18,6 +18,15 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-09-12 — v1.19.0
+
+The endpoint that lists the endpoints — and the probe that was answering the wrong question.
+
+- **fix:** **[A `/ping` 404 does not mean the family is absent](05-Entity-API.md#probe-with-help-not-ping-a-ping-404-proves-nothing).** This page carried a family sweep built by calling `GET {base}/{family}/ping` against a guessed list, split into "answering" and "not on this tenant". Re-run against the middleware's own published list on 26.1.5950.0, **every single family in the right-hand column is published and answers `/help` with HTTP 200** — `sales/invoices`, `chat`, `ecommerce`, `eh`, `environment/systems`, `localization`, `printing`, `inventory/rental`, `inventory/inventorymovement`, `integrationProcedures`, `.configuration`, `pathguide` and `help` all 404 on `/ping` and 200 on `/help`; `document` and `logistics/roadnet` 500 on `/ping`; `cardstorage` 405s. `ping` is an ordinary route a family either implements or doesn't, not a health check the middleware answers on every family's behalf. **Probe with `/help`.** `sales/invoices` makes the cost concrete: the tenant hosted it the whole time and the sweep recorded it as missing — *@mrwuss*
+- **feat:** **[`apiref.aspx` takes a bearer token, so the family list is scriptable](05-Entity-API.md#it-takes-a-bearer-token-so-read-it-in-code-not-in-a-browser).** It looks like a browser-only ASPX page and was documented as needing the *Access to SOA Admin Page* setting; the ordinary `Authorization: Bearer` header authenticates it too. **Unauthenticated it 302s to `/docs/logon.aspx` and serves the login form with HTTP 200**, so a client that follows redirects and checks only the status code parses a login page and concludes the tenant hosts nothing — assert on content. The page header also prints the middleware version, SQL data source and database name, which makes it a fast check of which environment you are pointed at — *@mrwuss*
+- **feat:** **[The full family list, read off the middleware instead of guessed](05-Entity-API.md#what-it-publishes-one-tenant-26159500).** **48 families** on the 26.1.5950.0 tenant, grouped and each linked to its `/help` — including ten the old sweep never named (`custom/v2/HostFacade`, `epayments-legacy`, `epicorhelpservice`, `folderbrowser`, `pathguideasync`, `rest/logistics/drivers`, `security/token`, `ui/UIServerRouter`, `ui/router/v1`, `help`) — *@mrwuss*
+- **docs:** **[The other two catalogs, alongside the first](05-Entity-API.md#the-other-two-catalogs).** `apiref.aspx` lists REST/SOAP families only. `GET {uiserver}/api/v2/services` returns the **301** Transaction API services, and the OData service documents at `/odataservice/odata/table/` and `/view/` return **3,407** tables and **3,758** views — names only, the cheap half of `$metadata` when the question is just "does this object exist here" — *@mrwuss*
+
 ## 2026-09-11 — v1.18.0
 
 Production moved to **26.1.5950.0**. The registry is build-indexed, so it was re-run rather than assumed.

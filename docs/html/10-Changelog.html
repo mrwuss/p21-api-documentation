@@ -642,6 +642,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-12-v1190">2026-09-12 — v1.19.0</a></li>
 <li><a href="#2026-09-11-v1180">2026-09-11 — v1.18.0</a></li>
 <li><a href="#2026-09-11-v1170">2026-09-11 — v1.17.0</a></li>
 <li><a href="#2026-09-11-v1160">2026-09-11 — v1.16.0</a></li>
@@ -729,6 +730,14 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-12-v1190">2026-09-12 — v1.19.0</h2>
+<p>The endpoint that lists the endpoints — and the probe that was answering the wrong question.</p>
+<ul>
+<li><strong>fix:</strong> <strong><a href="05-Entity-API.html#probe-with-help-not-ping-a-ping-404-proves-nothing">A <code>/ping</code> 404 does not mean the family is absent</a>.</strong> This page carried a family sweep built by calling <code>GET {base}/{family}/ping</code> against a guessed list, split into "answering" and "not on this tenant". Re-run against the middleware's own published list on 26.1.5950.0, <strong>every single family in the right-hand column is published and answers <code>/help</code> with HTTP 200</strong> — <code>sales/invoices</code>, <code>chat</code>, <code>ecommerce</code>, <code>eh</code>, <code>environment/systems</code>, <code>localization</code>, <code>printing</code>, <code>inventory/rental</code>, <code>inventory/inventorymovement</code>, <code>integrationProcedures</code>, <code>.configuration</code>, <code>pathguide</code> and <code>help</code> all 404 on <code>/ping</code> and 200 on <code>/help</code>; <code>document</code> and <code>logistics/roadnet</code> 500 on <code>/ping</code>; <code>cardstorage</code> 405s. <code>ping</code> is an ordinary route a family either implements or doesn't, not a health check the middleware answers on every family's behalf. <strong>Probe with <code>/help</code>.</strong> <code>sales/invoices</code> makes the cost concrete: the tenant hosted it the whole time and the sweep recorded it as missing — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="05-Entity-API.html#it-takes-a-bearer-token-so-read-it-in-code-not-in-a-browser"><code>apiref.aspx</code> takes a bearer token, so the family list is scriptable</a>.</strong> It looks like a browser-only ASPX page and was documented as needing the <em>Access to SOA Admin Page</em> setting; the ordinary <code>Authorization: Bearer</code> header authenticates it too. <strong>Unauthenticated it 302s to <code>/docs/logon.aspx</code> and serves the login form with HTTP 200</strong>, so a client that follows redirects and checks only the status code parses a login page and concludes the tenant hosts nothing — assert on content. The page header also prints the middleware version, SQL data source and database name, which makes it a fast check of which environment you are pointed at — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="05-Entity-API.html#what-it-publishes-one-tenant-26159500">The full family list, read off the middleware instead of guessed</a>.</strong> <strong>48 families</strong> on the 26.1.5950.0 tenant, grouped and each linked to its <code>/help</code> — including ten the old sweep never named (<code>custom/v2/HostFacade</code>, <code>epayments-legacy</code>, <code>epicorhelpservice</code>, <code>folderbrowser</code>, <code>pathguideasync</code>, <code>rest/logistics/drivers</code>, <code>security/token</code>, <code>ui/UIServerRouter</code>, <code>ui/router/v1</code>, <code>help</code>) — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="05-Entity-API.html#the-other-two-catalogs">The other two catalogs, alongside the first</a>.</strong> <code>apiref.aspx</code> lists REST/SOAP families only. <code>GET {uiserver}/api/v2/services</code> returns the <strong>301</strong> Transaction API services, and the OData service documents at <code>/odataservice/odata/table/</code> and <code>/view/</code> return <strong>3,407</strong> tables and <strong>3,758</strong> views — names only, the cheap half of <code>$metadata</code> when the question is just "does this object exist here" — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-11-v1180">2026-09-11 — v1.18.0</h2>
 <p>Production moved to <strong>26.1.5950.0</strong>. The registry is build-indexed, so it was re-run rather than assumed.</p>
 <ul>
@@ -1497,6 +1506,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-12-v1190">2026-09-12 — v1.19.0</a></li>
 <li><a href="#2026-09-11-v1180">2026-09-11 — v1.18.0</a></li>
 <li><a href="#2026-09-11-v1170">2026-09-11 — v1.17.0</a></li>
 <li><a href="#2026-09-11-v1160">2026-09-11 — v1.16.0</a></li>
