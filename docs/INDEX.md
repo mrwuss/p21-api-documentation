@@ -246,5 +246,5 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | [12-Production-Labor-API](12-Production-Labor-API.md) | Production services + end-to-end lifecycle | large |
 | [13-UDT-Service-API](13-UDT-Service-API.md) | User-defined table CRUD | large |
 | [14-Breaking-Changes](14-Breaking-Changes.md) | P21 version breaking-change registry (check before upgrading) | small — read whole |
-| [15-Other-REST-Families](15-Other-REST-Families.md) | Five more REST families: UDF metadata, GL, CRM tasks, PO headers, inventory adjustments | medium |
+| [15-Other-REST-Families](15-Other-REST-Families.md) | Sixteen more REST families: UDF metadata, GL, CRM tasks/opportunities/consignment orders, PO headers, inventory (adjustments/movement/counts/scan/serial info), file storage, system info, customer form templates, service orders, exchange rates | large |
 | [`definitions/`](../definitions/README.md) | Full-field service definition JSONs (every DataElement, field, key, label + payload template) | load one file per service |

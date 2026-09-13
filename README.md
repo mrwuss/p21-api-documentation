@@ -17,7 +17,7 @@ The repo is built for **progressive disclosure**: this README routes you, each a
 | Area | What's there | Start at |
 |------|--------------|----------|
 | [`docs/INDEX.md`](docs/INDEX.md) | "I want to…" → exact doc-section routing map | the index itself |
-| [`docs/`](docs/INDEX.md#doc-inventory-what-each-file-is) | The deep manual — 15 numbered guides (auth, each API, errors, patterns) | Task Index, not the raw files |
+| [`docs/`](docs/INDEX.md#doc-inventory-what-each-file-is) | The deep manual — 16 numbered guides (auth, each API, errors, patterns) | Task Index, not the raw files |
 | [`docs/recipes/`](docs/recipes/README.md) | Copy-and-run task pages: complete payload + runnable Python & C# + verified gotchas | [recipes README](docs/recipes/README.md) |
 | [`definitions/`](definitions/README.md) | Full-field service schemas (every DataElement, field, key, label + payload template), sanitized | [definitions README](definitions/README.md) |
 | [`examples/python/`](examples/python/README.md) | Runnable Python examples for every API + end-to-end recipe scripts (dry-run by default) | [python README](examples/python/README.md) |
@@ -37,7 +37,7 @@ The repo is built for **progressive disclosure**: this README routes you, each a
 | [Inventory REST API](docs/11-Inventory-REST-API.md) | Inventory item CRUD, multi-company workflows | Item reads, appending locations/suppliers |
 | [Production & Labor](docs/12-Production-Labor-API.md) | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking |
 | [UDT Service API](docs/13-UDT-Service-API.md) | CRUD on user-defined tables | Custom table maintenance |
-| [Other REST Families](docs/15-Other-REST-Families.md) | UDF metadata, GL entries, CRM tasks, PO headers, inventory adjustments | UDF discovery, journal-entry reads, task CRUD |
+| [Other REST Families](docs/15-Other-REST-Families.md) | 16 families: UDF metadata, GL, CRM tasks/opportunities/consignment orders, PO headers, inventory (adjustments/movement/counts/scan/serial info), file storage, system info, customer form templates, service orders, exchange rates | UDF discovery, journal-entry reads, task/PO/GL/adjustment/movement/count writes, filesystem access |
 | [ui/full (web client)](docs/04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) | Drives web-enabled windows by menu class name | A window has no service name — no Transaction/Interactive route |
 
 ## Quick Start

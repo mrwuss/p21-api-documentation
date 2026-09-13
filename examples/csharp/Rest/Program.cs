@@ -1,12 +1,18 @@
 // Other REST Families - C# examples (docs/15-Other-REST-Families.md)
 //
-// Menu-driven runner for the five families in doc 15: UDF metadata, GL
-// journal entries, CRM task CRUD, PO header reads, and inventory
-// adjustment header reads.
+// Menu-driven runner for all sixteen REST families in doc 15 (nineteen
+// examples total -- three families get both a read and a separate write
+// demo): UDF metadata, GL, CRM tasks, PO headers, inventory adjustments,
+// file storage, system info, inventory movement/counts/scan, customer
+// form templates, service orders, CRM opportunities/consignment orders,
+// exchange rates, and serial extended info.
 //
-// WRITE SAFETY: the CRM task example prints its payload and asks for
+// WRITE SAFETY: every write example prints its payload and asks for
 // console confirmation (type EXECUTE to post, anything else = dry run)
-// before any write; every other example here is read-only.
+// before any write, EXCEPT #19 (Serial Extended Info), which writes
+// unconditionally because the write is expected to be refused server-side
+// on every tenant -- see SerialNumberExtdInfo.cs. Read-only examples never
+// prompt.
 //
 // Prerequisites:
 //   - .env file with P21_BASE_URL, P21_USERNAME, P21_PASSWORD
