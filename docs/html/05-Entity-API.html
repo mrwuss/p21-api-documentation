@@ -609,6 +609,12 @@
             <li><a href="10-Changelog.html">Changelog</a></li>
             </ul>
         </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li><a href="15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
         <details class="nav-group">
             <summary>Recipes <span class="nav-count">17</span></summary>
             <ul class="nav-pages">
@@ -4616,7 +4622,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 </tr>
 </tbody>
 </table></div>
-<p>Notable among the ones that answer and aren't documented here yet: <strong><code>accounting/gl</code></strong>, <strong><code>extensibility/userdefinedfields</code></strong> (UDF access over REST), <strong><code>inventory/inventoryadjustments</code></strong>, <strong><code>sales/tasks</code></strong>, and <strong><code>purchasing/purchaseorders</code></strong>.</p>
+<p>Five of these now have their own page — <strong><code>accounting/gl</code></strong>, <strong><code>extensibility/userdefinedfields</code></strong>, <strong><code>inventory/inventoryadjustments</code></strong>, <strong><code>sales/tasks</code></strong> and <strong><code>purchasing/purchaseorders</code></strong> are documented in <a href="15-Other-REST-Families.html">Other REST Endpoint Families</a>, including the <a href="15-Other-REST-Families.html#the-bare-collection-get-is-an-unbounded-full-table-dump">unbounded collection-GET hazard</a> they all share.</p>
 <blockquote>
 <p><strong><code>inventory/v2/parts</code> is not a different API.</strong> It pings 200 and a single-item GET returns a <strong>byte-identical</strong> response to <code>inventory/parts</code> (1,396 bytes for the same item on the tested tenant). Treat it as an alias unless you find a divergence on a write path; <a href="11-Inventory-REST-API.html">11 Inventory REST API</a> documents the v1 path and applies to both.</p>
 </blockquote>

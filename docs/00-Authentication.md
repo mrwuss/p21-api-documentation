@@ -493,6 +493,8 @@ When authenticating with **User Credentials** (Method 1), generating a valid tok
 
 > **Note:** Consumer Key authentication (Method 2) bypasses these requirements entirely. Access is controlled by the consumer key's API scope instead.
 
+> **A consumer key produces the identical `"You are not authorized to access API. Please contact administrator to get access."` error when the call falls outside its own scope** — this is not exclusive to the User Credential path above. Verified live on 26.1.5950.0: a key scoped with `/odata:po_hdr,po_line,inv_mast,...` (an explicit table list — see [OData Table Scopes](#odata-table-scopes) below) answered every `/api/{family}/...` REST call normally, since those routes are not gated by the OData scope at all, but a plain `GET /odataservice/odata/table/{table}` against any table **not** in that list failed with the exact same generic message a missing Application Security grant produces. The two causes are indistinguishable from the error text alone — decode the bearer token's `aud` claim (a semicolon/comma-delimited scope string, plain base64 in the JWT's second segment) to see which table list, if any, it actually carries before assuming the account lacks a permission it may never have needed.
+
 ### Step 1: Application Security
 
 Each user must be explicitly granted API access in **User Maintenance**.

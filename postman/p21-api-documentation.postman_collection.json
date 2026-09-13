@@ -1,934 +1,1925 @@
 {
- "info": {
-  "_postman_id": "457d010c-841f-40a7-a8aa-0a4988297a64",
-  "name": "p21-api-documentation",
-  "description": "[https://github.com/mrwuss/p21-api-documentation](https://github.com/mrwuss/p21-api-documentation)",
-  "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-  "_exporter_id": "47200877",
-  "_collection_link": "https://go.postman.co/collection/47200877-457d010c-841f-40a7-a8aa-0a4988297a64?source=collection_link"
- },
- "item": [
-  {
-   "name": "00. Authentication",
-   "item": [
-    {
-     "name": "Get Token (V2)",
-     "request": {
-      "auth": {
-       "type": "noauth"
-      },
-      "method": "POST",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "{\r\n    \"username\": \"{{P21_USERNAME}}\",\r\n    \"password\": \"{{P21_PASSWORD}}\"\r\n}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{P21_BASE_URL}}/api/security/token/v2",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "api",
-        "security",
-        "token",
-        "v2"
-       ]
-      }
-     },
-     "response": [],
-     "event": [
-      {
-       "listen": "test",
-       "script": {
-        "exec": [
-         "// P21 answers with XML unless Accept: application/json is present.",
-         "// Fail loudly here rather than letting a blank TOKEN break every later request.",
-         "var ct = pm.response.headers.get(\"Content-Type\") || \"\";",
-         "pm.test(\"Response is JSON (Accept header present)\", function () {",
-         "    pm.expect(ct).to.include(\"application/json\");",
-         "});",
-         "",
-         "if (ct.indexOf(\"application/json\") !== -1) {",
-         "    var jsonData = pm.response.json();",
-         "    pm.collectionVariables.set(\"TOKEN\", jsonData.AccessToken);",
-         "} else {",
-         "    console.error(\"Token response was \" + ct + \", not JSON. Check the Accept header on this request.\");",
-         "}"
-        ],
-        "type": "text/javascript"
-       }
-      }
-     ]
-    },
-    {
-     "name": "Get UI Server URL",
-     "event": [
-      {
-       "listen": "test",
-       "script": {
-        "exec": [
-         "var jsonData = pm.response.json();\r",
-         "pm.collectionVariables.set(\"UI_SERVER_URL\", jsonData.Url);"
-        ],
-        "type": "text/javascript",
-        "packages": {},
-        "requests": {}
-       }
-      }
-     ],
-     "request": {
-      "auth": {
-       "type": "bearer",
-       "bearer": [
-        {
-         "key": "token",
-         "value": "{{TOKEN}}",
-         "type": "string"
-        }
-       ]
-      },
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/api/ui/router/v1/?urlType=external",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "api",
-        "ui",
-        "router",
-        "v1",
-        ""
-       ],
-       "query": [
-        {
-         "key": "urlType",
-         "value": "external"
-        }
-       ]
-      }
-     },
-     "response": []
-    }
-   ],
-   "description": "**Goal:** Obtain the Bearer token and store it automatically.\n\nReference: [docs/00-Authentication.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/00-Authentication.md)"
-  },
-  {
-   "name": "01. OData API",
-   "item": [
-    {
-     "name": "Basic Table Query",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$top=10",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "odataservice",
-        "odata",
-        "table",
-        "customer"
-       ],
-       "query": [
-        {
-         "key": "$top",
-         "value": "10",
-         "type": "text"
-        }
-       ]
-      },
-      "description": "Retrieves first 10 customers from the customer table."
-     },
-     "response": []
-    },
-    {
-     "name": "Filtered Query",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$filter=customer_id eq '100'&$select=customer_id,customer_name,date_created",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "odataservice",
-        "odata",
-        "table",
-        "customer"
-       ],
-       "query": [
-        {
-         "key": "$filter",
-         "value": "customer_id eq '100'",
-         "type": "text"
-        },
-        {
-         "key": "$select",
-         "value": "customer_id,customer_name,date_created",
-         "type": "text"
-        }
-       ]
-      }
-     },
-     "response": []
-    },
-    {
-     "name": "Pagination (Top/Skip)",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/odataservice/odata/table/part?$top=10&$skip=20&$orderby=item_id desc",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "odataservice",
-        "odata",
-        "table",
-        "part"
-       ],
-       "query": [
-        {
-         "key": "$top",
-         "value": "10",
-         "type": "text"
-        },
-        {
-         "key": "$skip",
-         "value": "20",
-         "type": "text"
-        },
-        {
-         "key": "$orderby",
-         "value": "item_id desc",
-         "type": "text"
-        }
-       ]
-      }
-     },
-     "response": []
-    }
-   ],
-   "description": "**Goal:** Read-only data extraction via OData v3.\n\n**Reference:** [docs/02-OData-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/02-OData-API.md)"
-  },
-  {
-   "name": "02. Transaction API",
-   "item": [
-    {
-     "name": "List Available Services",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/v2/services",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "v2",
-        "services"
-       ]
-      },
-      "description": "Returns the list of all available import services (e.g., Order, SalesPricePage, Customer). Requires UI Server URL from Authentication step."
-     },
-     "response": []
-    },
-    {
-     "name": "Get Service Definition",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/v2/definition/Order",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "v2",
-        "definition",
-        "Order"
-       ]
-      },
-      "description": "Returns the schema/template for a service. Vital for knowing the exact field names and DataElement structure required for the request body."
-     },
-     "response": []
-    },
-    {
-     "name": "Get Service Defaults",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/v2/defaults/Order",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "v2",
-        "defaults",
-        "Order"
-       ]
-      },
-      "description": "Returns the service's default values and a fillable payload template. One of three discovery endpoints (definition / defaults / basics) — see docs/03-Transaction-API.md#endpoints."
-     },
-     "response": []
-    },
-    {
-     "name": "Get Service Basics (Abbreviated Skeleton)",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/v2/basics/Order",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "v2",
-        "basics",
-        "Order"
-       ]
-      },
-      "description": "Returns an abbreviated, ready-to-POST Status:\"New\" skeleton — Keys prefilled from each element's KeyFields, IgnoreIfEmpty:true on every edit. Severely abbreviated (Order: 103 fields vs definition's 1,266): it omits fields you need (customer_id, source_loc_id, ship_to_id) and includes fields you cannot write (company_id). Verified 26.1. See docs/03-Transaction-API.md#endpoints."
-     },
-     "response": []
-    },
-    {
-     "name": "Retrieve Record(s) (transaction/get)",
-     "request": {
-      "method": "POST",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "{\r\n  \"ServiceName\": \"Order\",\r\n  \"TransactionStates\": [\r\n    {\r\n      \"DataElementName\": \"TABPAGE_1.order\",\r\n      \"Keys\": [{\"Name\": \"order_no\", \"Value\": \"1000001\"}]\r\n    }\r\n  ]\r\n}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/v2/transaction/get",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "v2",
-        "transaction",
-        "get"
-       ]
-      },
-      "description": "A POST despite the name — the lookup key travels in the body. Returns the record as a complete TransactionSet across every tab (Order: 102 elements), in the same shape you would POST back to /transaction; doubles as a clone template. Add more TransactionStates entries to fetch several records in one call (N states -> N Transactions; ~hundreds of KB per Order record). See docs/03-Transaction-API.md#reading-one-record-post-transactionget."
-     },
-     "response": []
-    },
-    {
-     "name": "Create Single Record (Example)",
-     "request": {
-      "method": "POST",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "{\r\n  \"Name\": \"Order\",\r\n  \"UseCodeValues\": false,\r\n  \"Transactions\": [\r\n    {\r\n      \"Status\": \"New\",\r\n      \"DataElements\": [\r\n        {\r\n          \"Name\": \"FORM.form\",\r\n          \"Type\": \"Form\",\r\n          \"Keys\": [],\r\n          \"Rows\": [\r\n            {\r\n              \"Edits\": [\r\n                {\"Name\": \"order_no\", \"Value\": \"\"},\r\n                {\"Name\": \"customer_id\", \"Value\": \"1001\"}\r\n              ],\r\n              \"RelativeDateEdits\": []\r\n            }\r\n          ]\r\n        }\r\n      ]\r\n    }\r\n  ]\r\n}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/v2/transaction",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "v2",
-        "transaction"
-       ]
-      },
-      "description": "Posts to /api/v2/transaction (not to /services). The Name field in the body identifies the service. See scripts/transaction/03_create_single.py for a working example."
-     },
-     "response": []
-    }
-   ],
-   "description": "**Goal:** Stateless imports (bulk data). All Transaction API requests use the **UI Server URL**, not the base P21 URL.\n\n**Reference:** [docs/03-Transaction-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/03-Transaction-API.md)"
-  },
-  {
-   "name": "03. Interactive API",
-   "item": [
-    {
-     "name": "Open Session",
-     "request": {
-      "method": "POST",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "{\r\n  \"ResponseWindowHandlingEnabled\": false\r\n}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/ui/interactive/sessions/",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "ui",
-        "interactive",
-        "sessions",
-        ""
-       ]
-      },
-      "description": "Creates a new Interactive API session. Auth is via Bearer token in the header (inherited from collection), NOT credentials in the body."
-     },
-     "response": [],
-     "event": [
-      {
-       "listen": "test",
-       "script": {
-        "exec": [
-         "var jsonData = pm.response.json();",
-         "pm.collectionVariables.set(\"SESSION_ID\", jsonData.Id);"
-        ],
-        "type": "text/javascript"
-       }
-      }
-     ]
-    },
-    {
-     "name": "Open Window (e.g., Sales Price Page)",
-     "request": {
-      "method": "POST",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "{\"ServiceName\": \"SalesPricePage\"}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/window",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "ui",
-        "interactive",
-        "v2",
-        "window"
-       ]
-      },
-      "description": "Opens a window by ServiceName, Title, Name, or MenuId. ServiceName is most reliable."
-     },
-     "response": [],
-     "event": [
-      {
-       "listen": "test",
-       "script": {
-        "exec": [
-         "var jsonData = pm.response.json();",
-         "pm.collectionVariables.set(\"WINDOW_ID\", jsonData.WindowId);"
-        ],
-        "type": "text/javascript"
-       }
-      }
-     ]
-    },
-    {
-     "name": "Change Field Value",
-     "request": {
-      "method": "PUT",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "{\r\n  \"WindowId\": \"{{WINDOW_ID}}\",\r\n  \"List\": [\r\n    {\r\n      \"TabName\": \"FORM\",\r\n      \"FieldName\": \"description\",\r\n      \"Value\": \"Test Description\",\r\n      \"DatawindowName\": \"form\"\r\n    }\r\n  ]\r\n}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/change",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "ui",
-        "interactive",
-        "v2",
-        "change"
-       ]
-      },
-      "description": "Changes field values using v2 format. Uses List array with TabName, FieldName, Value, and DatawindowName (lowercase 'w')."
-     },
-     "response": []
-    },
-    {
-     "name": "Save Data",
-     "request": {
-      "method": "PUT",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "\"{{WINDOW_ID}}\"",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/data",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "ui",
-        "interactive",
-        "v2",
-        "data"
-       ]
-      },
-      "description": "Saves the current window data. IMPORTANT: v2 expects just the WindowId string as the body, NOT wrapped in an object."
-     },
-     "response": []
-    },
-    {
-     "name": "Close Window",
-     "request": {
-      "method": "DELETE",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/window?id={{WINDOW_ID}}",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "ui",
-        "interactive",
-        "v2",
-        "window"
-       ],
-       "query": [
-        {
-         "key": "id",
-         "value": "{{WINDOW_ID}}"
-        }
-       ]
-      },
-      "description": "Closes the window. Uses ?id= query parameter (not ?windowId=)."
-     },
-     "response": []
-    },
-    {
-     "name": "End Session",
-     "request": {
-      "method": "DELETE",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{UI_SERVER_URL}}/api/ui/interactive/sessions/",
-       "host": [
-        "{{UI_SERVER_URL}}"
-       ],
-       "path": [
-        "api",
-        "ui",
-        "interactive",
-        "sessions",
-        ""
-       ]
-      },
-      "description": "Ends the current session. Always call this when done to free server resources."
-     },
-     "response": []
-    }
-   ],
-   "description": "**Goal:** Stateful window simulation. All requests use the **UI Server URL**.\n\n**Reference:** [docs/04-Interactive-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/04-Interactive-API.md)\n\n**Note:** These requests **must** be run in order because they share a stateful session. Always end your session when done."
-  },
-  {
-   "name": "04. Entity API",
-   "item": [
-    {
-     "name": "Ping (Health Check)",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/api/entity/customers/ping",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "api",
-        "entity",
-        "customers",
-        "ping"
-       ]
-      },
-      "description": "Health check for the Entity API. Returns {\"ResponseMessage\": \"success\"} if working."
-     },
-     "response": []
-    },
-    {
-     "name": "List Customers",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/api/entity/customers/",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "api",
-        "entity",
-        "customers",
-        ""
-       ]
-      },
-      "description": "Lists all customers. NOTE: Trailing slash is required on list endpoints (without it you get a 307 redirect)."
-     },
-     "response": []
-    },
-    {
-     "name": "Get Customer by Key",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/api/entity/customers/ACME_10",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "api",
-        "entity",
-        "customers",
-        "ACME_10"
-       ]
-      },
-      "description": "Gets a single customer. Customers and vendors use composite keys: {CompanyId}_{Id} (e.g., ACME_10). Update the key to match your environment."
-     },
-     "response": []
-    },
-    {
-     "name": "Update Customer (PUT)",
-     "request": {
-      "method": "PUT",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       },
-       {
-        "key": "Content-Type",
-        "value": "application/json"
-       }
-      ],
-      "body": {
-       "mode": "raw",
-       "raw": "{\r\n  \"CustomerName\": \"Updated Name via Postman\"\r\n}",
-       "options": {
-        "raw": {
-         "language": "json"
-        }
-       }
-      },
-      "url": {
-       "raw": "{{P21_BASE_URL}}/api/entity/customers/ACME_10",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "api",
-        "entity",
-        "customers",
-        "ACME_10"
-       ]
-      },
-      "description": "Updates a customer. Entity API uses PUT (not PATCH). Key goes in URL. Only 4 entities available: customers, vendors, contacts, addresses."
-     },
-     "response": []
-    },
-    {
-     "name": "List Vendors",
-     "request": {
-      "method": "GET",
-      "header": [
-       {
-        "key": "Accept",
-        "value": "application/json",
-        "description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
-       }
-      ],
-      "url": {
-       "raw": "{{P21_BASE_URL}}/api/entity/vendors/",
-       "host": [
-        "{{P21_BASE_URL}}"
-       ],
-       "path": [
-        "api",
-        "entity",
-        "vendors",
-        ""
-       ]
-      },
-      "description": "Lists all vendors. Note: Entity API VendorId is NOT the same as OData supplier_id."
-     },
-     "response": []
-    }
-   ],
-   "description": "**Goal:** CRUD operations on domain objects. Only 4 entities available: customers, vendors, contacts, addresses.\n\nBase URL: `/api/entity/{resource}` (NOT `/api/v1/entities/`)\n\n**Reference:** [docs/05-Entity-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/05-Entity-API.md)"
-  }
- ],
- "auth": {
-  "type": "bearer",
-  "bearer": [
-   {
-    "key": "token",
-    "value": "{{TOKEN}}",
-    "type": "string"
-   }
-  ]
- },
- "event": [
-  {
-   "listen": "prerequest",
-   "script": {
-    "type": "text/javascript",
-    "packages": {},
-    "requests": {},
-    "exec": [
-     ""
-    ]
-   }
-  },
-  {
-   "listen": "test",
-   "script": {
-    "type": "text/javascript",
-    "packages": {},
-    "requests": {},
-    "exec": [
-     ""
-    ]
-   }
-  }
- ],
- "variable": [
-  {
-   "key": "P21_BASE_URL",
-   "value": "",
-   "description": "e.g., https://play.p21server.com"
-  },
-  {
-   "key": "P21_USERNAME",
-   "value": "",
-   "description": "Your API user"
-  },
-  {
-   "key": "P21_PASSWORD",
-   "value": "",
-   "description": "Your API password"
-  },
-  {
-   "key": "TOKEN",
-   "value": "",
-   "description": "Leave blank; auto-filled by Get Token script"
-  },
-  {
-   "key": "UI_SERVER_URL",
-   "value": "",
-   "description": "Leave blank; auto-filled by Get UI Server URL script"
-  },
-  {
-   "key": "SESSION_ID",
-   "value": "",
-   "description": "Leave blank; auto-filled by Open Session script"
-  },
-  {
-   "key": "WINDOW_ID",
-   "value": "",
-   "description": "Leave blank; auto-filled by Open Window script"
-  }
- ]
+	"info": {
+		"_postman_id": "457d010c-841f-40a7-a8aa-0a4988297a64",
+		"name": "p21-api-documentation",
+		"description": "[https://github.com/mrwuss/p21-api-documentation](https://github.com/mrwuss/p21-api-documentation)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "47200877",
+		"_collection_link": "https://go.postman.co/collection/47200877-457d010c-841f-40a7-a8aa-0a4988297a64?source=collection_link"
+	},
+	"item": [
+		{
+			"name": "00. Authentication",
+			"item": [
+				{
+					"name": "Get Token (V2)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"{{P21_USERNAME}}\",\r\n    \"password\": \"{{P21_PASSWORD}}\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/security/token/v2",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"security",
+								"token",
+								"v2"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// P21 answers with XML unless Accept: application/json is present.",
+									"// Fail loudly here rather than letting a blank TOKEN break every later request.",
+									"var ct = pm.response.headers.get(\"Content-Type\") || \"\";",
+									"pm.test(\"Response is JSON (Accept header present)\", function () {",
+									"    pm.expect(ct).to.include(\"application/json\");",
+									"});",
+									"",
+									"if (ct.indexOf(\"application/json\") !== -1) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"TOKEN\", jsonData.AccessToken);",
+									"} else {",
+									"    console.error(\"Token response was \" + ct + \", not JSON. Check the Accept header on this request.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get UI Server URL",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();\r",
+									"pm.collectionVariables.set(\"UI_SERVER_URL\", jsonData.Url);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/ui/router/v1/?urlType=external",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"ui",
+								"router",
+								"v1",
+								""
+							],
+							"query": [
+								{
+									"key": "urlType",
+									"value": "external"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "**Goal:** Obtain the Bearer token and store it automatically.\n\nReference: [docs/00-Authentication.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/00-Authentication.md)"
+		},
+		{
+			"name": "01. OData API",
+			"item": [
+				{
+					"name": "Basic Table Query",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$top=10",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"odataservice",
+								"odata",
+								"table",
+								"customer"
+							],
+							"query": [
+								{
+									"key": "$top",
+									"value": "10",
+									"type": "text"
+								}
+							]
+						},
+						"description": "Retrieves first 10 customers from the customer table."
+					},
+					"response": []
+				},
+				{
+					"name": "Filtered Query",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$filter=customer_id eq '100'&$select=customer_id,customer_name,date_created",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"odataservice",
+								"odata",
+								"table",
+								"customer"
+							],
+							"query": [
+								{
+									"key": "$filter",
+									"value": "customer_id eq '100'",
+									"type": "text"
+								},
+								{
+									"key": "$select",
+									"value": "customer_id,customer_name,date_created",
+									"type": "text"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Pagination (Top/Skip)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/odataservice/odata/table/part?$top=10&$skip=20&$orderby=item_id desc",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"odataservice",
+								"odata",
+								"table",
+								"part"
+							],
+							"query": [
+								{
+									"key": "$top",
+									"value": "10",
+									"type": "text"
+								},
+								{
+									"key": "$skip",
+									"value": "20",
+									"type": "text"
+								},
+								{
+									"key": "$orderby",
+									"value": "item_id desc",
+									"type": "text"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "**Goal:** Read-only data extraction via OData v3.\n\n**Reference:** [docs/02-OData-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/02-OData-API.md)"
+		},
+		{
+			"name": "02. Transaction API",
+			"item": [
+				{
+					"name": "List Available Services",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/v2/services",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"services"
+							]
+						},
+						"description": "Returns the list of all available import services (e.g., Order, SalesPricePage, Customer). Requires UI Server URL from Authentication step."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Service Definition",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/v2/definition/Order",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"definition",
+								"Order"
+							]
+						},
+						"description": "Returns the schema/template for a service. Vital for knowing the exact field names and DataElement structure required for the request body."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Service Defaults",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/v2/defaults/Order",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"defaults",
+								"Order"
+							]
+						},
+						"description": "Returns the service's default values and a fillable payload template. One of three discovery endpoints (definition / defaults / basics) \u2014 see docs/03-Transaction-API.md#endpoints."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Service Basics (Abbreviated Skeleton)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/v2/basics/Order",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"basics",
+								"Order"
+							]
+						},
+						"description": "Returns an abbreviated, ready-to-POST Status:\"New\" skeleton \u2014 Keys prefilled from each element's KeyFields, IgnoreIfEmpty:true on every edit. Severely abbreviated (Order: 103 fields vs definition's 1,266): it omits fields you need (customer_id, source_loc_id, ship_to_id) and includes fields you cannot write (company_id). Verified 26.1. See docs/03-Transaction-API.md#endpoints."
+					},
+					"response": []
+				},
+				{
+					"name": "Retrieve Record(s) (transaction/get)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"ServiceName\": \"Order\",\r\n  \"TransactionStates\": [\r\n    {\r\n      \"DataElementName\": \"TABPAGE_1.order\",\r\n      \"Keys\": [{\"Name\": \"order_no\", \"Value\": \"1000001\"}]\r\n    }\r\n  ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/v2/transaction/get",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"transaction",
+								"get"
+							]
+						},
+						"description": "A POST despite the name \u2014 the lookup key travels in the body. Returns the record as a complete TransactionSet across every tab (Order: 102 elements), in the same shape you would POST back to /transaction; doubles as a clone template. Add more TransactionStates entries to fetch several records in one call (N states -> N Transactions; ~hundreds of KB per Order record). See docs/03-Transaction-API.md#reading-one-record-post-transactionget."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Single Record (Example)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"Name\": \"Order\",\r\n  \"UseCodeValues\": false,\r\n  \"Transactions\": [\r\n    {\r\n      \"Status\": \"New\",\r\n      \"DataElements\": [\r\n        {\r\n          \"Name\": \"FORM.form\",\r\n          \"Type\": \"Form\",\r\n          \"Keys\": [],\r\n          \"Rows\": [\r\n            {\r\n              \"Edits\": [\r\n                {\"Name\": \"order_no\", \"Value\": \"\"},\r\n                {\"Name\": \"customer_id\", \"Value\": \"1001\"}\r\n              ],\r\n              \"RelativeDateEdits\": []\r\n            }\r\n          ]\r\n        }\r\n      ]\r\n    }\r\n  ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/v2/transaction",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"transaction"
+							]
+						},
+						"description": "Posts to /api/v2/transaction (not to /services). The Name field in the body identifies the service. See scripts/transaction/03_create_single.py for a working example."
+					},
+					"response": []
+				}
+			],
+			"description": "**Goal:** Stateless imports (bulk data). All Transaction API requests use the **UI Server URL**, not the base P21 URL.\n\n**Reference:** [docs/03-Transaction-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/03-Transaction-API.md)"
+		},
+		{
+			"name": "03. Interactive API",
+			"item": [
+				{
+					"name": "Open Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"ResponseWindowHandlingEnabled\": false\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/ui/interactive/sessions/",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"ui",
+								"interactive",
+								"sessions",
+								""
+							]
+						},
+						"description": "Creates a new Interactive API session. Auth is via Bearer token in the header (inherited from collection), NOT credentials in the body."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.collectionVariables.set(\"SESSION_ID\", jsonData.Id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Open Window (e.g., Sales Price Page)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"ServiceName\": \"SalesPricePage\"}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/window",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"ui",
+								"interactive",
+								"v2",
+								"window"
+							]
+						},
+						"description": "Opens a window by ServiceName, Title, Name, or MenuId. ServiceName is most reliable."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.collectionVariables.set(\"WINDOW_ID\", jsonData.WindowId);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Change Field Value",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"WindowId\": \"{{WINDOW_ID}}\",\r\n  \"List\": [\r\n    {\r\n      \"TabName\": \"FORM\",\r\n      \"FieldName\": \"description\",\r\n      \"Value\": \"Test Description\",\r\n      \"DatawindowName\": \"form\"\r\n    }\r\n  ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/change",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"ui",
+								"interactive",
+								"v2",
+								"change"
+							]
+						},
+						"description": "Changes field values using v2 format. Uses List array with TabName, FieldName, Value, and DatawindowName (lowercase 'w')."
+					},
+					"response": []
+				},
+				{
+					"name": "Save Data",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\"{{WINDOW_ID}}\"",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/data",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"ui",
+								"interactive",
+								"v2",
+								"data"
+							]
+						},
+						"description": "Saves the current window data. IMPORTANT: v2 expects just the WindowId string as the body, NOT wrapped in an object."
+					},
+					"response": []
+				},
+				{
+					"name": "Close Window",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/ui/interactive/v2/window?id={{WINDOW_ID}}",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"ui",
+								"interactive",
+								"v2",
+								"window"
+							],
+							"query": [
+								{
+									"key": "id",
+									"value": "{{WINDOW_ID}}"
+								}
+							]
+						},
+						"description": "Closes the window. Uses ?id= query parameter (not ?windowId=)."
+					},
+					"response": []
+				},
+				{
+					"name": "End Session",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{UI_SERVER_URL}}/api/ui/interactive/sessions/",
+							"host": [
+								"{{UI_SERVER_URL}}"
+							],
+							"path": [
+								"api",
+								"ui",
+								"interactive",
+								"sessions",
+								""
+							]
+						},
+						"description": "Ends the current session. Always call this when done to free server resources."
+					},
+					"response": []
+				}
+			],
+			"description": "**Goal:** Stateful window simulation. All requests use the **UI Server URL**.\n\n**Reference:** [docs/04-Interactive-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/04-Interactive-API.md)\n\n**Note:** These requests **must** be run in order because they share a stateful session. Always end your session when done."
+		},
+		{
+			"name": "04. Entity API",
+			"item": [
+				{
+					"name": "Ping (Health Check)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/entity/customers/ping",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"entity",
+								"customers",
+								"ping"
+							]
+						},
+						"description": "Health check for the Entity API. Returns {\"ResponseMessage\": \"success\"} if working."
+					},
+					"response": []
+				},
+				{
+					"name": "List Customers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/entity/customers/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"entity",
+								"customers",
+								""
+							]
+						},
+						"description": "Lists all customers. NOTE: Trailing slash is required on list endpoints (without it you get a 307 redirect)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer by Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/entity/customers/ACME_10",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"entity",
+								"customers",
+								"ACME_10"
+							]
+						},
+						"description": "Gets a single customer. Customers and vendors use composite keys: {CompanyId}_{Id} (e.g., ACME_10). Update the key to match your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Customer (PUT)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"CustomerName\": \"Updated Name via Postman\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/entity/customers/ACME_10",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"entity",
+								"customers",
+								"ACME_10"
+							]
+						},
+						"description": "Updates a customer. Entity API uses PUT (not PATCH). Key goes in URL. Only 4 entities available: customers, vendors, contacts, addresses."
+					},
+					"response": []
+				},
+				{
+					"name": "List Vendors",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/entity/vendors/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"entity",
+								"vendors",
+								""
+							]
+						},
+						"description": "Lists all vendors. Note: Entity API VendorId is NOT the same as OData supplier_id."
+					},
+					"response": []
+				}
+			],
+			"description": "**Goal:** CRUD operations on domain objects. Only 4 entities available: customers, vendors, contacts, addresses.\n\nBase URL: `/api/entity/{resource}` (NOT `/api/v1/entities/`)\n\n**Reference:** [docs/05-Entity-API.md](https://github.com/mrwuss/p21-api-documentation/blob/master/docs/05-Entity-API.md)"
+		},
+		{
+			"name": "05. Other REST Families",
+			"item": [
+				{
+					"name": "UDF Metadata - List All Fields (flat)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/extensibility/userdefinedfields/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"extensibility",
+								"userdefinedfields",
+								""
+							]
+						},
+						"description": "Every user-defined field in the system, flat. ColumnOrder 1 is always the *_ud table's surrogate key; the NOT NULL columns after it are the join key back to the base table; the nullable ones are the real UDFs. See docs/15."
+					},
+					"response": []
+				},
+				{
+					"name": "UDF Metadata - List Grouped by Table",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/extensibility/userdefinedfields/tables",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"extensibility",
+								"userdefinedfields",
+								"tables"
+							]
+						},
+						"description": "Same fields grouped by *_ud table, with BaseTableName carrying the base-table mapping."
+					},
+					"response": []
+				},
+				{
+					"name": "UDF Metadata - Get One Table's Fields",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/extensibility/userdefinedfields/tables/oe_hdr_ud",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"extensibility",
+								"userdefinedfields",
+								"tables",
+								"oe_hdr_ud"
+							]
+						},
+						"description": "{tableId} is the *_ud table name (case-insensitive), NOT the base table -- tables/oe_hdr (no _ud) 404s. Update the name to match your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "GL - Read Journal Entry",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/accounting/gl/3",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"accounting",
+								"gl",
+								"3"
+							]
+						},
+						"description": "Returns every distribution line of the transaction, balanced. An unknown transaction_number returns HTTP 200 [] -- not a 404. JournalId 'IA' + Source links back to inventory/inventoryadjustments/{Source}. Update the transaction number to match your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "CRM Task - Get New Template",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/sales/tasks/new",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"sales",
+								"tasks",
+								"new"
+							]
+						},
+						"description": "Server-defaulted template for a new task -- start here rather than hand-building the object. AssignedById/AssignedToId default to the calling user."
+					},
+					"response": []
+				},
+				{
+					"name": "CRM Task - Create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ActivityTransNo\": \"\",\n  \"ActivityId\": \"FOLLOW UP\",\n  \"ContactId\": \"17055\",\n  \"EntryDate\": \"2026-09-12T00:00:00\",\n  \"AssignedById\": \"apiuser\",\n  \"AssignedToId\": \"apiuser\",\n  \"Completed\": \"N\",\n  \"Comments\": \"Created from Postman\",\n  \"Subject\": \"ZZ API DOC TEST - safe to delete\",\n  \"ReminderTimeOffset\": 0,\n  \"ReminderTimeOffsetCd\": 1413,\n  \"PrivateTask\": \"N\",\n  \"TargetCompleteDate\": \"2026-09-30T15:00:00\",\n  \"Followup\": \"N\",\n  \"FollowupCommentCd\": 1441,\n  \"ActivityDesc\": \"\",\n  \"CompanyId\": \"ACME\",\n  \"LinkId\": 12066,\n  \"LinkTypeCd\": 1203,\n  \"ContactAddressName\": \"\",\n  \"HardTouch\": \"\",\n  \"ProblemCodeId\": \"\",\n  \"CreateOutlookTask\": \"N\",\n  \"TransactionNo\": \"\",\n  \"TransactionTypeCode\": 300,\n  \"Reminder\": \"N\",\n  \"UserDefinedFields\": {}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/sales/tasks/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"sales",
+								"tasks",
+								""
+							]
+						},
+						"description": "Creates a CRM task (activity_trans). There is no CustomerId field -- the customer goes in LinkId (paired with LinkTypeCd); omitting it fails with \"Customer ID is required\". The trailing slash matters, the list route 307s without it."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.collectionVariables.set(\"TASK_NO\", jsonData.ActivityTransNo);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "CRM Task - Get by Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/sales/tasks/{{TASK_NO}}",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"sales",
+								"tasks",
+								"{{TASK_NO}}"
+							]
+						},
+						"description": "Reads back the task created above. ContactAddressName is server-derived from LinkId -- it is not something you set."
+					},
+					"response": []
+				},
+				{
+					"name": "CRM Task - Update (Close)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ActivityTransNo\": \"\",\n  \"ActivityId\": \"FOLLOW UP\",\n  \"ContactId\": \"17055\",\n  \"EntryDate\": \"2026-09-12T00:00:00\",\n  \"AssignedById\": \"apiuser\",\n  \"AssignedToId\": \"apiuser\",\n  \"Completed\": \"Y\",\n  \"Comments\": \"Closed from Postman\",\n  \"Subject\": \"ZZ API DOC TEST - safe to delete\",\n  \"ReminderTimeOffset\": 0,\n  \"ReminderTimeOffsetCd\": 1413,\n  \"PrivateTask\": \"N\",\n  \"TargetCompleteDate\": \"2026-09-30T15:00:00\",\n  \"Followup\": \"N\",\n  \"FollowupCommentCd\": 1441,\n  \"ActivityDesc\": \"\",\n  \"CompanyId\": \"ACME\",\n  \"LinkId\": 12066,\n  \"LinkTypeCd\": 1203,\n  \"ContactAddressName\": \"\",\n  \"HardTouch\": \"\",\n  \"ProblemCodeId\": \"\",\n  \"CreateOutlookTask\": \"N\",\n  \"TransactionNo\": \"\",\n  \"TransactionTypeCode\": 300,\n  \"Reminder\": \"N\",\n  \"UserDefinedFields\": {}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/sales/tasks/{{TASK_NO}}",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"sales",
+								"tasks",
+								"{{TASK_NO}}"
+							]
+						},
+						"description": "Marks the task Completed. There is no delete route on this family -- closing is the terminal state."
+					},
+					"response": []
+				},
+				{
+					"name": "Purchase Order - Get Header by Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/purchasing/purchaseorders/998310",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"purchasing",
+								"purchaseorders",
+								"998310"
+							]
+						},
+						"description": "Header only -- POLines, POSales, POHdrNotes and POLineNotes are always null on this family, with or without any expansion parameter (includeLines/expand/$expand/full/includeChildren all return the identical response). UserDefinedFields is always {} even when po_hdr_ud has real data. Update the po_no to match your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "Inventory Adjustment - Get Header by Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/inventory/inventoryadjustments/1000002",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"inventory",
+								"inventoryadjustments",
+								"1000002"
+							]
+						},
+						"description": "Header only -- Lines is always null on this family, same pattern as the PO family. Approved/Delete are real booleans here (not 'Y'/'N' strings). Update the AdjustmentNo to match your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "GL - Post a Journal Entry",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/accounting/gl/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"accounting",
+								"gl",
+								""
+							]
+						},
+						"description": "Posts an array of GL lines as one balanced entry. Update Period/YearForPeriod to a currently OPEN period on your tenant (periods.period_closed eq 'N' over OData). The server enforces balance -- an unbalanced batch is refused with \"Records do not balance\". Update account numbers, period and year to match your environment.",
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"CompanyNo\": \"ACME\",\n    \"AccountNumber\": \"11120010\",\n    \"Period\": 12,\n    \"YearForPeriod\": 2026,\n    \"JournalId\": \"AC\",\n    \"Amount\": 0.01,\n    \"ForeignAmount\": 0.01,\n    \"Description\": \"ZZ API DOC TEST - safe to delete\",\n    \"Source\": \"ZZDOCTEST\",\n    \"TransactionDate\": \"2026-09-12T00:00:00\"\n  },\n  {\n    \"CompanyNo\": \"ACME\",\n    \"AccountNumber\": \"11130010\",\n    \"Period\": 12,\n    \"YearForPeriod\": 2026,\n    \"JournalId\": \"AC\",\n    \"Amount\": -0.01,\n    \"ForeignAmount\": -0.01,\n    \"Description\": \"ZZ API DOC TEST - safe to delete\",\n    \"Source\": \"ZZDOCTEST\",\n    \"TransactionDate\": \"2026-09-12T00:00:00\"\n  }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.collectionVariables.set(\"GL_TRANSACTION_NUMBER\", jsonData[0].TransactionNumber);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "GL - Read Back Posted Entry",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/accounting/gl/{{GL_TRANSACTION_NUMBER}}",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"accounting",
+								"gl",
+								"{{GL_TRANSACTION_NUMBER}}"
+							]
+						},
+						"description": "Reads back the entry just posted, using the TransactionNumber captured by the create request's test script."
+					},
+					"response": []
+				},
+				{
+					"name": "Purchase Order - Create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/purchasing/purchaseorders/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"purchasing",
+								"purchaseorders",
+								""
+							]
+						},
+						"description": "Creates a PO with one line. BuyerId empty fails with \"Invalid buyer ID\" plus an unrelated-looking \"Sales/Production/PO Intersection\" error -- both are caused by the same missing BuyerId. UnitPrice sent here is NOT honored; it is stored as 0.00 regardless (pricing lookup wins). Update VendorId/SupplierId/BuyerId/ItemId to match your environment.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"POLines\": {\n    \"list\": [\n      {\n        \"PoNo\": null,\n        \"LineNo\": 223,\n        \"ItemId\": \"ETS-727K-G-006\",\n        \"UnitOfMeasure\": \"EA\",\n        \"UnitQuantity\": 1,\n        \"PricingUnit\": \"EA\",\n        \"UnitPriceDisplay\": 0.0,\n        \"RequiredDate\": \"2026-09-12T00:00:00\",\n        \"DateDue\": null,\n        \"ExtendedDesc\": \"\",\n        \"SupplierShipDate\": null,\n        \"PriceEdit\": \"N\",\n        \"PricingBookId\": \"\",\n        \"CalcType\": \"\",\n        \"CalcValue\": null,\n        \"Combinable\": \"N\",\n        \"UnitPrice\": 5.0,\n        \"BaseUtPrice\": null,\n        \"DeleteFlag\": \"N\",\n        \"Complete\": \"N\",\n        \"CancelFlag\": \"N\",\n        \"ExcludeFromLeadTime\": \"\",\n        \"ExpediteNotes\": \"\",\n        \"ContractNumber\": \"\",\n        \"UnitSize\": null,\n        \"PricingUnitSize\": null,\n        \"LineType\": \"\",\n        \"QuantityReceived\": 0.0,\n        \"PoLineUid\": null,\n        \"QuantityOrdered\": null,\n        \"UserDefinedFields\": {},\n        \"ExpectedShipDate\": null,\n        \"AcknowledgedDate\": null,\n        \"Acknowledged\": \"\"\n      }\n    ]\n  },\n  \"POSales\": {\n    \"list\": []\n  },\n  \"POHdrNotes\": {\n    \"list\": []\n  },\n  \"POLineNotes\": {\n    \"list\": []\n  },\n  \"DirectShipTo\": {\n    \"Name\": \"\",\n    \"Address1\": \"\",\n    \"Address2\": \"\",\n    \"City\": \"\",\n    \"State\": \"\",\n    \"Country\": \"\",\n    \"Zip\": \"\"\n  },\n  \"PoNo\": null,\n  \"CompanyNo\": \"ACME\",\n  \"LocationId\": 20,\n  \"VendorId\": 25753,\n  \"SupplierId\": 25753,\n  \"DivisionId\": null,\n  \"BuyerId\": \"812\",\n  \"PurchaseGroupId\": \"\",\n  \"PoType\": \"S\",\n  \"OrderDate\": \"2026-09-12T00:00:00\",\n  \"DateDue\": \"2026-09-19T00:00:00\",\n  \"Approved\": \"N\",\n  \"Terms\": \"1\",\n  \"CarrierId\": \"100\",\n  \"PoDesc\": \"ZZ API DOC TEST - safe to delete (REST create)\",\n  \"ReceiptDate\": null,\n  \"PoClass1\": \"\",\n  \"PoClass2\": \"\",\n  \"PoClass3\": \"\",\n  \"PoClass4\": \"\",\n  \"PoClass5\": \"\",\n  \"ExternalPoNo\": \"\",\n  \"Printed\": \"\",\n  \"ContactId\": \"\",\n  \"HistoricalCompleteFlag\": \"N\",\n  \"Delete\": \"N\",\n  \"PoHdrUid\": null,\n  \"Complete\": \"N\",\n  \"CurrencyId\": 1,\n  \"UserDefinedFields\": {},\n  \"ExpectedShipDate\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.collectionVariables.set(\"CREATED_PO_NO\", jsonData.PoNo);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Purchase Order - Read Back Created PO",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/purchasing/purchaseorders/{{CREATED_PO_NO}}",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"purchasing",
+								"purchaseorders",
+								"{{CREATED_PO_NO}}"
+							]
+						},
+						"description": "Reads back the PO just created. POLines is null here even though the create response echoed it populated -- that split is real, not a caching artifact."
+					},
+					"response": []
+				},
+				{
+					"name": "Inventory Adjustment - createWmsAdjustment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/inventory/inventoryadjustments/createWmsAdjustment?locationId=40&reason=ADJUST&approved=Y&description=ZZ%20API%20DOC%20TEST&itemId=GBY&unitQuantity=1&unitOfMeasure=EA&binCd=FGA040&lotCd=&serialNumber=",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"inventory",
+								"inventoryadjustments",
+								"createWmsAdjustment"
+							],
+							"query": [
+								{
+									"key": "locationId",
+									"value": "40"
+								},
+								{
+									"key": "reason",
+									"value": "ADJUST"
+								},
+								{
+									"key": "approved",
+									"value": "Y"
+								},
+								{
+									"key": "description",
+									"value": "ZZ%20API%20DOC%20TEST"
+								},
+								{
+									"key": "itemId",
+									"value": "GBY"
+								},
+								{
+									"key": "unitQuantity",
+									"value": "1"
+								},
+								{
+									"key": "unitOfMeasure",
+									"value": "EA"
+								},
+								{
+									"key": "binCd",
+									"value": "FGA040"
+								},
+								{
+									"key": "lotCd",
+									"value": ""
+								},
+								{
+									"key": "serialNumber",
+									"value": ""
+								}
+							]
+						},
+						"description": "Adjusts on-hand by a SIGNED DELTA via query-string parameters (no body). Needs an ACTIVE reason record (reason.delete_flag eq 'N' over OData) and a binCd whenever the location is bin-tracked (inv_loc.track_bins eq 'Y') -- omitting either fails with a distinct, undocumented error. Update locationId/itemId/binCd to match your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "Filehandler - List Files",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/filehandler/files",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"filehandler",
+								"files"
+							]
+						},
+						"description": "Lists every file at the middleware's default storage path. Real network share, not a sandbox -- treat as filesystem access."
+					},
+					"response": []
+				},
+				{
+					"name": "Environment - System Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/environment/systems/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"environment",
+								"systems",
+								""
+							]
+						},
+						"description": "Build/config metadata. No /ping on this family -- this bare GET is the availability check. Trailing slash matters in some HTTP clients (see docs/15)."
+					},
+					"response": []
+				},
+				{
+					"name": "Inventory Movement - Bin to Bin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/inventory/inventorymovement/moveinventory?location=40&itemId=GBY&toBin=XDOCK&fromBin=FGA040&lot=&uom=EA&quantity=1&moveAvailable=Y&moveAllocations=N",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"inventory",
+								"inventorymovement",
+								"moveinventory"
+							],
+							"query": [
+								{
+									"key": "location",
+									"value": "40"
+								},
+								{
+									"key": "itemId",
+									"value": "GBY"
+								},
+								{
+									"key": "toBin",
+									"value": "XDOCK"
+								},
+								{
+									"key": "fromBin",
+									"value": "FGA040"
+								},
+								{
+									"key": "lot",
+									"value": ""
+								},
+								{
+									"key": "uom",
+									"value": "EA"
+								},
+								{
+									"key": "quantity",
+									"value": "1"
+								},
+								{
+									"key": "moveAvailable",
+									"value": "Y"
+								},
+								{
+									"key": "moveAllocations",
+									"value": "N"
+								}
+							]
+						},
+						"description": "moveAvailable/moveAllocations are Y/N strings, not booleans. toBin must be a bin this item/location already has a stock association with. A 200 does not guarantee a nonzero quantity moved -- check TransactionDetail.QuantityMoved. Update location/itemId/toBin/fromBin to match your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "External Count - Create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/inventory/externalcounts/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"inventory",
+								"externalcounts",
+								""
+							]
+						},
+						"description": "Stages a cycle count -- does NOT change inv_loc.qty_on_hand. ItemId must be repeated on the BIN sub-record, not just the line, or the create fails with an error that does not name the real cause.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"LocationId\": 40,\n  \"CountDate\": \"2026-09-12T00:00:00\",\n  \"Lines\": {\n    \"list\": [\n      {\n        \"ItemId\": \"GBY\",\n        \"UnitQuantity\": 5.0,\n        \"UnitOfMeasure\": \"EA\",\n        \"Bins\": {\n          \"list\": [\n            {\n              \"ItemId\": \"GBY\",\n              \"BinCd\": \"FGA040\",\n              \"UnitQuantity\": 5.0,\n              \"UnitOfMeasure\": \"EA\"\n            }\n          ]\n        }\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Part Scan - Find Part",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/inventory/partscan/?partSearch=GBY&companyId=ACME&locationId=&customerId=&supplierId=",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"inventory",
+								"partscan",
+								""
+							],
+							"query": [
+								{
+									"key": "partSearch",
+									"value": "GBY"
+								},
+								{
+									"key": "companyId",
+									"value": "ACME"
+								},
+								{
+									"key": "locationId",
+									"value": ""
+								},
+								{
+									"key": "customerId",
+									"value": ""
+								},
+								{
+									"key": "supplierId",
+									"value": ""
+								}
+							]
+						},
+						"description": "Cross-entity part lookup. Trailing slash before the query string matters -- the bare form 307-redirects."
+					},
+					"response": []
+				},
+				{
+					"name": "Customer Form Template - Create or Update",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/accounting/customerformtemplates/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"accounting",
+								"customerformtemplates",
+								""
+							]
+						},
+						"description": "PUT is the only write verb -- no POST exists. NOT a blind upsert: null CustomerFormTemplateUid means create, and create fails 'data already exists' if the customer already has a row. The first run against a fresh customer returns 200 and creates it; running this exact request AGAIN reproduces the trap on purpose -- a 500 'data already exists' is the expected, documented behavior on a second run, not a broken request. To update instead, set CustomerFormTemplateUid to the real value from customer_form_template over OData.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"CustomerFormTemplateUid\": null,\n  \"CustomerId\": 12066,\n  \"CompanyId\": \"ACME\",\n  \"InvoiceFilename\": \"ZZTEST.rpt\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Service Order - Read",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/service/serviceorders/999991",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"service",
+								"serviceorders",
+								"999991"
+							]
+						},
+						"description": "Resolves against ANY oe_hdr.order_no, not just orders flagged 'service' -- the finding here is what this family actually is. Update the order number to a real one on your environment."
+					},
+					"response": []
+				},
+				{
+					"name": "Opportunity - Create (tenant-config-gated)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/sales/opportunities/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"sales",
+								"opportunities",
+								""
+							]
+						},
+						"description": "Check opportunity_status/opportunity_stage/opportunity_type/opportunity_step over OData first -- all empty on the verification tenant, which blocks any create regardless of payload (a tenant configuration gap, not an API defect).",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"OpportunityName\": \"ZZ API DOC TEST - safe to delete\",\n  \"CompanyId\": \"ACME\",\n  \"CustomerId\": 12066,\n  \"LocationId\": 40\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "CUO - Create (needs a contract)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/sales/consignmentusageorders/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"sales",
+								"consignmentusageorders",
+								""
+							]
+						},
+						"description": "Fails 'Contract ID is required.' without a real consignment contract number -- add \"ContractId\" once you have one. No consignment_contract-named OData object was found; JobContractPricing may be the source.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"CustomerId\": 12066,\n  \"CompanyId\": \"ACME\",\n  \"LocationId\": 40,\n  \"PoNo\": \"ZZ-CUO-TEST\",\n  \"OrderDate\": \"2026-09-12T00:00:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Exchange Rate - Create (needs 2nd currency)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/accounting/exchangerates/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"accounting",
+								"exchangerates",
+								""
+							]
+						},
+						"description": "CurrencyId == ToCurrencyId is refused with 'The currencies cannot be the same.' Change ToCurrencyId to a genuinely different, tenant-configured currency to test a real create.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"CurrencyId\": 1,\n  \"ToCurrencyId\": 1,\n  \"Rate\": 1.0,\n  \"ExchangeDate\": \"2026-09-12T00:00:00\",\n  \"ExchangeCost\": 0.0,\n  \"DeleteFlag\": false,\n  \"RateType\": 0\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Serial Extended Info - Upsert (refusal expected)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"description": "Required. Without it P21 answers with XML (HTTP 200) on current builds, and an empty HTTP 500 on 2026.1 builds up to 5910.3."
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{P21_BASE_URL}}/api/inventory/serialnumberextdinfo/",
+							"host": [
+								"{{P21_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"inventory",
+								"serialnumberextdinfo",
+								""
+							]
+						},
+						"description": "Refused even against a real, existing serial number -- 'Invalid serial number...'. InvMastItemId must be sent or the error message itself corrupts (shows 'item 1' and a literal '%s' instead of the real values). Update to a real serial_number/inv_mast_uid pair on your environment.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"InvMastUid\": 74298,\n  \"InvMastItemId\": \"6408-HHP-06\",\n  \"SerialNumber\": \"1\",\n  \"Comments\": \"ZZ API DOC TEST\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{TOKEN}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "P21_BASE_URL",
+			"value": "",
+			"description": "e.g., https://play.p21server.com"
+		},
+		{
+			"key": "P21_USERNAME",
+			"value": "",
+			"description": "Your API user"
+		},
+		{
+			"key": "P21_PASSWORD",
+			"value": "",
+			"description": "Your API password"
+		},
+		{
+			"key": "TOKEN",
+			"value": "",
+			"description": "Leave blank; auto-filled by Get Token script"
+		},
+		{
+			"key": "UI_SERVER_URL",
+			"value": "",
+			"description": "Leave blank; auto-filled by Get UI Server URL script"
+		},
+		{
+			"key": "SESSION_ID",
+			"value": "",
+			"description": "Leave blank; auto-filled by Open Session script"
+		},
+		{
+			"key": "WINDOW_ID",
+			"value": "",
+			"description": "Leave blank; auto-filled by Open Window script"
+		},
+		{
+			"key": "TASK_NO",
+			"value": ""
+		},
+		{
+			"key": "GL_TRANSACTION_NUMBER",
+			"value": ""
+		},
+		{
+			"key": "CREATED_PO_NO",
+			"value": ""
+		}
+	]
 }

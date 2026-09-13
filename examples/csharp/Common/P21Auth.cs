@@ -46,12 +46,42 @@ namespace P21Examples.Common
 
         /// <summary>
         /// Obtain an access token using V2 endpoint (credentials in body).
+        ///
+        /// Prefers username/password when both are configured, falling back
+        /// to the consumer key only when they are not -- matching Python's
+        /// get_token(config), which only uses config.consumer_key when a
+        /// caller explicitly passes it as an argument, never automatically
+        /// merely because it happens to be set in .env.
+        ///
+        /// This used to prefer ConsumerKey whenever it was non-empty, which
+        /// silently diverged from the Python sibling this file's own header
+        /// claims to mirror. The practical effect: a consumer key scoped to
+        /// a restricted table list (its JWT `aud` claim names specific
+        /// tables) made EVERY C# example calling GetTokenAsync(client,
+        /// config) authenticate with that restricted token the moment one
+        /// was added to .env for an unrelated purpose -- REST-family routes
+        /// (/api/{family}/...) are not gated by that per-table claim and
+        /// kept working, but any OData call (/odataservice/odata/table/...)
+        /// against a table outside the scoped list failed with a generic
+        /// 401 "You are not authorized to access API.", which reads exactly
+        /// like a permissions problem and is not one. Found while building
+        /// a new REST-family write example that happened to also query
+        /// OData, and reproduced independently against the pre-existing
+        /// OData/ example project, which was failing the same way.
         /// </summary>
         public static async Task<TokenResponse> GetTokenV2Async(
             HttpClient client, P21Config config)
         {
             object payload;
-            if (!string.IsNullOrEmpty(config.ConsumerKey))
+            if (!string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
+            {
+                payload = new
+                {
+                    username = config.Username,
+                    password = config.Password
+                };
+            }
+            else if (!string.IsNullOrEmpty(config.ConsumerKey))
             {
                 payload = new
                 {
@@ -62,11 +92,9 @@ namespace P21Examples.Common
             }
             else
             {
-                payload = new
-                {
-                    username = config.Username,
-                    password = config.Password
-                };
+                throw new InvalidOperationException(
+                    "No credentials available: set P21_USERNAME + P21_PASSWORD, " +
+                    "or P21_CONSUMER_KEY, in .env.");
             }
 
             var json = JsonConvert.SerializeObject(payload);

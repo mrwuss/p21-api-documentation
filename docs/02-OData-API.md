@@ -157,6 +157,14 @@ Every base table is on `table`, every view is on `view`, and nothing is on both.
 
 The 25 [Enterprise/Global Search views](#enterpriseglobal-search-views-p21_view_es_) documented below are on the `view` surface, which is why they do not appear in `table/$metadata`.
 
+### One object name is unreachable regardless of surface: `bin`
+
+`GET /odataservice/odata/table/bin` and `GET /odataservice/odata/view/bin` **both 404** — with a raw IIS "404 - File or directory not found" HTML page, not the normal OData JSON 404 body every other missing-object case in this section produces. Verified live on 26.1.5950.0, every casing tried (`bin`, `Bin`), both surfaces, with and without a `$select`/`$filter`.
+
+The table itself is real — `bin.$Key` appears in `table/$metadata`, and its data is reachable indirectly through `inv_loc.primary_bin` and the `bin_ud` extension table (which resolves fine; only the bare name `bin` fails). The most likely explanation is a routing collision: `bin` is also IIS's own reserved name for a website's compiled-assemblies folder, and something in the URL rewrite chain in front of the OData service appears to intercept a path segment named exactly `bin` before it reaches the OData handler — which would explain why the failure looks like a static-file 404 rather than an application-level one. Not confirmed against IIS configuration directly; recorded as an observed, reproducible symptom.
+
+**Read `bin` data through a join instead.** `inv_loc.primary_bin` and `inv_loc.location_id` cover the common case (an item's primary bin at a location); for other bin attributes, `bin_ud` (its user-defined-field extension table) is reachable normally and may carry what you need.
+
 ---
 
 ## Authentication

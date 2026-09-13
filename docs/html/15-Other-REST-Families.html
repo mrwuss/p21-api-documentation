@@ -1,0 +1,2512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Other REST Endpoint Families - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-header a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .nav-group {
+            padding: 10px 0 2px;
+        }
+
+        .nav-group > summary {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }
+
+        .nav-group > summary::-webkit-details-marker { display: none; }
+
+        .nav-group > summary::before {
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }
+
+        .nav-group[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .nav-group > summary:hover {
+            color: #a0b4c8;
+        }
+
+        .nav-count {
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }
+
+        .toc-rail-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }
+
+        .toc-inline {
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .toc-inline > summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }
+
+        .toc-inline .page-toc {
+            padding: 0 8px 10px;
+        }
+
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #5f7183;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #1a5276;
+        }
+
+        .page-toc a.active {
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+
+        /* ===== Main Content ===== */
+        .content {
+            /* Long unbreakable tokens appear in plain prose too, not just in
+               code spans (e.g. PurchaseDiscountGroup/SalesDiscountGroup). Let
+               any word break rather than push the page sideways; `break-word`
+               only acts when the word genuinely cannot fit. */
+            overflow-wrap: break-word;
+            flex: 1 1 0;
+            /* Without min-width: 0 a flex item refuses to shrink below its
+               content, so the sidebar + content overflow the viewport and the
+               whole PAGE scrolls sideways. */
+            min-width: 0;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Inline code carries long identifiers (d_dw_price_page_x_location_maint).
+           Break them rather than let them widen the line -- `break-word` only
+           breaks when the token genuinely cannot fit. Code BLOCKS are exempt:
+           they scroll inside their own box, where wrapping would corrupt the
+           code's meaning. */
+        :not(pre) > code {
+            /* `anywhere`, not `break-word`: only `anywhere` reduces the
+               element's min-content width, which is what lets a narrow
+               container actually shrink instead of being forced wide by an
+               unbreakable identifier. Code BLOCKS are exempt -- they scroll in
+               their own box, where wrapping would corrupt the code. */
+            overflow-wrap: anywhere;
+        }
+
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
+        table {
+            width: 100%;
+            max-width: 100%;
+            table-layout: auto;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
+        td code, th code {
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar,
+            .toc-rail,
+            .toc-inline {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            .copy-section-btn { display: none; }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {
+            .toc-rail {
+                display: none;
+            }
+            .toc-inline {
+                display: block;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 1100px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {
+                display: block;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* On a narrow screen a floating button pinned to the right edge is both
+           the wrong pattern and a source of horizontal overflow -- it is sized
+           from the layout viewport, so it widens the very box it is measured
+           against. Let it flow with the content instead. */
+        @media (max-width: 600px) {
+            .print-btn {
+                position: static;
+                display: block;
+                width: 100%;
+                margin: 0 0 20px;
+                box-shadow: none;
+            }
+        }
+
+        /* ===== Copy-section button ===== */
+        .copy-section-btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            vertical-align: middle;
+            margin-left: 12px;
+            padding: 4px 9px;
+            color: #2874a6;
+            background: #eaf2f8;
+            border: 1px solid #aed6f1;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity .15s ease, background .15s ease;
+        }
+
+        h2:hover > .copy-section-btn,
+        h3:hover > .copy-section-btn,
+        h4:hover > .copy-section-btn,
+        .copy-section-btn:focus {
+            opacity: 1;
+        }
+
+        .copy-section-btn:hover {
+            background: #d4e6f1;
+        }
+
+        .copy-section-btn.copied {
+            opacity: 1;
+            color: #1e8449;
+            background: #eafaf1;
+            border-color: #a9dfbf;
+        }
+
+        .copy-section-btn.failed {
+            opacity: 1;
+            color: #a93226;
+            background: #fdedec;
+            border-color: #f5b7b1;
+        }
+
+        /* Touch devices never hover -- keep the buttons visible there. */
+        @media (hover: none) {
+            .copy-section-btn { opacity: 1; }
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html"><strong>P21 API Docs</strong></a>
+        </div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+        <details class="nav-group" open>
+            <summary>Start Here</summary>
+            <ul class="nav-pages">
+            <li><a href="task-index.html">Task Index</a></li>
+            <li><a href="00-Authentication.html">Authentication</a></li>
+            <li><a href="01-API-Selection-Guide.html">API Selection Guide</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>API Reference</summary>
+            <ul class="nav-pages">
+            <li><a href="02-OData-API.html">OData API</a></li>
+            <li><a href="03-Transaction-API.html">Transaction API</a></li>
+            <li><a href="04-Interactive-API.html">Interactive API</a></li>
+            <li><a href="05-Entity-API.html">Entity API</a></li>
+            <li><a href="11-Inventory-REST-API.html">Inventory REST API</a></li>
+            <li><a href="12-Production-Labor-API.html">Production & Labor</a></li>
+            <li><a href="13-UDT-Service-API.html">UDT Service API</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Guides & Troubleshooting</summary>
+            <ul class="nav-pages">
+            <li><a href="14-Breaking-Changes.html">Breaking Changes</a></li>
+            <li><a href="06-Error-Handling.html">Error Handling</a></li>
+            <li><a href="07-Session-Pool-Troubleshooting.html">Session Pool Issues</a></li>
+            <li><a href="08-SalesPricePage-Codes.html">SalesPricePage Codes</a></li>
+            <li><a href="09-Batch-Processing-Patterns.html">Batch Processing</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Project</summary>
+            <ul class="nav-pages">
+            <li><a href="10-Changelog.html">Changelog</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li class="active"><a href="15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
+        <details class="nav-group">
+            <summary>Recipes <span class="nav-count">17</span></summary>
+            <ul class="nav-pages">
+            <li><a href="recipes/README.html">Recipes Overview</a></li>
+            <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
+            <li><a href="recipes/create-bins.html">Create Bins (Bulk)</a></li>
+            <li><a href="recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+            <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+            <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+            <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+            <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+            <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
+            <li><a href="recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            </ul>
+        </details>
+        </details>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#what-the-first-five-have-in-common">What the first five have in common</a><ul>
+<li><a href="#authentication-and-headers">Authentication and headers</a></li>
+<li><a href="#the-route-vocabulary">The route vocabulary</a></li>
+<li><a href="#the-bare-collection-get-is-an-unbounded-full-table-dump">⚠ The bare collection GET is an unbounded full-table dump</a></li>
+<li><a href="#child-collections-are-always-null-on-read">Child collections are always null on read</a></li>
+<li><a href="#userdefinedfields-is-present-and-always-empty">UserDefinedFields is present and always empty</a></li>
+</ul>
+</li>
+<li><a href="#extensibilityuserdefinedfields">extensibility/userdefinedfields</a><ul>
+<li><a href="#routes">Routes</a></li>
+<li><a href="#response-shape">Response shape</a></li>
+<li><a href="#tableid-is-the-_ud-table-name-not-the-base-table">{tableId} is the *_ud table name, not the base table</a></li>
+<li><a href="#not-every-returned-column-is-a-custom-field">Not every returned column is a custom field</a></li>
+<li><a href="#worked-example">Worked example</a></li>
+</ul>
+</li>
+<li><a href="#accountinggl">accounting/gl</a><ul>
+<li><a href="#routes_1">Routes</a></li>
+<li><a href="#the-keyed-get-returns-a-whole-journal-entry">The keyed GET returns a whole journal entry</a></li>
+<li><a href="#source-links-the-entry-back-to-the-document-that-created-it">Source links the entry back to the document that created it</a></li>
+<li><a href="#posting-a-journal-entry-verified">Posting a journal entry (verified)</a></li>
+</ul>
+</li>
+<li><a href="#salestasks">sales/tasks</a><ul>
+<li><a href="#routes_2">Routes</a></li>
+<li><a href="#get-new-first">GET /new first</a></li>
+<li><a href="#customer-id-is-required-means-linkid">"Customer ID is required" means LinkId</a></li>
+<li><a href="#verified-round-trip">Verified round trip</a></li>
+</ul>
+</li>
+<li><a href="#purchasingpurchaseorders">purchasing/purchaseorders</a><ul>
+<li><a href="#routes_3">Routes</a></li>
+<li><a href="#the-keyed-read">The keyed read</a></li>
+<li><a href="#creating-a-po-verified">Creating a PO (verified)</a></li>
+<li><a href="#updating-a-po-verified">Updating a PO (verified)</a></li>
+<li><a href="#creating-a-po-asynchronously-verified">Creating a PO asynchronously (verified)</a></li>
+<li><a href="#which-po-surface-should-you-use">Which PO surface should you use?</a></li>
+</ul>
+</li>
+<li><a href="#inventoryinventoryadjustments">inventory/inventoryadjustments</a><ul>
+<li><a href="#routes_4">Routes</a></li>
+<li><a href="#the-keyed-read_1">The keyed read</a></li>
+<li><a href="#the-create-routes-take-query-string-parameters-not-a-body">The create routes take query-string parameters, not a body</a></li>
+<li><a href="#createwmsadjustment-verified">createWmsAdjustment (verified)</a></li>
+<li><a href="#createwmsadjustmentwithcost-verified">createWmsAdjustmentWithCost (verified)</a></li>
+<li><a href="#createwmstagadjustment-createwmstagadjustmentwithcost-refusal-verified-success-not-reproduced">createWmsTagAdjustment / createWmsTagAdjustmentWithCost — refusal verified, success not reproduced</a></li>
+</ul>
+</li>
+<li><a href="#filehandler">filehandler</a><ul>
+<li><a href="#routes_5">Routes</a></li>
+<li><a href="#the-path-is-a-real-network-share-not-a-sandbox">The path is a real network share, not a sandbox</a></li>
+<li><a href="#full-round-trip-verified">Full round trip (verified)</a></li>
+</ul>
+</li>
+<li><a href="#environmentsystems">environment/systems</a><ul>
+<li><a href="#routes_6">Routes</a></li>
+<li><a href="#verified-read">Verified read</a></li>
+</ul>
+</li>
+<li><a href="#inventoryinventorymovement">inventory/inventorymovement</a><ul>
+<li><a href="#routes_7">Routes</a></li>
+<li><a href="#moveinventory-verified">moveinventory (verified)</a></li>
+</ul>
+</li>
+<li><a href="#inventoryexternalcounts">inventory/externalcounts</a><ul>
+<li><a href="#routes_8">Routes</a></li>
+<li><a href="#creating-a-count-verified-the-same-field-has-to-be-sent-twice">Creating a count (verified) — the same field has to be sent twice</a></li>
+</ul>
+</li>
+<li><a href="#inventorypartscan">inventory/partscan</a><ul>
+<li><a href="#routes_9">Routes</a></li>
+<li><a href="#verified-read_1">Verified read</a></li>
+</ul>
+</li>
+<li><a href="#accountingcustomerformtemplates">accounting/customerformtemplates</a><ul>
+<li><a href="#routes_10">Routes</a></li>
+<li><a href="#put-is-not-a-blind-upsert-correction-from-an-earlier-version-of-this-page">PUT is not a blind upsert — correction from an earlier version of this page</a></li>
+</ul>
+</li>
+<li><a href="#serviceserviceorders">service/serviceorders</a><ul>
+<li><a href="#routes_11">Routes</a></li>
+<li><a href="#verified-read-an-ordinary-order-number-resolves">Verified read: an ordinary order number resolves</a></li>
+<li><a href="#the-update-path-disagrees-with-the-read-path-about-whether-the-order-exists">The update path disagrees with the read path about whether the order exists</a></li>
+</ul>
+</li>
+<li><a href="#salesopportunities">sales/opportunities</a><ul>
+<li><a href="#routes_12">Routes</a></li>
+<li><a href="#why-create-could-not-be-pushed-to-success">Why create could not be pushed to success</a></li>
+</ul>
+</li>
+<li><a href="#salesconsignmentusageorders">sales/consignmentusageorders</a><ul>
+<li><a href="#routes_13">Routes</a></li>
+<li><a href="#why-create-could-not-be-pushed-to-success_1">Why create could not be pushed to success</a></li>
+</ul>
+</li>
+<li><a href="#accountingexchangerates">accounting/exchangerates</a><ul>
+<li><a href="#routes_14">Routes</a></li>
+<li><a href="#the-tenant-has-exactly-one-currency">The tenant has exactly one currency</a></li>
+<li><a href="#the-one-validation-that-did-fire">The one validation that did fire</a></li>
+</ul>
+</li>
+<li><a href="#inventoryserialnumberextdinfo">inventory/serialnumberextdinfo</a><ul>
+<li><a href="#routes_15">Routes</a></li>
+<li><a href="#a-missing-field-corrupts-the-error-message-not-just-the-request">A missing field corrupts the error message, not just the request</a></li>
+</ul>
+</li>
+<li><a href="#open-questions">Open questions</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+</div>
+
+    </div>
+</details>
+<h1 id="other-rest-endpoint-families">Other REST Endpoint Families</h1>
+<blockquote>
+<p><strong>Disclaimer:</strong> This is unofficial, community-created documentation for Epicor Prophet 21 APIs. It is not affiliated with, endorsed by, or supported by Epicor Software Corporation. All product names, trademarks, and registered trademarks are property of their respective owners. Use at your own risk.</p>
+</blockquote>
+<hr />
+<blockquote>
+<p><strong>Added September 2026, extended September 2026</strong> — verified live against <strong>26.1.5950.0</strong>. All sixteen families on this page were surfaced by reading <a href="05-Entity-API.html#discovering-what-your-tenant-actually-exposes">the middleware's own family list</a> rather than by guessing names, and none of them had been documented here before.</p>
+</blockquote>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>P21's REST API is divided into <strong>endpoint families</strong>, each with its own base path. Four are documented on their own pages — <a href="05-Entity-API.html"><code>/api/entity/</code></a> (customers, vendors, contacts, addresses), <a href="11-Inventory-REST-API.html"><code>/api/inventory/parts</code></a>, <code>/api/sales/orders</code> and the <a href="13-UDT-Service-API.html">UDT service</a>. This page covers sixteen more that a 26.1 tenant publishes, in two groups.</p>
+<p><strong>The first five</strong> (documented first, and the deepest write coverage on this page):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Family</th>
+<th>What it reaches</th>
+<th>Verified here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#extensibilityuserdefinedfields"><code>extensibility/userdefinedfields</code></a></td>
+<td>Every UDF in the system, with type metadata</td>
+<td><strong>Reads fully verified</strong></td>
+</tr>
+<tr>
+<td><a href="#accountinggl"><code>accounting/gl</code></a></td>
+<td>GL distribution lines by transaction number</td>
+<td><strong>Read and POST fully verified</strong>, including the server-side balance check</td>
+</tr>
+<tr>
+<td><a href="#salestasks"><code>sales/tasks</code></a></td>
+<td>CRM tasks (<code>activity_trans</code>)</td>
+<td><strong>Full CRUD round trip verified</strong></td>
+</tr>
+<tr>
+<td><a href="#purchasingpurchaseorders"><code>purchasing/purchaseorders</code></a></td>
+<td>Purchase order headers</td>
+<td><strong>Create, update, and async create verified</strong>; <code>async/callback</code> not exercised</td>
+</tr>
+<tr>
+<td><a href="#inventoryinventoryadjustments"><code>inventory/inventoryadjustments</code></a></td>
+<td>Inventory adjustment headers; WMS adjustment creation</td>
+<td><strong>Reads and two of four create routes fully verified</strong>; the two tag-adjustment routes have a verified refusal path but no reproduced success</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The next eleven</strong> — smaller in route count, business-object families rather than the platform-level five above:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Family</th>
+<th>What it reaches</th>
+<th>Verified here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#filehandler"><code>filehandler</code></a></td>
+<td>A real network file share P21's own storage points at</td>
+<td><strong>Full upload/detail/download/delete round trip verified</strong></td>
+</tr>
+<tr>
+<td><a href="#environmentsystems"><code>environment/systems</code></a></td>
+<td>Middleware build, config, and log metadata</td>
+<td><strong>Read verified</strong></td>
+</tr>
+<tr>
+<td><a href="#inventoryinventorymovement"><code>inventory/inventorymovement</code></a></td>
+<td>Bin-to-bin and tag stock relocation</td>
+<td><strong>Non-tag move fully verified</strong>; tag moves not exercised (same tagged-item gap as <a href="#createwmstagadjustment-createwmstagadjustmentwithcost-refusal-verified-success-not-reproduced"><code>createWmsTagAdjustment</code></a>)</td>
+</tr>
+<tr>
+<td><a href="#inventoryexternalcounts"><code>inventory/externalcounts</code></a></td>
+<td>Staged cycle-count records</td>
+<td><strong>Create fully verified</strong></td>
+</tr>
+<tr>
+<td><a href="#inventorypartscan"><code>inventory/partscan</code></a></td>
+<td>Cross-entity part lookup (item/customer/supplier/location)</td>
+<td><strong>Fully verified</strong></td>
+</tr>
+<tr>
+<td><a href="#accountingcustomerformtemplates"><code>accounting/customerformtemplates</code></a></td>
+<td>Per-customer document filenames (invoice, RMA, packing list forms)</td>
+<td><strong>Both create and update verified</strong> — and are not the same call shape, see below</td>
+</tr>
+<tr>
+<td><a href="#serviceserviceorders"><code>service/serviceorders</code></a></td>
+<td>Field-service orders — turns out to be ordinary sales orders</td>
+<td><strong>Read verified</strong> (and is the finding); update refused</td>
+</tr>
+<tr>
+<td><a href="#salesopportunities"><code>sales/opportunities</code></a></td>
+<td>CRM opportunities</td>
+<td>Blocked by tenant configuration, not the API — see below</td>
+</tr>
+<tr>
+<td><a href="#salesconsignmentusageorders"><code>sales/consignmentusageorders</code></a></td>
+<td>Consignment usage orders</td>
+<td>Blocked by a missing prerequisite (a contract), not reproduced further</td>
+</tr>
+<tr>
+<td><a href="#accountingexchangerates"><code>accounting/exchangerates</code></a></td>
+<td>Currency exchange rates</td>
+<td>Read verified (empty); create blocked by the tenant being single-currency</td>
+</tr>
+<tr>
+<td><a href="#inventoryserialnumberextdinfo"><code>inventory/serialnumberextdinfo</code></a></td>
+<td>Extended data on a tracked serial number</td>
+<td>Refusal verified against a real serial; success not reproduced</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Where a route is marked "not exercised" or "blocked", this page says so rather than describing it as if it had been run — and says why.</strong> Several of the eleven above could not be pushed to a clean success not because the route is broken, but because the play tenant's own configuration has no data behind it: no consignment contracts, no opportunity pipeline configured, only one currency. That is itself worth knowing before you assume a 500 means the API doesn't work.</p>
+<blockquote>
+<p><strong>Discover, don't guess.</strong> The families on your tenant are listed at <code>/docs/apiref.aspx</code>, and a family is confirmed with <code>GET {base}/{family}/help</code> — <strong>not</strong> <code>/ping</code>, which several families in both groups don't implement (<code>environment/systems</code> and <code>inventory/inventorymovement</code> among them — verified below). See <a href="05-Entity-API.html#discovering-what-your-tenant-actually-exposes">Discovering what your tenant actually exposes</a>.</p>
+</blockquote>
+<hr />
+<h2 id="what-the-first-five-have-in-common">What the first five have in common</h2>
+<p>Same middleware, same contract. Everything in this section was verified on all five of the platform-level families above unless noted — the eleven business-object families further down do <strong>not</strong> all share these patterns, and each says explicitly where it agrees or differs.</p>
+<h3 id="authentication-and-headers">Authentication and headers</h3>
+<p>Identical to every other P21 REST call: a bearer token from <a href="00-Authentication.html"><code>/api/security/token/v2</code></a>, and <strong><code>Accept: application/json</code></strong> or you get DataContract XML.</p>
+<div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/sales/tasks/16922</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
+<span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer {token}</span>
+<span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
+</code></pre></div>
+
+<h3 id="the-route-vocabulary">The route vocabulary</h3>
+<p>Each family publishes some subset of the same five routes:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/{family}/ping</code></td>
+<td>GET</td>
+<td><code>{"ResponseMessage":"success"}</code> — <strong>only where implemented</strong>; a 404 here does not mean the family is absent</td>
+</tr>
+<tr>
+<td><code>/{family}/new</code></td>
+<td>GET</td>
+<td>A template object with server-supplied defaults, meant as the starting point for a POST</td>
+</tr>
+<tr>
+<td><code>/{family}/</code></td>
+<td>GET</td>
+<td><strong>The whole table. See the hazard below.</strong></td>
+</tr>
+<tr>
+<td><code>/{family}/{key}</code></td>
+<td>GET</td>
+<td>One record by key</td>
+</tr>
+<tr>
+<td><code>/{family}/</code> and <code>/{family}/{key}</code></td>
+<td>POST / PUT</td>
+<td>Create and update</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-bare-collection-get-is-an-unbounded-full-table-dump">⚠ The bare collection GET is an unbounded full-table dump</h3>
+<p><strong>This is the one thing to know before calling any of these families.</strong> <code>GET /{family}/</code> takes no filter, no paging, and no row limit — it serializes the entire underlying table into a single response.</p>
+<p>Measured on the 26.1.5950.0 test tenant:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/sales/tasks/</code></td>
+<td><strong>28,332,703 bytes</strong>, 17,050 records, 68 s</td>
+</tr>
+<tr>
+<td><code>GET /api/inventory/inventoryadjustments/</code></td>
+<td><strong>63,015,950 bytes</strong>, 19 s</td>
+</tr>
+<tr>
+<td><code>GET /api/purchasing/purchaseorders/</code></td>
+<td>no response before the client gave up at 180 s</td>
+</tr>
+<tr>
+<td><code>GET /api/accounting/gl/</code></td>
+<td>no response before the client gave up at 180 s</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>And the obvious guard is silently ignored.</strong> <code>$top</code> does not limit the response — it is neither honored nor rejected:</p>
+<div class="highlight"><pre><span></span><code>GET /api/sales/tasks/            -&gt; 200, 28,332,703 bytes, 17,050 records
+GET /api/sales/tasks/?$top=2     -&gt; 200, 28,332,703 bytes, 17,050 records   &lt;- byte-identical
+</code></pre></div>
+
+<p><code>page</code>/<code>pageSize</code>, <code>limit</code> and <code>top</code> behaved the same way. This is the same silent-success shape as <a href="02-OData-API.html#logical-operators">OData's <code>in</code> operator being accepted and ignored</a>: nothing in the response tells you your limit did not apply, and a client that sends <code>$top=2</code> and reads the first element will appear to work while transferring the whole table every time.</p>
+<p><strong>Use the keyed GET, and find your keys elsewhere.</strong> <a href="02-OData-API.html">OData</a> is the query surface — filter there, then fetch the records you want by key:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /odataservice/odata/table/activity_trans?$select=activity_trans_no&amp;$filter=completed eq &#39;N&#39;&amp;$top=50</span>
+<span class="err">GET /api/sales/tasks/{activity_trans_no}</span>
+</code></pre></div>
+
+<h3 id="child-collections-are-always-null-on-read">Child collections are always <code>null</code> on read</h3>
+<p>Every one of these families publishes child collections in its contract and populates <strong>none</strong> of them on a keyed GET. On <code>purchasing/purchaseorders</code>, <code>POLines</code>, <code>POSales</code>, <code>POHdrNotes</code> and <code>POLineNotes</code> all come back <code>null</code>; on <code>inventory/inventoryadjustments</code>, <code>Lines</code> does.</p>
+<p>This is not a parameter you are missing. Verified against <code>purchasing/purchaseorders/{poNo}</code> with <code>includeLines</code>, <code>expand</code>, <code>$expand</code>, <code>full</code> and <code>includeChildren</code> — <strong>all five returned a byte-identical 742-byte header-only response</strong>. Read lines from OData (<code>po_line</code>, <code>inv_adj_line</code>) or through the <a href="03-Transaction-API.html">Transaction API</a>, which does return them.</p>
+<h3 id="userdefinedfields-is-present-and-always-empty"><code>UserDefinedFields</code> is present and always empty</h3>
+<p>Every object on these families carries a <code>UserDefinedFields</code> key, and it is <code>{}</code> on every read — <strong>including on records that genuinely have user-defined data</strong>. Purchase order 584441 on the test tenant has a <code>po_hdr_ud</code> row with <code>received_flag: "Y"</code>; <code>GET /api/purchasing/purchaseorders/584441</code> returns <code>"UserDefinedFields": {}</code>.</p>
+<p>Treat the key as a contract placeholder, not as evidence. To read UDF <em>values</em>, query the <code>*_ud</code> table over OData; to find out which UDFs exist at all, use <a href="#extensibilityuserdefinedfields"><code>extensibility/userdefinedfields</code></a> below.</p>
+<hr />
+<h2 id="extensibilityuserdefinedfields"><code>extensibility/userdefinedfields</code></h2>
+<p><strong>The machine-readable answer to "what custom fields does this P21 have?"</strong> Read-only, fast, and the only surface in this documentation that enumerates UDFs with their types.</p>
+<h3 id="routes">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/extensibility/userdefinedfields/</code></td>
+<td>GET</td>
+<td>Every UDF on the system, flat</td>
+</tr>
+<tr>
+<td><code>/api/extensibility/userdefinedfields/tables</code></td>
+<td>GET</td>
+<td>The same fields grouped by table, with each table's base table</td>
+</tr>
+<tr>
+<td><code>/api/extensibility/userdefinedfields/tables/{tableId}</code></td>
+<td>GET</td>
+<td>One table's fields</td>
+</tr>
+<tr>
+<td><code>/api/extensibility/userdefinedfields/generate</code></td>
+<td>GET</td>
+<td><em>"Generates User Defined Field Assembly"</em> — <strong>not exercised here</strong></td>
+</tr>
+<tr>
+<td><code>/api/extensibility/userdefinedfields/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+</tbody>
+</table></div>
+<p>Unlike the other four families, the collection GET here is safe: the flat list was <strong>28 KB</strong> on the test tenant, not 28 MB.</p>
+<h3 id="response-shape">Response shape</h3>
+<div class="highlight"><pre><span></span><code>// GET /api/extensibility/userdefinedfields/
+{&quot;list&quot;: [
+  {&quot;TableName&quot;: &quot;address_ud&quot;, &quot;ColumnName&quot;: &quot;air_freight&quot;, &quot;DisplayName&quot;: &quot;AirFreight&quot;,
+   &quot;ColumnOrder&quot;: 3, &quot;DataType&quot;: &quot;char&quot;, &quot;Length&quot;: 1, &quot;Precision&quot;: 1,
+   &quot;DecimalPlaces&quot;: null, &quot;IsNullable&quot;: &quot;Y&quot;},
+  ...
+]}
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code>// GET /api/extensibility/userdefinedfields/tables
+{&quot;list&quot;: [
+  {&quot;TableName&quot;: &quot;address_ud&quot;, &quot;BaseTableName&quot;: &quot;address&quot;,
+   &quot;UserDefinedFields&quot;: {&quot;list&quot;: [ /* same field objects, TableName null inside */ ]}},
+  ...
+]}
+</code></pre></div>
+
+<p>Note the double nesting on the grouped form — <code>list</code> → table → <code>UserDefinedFields</code> → <code>list</code> — and that <code>TableName</code> is <code>null</code> on the inner field objects because the parent already carries it. <code>DataType</code> values seen: <code>char</code>, <code>datetime</code>, <code>decimal</code>, <code>int</code>, <code>text</code>, <code>varchar</code>.</p>
+<p>The two routes agree: 152 fields across 23 tables on the test tenant, and the grouped counts summed to exactly the flat count.</p>
+<h3 id="tableid-is-the-_ud-table-name-not-the-base-table"><code>{tableId}</code> is the <code>*_ud</code> table name, not the base table</h3>
+<p>The parameter name suggests an id. It is the <strong>UD table's name</strong>, and it is case-insensitive:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Request</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tables/address_ud</code></td>
+<td>200</td>
+</tr>
+<tr>
+<td><code>tables/OE_HDR_UD</code></td>
+<td>200 — same payload as lowercase</td>
+</tr>
+<tr>
+<td><code>tables/address</code> (the <em>base</em> table)</td>
+<td><strong>404</strong> <code>Your query did not yield any results.</code></td>
+</tr>
+<tr>
+<td><code>tables/1</code></td>
+<td><strong>404</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The base-table name is the natural guess and the one that fails. Read <code>BaseTableName</code> off the grouped response when you need the mapping in that direction.</p>
+<h3 id="not-every-returned-column-is-a-custom-field">Not every returned column is a custom field</h3>
+<p>The list includes each UD table's own plumbing alongside genuine UDFs, and the layout is consistent enough to filter on. Verified across all 23 tables:</p>
+<ul>
+<li><strong><code>ColumnOrder: 1</code> is always <code>{table}_uid</code></strong> — the UD table's surrogate primary key. 23 of 23.</li>
+<li><strong>The columns after it, up to the first nullable one, are the join key back to the base table.</strong> Often one column (<code>po_hdr_ud.po_no</code>), sometimes composite (<code>ship_to_ud</code>: <code>company_id</code> + <code>ship_to_id</code>; <code>oe_line_ud</code>: <code>order_no</code> + <code>line_no</code>).</li>
+<li><strong>The nullable columns are the actual user-defined fields.</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code>ship_to_ud (base: ship_to)
+   1  ship_to_ud_uid   int      N   &lt;- surrogate key
+   2  company_id       varchar  N   &lt;- join key, part 1
+   3  ship_to_id       decimal  N   &lt;- join key, part 2
+   4  edi_id           varchar  Y   &lt;- the actual UDF
+</code></pre></div>
+
+<p>Filtering that way gives <strong>96 real UDFs of the 152 rows</strong> on the test tenant — 23 surrogate keys and 34 join-key columns are plumbing (34, not 23, because <code>ship_to_ud</code> and <code>oe_line_ud</code> each contribute a second join-key column); the other 95 are nullable, plus the one exception below.</p>
+<blockquote>
+<p><strong>Correction (September 2026).</strong> This entry originally reported the count as "128 of the 152," arrived at as <code>152 − 24</code>. That arithmetic only holds if every table's join key is a single column, and two of the 23 are not (<code>ship_to_ud</code>, <code>oe_line_ud</code>) — the join-key deduction is 34 columns, not 23. Re-verified live: 23 (surrogate) + 34 (join key) + 95 (nullable) = 152, exactly.</p>
+<p><strong>The nullability rule is a strong convention, not a guarantee.</strong> One field on the test tenant breaks it: <code>customer_ud.autoorder_flag</code> is <code>NOT NULL</code> and is a genuine custom field, because whoever created it gave it a default. Use the rule to sort a long list quickly, then read the names — do not build a pipeline that silently drops any <code>NOT NULL</code> column.</p>
+</blockquote>
+<h3 id="worked-example">Worked example</h3>
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;List every user-defined field in P21, grouped by the table it extends.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">TOKEN</span> <span class="o">=</span> <span class="s2">&quot;...&quot;</span>  <span class="c1"># see docs/00-Authentication.md</span>
+
+<span class="n">r</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/extensibility/userdefinedfields/tables&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;list&quot;</span><span class="p">]:</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;UserDefinedFields&quot;</span><span class="p">][</span><span class="s2">&quot;list&quot;</span><span class="p">],</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">f</span><span class="p">:</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;ColumnOrder&quot;</span><span class="p">])</span>
+    <span class="c1"># ColumnOrder 1 is the surrogate key; the NOT NULL columns after it are the</span>
+    <span class="c1"># join key back to the base table. Read the names -- the rule has exceptions.</span>
+    <span class="n">custom</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;IsNullable&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Y&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">custom</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">table</span><span class="p">[</span><span class="s1">&#39;TableName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (extends </span><span class="si">{</span><span class="n">table</span><span class="p">[</span><span class="s1">&#39;BaseTableName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">custom</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;ColumnName&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">32</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;DataType&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;Length&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1">// List every user-defined field in P21, grouped by the table it extends.</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p">;</span><span class="w">  </span><span class="c1">// see docs/00-Authentication.md</span>
+
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromSeconds</span><span class="p">(</span><span class="mi">120</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetStringAsync</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/api/extensibility/userdefinedfields/tables&quot;</span><span class="p">);</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">doc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">json</span><span class="p">);</span>
+
+<span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">table</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">doc</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;list&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">())</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">table</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;UserDefinedFields&quot;</span><span class="p">).</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;list&quot;</span><span class="p">).</span><span class="n">EnumerateArray</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="n">OrderBy</span><span class="p">(</span><span class="n">f</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">f</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;ColumnOrder&quot;</span><span class="p">).</span><span class="n">GetInt32</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="n">ToList</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// ColumnOrder 1 is the surrogate key; the NOT NULL columns after it are the</span>
+<span class="w">    </span><span class="c1">// join key back to the base table. Read the names -- the rule has exceptions.</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">custom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fields</span><span class="p">.</span><span class="n">Skip</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">Where</span><span class="p">(</span><span class="n">f</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">f</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;IsNullable&quot;</span><span class="p">).</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="n">ToList</span><span class="p">();</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">custom</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{table.GetProperty(&quot;</span><span class="n">TableName</span><span class="s">&quot;).GetString()} &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                      </span><span class="s">$&quot;(extends {table.GetProperty(&quot;</span><span class="n">BaseTableName</span><span class="s">&quot;).GetString()})&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">f</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">custom</span><span class="p">)</span>
+<span class="w">        </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;    {f.GetProperty(&quot;</span><span class="n">ColumnName</span><span class="s">&quot;).GetString(),-32} &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                          </span><span class="s">$&quot;{f.GetProperty(&quot;</span><span class="n">DataType</span><span class="s">&quot;).GetString()}({f.GetProperty(&quot;</span><span class="n">Length</span><span class="s">&quot;).GetInt32()})&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h2 id="accountinggl"><code>accounting/gl</code></h2>
+<h3 id="routes_1">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/accounting/gl/{transactionNumber}</code></td>
+<td>GET</td>
+<td><strong>The useful one</strong> — returns every GL line of that transaction</td>
+</tr>
+<tr>
+<td><code>/api/accounting/gl/</code></td>
+<td>GET</td>
+<td>Unbounded; did not return within 180 s on the test tenant</td>
+</tr>
+<tr>
+<td><code>/api/accounting/gl/</code></td>
+<td>POST</td>
+<td><strong>Verified</strong> — posts a balanced journal entry</td>
+</tr>
+<tr>
+<td><code>/api/accounting/gl/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-keyed-get-returns-a-whole-journal-entry">The keyed GET returns a whole journal entry</h3>
+<p><code>{transactionNumber}</code> is <code>gl.transaction_number</code>, and the response is an <strong>array of GL distribution lines</strong> — both sides of the entry, not a single row:</p>
+<div class="highlight"><pre><span></span><code>// GET /api/accounting/gl/3
+[
+  {&quot;CompanyNo&quot;: &quot;ACME&quot;, &quot;AccountNumber&quot;: &quot;11120010&quot;, &quot;Period&quot;: 4, &quot;YearForPeriod&quot;: 2011,
+   &quot;JournalId&quot;: &quot;IA&quot;, &quot;Amount&quot;: -44631.09, &quot;Source&quot;: &quot;1000002&quot;, &quot;Description&quot;: &quot;GO LIVE&quot;,
+   &quot;TransactionDate&quot;: &quot;2011-01-27T01:11:32.703&quot;, &quot;TransactionNumber&quot;: 3,
+   &quot;Approved&quot;: true, &quot;SequenceNumber&quot;: 1, &quot;GlUid&quot;: 4, &quot;RecordTypeCd&quot;: 1367, ...},
+  {&quot;AccountNumber&quot;: &quot;11130010&quot;, &quot;Amount&quot;: 44631.09, &quot;SequenceNumber&quot;: 2, ...}
+]
+</code></pre></div>
+
+<p>The two lines sum to <strong>0.00</strong> — you get a balanced entry from one call, which is what makes this endpoint worth knowing. Reproducing it from OData means filtering <code>gl</code> on <code>transaction_number</code> yourself.</p>
+<p><strong>An unknown transaction number returns <code>200 []</code></strong>, not a 404. Check for an empty array.</p>
+<h3 id="source-links-the-entry-back-to-the-document-that-created-it"><code>Source</code> links the entry back to the document that created it</h3>
+<p><code>JournalId</code> names the subledger and <code>Source</code> carries that subledger's own key. In the example above, <code>JournalId: "IA"</code> and <code>Source: "1000002"</code> point at inventory adjustment 1000002 — the same record <a href="#inventoryinventoryadjustments"><code>inventory/inventoryadjustments</code></a> serves:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET /api/inventory/inventoryadjustments/1000002</span>
+<span class="err">  -&gt; {&quot;AdjustmentNo&quot;: 1000002, &quot;Reason&quot;: &quot;GO LIVE&quot;, &quot;LocationId&quot;: 18, ...}</span>
+</code></pre></div>
+
+<p>That pairing is the practical use of this family: find GL activity over OData, then pull the full entry and walk <code>Source</code> back to the originating document.</p>
+<h3 id="posting-a-journal-entry-verified">Posting a journal entry (verified)</h3>
+<p><code>POST /api/accounting/gl/</code> takes the same shape the GET returns: <strong>an array of lines</strong>, sent together as one balanced entry. Confirmed against the SDK's own contract (<code>Gl[] CreateGl(Gl[] toCreate)</code>) and run live:</p>
+<div class="highlight"><pre><span></span><code>// POST /api/accounting/gl/
+[
+  {&quot;CompanyNo&quot;: &quot;ACME&quot;, &quot;AccountNumber&quot;: &quot;11120010&quot;, &quot;Period&quot;: 12, &quot;YearForPeriod&quot;: 2026,
+   &quot;JournalId&quot;: &quot;AC&quot;, &quot;Amount&quot;: 0.01, &quot;ForeignAmount&quot;: 0.01,
+   &quot;Description&quot;: &quot;...&quot;, &quot;Source&quot;: &quot;...&quot;, &quot;TransactionDate&quot;: &quot;2026-09-12T00:00:00&quot;},
+  {&quot;CompanyNo&quot;: &quot;ACME&quot;, &quot;AccountNumber&quot;: &quot;11130010&quot;, &quot;Period&quot;: 12, &quot;YearForPeriod&quot;: 2026,
+   &quot;JournalId&quot;: &quot;AC&quot;, &quot;Amount&quot;: -0.01, &quot;ForeignAmount&quot;: -0.01,
+   &quot;Description&quot;: &quot;...&quot;, &quot;Source&quot;: &quot;...&quot;, &quot;TransactionDate&quot;: &quot;2026-09-12T00:00:00&quot;}
+]
+</code></pre></div>
+
+<p><code>Period</code>/<code>YearForPeriod</code> must name an open period — <code>periods.period_closed eq 'N'</code> over OData finds one; posting into a closed period was not tested. The response echoes every line back with the fields the server fills in: a shared, auto-assigned <code>TransactionNumber</code>, <code>Approved: true</code> (no approval step on this path), <code>SourceTypeCd</code> set automatically (<code>3495</code> for a manually-posted entry via this endpoint, distinct from the <code>1367</code> seen on an inventory-adjustment-sourced entry), and real <code>GlUid</code>/<code>DateCreated</code>/<code>LastMaintainedBy</code> values.</p>
+<p><strong>The balance check is real and server-side.</strong> A single-line, self-evidently unbalanced POST was refused cleanly:</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+{&quot;ErrorMessage&quot;: &quot;Records do not balance&quot;,
+ &quot;ErrorType&quot;: &quot;P21.Business.Common.BusinessException&quot;, ...}
+</code></pre></div>
+
+<p>The error surfaces as a <code>BusinessException</code> from <code>GlManager.UpdateAllRecords</code>, not as a generic CRUD failure — this is a deliberate validation, not an incidental side effect of some other check. A caller does not need to sum its own lines defensively before posting; the endpoint will refuse an unbalanced batch outright.</p>
+<p>Read the entry back with the same keyed GET this section opened with — <code>GET /api/accounting/gl/{transactionNumber}</code> confirmed both lines, correctly balanced.</p>
+<hr />
+<h2 id="salestasks"><code>sales/tasks</code></h2>
+<p>CRM tasks, backed by <code>activity_trans</code> — what P21 shows as Task/Activity entry against a customer or contact. <strong>This is the family whose full create-read-update cycle was verified end to end.</strong></p>
+<h3 id="routes_2">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/sales/tasks/new</code></td>
+<td>GET</td>
+<td>Template with server defaults</td>
+</tr>
+<tr>
+<td><code>/api/sales/tasks/</code></td>
+<td>POST</td>
+<td><strong>Create — verified</strong></td>
+</tr>
+<tr>
+<td><code>/api/sales/tasks/{activityTransID}</code></td>
+<td>GET</td>
+<td><strong>Read — verified</strong></td>
+</tr>
+<tr>
+<td><code>/api/sales/tasks/{activityTransID}</code></td>
+<td>PUT</td>
+<td><strong>Update — verified</strong></td>
+</tr>
+<tr>
+<td><code>/api/sales/tasks/</code></td>
+<td>GET</td>
+<td>Unbounded — 28 MB / 17,050 records on the test tenant</td>
+</tr>
+<tr>
+<td><code>/api/sales/tasks/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="get-new-first"><code>GET /new</code> first</h3>
+<p>The template arrives with the calling user and company already filled in, plus the code values the record needs. Start from it rather than hand-building the object:</p>
+<div class="highlight"><pre><span></span><code>// GET /api/sales/tasks/new
+{
+  &quot;ActivityTransNo&quot;: &quot;&quot;, &quot;ActivityId&quot;: &quot;&quot;, &quot;ContactId&quot;: &quot;&quot;,
+  &quot;EntryDate&quot;: &quot;2026-09-12T00:00:00&quot;,
+  &quot;AssignedById&quot;: &quot;apiuser&quot;, &quot;AssignedToId&quot;: &quot;apiuser&quot;,   // the calling user
+  &quot;Completed&quot;: &quot;N&quot;, &quot;Comments&quot;: &quot;&quot;, &quot;Subject&quot;: &quot;&quot;,
+  &quot;ReminderTimeOffset&quot;: 0, &quot;ReminderTimeOffsetCd&quot;: 1413,
+  &quot;PrivateTask&quot;: &quot;N&quot;, &quot;TargetCompleteDate&quot;: &quot;2026-09-12T11:10:34.5-05:00&quot;,
+  &quot;Followup&quot;: &quot;N&quot;, &quot;FollowupCommentCd&quot;: 1441,
+  &quot;ActivityDesc&quot;: &quot;&quot;, &quot;CompanyId&quot;: &quot;ACME&quot;,
+  &quot;LinkId&quot;: 0, &quot;LinkTypeCd&quot;: 1203,
+  &quot;ContactAddressName&quot;: &quot;&quot;, &quot;HardTouch&quot;: &quot;&quot;, &quot;ProblemCodeId&quot;: &quot;&quot;,
+  &quot;CreateOutlookTask&quot;: &quot;N&quot;, &quot;TransactionNo&quot;: &quot;&quot;, &quot;TransactionTypeCode&quot;: 300,
+  &quot;Reminder&quot;: &quot;N&quot;, &quot;UserDefinedFields&quot;: {}, &quot;ObjectName&quot;: &quot;activity_trans&quot;
+}
+</code></pre></div>
+
+<h3 id="customer-id-is-required-means-linkid">"Customer ID is required" means <code>LinkId</code></h3>
+<p>The first create attempt filled in <code>ActivityId</code>, <code>ContactId</code> and <code>Subject</code> and was refused:</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+{&quot;ErrorMessage&quot;: &quot;Customer ID is required....CRUD Update error: Update failed for activity_trans. (-1)&quot;,
+ &quot;ErrorType&quot;: &quot;P21.DataAccess.PbNet.Common.PbService.P21ServerException&quot;, ...}
+</code></pre></div>
+
+<p><strong>There is no <code>CustomerId</code> field on the object.</strong> The customer is <code>LinkId</code>, paired with <code>LinkTypeCd</code> (<code>1203</code> in the template, which is what the working record used). Setting <code>LinkId</code> to the customer id made the identical payload succeed. Two things worth noting about that error:</p>
+<ul>
+<li>The message names a field that does not exist in the contract you were sent. Map "Customer ID" to <strong><code>LinkId</code></strong>.</li>
+<li>It says <strong><code>Update</code> failed</strong> on what was a create — the middleware routes both through the same CRUD verb, so the word "Update" in an error is not evidence you hit the wrong route.</li>
+</ul>
+<p><code>ContactAddressName</code> is server-derived: supply <code>LinkId: 12066</code> and the read-back comes back with <code>"ContactAddressName": "ABC Supply Company"</code>.</p>
+<h3 id="verified-round-trip">Verified round trip</h3>
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Create, read and update a P21 CRM task. Verified on 26.1.5950.0.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>
+<span class="n">TOKEN</span> <span class="o">=</span> <span class="s2">&quot;...&quot;</span>               <span class="c1"># see docs/00-Authentication.md</span>
+<span class="n">CONTACT_ID</span> <span class="o">=</span> <span class="s2">&quot;17055&quot;</span>
+<span class="n">CUSTOMER_ID</span> <span class="o">=</span> <span class="mi">12066</span>         <span class="c1"># goes in LinkId -- &quot;Customer ID is required&quot; means this</span>
+
+<span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">TOKEN</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="c1"># 1. Start from the server&#39;s own template.</span>
+    <span class="n">task</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/sales/tasks/new&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">task</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+        <span class="s2">&quot;ActivityId&quot;</span><span class="p">:</span> <span class="s2">&quot;FOLLOW UP&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ContactId&quot;</span><span class="p">:</span> <span class="n">CONTACT_ID</span><span class="p">,</span>
+        <span class="s2">&quot;LinkId&quot;</span><span class="p">:</span> <span class="n">CUSTOMER_ID</span><span class="p">,</span>
+        <span class="s2">&quot;Subject&quot;</span><span class="p">:</span> <span class="s2">&quot;Quote follow-up&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Comments&quot;</span><span class="p">:</span> <span class="s2">&quot;Raised from the integration&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TargetCompleteDate&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-09-30T15:00:00&quot;</span><span class="p">,</span>
+    <span class="p">})</span>
+
+    <span class="c1"># 2. Create. The trailing slash matters -- the list route 307s without it.</span>
+    <span class="n">created</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/sales/tasks/&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">task</span><span class="p">)</span>
+    <span class="n">created</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">task_no</span> <span class="o">=</span> <span class="n">created</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;ActivityTransNo&quot;</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;created task </span><span class="si">{</span><span class="n">task_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># 3. Read back, then update the record you were given rather than the one you sent:</span>
+    <span class="c1">#    the server fills in fields (ActivityDesc, ContactAddressName) that a PUT expects.</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/sales/tasks/</span><span class="si">{</span><span class="n">task_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">current</span><span class="p">[</span><span class="s2">&quot;Completed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Y&quot;</span>
+    <span class="n">current</span><span class="p">[</span><span class="s2">&quot;Comments&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Closed out by the integration&quot;</span>
+
+    <span class="n">updated</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/sales/tasks/</span><span class="si">{</span><span class="n">task_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">current</span>
+    <span class="p">)</span>
+    <span class="n">updated</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;completed: </span><span class="si">{</span><span class="n">updated</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s1">&#39;Completed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1">// Create, read and update a P21 CRM task. Verified on 26.1.5950.0.</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Headers</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Net.Http.Json</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
+
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p">;</span><span class="w">          </span><span class="c1">// see docs/00-Authentication.md</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ContactId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;17055&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12066</span><span class="p">;</span><span class="w">        </span><span class="c1">// goes in LinkId -- &quot;Customer ID is required&quot; means this</span>
+
+<span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClient</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromSeconds</span><span class="p">(</span><span class="mi">120</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Token</span><span class="p">);</span>
+<span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Accept</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">MediaTypeWithQualityHeaderValue</span><span class="p">(</span><span class="s">&quot;application/json&quot;</span><span class="p">));</span>
+
+<span class="c1">// 1. Start from the server&#39;s own template.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">task</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetFromJsonAsync</span><span class="o">&lt;</span><span class="n">JsonObject</span><span class="o">&gt;</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/api/sales/tasks/new&quot;</span><span class="p">);</span>
+<span class="n">task</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;ActivityId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;FOLLOW UP&quot;</span><span class="p">;</span>
+<span class="n">task</span><span class="p">[</span><span class="s">&quot;ContactId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ContactId</span><span class="p">;</span>
+<span class="n">task</span><span class="p">[</span><span class="s">&quot;LinkId&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CustomerId</span><span class="p">;</span>
+<span class="n">task</span><span class="p">[</span><span class="s">&quot;Subject&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Quote follow-up&quot;</span><span class="p">;</span>
+<span class="n">task</span><span class="p">[</span><span class="s">&quot;Comments&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Raised from the integration&quot;</span><span class="p">;</span>
+<span class="n">task</span><span class="p">[</span><span class="s">&quot;TargetCompleteDate&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2026-09-30T15:00:00&quot;</span><span class="p">;</span>
+
+<span class="c1">// 2. Create. The trailing slash matters -- the list route 307s without it.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PostAsJsonAsync</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/api/sales/tasks/&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">task</span><span class="p">);</span>
+<span class="n">created</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">taskNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">created</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadFromJsonAsync</span><span class="o">&lt;</span><span class="n">JsonObject</span><span class="o">&gt;</span><span class="p">())</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;ActivityTransNo&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">GetValue</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;created task {taskNo}&quot;</span><span class="p">);</span>
+
+<span class="c1">// 3. Read back, then update the record you were given rather than the one you sent:</span>
+<span class="c1">//    the server fills in fields (ActivityDesc, ContactAddressName) that a PUT expects.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">current</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetFromJsonAsync</span><span class="o">&lt;</span><span class="n">JsonObject</span><span class="o">&gt;</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/api/sales/tasks/{taskNo}&quot;</span><span class="p">);</span>
+<span class="n">current</span><span class="o">!</span><span class="p">[</span><span class="s">&quot;Completed&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="p">;</span>
+<span class="n">current</span><span class="p">[</span><span class="s">&quot;Comments&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Closed out by the integration&quot;</span><span class="p">;</span>
+
+<span class="kt">var</span><span class="w"> </span><span class="n">updated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">PutAsJsonAsync</span><span class="p">(</span><span class="s">$&quot;{BaseUrl}/api/sales/tasks/{taskNo}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">current</span><span class="p">);</span>
+<span class="n">updated</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;completed: {(await updated.Content.ReadFromJsonAsync&lt;JsonObject&gt;())![&quot;</span><span class="n">Completed</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+</code></pre></div>
+
+<p>The PUT returns the updated object, and a follow-up GET confirmed both changed fields persisted.</p>
+<blockquote>
+<p><strong>There is no delete route.</strong> <code>/help</code> publishes GET, POST and PUT only. Close a task by setting <code>Completed: "Y"</code>.</p>
+</blockquote>
+<hr />
+<h2 id="purchasingpurchaseorders"><code>purchasing/purchaseorders</code></h2>
+<h3 id="routes_3">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/purchasing/purchaseorders/{poNo}</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — header only, children <code>null</code></td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders/new</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — template, <code>POLines</code> pre-seeded with one blank line</td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders/</code></td>
+<td>POST</td>
+<td><strong>Verified</strong> — creates a PO with real lines</td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders/{poNo}</code></td>
+<td>PUT</td>
+<td><strong>Verified</strong> — updates persist</td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders/async</code></td>
+<td>POST / GET</td>
+<td><strong>Verified</strong> — GET takes <code>?requestId=</code></td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders/async/callback</code></td>
+<td>POST</td>
+<td>Published. <strong>Not exercised</strong> — needs a reachable callback URL</td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders/</code></td>
+<td>GET</td>
+<td>Unbounded; did not return within 180 s</td>
+</tr>
+<tr>
+<td><code>/api/purchasing/purchaseorders/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-keyed-read">The keyed read</h3>
+<div class="highlight"><pre><span></span><code>// GET /api/purchasing/purchaseorders/998310
+{&quot;POLines&quot;: null, &quot;POSales&quot;: null, &quot;POHdrNotes&quot;: null, &quot;POLineNotes&quot;: null,
+ &quot;DirectShipTo&quot;: {&quot;Name&quot;: &quot;&quot;, &quot;Address1&quot;: &quot;&quot;, &quot;City&quot;: &quot;&quot;, &quot;State&quot;: &quot;&quot;, &quot;Country&quot;: &quot;&quot;, &quot;Zip&quot;: &quot;&quot;},
+ &quot;PoNo&quot;: 998310, &quot;CompanyNo&quot;: &quot;ACME&quot;, &quot;LocationId&quot;: 20,
+ &quot;VendorId&quot;: 25753, &quot;SupplierId&quot;: 25753, &quot;DivisionId&quot;: 25753,
+ &quot;BuyerId&quot;: &quot;812&quot;, &quot;PoType&quot;: &quot;X&quot;, &quot;OrderDate&quot;: &quot;2026-08-27T10:17:20.887&quot;,
+ &quot;DateDue&quot;: &quot;2026-08-27T00:00:00&quot;, &quot;Approved&quot;: &quot;Y&quot;, &quot;Terms&quot;: &quot;1&quot;, &quot;CarrierId&quot;: &quot;100&quot;,
+ &quot;Printed&quot;: &quot;N&quot;, &quot;Delete&quot;: &quot;N&quot;, &quot;PoHdrUid&quot;: 468174, &quot;Complete&quot;: &quot;N&quot;, &quot;CurrencyId&quot;: 1,
+ &quot;UserDefinedFields&quot;: {}, ...}
+</code></pre></div>
+
+<p>742 bytes, header only. <code>DirectShipTo</code> is an inline object rather than a child collection, so it <em>is</em> populated (with empty strings on a non-direct-ship PO). For lines, see <a href="#child-collections-are-always-null-on-read">child collections are always null</a> — that section is about <em>reads</em>; see below for what a <em>create</em> actually returns.</p>
+<h3 id="creating-a-po-verified">Creating a PO (verified)</h3>
+<p>Start from <code>GET /new</code>, which pre-populates <code>POLines.list</code> with one blank line at <code>LineNo: 223</code> — a suggested starting line number, not a real one; the created PO below landed its first line at <code>LineNo: 1</code> regardless. Fill in the header and at least one line, then <code>POST</code> the whole object:</p>
+<div class="highlight"><pre><span></span><code>// PO /new template, trimmed to the fields a create needs
+{&quot;POLines&quot;: {&quot;list&quot;: [{&quot;LineNo&quot;: 223, &quot;ItemId&quot;: &quot;&quot;, &quot;UnitOfMeasure&quot;: &quot;&quot;, &quot;UnitQuantity&quot;: null,
+                       &quot;UnitPrice&quot;: 0.0, &quot;PricingUnit&quot;: &quot;&quot;, ...}]},
+ &quot;CompanyNo&quot;: &quot;&quot;, &quot;LocationId&quot;: null, &quot;VendorId&quot;: null, &quot;SupplierId&quot;: null,
+ &quot;BuyerId&quot;: &quot;&quot;, &quot;PoType&quot;: &quot;S&quot;, &quot;Approved&quot;: &quot;N&quot;, ...}
+</code></pre></div>
+
+<p><strong><code>BuyerId</code> is not marked required in the contract, but an empty one fails create with a misleading error.</strong> Leaving it <code>""</code> (its value in the <code>/new</code> template) produces:</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+{&quot;ErrorMessage&quot;: &quot;&lt;ImportReturn type=\&quot;CREATE\&quot;&gt;...Buyer ID (G): Null filter expression passed to of_Retrieve for Contacts....Invalid buyer ID....Sales/Production/PO Intersection Detail Record must be part of Import Set, but is unmatched...(Return value: -8 , Import is ok but some records failed )...&quot;,
+ &quot;ErrorType&quot;: &quot;P21.DataAccess.PbNet.Common.PbService.P21ServerException&quot;, ...}
+</code></pre></div>
+
+<p>Two things worth knowing about that error, both confirmed by re-running with a real <code>BuyerId</code>: <strong>the create is implemented on top of P21's Import/Export engine</strong> — the whole error body is an escaped <code>&lt;ImportReturn&gt;</code> XML document, which is why it reads nothing like the clean <code>Column is disabled:</code>-style errors elsewhere in this documentation. And <strong>the second complaint about <code>POSales</code>/"Import Set" is cascade noise from the same root cause</strong>, not a separate requirement — supplying a real <code>BuyerId</code> (a real value from an existing PO, e.g. <code>"812"</code>) and changing nothing else made both messages disappear and the create succeed.</p>
+<p>The successful response is the one place this family's child collections are <em>not</em> null — <code>POLines.list</code> comes back with the real, server-assigned <code>PoLineUid</code>, <code>LineNo</code>, and pricing-lookup fields (<code>ExtendedDesc</code>, <code>CalcType</code>, <code>UnitSize</code> filled in from the item master). <strong>But <code>UnitPrice</code> is not one of the fields honored from your request</strong>: a line sent with <code>"UnitPrice": 5.00</code> came back — and was actually stored, confirmed over OData on <code>po_line.unit_price</code> — as <code>0.00</code>. <code>PriceEdit: "N"</code> on the template line suggests price is meant to come from a pricing lookup rather than the caller; sending a price does not override it on this path. If the PO needs a specific price, set it after creation through a surface that supports a manual override, and verify with a read-back either way.</p>
+<p>A <code>GET</code> on the newly-created PO immediately afterward still returned <code>POLines: null</code> — confirming <a href="#child-collections-are-always-null-on-read">the null-on-read behavior</a> is a genuine property of the GET route, not a caching artifact of an older record.</p>
+<h3 id="updating-a-po-verified">Updating a PO (verified)</h3>
+<p><code>PUT /api/purchasing/purchaseorders/{poNo}</code> with the record read back from <code>GET</code> (edited in place) persisted the changes on a subsequent read. Its response shape is a third variant: <code>POLines: {"list": []}</code> — an <strong>empty list</strong>, neither the <code>null</code> a GET returns nor the populated list a POST returns.</p>
+<h3 id="creating-a-po-asynchronously-verified">Creating a PO asynchronously (verified)</h3>
+<p><code>POST /api/purchasing/purchaseorders/async</code> accepts the identical <code>PurchaseOrder</code> body and returns immediately with a request handle:</p>
+<div class="highlight"><pre><span></span><code>// POST .../async  -&gt;  202-shaped response, HTTP 200
+{&quot;RequestId&quot;: &quot;f996e37a-...&quot;, &quot;RequestType&quot;: &quot;PurchaseOrder&quot;, &quot;Status&quot;: 3,
+ &quot;StartDate&quot;: &quot;...&quot;, &quot;CompletedDate&quot;: null, &quot;Messages&quot;: null}
+</code></pre></div>
+
+<p>Poll <code>GET .../async?requestId={RequestId}</code> until it completes. Observed values: <strong><code>Status: 3</code></strong> while running, <strong><code>Status: 2</code></strong> once complete — at which point <code>Messages</code> carries the new PO number as a plain string (<code>"998313"</code>), not a structured object, and <code>CompletedDate</code> is populated. The created PO reads back normally through the ordinary keyed GET. <code>async/callback</code> (a webhook-style variant taking a callback URL) was not exercised — it needs a reachable endpoint to receive the callback, which a documentation run against a shared test tenant cannot safely stand up.</p>
+<h3 id="which-po-surface-should-you-use">Which PO surface should you use?</h3>
+<p>Three surfaces write purchase orders:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Use it for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>This family</strong></td>
+<td>Now verified for header + line create, update, and async create. Still missing: a working manual unit price, and any read-back for <code>POSales</code>/notes</td>
+</tr>
+<tr>
+<td><a href="03-Transaction-API.html#purchaseorder-service-creating-a-po">Transaction API <code>PurchaseOrder</code></a></td>
+<td><strong>The most thoroughly verified path in this documentation</strong> — full build → receive → vouch, lines included, and price sticks</td>
+</tr>
+<tr>
+<td><a href="04-Interactive-API.html">Interactive API</a></td>
+<td>Wizards and anything needing window business logic, e.g. <a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">direct-ship PO generation</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>Prefer the Transaction API when the price needs to be exact. This family is now a legitimate option for a REST-shaped integration that can tolerate pricing-lookup-driven prices, or that sets price through a separate step. It has its <strong>own</strong> async endpoint, separate from <a href="03-Transaction-API.html#endpoints">the Transaction API's</a> — and the Transaction API's async path carries <a href="03-Transaction-API.html#endpoints">a documented no-cancel hazard</a> that has not been specifically re-tested here but is worth assuming applies equally.</p>
+<hr />
+<h2 id="inventoryinventoryadjustments"><code>inventory/inventoryadjustments</code></h2>
+<h3 id="routes_4">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/inventory/inventoryadjustments/{adjustmentNo}</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — header only, <code>Lines</code> always <code>null</code></td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventoryadjustments/createWmsAdjustment</code></td>
+<td>POST</td>
+<td><strong>Verified</strong> — moves stock, signed delta</td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventoryadjustments/createWmsAdjustmentWithCost</code></td>
+<td>POST</td>
+<td><strong>Verified</strong> — as above, <code>unitCost</code> is honored</td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventoryadjustments/createWmsTagAdjustment</code></td>
+<td>POST</td>
+<td>Requires a genuinely tag-controlled item. <strong>Refusal verified; a success was not reproducible</strong> — see below</td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventoryadjustments/createWmsTagAdjustmentWithCost</code></td>
+<td>POST</td>
+<td>Same open question as the tag variant above</td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventoryadjustments/</code></td>
+<td>GET</td>
+<td>Unbounded — 63 MB on the test tenant</td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventoryadjustments/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-keyed-read_1">The keyed read</h3>
+<div class="highlight"><pre><span></span><code>// GET /api/inventory/inventoryadjustments/1000002
+{&quot;Lines&quot;: null, &quot;AdjustmentNo&quot;: 1000002, &quot;CompanyId&quot;: &quot;ACME&quot;, &quot;LocationId&quot;: 18,
+ &quot;Reason&quot;: &quot;GO LIVE&quot;, &quot;Approved&quot;: true, &quot;Delete&quot;: false, &quot;Description&quot;: &quot;&quot;,
+ &quot;UserDefinedFields&quot;: {}, &quot;ObjectName&quot;: &quot;inv_adj_hdr&quot;}
+</code></pre></div>
+
+<p>Note <code>Approved</code> and <code>Delete</code> are real booleans here, where the PO family uses <code>"Y"</code>/<code>"N"</code> strings for the same concepts. The families do not share a convention.</p>
+<p>To see what an adjustment did to stock, read <code>inv_adj_line</code> over OData, or follow it into the GL — <code>gl.source</code> carries the adjustment number under <code>JournalId: "IA"</code> (<a href="#source-links-the-entry-back-to-the-document-that-created-it">worked example above</a>).</p>
+<h3 id="the-create-routes-take-query-string-parameters-not-a-body">The create routes take query-string parameters, not a body</h3>
+<p>Unusual for a POST, and the reason a body-shaped attempt will confuse you. From the family's own <code>/help</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST /api/inventory/inventoryadjustments/createWmsAdjustment</span>
+<span class="err">    ?locationId={locationId}</span>
+<span class="err">    &amp;reason={reason}</span>
+<span class="err">    &amp;approved={approved}</span>
+<span class="err">    &amp;description={optionalDescription}</span>
+<span class="err">    &amp;itemId={itemId}</span>
+<span class="err">    &amp;unitQuantity={unitQuantity}</span>
+<span class="err">    &amp;unitOfMeasure={unitOfMeasure}</span>
+<span class="err">    &amp;binCd={optionalBinCd}</span>
+<span class="err">    &amp;lotCd={optionalLotCd}</span>
+<span class="err">    &amp;serialNumber={optionalSerialNumber}</span>
+</code></pre></div>
+
+<p><code>createWmsAdjustmentWithCost</code> adds <code>&amp;unitCost={unitCost}</code>. The tag variants replace <code>serialNumber</code> with <code>&amp;tagNo={optionalTagNo}&amp;qtyPerPackage={optionalQtyPerPackage}&amp;packageType={optionalPackageType}</code>.</p>
+<p>The published description is <em>"Adjust quantity for a single item. Return the created adjustment."</em> — one item per call, and the <code>Wms</code> naming suggests these exist for warehouse-management integrations rather than as a general adjustment API.</p>
+<h3 id="createwmsadjustment-verified"><code>createWmsAdjustment</code> (verified)</h3>
+<p>Two preconditions are not documented anywhere in <code>/help</code> and both fail with a clear, distinct error, so treat them as a checklist:</p>
+<ol>
+<li><strong><code>reason</code> must name an <em>active</em> <code>reason</code> record.</strong> An inactive one — <code>reason.delete_flag eq 'Y'</code> over OData, and note that historical <code>inv_adj_hdr</code> rows can carry an inactive reason's text, since the reason was presumably active when they were created — fails with <code>This Adjustment Reason record could not be retrieved.</code> A currently-active reason (<code>reason.delete_flag eq 'N'</code>) is required.</li>
+<li><strong><code>binCd</code> is required whenever the item/location is bin-tracked</strong> (<code>inv_loc.track_bins eq 'Y'</code>) — omitting it on a bin-tracked location fails with <code>Bin is required.</code>, naming neither the item nor the location. Find the item's bin over OData (<code>inv_loc.primary_bin</code>) rather than guessing.</li>
+</ol>
+<p>With both satisfied, the call succeeds and <strong><code>unitQuantity</code> is a signed delta</strong>, matching the Transaction API <code>InventoryAdjustment</code> service's own convention — confirmed by posting <code>unitQuantity: "1"</code> twice against a starting on-hand of 0 and watching it reach 2, not stay at 1:</p>
+<div class="highlight"><pre><span></span><code>// POST .../createWmsAdjustment?locationId=40&amp;reason=ADJUST&amp;approved=Y&amp;description=...
+//      &amp;itemId=GBY&amp;unitQuantity=1&amp;unitOfMeasure=EA&amp;binCd=FGA040&amp;lotCd=&amp;serialNumber=
+HTTP 200
+{&quot;Lines&quot;: {&quot;list&quot;: [{&quot;Bins&quot;: {&quot;list&quot;: [{&quot;BinCd&quot;: &quot;FGA040&quot;, &quot;UnitQuantity&quot;: 1.0, ...}]},
+                     &quot;AdjustmentNo&quot;: 1309659, &quot;ItemId&quot;: &quot;GBY&quot;, &quot;UnitQuantity&quot;: 1.0,
+                     &quot;Cost&quot;: 42.9938015, &quot;ObjectName&quot;: &quot;inv_adj_line&quot;}]},
+ &quot;AdjustmentNo&quot;: 1309659, &quot;CompanyId&quot;: &quot;ACME&quot;, &quot;LocationId&quot;: 40, &quot;Reason&quot;: &quot;ADJUST&quot;,
+ &quot;Approved&quot;: true, ...}
+</code></pre></div>
+
+<p>Note <code>Lines</code> is populated here, on the POST response — the same null-on-GET, populated-on-write split already seen on <code>purchasing/purchaseorders</code>. <code>Cost</code> is filled in automatically (moving-average cost) when no cost is supplied — see the <code>WithCost</code> variant below for what happens when you supply one.</p>
+<h3 id="createwmsadjustmentwithcost-verified"><code>createWmsAdjustmentWithCost</code> (verified)</h3>
+<p>Identical call shape plus <code>&amp;unitCost={value}</code>. Unlike <code>purchasing/purchaseorders</code>' <code>UnitPrice</code>, <strong>the supplied cost is honored exactly</strong>: sending <code>unitCost=99.99</code> produced <code>"Cost": 99.99</code> in the response, not a recalculated moving-average value. The two routes make opposite choices about whether a caller-supplied money value survives, and there is no way to tell which behavior a given route has without testing it — which is the whole reason this section states outcomes per route rather than assuming they generalize.</p>
+<h3 id="createwmstagadjustment-createwmstagadjustmentwithcost-refusal-verified-success-not-reproduced"><code>createWmsTagAdjustment</code> / <code>createWmsTagAdjustmentWithCost</code> — refusal verified, success not reproduced</h3>
+<p>Both calls refuse identically and immediately, naming the item precisely:</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+{&quot;ErrorMessage&quot;: &quot;ProcessAction (CREATEWMSADJUSTMENTTAG ): Error: Method CreateWmsTagAdjustment failed: {ItemId} is not a tagged item. Please enter a tagged item. (-1)&quot;,
+ &quot;ErrorType&quot;: &quot;P21.DataAccess.PbNet.Common.PbService.P21ServerException&quot;, ...}
+</code></pre></div>
+
+<p>That much is a clean, verified precondition. What is <em>not</em> settled: <strong><code>inv_mast.use_tags_flag = 'Y'</code> is not sufficient to satisfy it.</strong> Two different items carrying that flag, one of them (<code>CAEKLHN</code>) stocked and bin-tracked at the same location used for the successful non-tag tests, both produced the identical refusal. No <code>tag</code>/<code>inv_tag</code>/<code>inventory_tag</code> OData object exists to inspect existing tag records directly, so whether the real precondition is an existing physical tag (created through receiving/putaway, not through this endpoint) or something else on the item master is unresolved. Anyone with a genuinely tag-controlled item and a live tag number on their tenant can settle this in one call; until then, treat these two routes as <strong>published and reachable, with a confirmed rejection path, but an unconfirmed success path.</strong></p>
+<p>For an adjustment path with a fully verified success case regardless of tag status, see the <a href="03-Transaction-API.html">Transaction API <code>InventoryAdjustment</code> service</a> and the <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/inventory-adjustment.json">inventory-adjustment payload</a>.</p>
+<hr />
+<h2 id="filehandler"><code>filehandler</code></h2>
+<p>Routes to a real network file share — not a P21 business object at all, but a general-purpose file store the middleware exposes over REST. Every route was exercised end to end.</p>
+<h3 id="routes_5">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/filehandler/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/file/detail?filename={name}</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — file metadata</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/file/detail/path?fileName={name}&amp;path={path}</code></td>
+<td>GET</td>
+<td>Same, at an explicit path</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/files</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — lists every file in the default path</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/files/path?path={path}</code></td>
+<td>GET</td>
+<td>Same, at an explicit path</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/file?fileName={name}</code></td>
+<td>POST</td>
+<td><strong>Verified</strong> — upload (raw body = file content)</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/file/path?fileName={name}&amp;path={path}</code></td>
+<td>POST</td>
+<td>Same, at an explicit path</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/file?fileName={name}</code></td>
+<td>PUT</td>
+<td>Published — replace an existing file. Not exercised (POST already covers the create/verify path)</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/file?fileName={name}</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — download (raw bytes, not JSON)</td>
+</tr>
+<tr>
+<td><code>/api/filehandler/file?fileName={name}</code></td>
+<td>DELETE</td>
+<td><strong>Verified</strong> — returns a bare JSON <code>true</code></td>
+</tr>
+<tr>
+<td><code>/api/filehandler/files/path/verify?path={path}</code></td>
+<td>PUT</td>
+<td>Published — batch existence check. Not exercised</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-path-is-a-real-network-share-not-a-sandbox">The path is a real network share, not a sandbox</h3>
+<p><code>GET /api/filehandler/files</code> on the play tenant returned real files sitting at <code>\\fileserver01\data\Internal\Computer\P21\Scripts\Play</code> — the middleware's own configured default storage path, not a scoped or virtualized location. An uploaded file landed at the identical path:</p>
+<div class="highlight"><pre><span></span><code>// POST /api/filehandler/file?fileName=zz_api_doc_test.txt   (body = raw bytes)
+// Content-Type header not required -- the body is read as a stream regardless
+HTTP 200  // XML by default -- send Accept: application/json for the JSON shape shown below
+{&quot;ResourceKind&quot;: 0, &quot;Name&quot;: &quot;zz_api_doc_test.txt&quot;,
+ &quot;Path&quot;: &quot;\\\\fileserver01\\data\\Internal\\Computer\\P21\\Scripts\\Play&quot;,
+ &quot;SizeInBytes&quot;: 84, &quot;FullPath&quot;: &quot;...\\zz_api_doc_test.txt&quot;, &quot;Properties&quot;: [...]}
+</code></pre></div>
+
+<p><strong>Treat this family as filesystem access, not a data API.</strong> Whoever can reach it can list, read, write, and delete real files on a real path the middleware's process account can reach — the same caution <a href="00-Authentication.html#method-2-consumer-key">this documentation already gives consumer keys</a> applies here for a different reason: the blast radius is a filesystem, not just P21 data.</p>
+<h3 id="full-round-trip-verified">Full round trip (verified)</h3>
+<p>Upload → detail → download → delete, each step confirmed against the previous:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">FILE_NAME</span> <span class="o">=</span> <span class="s2">&quot;zz_api_doc_test.txt&quot;</span>
+<span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;ZZ API DOC TEST - safe to delete</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+<span class="n">httpx</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/filehandler/file&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fileName&quot;</span><span class="p">:</span> <span class="n">FILE_NAME</span><span class="p">},</span>
+           <span class="n">headers</span><span class="o">=</span><span class="n">AUTH_HEADERS</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">)</span>                    <span class="c1"># -&gt; 200, file created</span>
+
+<span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/filehandler/file/detail&quot;</span><span class="p">,</span>
+          <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="n">FILE_NAME</span><span class="p">},</span> <span class="n">headers</span><span class="o">=</span><span class="n">JSON_HEADERS</span><span class="p">)</span>      <span class="c1"># -&gt; 200, SizeInBytes: 84</span>
+
+<span class="n">httpx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/filehandler/file&quot;</span><span class="p">,</span>
+          <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fileName&quot;</span><span class="p">:</span> <span class="n">FILE_NAME</span><span class="p">},</span> <span class="n">headers</span><span class="o">=</span><span class="n">AUTH_HEADERS</span><span class="p">)</span>      <span class="c1"># -&gt; 200, raw bytes back</span>
+
+<span class="n">httpx</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/api/filehandler/file&quot;</span><span class="p">,</span>
+             <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fileName&quot;</span><span class="p">:</span> <span class="n">FILE_NAME</span><span class="p">},</span> <span class="n">headers</span><span class="o">=</span><span class="n">JSON_HEADERS</span><span class="p">)</span>   <span class="c1"># -&gt; 200, body: true</span>
+
+<span class="c1"># detail on the same name afterward returns 200 with a JSON null body,</span>
+<span class="c1"># not a 404 -- &quot;gone&quot; and &quot;never existed&quot; look identical here.</span>
+</code></pre></div>
+
+<p>Note the <code>filename</code>/<code>fileName</code> casing split across routes — <code>file/detail</code> takes lowercase <code>filename</code>, everything else takes <code>fileName</code>. Both are literal query-parameter names from the SDK contract, not a typo in this documentation.</p>
+<hr />
+<h2 id="environmentsystems"><code>environment/systems</code></h2>
+<p>Middleware self-description: build number, configuration id, and (via child routes) logs — a REST alternative to <a href="00-Authentication.html#server-info-endpoint-version-environment-detection">the <code>serverinfo</code> endpoint</a> that returns JSON directly with no XML-by-default trap.</p>
+<h3 id="routes_6">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/environment/systems</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — no <code>/ping</code> on this family; this is the availability check</td>
+</tr>
+<tr>
+<td><code>/api/environment/systems/{systemId}</code></td>
+<td>GET</td>
+<td>One system's detail</td>
+</tr>
+<tr>
+<td><code>/api/environment/systems/{systemId}/properties</code></td>
+<td>GET</td>
+<td>All properties for a system</td>
+</tr>
+<tr>
+<td><code>/api/environment/systems/{systemId}/properties/{propertyId}</code></td>
+<td>GET</td>
+<td>One property</td>
+</tr>
+<tr>
+<td><code>/api/environment/systems/{systemId}/logs</code></td>
+<td>GET</td>
+<td>Log list</td>
+</tr>
+<tr>
+<td><code>/api/environment/systems/{systemId}/logs/{logId}</code></td>
+<td>GET</td>
+<td>One log's metadata</td>
+</tr>
+<tr>
+<td><code>/api/environment/systems/{systemId}/logs/{logId}/content</code></td>
+<td>GET</td>
+<td>Raw log content (a stream)</td>
+</tr>
+<tr>
+<td><code>/api/environment/systems/{systemId}/logs/{logId}</code></td>
+<td>DELETE</td>
+<td>Delete a log. Not exercised</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>There is no <code>/ping</code>.</strong> The contract (<code>ISystemResource</code>) never declares one — confirmed by the 404 it returns, <code>"Not Found Error. The resource \"ping\" was not found."</code> The bare <code>GET /api/environment/systems/</code> is the actual availability check, and it is cheap and small — not the unbounded-dump risk the platform-level families carry.</p>
+<h3 id="verified-read">Verified read</h3>
+<div class="highlight"><pre><span></span><code>// GET /api/environment/systems
+{&quot;list&quot;: [{
+  &quot;Id&quot;: &quot;ERP_SYSTEM&quot;, &quot;Type&quot;: &quot;Prophet 21&quot;, &quot;Version&quot;: &quot;0026.0001.5950.0000&quot;,
+  &quot;Properties&quot;: {&quot;list&quot;: [
+    {&quot;Name&quot;: &quot;ads_login_domain&quot;, &quot;Value&quot;: &quot;example.com&quot;},
+    {&quot;Name&quot;: &quot;configuration_id&quot;, &quot;Value&quot;: &quot;3694&quot;},
+    {&quot;Name&quot;: &quot;database_schema_version&quot;, &quot;Value&quot;: &quot;0026.0001.5950.0000&quot;}
+  ]}
+}]}
+</code></pre></div>
+
+<p><code>Version</code> and <code>database_schema_version</code> both carry the full build number in a dotted four-segment form (<code>0026.0001.5950.0000</code>) rather than the <code>26.1.5950.0</code> shape <code>serverinfo</code> and session-create use — the same build, a different string format. Match on the trailing two segments if you need to compare against those other sources.</p>
+<hr />
+<h2 id="inventoryinventorymovement"><code>inventory/inventorymovement</code></h2>
+<p>Bin-to-bin and tag relocation, independent of the WMS adjustment family — this moves stock between bins without changing the total on-hand quantity.</p>
+<h3 id="routes_7">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/inventory/inventorymovement/moveinventory</code></td>
+<td>POST</td>
+<td><strong>Verified</strong> — non-tag bin-to-bin move</td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventorymovement/moveinventoryfortransaction</code></td>
+<td>POST</td>
+<td>Non-tag move tied to a specific document/line. Not exercised</td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventorymovement/moveinventorytagtobin</code></td>
+<td>POST</td>
+<td>Tag relocation. Not exercised — same tagged-item gap as <a href="#createwmstagadjustment-createwmstagadjustmentwithcost-refusal-verified-success-not-reproduced"><code>createWmsTagAdjustment</code></a></td>
+</tr>
+<tr>
+<td><code>/api/inventory/inventorymovement/moveinventorytagtocontainer</code></td>
+<td>POST</td>
+<td>Tag-into-tag relocation. Not exercised, same reason</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>There is no <code>/ping</code></strong> on this family either — a bare probe 404s with an HTML body, not the JSON <code>NotFoundException</code> shape <code>environment/systems</code> gives; treat both as "this family has no ping route," not as evidence the family is absent (see <a href="05-Entity-API.html#probe-with-help-not-ping-a-ping-404-proves-nothing">the <code>/ping</code> correction</a>).</p>
+<h3 id="moveinventory-verified"><code>moveinventory</code> (verified)</h3>
+<p>Every parameter is a query string, and several are stricter than their names suggest:</p>
+<div class="highlight"><pre><span></span><code>POST /api/inventory/inventorymovement/moveinventory
+    ?location={location}&amp;itemId={itemId}&amp;toBin={toBin}&amp;fromBin={fromBin}
+    &amp;lot={lot}&amp;uom={uom}&amp;quantity={quantity}
+    &amp;moveAvailable={moveAvailable}&amp;moveAllocations={moveAllocations}
+</code></pre></div>
+
+<p><code>moveAvailable</code>/<code>moveAllocations</code> look boolean but are <strong>not</strong> — <code>"true"</code>/<code>"false"</code> fail with <code>System.ArgumentException: Move Available is a Y/N column.</code>; send <code>"Y"</code>/<code>"N"</code>. Once that is right, the mechanism enforces real warehouse rules, each with a distinct, clean error:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Condition tried</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>toBin</code> equal to <code>fromBin</code></td>
+<td><code>400</code>-shaped <code>ArgumentException</code>: <code>"Destination bin has to be different from source bin"</code></td>
+</tr>
+<tr>
+<td><code>toBin</code> not a bin this item/location actually has stock associations for</td>
+<td><code>"A valid inventory bin must be entered."</code> — not every bin that physically exists at the location qualifies</td>
+</tr>
+<tr>
+<td><code>toBin</code> genuinely exists but is put-locked</td>
+<td><code>"The Put Lock is set for this bin. You must select another."</code></td>
+</tr>
+<tr>
+<td>A real, unlocked, item-associated bin</td>
+<td><strong><code>200</code></strong>, moves the stock</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code>// A working move, verified: GBY at location 40, 1 unit, FGA040 -&gt; XDOCK
+HTTP 200
+{&quot;TransactionDetail&quot;: {&quot;QuantityMoved&quot;: &quot;1&quot;, &quot;QuantityMovedUOM&quot;: &quot;EA&quot;}, &quot;ResponseMessage&quot;: &quot;success&quot;}
+</code></pre></div>
+
+<p>Total <code>qty_on_hand</code> is unchanged by a bin-to-bin move — confirmed before and after. <strong><code>GET /odataservice/odata/table/bin</code> cannot help you find a valid destination bin</strong> (<a href="02-OData-API.html#one-object-name-is-unreachable-regardless-of-surface-bin">it 404s regardless of casing or surface</a>); read <code>inv_loc.primary_bin</code> for bins already associated with specific items instead, the way this verification did.</p>
+<blockquote>
+<p><strong><code>"success"</code> does not always mean a nonzero quantity actually moved — and which behavior you get depends on which bin is empty.</strong> Re-running the same move a second time from a <strong>secondary, ad-hoc bin</strong> (one this same run had just created a stock association for by moving into it) that by then held no real stock returned the identical <code>200 {"ResponseMessage": "success"}</code> shape — with <code>"QuantityMoved": "0"</code>. But moving out of the item's <strong>primary bin</strong> once it, too, held zero stock was refused outright: <code>"There are no items in this bin."</code> The item's well-established primary-bin association gets a real check; a bin association the route itself created moments earlier does not. Read <code>TransactionDetail.QuantityMoved</code> on a <code>200</code> before treating it as evidence anything relocated, and do not assume a hard failure on one bin means the same check applies everywhere.</p>
+</blockquote>
+<hr />
+<h2 id="inventoryexternalcounts"><code>inventory/externalcounts</code></h2>
+<p>Stages a cycle count for later reconciliation — creating one does <strong>not</strong> change <code>inv_loc.qty_on_hand</code>, confirmed by reading it back unchanged immediately after a successful create.</p>
+<h3 id="routes_8">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/inventory/externalcounts/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/inventory/externalcounts/</code></td>
+<td>POST</td>
+<td><strong>Verified</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="creating-a-count-verified-the-same-field-has-to-be-sent-twice">Creating a count (verified) — the same field has to be sent twice</h3>
+<p>The header needs a <code>Lines.list</code>, and each line needs a <code>Bins.list</code> — bin detail is mandatory the moment a line carries a quantity, matching <a href="#createwmsadjustment-verified"><code>createWmsAdjustment</code>'s bin requirement</a> on a bin-tracked location. The trap: <strong><code>ItemId</code> must be repeated on the bin sub-record, not just the line</strong> — the bin object has its own <code>ItemId</code> field, and it is not inherited from its parent line.</p>
+<div class="highlight"><pre><span></span><code>// This fails -- ItemId given only on the line:
+{&quot;LocationId&quot;: 40, &quot;CountDate&quot;: &quot;2026-09-12T00:00:00&quot;,
+ &quot;Lines&quot;: {&quot;list&quot;: [{&quot;ItemId&quot;: &quot;GBY&quot;, &quot;UnitQuantity&quot;: 5.0, &quot;UnitOfMeasure&quot;: &quot;EA&quot;,
+                     &quot;Bins&quot;: {&quot;list&quot;: [{&quot;BinCd&quot;: &quot;FGA040&quot;, &quot;UnitQuantity&quot;: 5.0, &quot;UnitOfMeasure&quot;: &quot;EA&quot;}]}}]}}
+// HTTP 500, &lt;ImportReturn&gt;: &quot;Bin Detail Record Required for Import Set, but is missing&quot;
+//                            &quot;Bin Detail Record must be part of Import Set, but is unmatched&quot;
+
+// This succeeds -- ItemId on BOTH the line and the bin:
+{&quot;LocationId&quot;: 40, &quot;CountDate&quot;: &quot;2026-09-12T00:00:00&quot;,
+ &quot;Lines&quot;: {&quot;list&quot;: [{&quot;ItemId&quot;: &quot;GBY&quot;, &quot;UnitQuantity&quot;: 5.0, &quot;UnitOfMeasure&quot;: &quot;EA&quot;,
+                     &quot;Bins&quot;: {&quot;list&quot;: [{&quot;ItemId&quot;: &quot;GBY&quot;, &quot;BinCd&quot;: &quot;FGA040&quot;,
+                                       &quot;UnitQuantity&quot;: 5.0, &quot;UnitOfMeasure&quot;: &quot;EA&quot;}]}}]}}
+// HTTP 200
+</code></pre></div>
+
+<p>Both error messages talk about "the bin detail record," which reads like the bin block itself is missing — it was present the whole time. Nothing in either message names the actual cause (a missing field one level down), which is exactly the shape of trap worth writing down: the fix is one field, and the error does not point at it.</p>
+<hr />
+<h2 id="inventorypartscan"><code>inventory/partscan</code></h2>
+<p>A single, cross-entity part lookup — one call answers "what item does this scan/search term resolve to," optionally scoped by customer, supplier, or location.</p>
+<h3 id="routes_9">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/inventory/partscan/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/inventory/partscan/?partSearch={term}&amp;companyId={id}&amp;locationId={id}&amp;customerId={id}&amp;supplierId={id}</code></td>
+<td>GET</td>
+<td><strong>Verified</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="verified-read_1">Verified read</h3>
+<p>All four scope parameters are optional in practice — sending them empty still resolves a plain item-id search, and the trailing slash before the query string matters (the bare form without it 307-redirects):</p>
+<div class="highlight"><pre><span></span><code>// GET /api/inventory/partscan/?partSearch=GBY&amp;companyId=ACME&amp;locationId=&amp;customerId=&amp;supplierId=
+HTTP 200
+[{&quot;ItemId&quot;: &quot;GBY&quot;, &quot;Source&quot;: &quot;Item ID&quot;, &quot;InvMastUid&quot;: &quot;35923&quot;}]
+</code></pre></div>
+
+<p><code>Source</code> names <em>how</em> the term matched (<code>"Item ID"</code> here) — worth reading when <code>partSearch</code> is a barcode, customer part number, or supplier part number rather than a literal <code>item_id</code>, since the field tells you which of those it resolved through. Cross-search behavior across those other identifier types was not separately exercised.</p>
+<hr />
+<h2 id="accountingcustomerformtemplates"><code>accounting/customerformtemplates</code></h2>
+<p>Per-customer document filenames — which report template a customer's invoice, RMA, packing list, and statement print jobs use. One record per customer, both created and updated through <code>PUT</code>, with <strong>no separate create route</strong> — the contract has no <code>POST</code> at all.</p>
+<h3 id="routes_10">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/accounting/customerformtemplates/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/accounting/customerformtemplates/new</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — blank template</td>
+</tr>
+<tr>
+<td><code>/api/accounting/customerformtemplates/</code></td>
+<td>GET</td>
+<td>List. Unbounded — not run</td>
+</tr>
+<tr>
+<td><code>/api/accounting/customerformtemplates/</code></td>
+<td>PUT</td>
+<td><strong>Verified</strong> — create when <code>CustomerFormTemplateUid</code> is null, update when it is the real existing one</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>There is no POST on this family.</strong> A <code>POST</code> to <code>/api/accounting/customerformtemplates/</code> returns a <strong>405</strong>, an IIS-level "Method Not Allowed" HTML page, not a P21 error — the SDK contract (<code>ICustomerFormTemplateResource</code>) never declares one.</p>
+</blockquote>
+<h3 id="put-is-not-a-blind-upsert-correction-from-an-earlier-version-of-this-page"><code>PUT</code> is not a blind upsert — correction from an earlier version of this page</h3>
+<p>The first verification run sent the <code>/new</code> template's <code>null</code> <code>CustomerFormTemplateUid</code> and got a clean create, which this page originally described as "<code>PUT</code> upserts." <strong>Running the identical create a second time disproved that</strong>, and the failure is exactly the kind a demo script catches that a single successful call does not:</p>
+<div class="highlight"><pre><span></span><code>// Same payload, second time, CustomerFormTemplateUid still null
+HTTP 500
+{&quot;ErrorMessage&quot;: &quot;The customer_form_template data already exists....CRUD Update error: Update failed for customer_form_template. (-1)&quot;, ...}
+</code></pre></div>
+
+<p><code>PUT</code> with a null <code>CustomerFormTemplateUid</code> is <strong>create-only</strong> — the identical name is doing two jobs the parameter doesn't distinguish, and only the record's own key does. Sending the correct existing uid switches it to a real update:</p>
+<div class="highlight"><pre><span></span><code>// PUT /api/accounting/customerformtemplates/
+{&quot;CustomerFormTemplateUid&quot;: 1, &quot;CustomerId&quot;: 12066, &quot;CompanyId&quot;: &quot;ACME&quot;, &quot;InvoiceFilename&quot;: &quot;ZZTEST2.rpt&quot;}
+HTTP 200
+{&quot;CustomerFormTemplateUid&quot;: 1, &quot;CustomerId&quot;: 12066, &quot;CompanyId&quot;: &quot;ACME&quot;, &quot;InvoiceFilename&quot;: &quot;ZZTEST2.rpt&quot;, ...}
+</code></pre></div>
+
+<p><strong>Read the record first (or track the uid your own create returned) before calling <code>PUT</code> a second time for the same customer.</strong> A null-uid <code>PUT</code> against a customer that already has a row does not update it — it fails.</p>
+<hr />
+<h2 id="serviceserviceorders"><code>service/serviceorders</code></h2>
+<p><strong>The finding here is what the family actually is.</strong> Its fields (<code>CustomerId</code>, <code>LocationId</code>, <code>PoNo</code>, <code>ContactId</code>, <code>Ship2Name</code>, <code>CarrierId</code>, <code>Terms</code>, <code>Class1id</code>–<code>Class5id</code>, <code>FreightCd</code>) are the shape of an ordinary P21 sales order header, and that is exactly what the read confirmed: <code>GET /api/service/serviceorders/{orderNo}</code> resolves against <strong>any</strong> <code>oe_hdr.order_no</code>, service-flagged or not.</p>
+<h3 id="routes_11">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/service/serviceorders/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/service/serviceorders/{orderNo}</code></td>
+<td>GET</td>
+<td><strong>Verified</strong></td>
+</tr>
+<tr>
+<td><code>/api/service/serviceorders/{orderNo}</code></td>
+<td>PUT</td>
+<td>Attempted; refused — see below</td>
+</tr>
+</tbody>
+</table></div>
+<p>There is <strong>no create route</strong> in the contract — this family only reads and updates orders created elsewhere (Order Entry, the Transaction API's <code>Order</code> service, or wherever a service order is actually raised).</p>
+<h3 id="verified-read-an-ordinary-order-number-resolves">Verified read: an ordinary order number resolves</h3>
+<div class="highlight"><pre><span></span><code>// GET /api/service/serviceorders/999991  -- an ordinary sales order, not
+// specially flagged as a &quot;service&quot; order in any way this documentation
+// controlled for
+HTTP 200
+{&quot;Lines&quot;: null, &quot;Salesreps&quot;: null, &quot;Notes&quot;: null, &quot;OrderNo&quot;: &quot;999991&quot;,
+ &quot;CustomerId&quot;: 14278, &quot;CompanyId&quot;: &quot;ACME&quot;, &quot;LocationId&quot;: 20,
+ &quot;PoNo&quot;: &quot;Cylinder / Filter / Regulator&quot;, &quot;ContactId&quot;: &quot;10501&quot;,
+ &quot;Ship2Name&quot;: &quot;ABC SUPPLY COMPANY&quot;, ...}
+</code></pre></div>
+
+<p>The same order also answers on the ordinary <a href="#salestasks"><code>sales/tasks</code></a> and Transaction API <code>Order</code> surfaces — this family is a differently-shaped <strong>view</strong> onto the same header, not a separate class of record with its own storage.</p>
+<h3 id="the-update-path-disagrees-with-the-read-path-about-whether-the-order-exists">The update path disagrees with the read path about whether the order exists</h3>
+<p><code>PUT</code> on that same order number, changing nothing but one blank text field, was refused:</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+&lt;ImportReturn type=&quot;UPDATE&quot;&gt;
+  &lt;ImportMessage severity=&quot;error&quot;&gt;...Import Set No (A): 1: Unable to find Order Header using Order No (B): = 999991&lt;/ImportMessage&gt;
+  &lt;ImportMessage severity=&quot;info&quot;&gt;(Return value: -8, Import is ok but some records failed)&lt;/ImportMessage&gt;
+&lt;/ImportReturn&gt;
+</code></pre></div>
+
+<p>The GET that produced the object being edited had just returned that exact order. Nothing was changed by the failed call — a read-back confirmed the field untouched — so the failure is clean, not a corrupting one, but the mechanism is unresolved: whether the update path's own Import Set logic only matches orders carrying some service-specific flag <code>oe_hdr</code> doesn't expose to a plain read, or requires <code>OrderNo</code> in a different type/format than the string the GET echoes, was not determined. Treat <code>PUT</code> on this family as <strong>unverified pending a genuinely service-flagged order</strong> to test against.</p>
+<hr />
+<h2 id="salesopportunities"><code>sales/opportunities</code></h2>
+<p>CRM opportunity tracking. The routes are real and well-formed; <strong>creation could not be exercised because the play tenant's own CRM configuration is empty</strong> — this is a tenant-data gap, not an API defect, and the failure sequence below is worth reading as a demonstration of <em>how</em> to tell the two apart.</p>
+<h3 id="routes_12">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/sales/opportunities/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/sales/opportunities/new</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — template</td>
+</tr>
+<tr>
+<td><code>/api/sales/opportunities/{opportunityId}</code></td>
+<td>GET</td>
+<td>Verified against the empty result set below</td>
+</tr>
+<tr>
+<td><code>/api/sales/opportunities/</code></td>
+<td>GET</td>
+<td>List. Unbounded — not run</td>
+</tr>
+<tr>
+<td><code>/api/sales/opportunities/</code></td>
+<td>POST</td>
+<td>Attempted; blocked by tenant configuration, not reproduced further</td>
+</tr>
+<tr>
+<td><code>/api/sales/opportunities/{opportunityId}</code></td>
+<td>PUT</td>
+<td>Not exercised — no record exists to update</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="why-create-could-not-be-pushed-to-success">Why create could not be pushed to success</h3>
+<p>Each attempt narrowed the cause, and the narrowing is the useful part:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Payload</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No <code>AssignedToId</code>, no <code>SalesrepId</code></td>
+<td><code>"Required value missing for Opportunity Status Uid... Please enter a value."</code></td>
+</tr>
+<tr>
+<td><code>SalesrepId: "812"</code> (a real buyer id, not a salesrep)</td>
+<td><code>"Invalid salesrep ID."</code></td>
+</tr>
+<tr>
+<td><code>AssignedToId: "apiuser"</code></td>
+<td><code>"Accessing the user ID default information has failed."</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Following the first message to its source: <code>opportunity_status</code> over OData returns <strong><code>[]</code></strong> — this tenant has zero configured opportunity statuses. So does <code>opportunity_stage</code>, <code>opportunity_type</code>, and <code>opportunity_step</code>. <strong>The CRM module's own lookup tables are empty on this tenant</strong>, which means no payload can supply a valid <code>OpportunityStatusUid</code> — the route cannot succeed here regardless of what else is correct, and that is a fact about the tenant, not the API. The <code>AssignedToId</code> error's own cause was not separately isolated once the status-table gap was found, since fixing it would not have produced a working create either way.</p>
+<p><strong>To actually exercise this route, find or stand up a tenant with the CRM/Opportunity module configured</strong> — <code>opportunity_status</code>/<code>opportunity_stage</code>/<code>opportunity_type</code>/<code>opportunity_step</code> all populated over OData is the precondition check.</p>
+<hr />
+<h2 id="salesconsignmentusageorders"><code>sales/consignmentusageorders</code></h2>
+<p>Consignment usage orders — billing for material drawn down from a consignment stock arrangement. Blocked by the same shape of gap as opportunities: a required parent record this tenant doesn't have.</p>
+<h3 id="routes_13">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/sales/consignmentusageorders/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/sales/consignmentusageorders/new</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — template</td>
+</tr>
+<tr>
+<td><code>/api/sales/consignmentusageorders/{orderNo}</code></td>
+<td>GET</td>
+<td>Not exercised — no record exists</td>
+</tr>
+<tr>
+<td><code>/api/sales/consignmentusageorders/</code></td>
+<td>GET</td>
+<td>List. Unbounded — not run</td>
+</tr>
+<tr>
+<td><code>/api/sales/consignmentusageorders/</code></td>
+<td>POST</td>
+<td>Attempted; blocked, not reproduced further</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="why-create-could-not-be-pushed-to-success_1">Why create could not be pushed to success</h3>
+<div class="highlight"><pre><span></span><code>HTTP 500
+&lt;ImportReturn type=&quot;CREATE&quot;&gt;
+  &lt;ImportMessage severity=&quot;error&quot;&gt;...Import Set No (A): 1: Contract ID is required.&lt;/ImportMessage&gt;
+&lt;/ImportReturn&gt;
+</code></pre></div>
+
+<p>A consignment usage order bills against an existing <strong>consignment contract</strong> — no <code>consignment_contract</code>-named OData object was found on this tenant to source a real contract id from, and P21's consignment pricing lives inside the <code>JobContractPricing</code> family already <a href="03-Transaction-API.html#jobcontractpricing-service">documented in the Transaction API</a> under a different name. Establishing whether a <code>JobContractPricing</code> contract number satisfies this family's <code>ContractId</code>, and if so which contract type, is unresolved — recorded as the next concrete step rather than guessed at.</p>
+<hr />
+<h2 id="accountingexchangerates"><code>accounting/exchangerates</code></h2>
+<p>Currency conversion rates. The route works; <strong>the tenant's own single-currency configuration is what stops a create from succeeding</strong>, and the one validation that did fire is real and useful on its own.</p>
+<h3 id="routes_14">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/accounting/exchangerates/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/accounting/exchangerates/</code></td>
+<td>GET</td>
+<td><strong>Verified</strong> — returned <code>[]</code></td>
+</tr>
+<tr>
+<td><code>/api/accounting/exchangerates/</code></td>
+<td>POST</td>
+<td>Attempted; blocked by the tenant having one currency</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-tenant-has-exactly-one-currency">The tenant has exactly one currency</h3>
+<p><code>GET /api/accounting/exchangerates/</code> returning <code>[]</code> is not a null-vs-empty ambiguity to chase — <code>currency_hdr</code> over OData confirms it directly: <strong><code>currency_id: 1</code> (U.S. Dollars) is the only row.</strong> Every <code>CurrencyId</code> seen anywhere else in this documentation (GL lines, PO headers) is <code>1</code> for the same reason.</p>
+<h3 id="the-one-validation-that-did-fire">The one validation that did fire</h3>
+<div class="highlight"><pre><span></span><code>// POST with CurrencyId and ToCurrencyId both 1
+HTTP 500
+{&quot;ErrorMessage&quot;: &quot;The currencies cannot be the same. (-1)&quot;, ...}
+</code></pre></div>
+
+<p>That confirms the route enforces a real business rule rather than accepting anything — but a genuine create, and the response shape a rate actually takes, needs a tenant with a second currency configured to observe.</p>
+<hr />
+<h2 id="inventoryserialnumberextdinfo"><code>inventory/serialnumberextdinfo</code></h2>
+<p>Extended data (comments, area/dimension adjustments) attached to a specific tracked serial number. <strong>Refusal verified against a real, existing serial; success not reproduced</strong> — the same shape of open question as <a href="#createwmstagadjustment-createwmstagadjustmentwithcost-refusal-verified-success-not-reproduced"><code>createWmsTagAdjustment</code></a>.</p>
+<h3 id="routes_15">Routes</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/inventory/serialnumberextdinfo/ping</code></td>
+<td>GET</td>
+<td>Availability</td>
+</tr>
+<tr>
+<td><code>/api/inventory/serialnumberextdinfo/{uid}</code></td>
+<td>GET</td>
+<td>Not exercised — no extended-info row exists on this tenant to key against</td>
+</tr>
+<tr>
+<td><code>/api/inventory/serialnumberextdinfo/?itemId={id}&amp;serialNumber={sn}</code></td>
+<td>GET</td>
+<td>Not exercised</td>
+</tr>
+<tr>
+<td><code>/api/inventory/serialnumberextdinfo/</code></td>
+<td>GET</td>
+<td>List. Not exercised</td>
+</tr>
+<tr>
+<td><code>/api/inventory/serialnumberextdinfo/</code></td>
+<td>PUT</td>
+<td>Attempted against a real serial; refused — see below</td>
+</tr>
+</tbody>
+</table></div>
+<p>The <a href="02-OData-API.html"><code>serial_number_extd_info</code> OData table</a> itself is empty on this tenant — no row exists anywhere to read, so the GET routes above have nothing to confirm against even though their shape is not in question.</p>
+<h3 id="a-missing-field-corrupts-the-error-message-not-just-the-request">A missing field corrupts the error message, not just the request</h3>
+<p>The first attempt sent <code>InvMastUid</code> (the natural-looking key) and a real, currently-existing serial number (<code>serial_number.serial_number = "1"</code>, <code>inv_mast_uid = 74298</code>, confirmed over OData):</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+&quot;ErrorMessage&quot;: &quot;Invalid serial number 1 for item 1 on line number %s. Process aborted during setup....&quot;
+</code></pre></div>
+
+<p><strong>"item 1" and the literal <code>%s</code> are template placeholders that never got filled in</strong> — the real item id is <code>6408-HHP-06</code>, not <code>1</code>. Adding <code>InvMastItemId</code> (present on the domain object, read-only-looking, easy to assume is server-derived) to the payload fixed the error text itself:</p>
+<div class="highlight"><pre><span></span><code>HTTP 500
+&quot;ErrorMessage&quot;: &quot;Invalid serial number 1 for item 6408-HHP-06 on line number 1. Process aborted during setup....&quot;
+</code></pre></div>
+
+<p>Correctly formatted now — and still refused, against a serial number that genuinely exists for that exact item. <strong><code>InvMastItemId</code> is read by the backend despite looking derived, and omitting it degrades the diagnostic on every other failure this route can produce, not just this one.</strong> Whatever the real precondition for a successful <code>PUT</code> is here remains open; send <code>InvMastItemId</code> regardless; the fix so far only makes the error message trustworthy.</p>
+<hr />
+<h2 id="open-questions">Open questions</h2>
+<p>Recorded so the next person does not have to rediscover that they are open. Shorter than it was: <code>userdefinedfields/generate</code>, <code>accounting/gl</code> POST, the PO create/update/async family, and two of the four <code>createWms*</code> routes were all exercised live on 26.1.5950.0 and are documented above.</p>
+<ul>
+<li><strong><code>purchasing/purchaseorders/async/callback</code></strong> — the webhook-style variant, taking a callback URL. Not exercised; it needs a reachable endpoint to receive the callback, which a documentation pass against a shared test tenant cannot safely stand up alone.</li>
+<li><strong><code>createWmsTagAdjustment</code> / <code>createWmsTagAdjustmentWithCost</code> on a genuinely tag-controlled item.</strong> The refusal path is fully verified (<code>"{item} is not a tagged item"</code>), reproduced on two different items including one with <code>inv_mast.use_tags_flag = 'Y'</code>. The success path is not — that flag alone did not satisfy the precondition, no <code>tag</code>-named OData object exists to inspect existing tag records, and it is unresolved whether the real requirement is a live physical tag created through receiving/putaway rather than anything settable through this endpoint or the item master.</li>
+<li><strong>Whether the Transaction API's async no-cancel hazard also applies to <code>purchasing/purchaseorders/async</code>.</strong> Both endpoints share the shape (submit, poll by <code>RequestId</code>); <a href="03-Transaction-API.html#endpoints">the Transaction API's async path is documented as having no cancel route</a>, and this family's own <code>/help</code> publishes no cancel operation either, which is suggestive but was not independently confirmed by trying to cancel a real request.</li>
+<li><strong>Whether GL posting requires an open period, or merely tolerates one.</strong> Confirmed: <code>period_closed eq 'N'</code> posts cleanly. Not tested: whether a closed period is rejected with a clear error or produces something worse.</li>
+<li><strong>Whether any family has a filter parameter at all.</strong> <code>$top</code>, <code>$filter</code>, <code>page</code>/<code>pageSize</code>, <code>limit</code> and <code>top</code> were all ignored on <code>sales/tasks</code>. If a supported parameter exists it is not in <code>/help</code> and not guessable — which is why <a href="02-OData-API.html">OData</a> is the query surface in every example above.</li>
+<li><strong><code>inventory/serialnumberextdinfo</code> PUT against a real serial still refuses.</strong> Sending the correct <code>InvMastItemId</code> fixes the error message but not the outcome — see <a href="#inventoryserialnumberextdinfo">the write-up above</a>. The real precondition is unresolved.</li>
+<li><strong><code>service/serviceorders</code> PUT disagrees with its own GET about whether an order exists.</strong> <a href="#serviceserviceorders">Documented above</a> with the exact error; whether a genuinely service-flagged order behaves differently was not tested — this tenant's real orders used for verification elsewhere in this documentation are ordinary sales orders, not service orders.</li>
+<li><strong><code>sales/opportunities</code> and <code>sales/consignmentusageorders</code> creation, on a tenant with the relevant module actually configured.</strong> Both are blocked here by empty lookup tables and a missing contract prerequisite respectively, not by anything the API itself refuses — see each section above for the exact precondition to satisfy first.</li>
+<li><strong><code>accounting/exchangerates</code> creation, on a tenant with a second currency.</strong> The one validation this tenant could exercise (<code>"The currencies cannot be the same"</code>) confirms the route enforces real rules; a genuine create and its response shape are unverified.</li>
+<li><strong>The two tag-relocation routes on <code>inventory/inventorymovement</code></strong> (<code>moveinventorytagtobin</code>, <code>moveinventorytagtocontainer</code>) — same tagged-item gap as <code>createWmsTagAdjustment</code>, not independently re-investigated.</li>
+</ul>
+<hr />
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="05-Entity-API.html">Entity API</a> — the 4 <code>/api/entity/</code> entities, and <a href="05-Entity-API.html#discovering-what-your-tenant-actually-exposes">how to list the families your tenant exposes</a></li>
+<li><a href="11-Inventory-REST-API.html">Inventory REST API</a> — <code>/api/inventory/parts</code></li>
+<li><a href="02-OData-API.html">OData API</a> — the query surface these families lack</li>
+<li><a href="03-Transaction-API.html">Transaction API</a> — the verified write path for POs and inventory adjustments</li>
+<li><a href="00-Authentication.html">Authentication</a> — tokens, and the <code>Accept</code> header these families share</li>
+</ul>
+    </main>
+
+    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            <div class="toc">
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#what-the-first-five-have-in-common">What the first five have in common</a><ul>
+<li><a href="#authentication-and-headers">Authentication and headers</a></li>
+<li><a href="#the-route-vocabulary">The route vocabulary</a></li>
+<li><a href="#the-bare-collection-get-is-an-unbounded-full-table-dump">⚠ The bare collection GET is an unbounded full-table dump</a></li>
+<li><a href="#child-collections-are-always-null-on-read">Child collections are always null on read</a></li>
+<li><a href="#userdefinedfields-is-present-and-always-empty">UserDefinedFields is present and always empty</a></li>
+</ul>
+</li>
+<li><a href="#extensibilityuserdefinedfields">extensibility/userdefinedfields</a><ul>
+<li><a href="#routes">Routes</a></li>
+<li><a href="#response-shape">Response shape</a></li>
+<li><a href="#tableid-is-the-_ud-table-name-not-the-base-table">{tableId} is the *_ud table name, not the base table</a></li>
+<li><a href="#not-every-returned-column-is-a-custom-field">Not every returned column is a custom field</a></li>
+<li><a href="#worked-example">Worked example</a></li>
+</ul>
+</li>
+<li><a href="#accountinggl">accounting/gl</a><ul>
+<li><a href="#routes_1">Routes</a></li>
+<li><a href="#the-keyed-get-returns-a-whole-journal-entry">The keyed GET returns a whole journal entry</a></li>
+<li><a href="#source-links-the-entry-back-to-the-document-that-created-it">Source links the entry back to the document that created it</a></li>
+<li><a href="#posting-a-journal-entry-verified">Posting a journal entry (verified)</a></li>
+</ul>
+</li>
+<li><a href="#salestasks">sales/tasks</a><ul>
+<li><a href="#routes_2">Routes</a></li>
+<li><a href="#get-new-first">GET /new first</a></li>
+<li><a href="#customer-id-is-required-means-linkid">"Customer ID is required" means LinkId</a></li>
+<li><a href="#verified-round-trip">Verified round trip</a></li>
+</ul>
+</li>
+<li><a href="#purchasingpurchaseorders">purchasing/purchaseorders</a><ul>
+<li><a href="#routes_3">Routes</a></li>
+<li><a href="#the-keyed-read">The keyed read</a></li>
+<li><a href="#creating-a-po-verified">Creating a PO (verified)</a></li>
+<li><a href="#updating-a-po-verified">Updating a PO (verified)</a></li>
+<li><a href="#creating-a-po-asynchronously-verified">Creating a PO asynchronously (verified)</a></li>
+<li><a href="#which-po-surface-should-you-use">Which PO surface should you use?</a></li>
+</ul>
+</li>
+<li><a href="#inventoryinventoryadjustments">inventory/inventoryadjustments</a><ul>
+<li><a href="#routes_4">Routes</a></li>
+<li><a href="#the-keyed-read_1">The keyed read</a></li>
+<li><a href="#the-create-routes-take-query-string-parameters-not-a-body">The create routes take query-string parameters, not a body</a></li>
+<li><a href="#createwmsadjustment-verified">createWmsAdjustment (verified)</a></li>
+<li><a href="#createwmsadjustmentwithcost-verified">createWmsAdjustmentWithCost (verified)</a></li>
+<li><a href="#createwmstagadjustment-createwmstagadjustmentwithcost-refusal-verified-success-not-reproduced">createWmsTagAdjustment / createWmsTagAdjustmentWithCost — refusal verified, success not reproduced</a></li>
+</ul>
+</li>
+<li><a href="#filehandler">filehandler</a><ul>
+<li><a href="#routes_5">Routes</a></li>
+<li><a href="#the-path-is-a-real-network-share-not-a-sandbox">The path is a real network share, not a sandbox</a></li>
+<li><a href="#full-round-trip-verified">Full round trip (verified)</a></li>
+</ul>
+</li>
+<li><a href="#environmentsystems">environment/systems</a><ul>
+<li><a href="#routes_6">Routes</a></li>
+<li><a href="#verified-read">Verified read</a></li>
+</ul>
+</li>
+<li><a href="#inventoryinventorymovement">inventory/inventorymovement</a><ul>
+<li><a href="#routes_7">Routes</a></li>
+<li><a href="#moveinventory-verified">moveinventory (verified)</a></li>
+</ul>
+</li>
+<li><a href="#inventoryexternalcounts">inventory/externalcounts</a><ul>
+<li><a href="#routes_8">Routes</a></li>
+<li><a href="#creating-a-count-verified-the-same-field-has-to-be-sent-twice">Creating a count (verified) — the same field has to be sent twice</a></li>
+</ul>
+</li>
+<li><a href="#inventorypartscan">inventory/partscan</a><ul>
+<li><a href="#routes_9">Routes</a></li>
+<li><a href="#verified-read_1">Verified read</a></li>
+</ul>
+</li>
+<li><a href="#accountingcustomerformtemplates">accounting/customerformtemplates</a><ul>
+<li><a href="#routes_10">Routes</a></li>
+<li><a href="#put-is-not-a-blind-upsert-correction-from-an-earlier-version-of-this-page">PUT is not a blind upsert — correction from an earlier version of this page</a></li>
+</ul>
+</li>
+<li><a href="#serviceserviceorders">service/serviceorders</a><ul>
+<li><a href="#routes_11">Routes</a></li>
+<li><a href="#verified-read-an-ordinary-order-number-resolves">Verified read: an ordinary order number resolves</a></li>
+<li><a href="#the-update-path-disagrees-with-the-read-path-about-whether-the-order-exists">The update path disagrees with the read path about whether the order exists</a></li>
+</ul>
+</li>
+<li><a href="#salesopportunities">sales/opportunities</a><ul>
+<li><a href="#routes_12">Routes</a></li>
+<li><a href="#why-create-could-not-be-pushed-to-success">Why create could not be pushed to success</a></li>
+</ul>
+</li>
+<li><a href="#salesconsignmentusageorders">sales/consignmentusageorders</a><ul>
+<li><a href="#routes_13">Routes</a></li>
+<li><a href="#why-create-could-not-be-pushed-to-success_1">Why create could not be pushed to success</a></li>
+</ul>
+</li>
+<li><a href="#accountingexchangerates">accounting/exchangerates</a><ul>
+<li><a href="#routes_14">Routes</a></li>
+<li><a href="#the-tenant-has-exactly-one-currency">The tenant has exactly one currency</a></li>
+<li><a href="#the-one-validation-that-did-fire">The one validation that did fire</a></li>
+</ul>
+</li>
+<li><a href="#inventoryserialnumberextdinfo">inventory/serialnumberextdinfo</a><ul>
+<li><a href="#routes_15">Routes</a></li>
+<li><a href="#a-missing-field-corrupts-the-error-message-not-just-the-request">A missing field corrupts the error message, not just the request</a></li>
+</ul>
+</li>
+<li><a href="#open-questions">Open questions</a></li>
+<li><a href="#see-also">See Also</a></li>
+</ul>
+</div>
+
+        </div>
+    </aside>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {
+                if (mq.matches) { fold.removeAttribute('open'); }
+                else { fold.setAttribute('open', ''); }
+            }
+            if (mq.addEventListener) { mq.addEventListener('change', apply); }
+            else if (mq.addListener) { mq.addListener(apply); }
+            apply();
+        })();
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+
+
+    </script>
+</body>
+</html>

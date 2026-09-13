@@ -206,7 +206,7 @@ Key findings:
    editable — change their fields with TabName: null, then click their tools
 5. w_message boxes answer the same way — they are simply the one type with
    no form, so TabName: null has nothing to act on. Read each tool's Text
-   ("&Yes"/"&No"/"Cancel") to map cb_1/cb_2/cb_3. (Historical:
+   (""&Yes""/""&No""/""Cancel"") to map cb_1/cb_2/cb_3. (Historical:
    /v2/responsewindow, /v2/responsewindows, DELETE window?button=,
    /v2/button all 404/400.)
 6. Dialogs block the main window until dismissed

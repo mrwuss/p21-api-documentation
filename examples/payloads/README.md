@@ -29,12 +29,15 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Reassign a customer's salesrep (promote new, delete old) | [json](json/reassign-salesrep.json) | [xml](xml/reassign-salesrep.xml) | `POST /api/v2/transaction` |
 | Update a supplier's email / central phone | [json](json/update-supplier-contact.json) | [xml](xml/update-supplier-contact.xml) | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
+| Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
 | Reprint a purchase order PDF | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |
 
 ## JSON notes
 
 Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Transactions`, `DataElements`, `Rows`, and `Edits` are always arrays (even with one entry); `UseCodeValues`/`IgnoreDisabled` are booleans, not quoted strings; `Value` is always a string; `IgnoreDisabled` is only honored at the payload top level. Full rules: [Payload Anatomy](../../docs/03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes).
+
+**`sales-task-create.json` is a different shape on purpose.** It targets the [`sales/tasks` REST family](../../docs/15-Other-REST-Families.md#salestasks), not the Transaction API — a flat domain object, no `Name`/`Transactions` wrapper. The validator recognizes this shape and checks only that it's structurally sane; it has no committed schema to check field names against the way `definitions/` does for Transaction API services, so read the family's own `GET /new` response to confirm a field name is real.
 
 ## XML notes
 

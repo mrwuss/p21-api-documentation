@@ -37,6 +37,7 @@ The repo is built for **progressive disclosure**: this README routes you, each a
 | [Inventory REST API](docs/11-Inventory-REST-API.md) | Inventory item CRUD, multi-company workflows | Item reads, appending locations/suppliers |
 | [Production & Labor](docs/12-Production-Labor-API.md) | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking |
 | [UDT Service API](docs/13-UDT-Service-API.md) | CRUD on user-defined tables | Custom table maintenance |
+| [Other REST Families](docs/15-Other-REST-Families.md) | UDF metadata, GL entries, CRM tasks, PO headers, inventory adjustments | UDF discovery, journal-entry reads, task CRUD |
 | [ui/full (web client)](docs/04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api) | Drives web-enabled windows by menu class name | A window has no service name — no Transaction/Interactive route |
 
 ## Quick Start
@@ -62,7 +63,7 @@ For C#: `cd examples/csharp && dotnet build`, then `dotnet run --project <Projec
 > **Start with the [Task Index](docs/INDEX.md)** — a "what do you want to do" → exact-section map. The docs below are the deep manual; the index gets you to the right 50 lines instead of the right 2,000.
 
 - **Getting started:** [Authentication](docs/00-Authentication.md) · [API Selection Guide](docs/01-API-Selection-Guide.md)
-- **API reference:** [OData](docs/02-OData-API.md) · [Transaction](docs/03-Transaction-API.md) · [Interactive](docs/04-Interactive-API.md) · [Entity](docs/05-Entity-API.md) · [Inventory REST](docs/11-Inventory-REST-API.md) · [Production & Labor](docs/12-Production-Labor-API.md) · [UDT Service](docs/13-UDT-Service-API.md)
+- **API reference:** [OData](docs/02-OData-API.md) · [Transaction](docs/03-Transaction-API.md) · [Interactive](docs/04-Interactive-API.md) · [Entity](docs/05-Entity-API.md) · [Inventory REST](docs/11-Inventory-REST-API.md) · [Production & Labor](docs/12-Production-Labor-API.md) · [UDT Service](docs/13-UDT-Service-API.md) · [Other REST Families](docs/15-Other-REST-Families.md)
 - **Troubleshooting:** [P21 Breaking Changes](docs/14-Breaking-Changes.md) · [Error Handling](docs/06-Error-Handling.md) · [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md)
 - **Reference:** [SalesPricePage Codes](docs/08-SalesPricePage-Codes.md) · [Batch Processing Patterns](docs/09-Batch-Processing-Patterns.md) · [Changelog](docs/10-Changelog.md)
 

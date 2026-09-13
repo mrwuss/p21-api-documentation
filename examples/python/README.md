@@ -10,6 +10,7 @@ Runnable Python examples for every P21 API, mirroring the [C# examples](../cshar
 | `interactive/` | Session lifecycle, windows, field changes, saves, response windows, multi-step workflows |
 | `entity/` | Entity API umbrella endpoints (customers, orders, parts via `/api/sales/`, `/api/inventory/`) |
 | `production/` | Production & Labor services: discovery, definitions, labor hours |
+| `rest/` | All 16 [other REST families](../../docs/15-Other-REST-Families.md): UDF metadata; GL journal reads/posts; CRM task CRUD; PO reads/creates/async; WMS adjustments; file round trips; system info; bin-to-bin movement; cycle counts; part scan; customer form templates; service orders; and three families blocked by tenant configuration (opportunities, consignment orders, exchange rates) documented with the exact precondition each needs — every write script is **dry-run by default**, `--execute` posts and reads back |
 | `recipes/` | End-to-end scripts for the [recipes cookbook](../../docs/recipes/README.md) — **dry-run by default**, `--execute` posts and verifies |
 
 ## Setup

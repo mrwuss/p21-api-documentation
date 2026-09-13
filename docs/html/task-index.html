@@ -609,6 +609,12 @@
             <li><a href="10-Changelog.html">Changelog</a></li>
             </ul>
         </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li><a href="15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
         <details class="nav-group">
             <summary>Recipes <span class="nav-count">17</span></summary>
             <ul class="nav-pages">
@@ -695,7 +701,7 @@
 </tr>
 <tr>
 <td>Fix "not authorized" (P21 user permissions)</td>
-<td><a href="00-Authentication.html#p21-permissions-user-credential-auth">00 § P21 Permissions</a></td>
+<td><a href="00-Authentication.html#p21-permissions-user-credential-auth">00 § P21 Permissions</a> — <strong>or, if using a consumer key, its scope may simply exclude the table you asked for</strong>; decode the token's <code>aud</code> claim before assuming it's a permission gap</td>
 </tr>
 <tr>
 <td>Pick which API to use for a task</td>
@@ -1366,6 +1372,74 @@
 <td><a href="14-Breaking-Changes.html#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500">14 § entry 9</a> — a bad <code>DatawindowName</code> on the previous request; <strong>not</strong> the <code>Accept</code> header on current builds</td>
 </tr>
 <tr>
+<td>What user-defined fields exist in this P21?</td>
+<td><a href="15-Other-REST-Families.html#extensibilityuserdefinedfields">15 § extensibility/userdefinedfields</a> — every UDF with type metadata, grouped by table; <code>{tableId}</code> is the <code>*_ud</code> name, not the base table</td>
+</tr>
+<tr>
+<td>Read a whole GL journal entry in one call</td>
+<td><a href="15-Other-REST-Families.html#accountinggl">15 § accounting/gl</a> — <code>GET /api/accounting/gl/{transactionNumber}</code> returns every line, balanced; <code>Source</code> walks back to the originating document</td>
+</tr>
+<tr>
+<td>Create or update a CRM task / activity</td>
+<td><a href="15-Other-REST-Families.html#salestasks">15 § sales/tasks</a> — verified round trip; <strong>"Customer ID is required" means <code>LinkId</code></strong></td>
+</tr>
+<tr>
+<td>A REST family's list route hangs or returns tens of MB</td>
+<td><a href="15-Other-REST-Families.html#the-bare-collection-get-is-an-unbounded-full-table-dump">15 § The bare collection GET is an unbounded full-table dump</a> — no paging, and <code>$top</code> is <strong>silently ignored</strong>; key off OData instead</td>
+</tr>
+<tr>
+<td>Post a balanced GL entry over REST</td>
+<td><a href="15-Other-REST-Families.html#posting-a-journal-entry-verified">15 § accounting/gl § Posting a journal entry</a> — <code>POST /api/accounting/gl/</code> takes an array of lines; <strong>an unbalanced batch is refused server-side</strong> with <code>"Records do not balance"</code></td>
+</tr>
+<tr>
+<td>Create a PO over REST and the price comes back <code>0.00</code></td>
+<td><a href="15-Other-REST-Families.html#creating-a-po-verified">15 § purchasing/purchaseorders § Creating a PO</a> — <code>UnitPrice</code> is <strong>not honored</strong> on create, <code>PriceEdit: "N"</code> routes it through pricing lookup instead; use the Transaction API <code>PurchaseOrder</code> service when the price must be exact</td>
+</tr>
+<tr>
+<td>PO create fails <code>Buyer ID... Invalid buyer ID</code> / an unmatched <code>Sales/Production/PO Intersection</code></td>
+<td><a href="15-Other-REST-Families.html#creating-a-po-verified">15 § purchasing/purchaseorders § Creating a PO</a> — <code>BuyerId</code> empty is the real cause of both messages; the create is built on P21's Import/Export engine, hence the escaped XML error body</td>
+</tr>
+<tr>
+<td><code>createWmsAdjustment</code> fails <code>Bin is required</code> or can't find the adjustment reason</td>
+<td><a href="15-Other-REST-Families.html#createwmsadjustment-verified">15 § inventory/inventoryadjustments § createWmsAdjustment</a> — <code>binCd</code> is mandatory on a bin-tracked location; <code>reason</code> must name a currently-<strong>active</strong> <code>reason</code> record, not a historical one</td>
+</tr>
+<tr>
+<td><code>GET /odataservice/odata/table/bin</code> (or <code>/view/bin</code>) 404s with an HTML page, not JSON</td>
+<td><a href="02-OData-API.html#one-object-name-is-unreachable-regardless-of-surface-bin">02 § One object name is unreachable regardless of surface: <code>bin</code></a> — likely an IIS routing collision with the reserved <code>bin/</code> folder name; read <code>inv_loc.primary_bin</code> or <code>bin_ud</code> instead</td>
+</tr>
+<tr>
+<td>Upload/download/delete a real file over REST</td>
+<td><a href="15-Other-REST-Families.html#filehandler">15 § filehandler</a> — full round trip verified; <strong>this is a real network file share</strong>, not a sandbox</td>
+</tr>
+<tr>
+<td>Read the middleware's build/config without the <code>serverinfo</code> XML trap</td>
+<td><a href="15-Other-REST-Families.html#environmentsystems">15 § environment/systems</a> — JSON directly; no <code>/ping</code> on this family, and needs a trailing slash in C#</td>
+</tr>
+<tr>
+<td>Move stock bin-to-bin without changing on-hand quantity</td>
+<td><a href="15-Other-REST-Families.html#inventoryinventorymovement">15 § inventorymovement</a> — <code>Y</code>/<code>N</code> not booleans, <code>toBin</code> must already be a real association, <strong><code>"success"</code> doesn't guarantee a nonzero move</strong></td>
+</tr>
+<tr>
+<td>Stage a cycle count without touching live on-hand</td>
+<td><a href="15-Other-REST-Families.html#inventoryexternalcounts">15 § externalcounts</a> — <code>ItemId</code> must be repeated on the bin sub-record, not just the line</td>
+</tr>
+<tr>
+<td>Resolve a scan term / barcode / customer part number to an item</td>
+<td><a href="15-Other-REST-Families.html#inventorypartscan">15 § partscan</a> — <code>Source</code> names which identifier matched</td>
+</tr>
+<tr>
+<td>Set a customer's invoice/RMA/packing-list report template</td>
+<td><a href="15-Other-REST-Families.html#accountingcustomerformtemplates">15 § customerformtemplates</a> — <strong><code>PUT</code> is not a blind upsert</strong>; a null uid against an existing row fails "data already exists"</td>
+</tr>
+<tr>
+<td>A "service order" REST family that looks like it should be separate from Order Entry</td>
+<td><a href="15-Other-REST-Families.html#serviceserviceorders">15 § service/serviceorders</a> — it resolves against <strong>any</strong> <code>oe_hdr.order_no</code>; the family is a view, not a distinct object</td>
+</tr>
+<tr>
+<td><code>sales/opportunities</code> / <code>consignmentusageorders</code> / <code>exchangerates</code> create fails with a confusing error</td>
+<td><a href="15-Other-REST-Families.html#salesopportunities">15 §§ each family</a> — check the tenant's own lookup tables (opportunity status/stage/type/step, a consignment contract, a second currency) before assuming the API is broken</td>
+</tr>
+<tr>
 <td>Which REST endpoints/families does my tenant actually have?</td>
 <td><a href="05-Entity-API.html#discovering-what-your-tenant-actually-exposes">05 § Discovering what your tenant actually exposes</a> — <code>/docs/apiref.aspx</code> lists every family (takes a bearer token); confirm one with <code>/help</code>, <strong>never <code>/ping</code></strong>. Plus <code>/api/v2/services</code> (Transaction) and the OData service document</td>
 </tr>
@@ -1512,6 +1586,11 @@
 <td><a href="14-Breaking-Changes.html">14-Breaking-Changes</a></td>
 <td>P21 version breaking-change registry (check before upgrading)</td>
 <td>small — read whole</td>
+</tr>
+<tr>
+<td><a href="15-Other-REST-Families.html">15-Other-REST-Families</a></td>
+<td>Five more REST families: UDF metadata, GL, CRM tasks, PO headers, inventory adjustments</td>
+<td>medium</td>
 </tr>
 <tr>
 <td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/</code></a></td>

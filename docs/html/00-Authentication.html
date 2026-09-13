@@ -609,6 +609,12 @@
             <li><a href="10-Changelog.html">Changelog</a></li>
             </ul>
         </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li><a href="15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
         <details class="nav-group">
             <summary>Recipes <span class="nav-count">17</span></summary>
             <ul class="nav-pages">
@@ -1256,6 +1262,7 @@ HTTP 500
 <p>When authenticating with <strong>User Credentials</strong> (Method 1), generating a valid token is <strong>not sufficient</strong> for API access. The P21 user account must also have specific permissions enabled in the P21 Desktop Client. Without these, you'll receive a generic <code>"You are not authorized to access API"</code> error even with a valid token.</p>
 <blockquote>
 <p><strong>Note:</strong> Consumer Key authentication (Method 2) bypasses these requirements entirely. Access is controlled by the consumer key's API scope instead.</p>
+<p><strong>A consumer key produces the identical <code>"You are not authorized to access API. Please contact administrator to get access."</code> error when the call falls outside its own scope</strong> — this is not exclusive to the User Credential path above. Verified live on 26.1.5950.0: a key scoped with <code>/odata:po_hdr,po_line,inv_mast,...</code> (an explicit table list — see <a href="#odata-table-scopes">OData Table Scopes</a> below) answered every <code>/api/{family}/...</code> REST call normally, since those routes are not gated by the OData scope at all, but a plain <code>GET /odataservice/odata/table/{table}</code> against any table <strong>not</strong> in that list failed with the exact same generic message a missing Application Security grant produces. The two causes are indistinguishable from the error text alone — decode the bearer token's <code>aud</code> claim (a semicolon/comma-delimited scope string, plain base64 in the JWT's second segment) to see which table list, if any, it actually carries before assuming the account lacks a permission it may never have needed.</p>
 </blockquote>
 <h3 id="step-1-application-security">Step 1: Application Security</h3>
 <p>Each user must be explicitly granted API access in <strong>User Maintenance</strong>.</p>

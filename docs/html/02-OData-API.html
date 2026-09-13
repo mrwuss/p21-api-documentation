@@ -609,6 +609,12 @@
             <li><a href="10-Changelog.html">Changelog</a></li>
             </ul>
         </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li><a href="15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
         <details class="nav-group">
             <summary>Recipes <span class="nav-count">17</span></summary>
             <ul class="nav-pages">
@@ -651,6 +657,7 @@
 <li><a href="#base-url-example">Base URL Example</a></li>
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
+<li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
 </ul>
 </li>
 <li><a href="#authentication">Authentication</a><ul>
@@ -955,6 +962,10 @@
 <li><strong>Object names are case-insensitive.</strong> <code>ifp_G21_Alerts</code>, <code>ifp_g21_alerts</code> and <code>IFP_G21_ALERTS</code> all resolve.</li>
 </ul>
 <p>The 25 <a href="#enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search views</a> documented below are on the <code>view</code> surface, which is why they do not appear in <code>table/$metadata</code>.</p>
+<h3 id="one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: <code>bin</code></h3>
+<p><code>GET /odataservice/odata/table/bin</code> and <code>GET /odataservice/odata/view/bin</code> <strong>both 404</strong> — with a raw IIS "404 - File or directory not found" HTML page, not the normal OData JSON 404 body every other missing-object case in this section produces. Verified live on 26.1.5950.0, every casing tried (<code>bin</code>, <code>Bin</code>), both surfaces, with and without a <code>$select</code>/<code>$filter</code>.</p>
+<p>The table itself is real — <code>bin.$Key</code> appears in <code>table/$metadata</code>, and its data is reachable indirectly through <code>inv_loc.primary_bin</code> and the <code>bin_ud</code> extension table (which resolves fine; only the bare name <code>bin</code> fails). The most likely explanation is a routing collision: <code>bin</code> is also IIS's own reserved name for a website's compiled-assemblies folder, and something in the URL rewrite chain in front of the OData service appears to intercept a path segment named exactly <code>bin</code> before it reaches the OData handler — which would explain why the failure looks like a static-file 404 rather than an application-level one. Not confirmed against IIS configuration directly; recorded as an observed, reproducible symptom.</p>
+<p><strong>Read <code>bin</code> data through a join instead.</strong> <code>inv_loc.primary_bin</code> and <code>inv_loc.location_id</code> cover the common case (an item's primary bin at a location); for other bin attributes, <code>bin_ud</code> (its user-defined-field extension table) is reachable normally and may carry what you need.</p>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
@@ -2919,6 +2930,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#base-url-example">Base URL Example</a></li>
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
+<li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
 </ul>
 </li>
 <li><a href="#authentication">Authentication</a><ul>

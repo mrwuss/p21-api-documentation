@@ -32,6 +32,7 @@ When editing docs, keep INDEX.md's anchors in sync (renaming a heading breaks it
 | **Production & Labor** | Production orders, labor hours, time entry | Manufacturing workflows, labor tracking | Working (Transaction + Interactive) |
 | **ui/full (web client)** | Drives any *web-enabled* window by menu class name | The window has no `service_name` — no TAPI/Interactive route | Working (`{ui}/ui/full/`) |
 | **UDT Service API** | CRUD on user-defined tables | Custom table maintenance | Working (`/udtservice/api/udtdata/`) |
+| **Other REST families** | 16 families: UDF metadata, GL, CRM tasks/opportunities/consignment orders, PO headers, inventory (adjustments/movement/counts/scan/serial info), file storage, system info, customer form templates, service orders, exchange rates | UDF discovery, journal-entry reads, task/PO/GL/adjustment/movement/count writes, filesystem access | Reads and writes verified across the platform-level five and the business-object eleven; 3 blocked only by empty tenant config (opportunities, CUO, exchange rates), 2 by an unresolved precondition (tag adjustments, serial extended info) |
 
 ---
 
@@ -57,6 +58,7 @@ p21-api-documentation/
 │   ├── 12-Production-Labor-API.md
 │   ├── 13-UDT-Service-API.md
 │   ├── 14-Breaking-Changes.md
+│   ├── 15-Other-REST-Families.md
 │   └── html/                    # Generated HTML versions
 │
 ├── definitions/                 # Sanitized full-field service definition JSONs (schema library)
@@ -172,6 +174,20 @@ All documentation is derived from:
 | `ResultStatus` enum (`None=0, Success=1, Failure=2, Blocked=3` — 2 is Failure, not Blocked) | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) |
 | `inv_loc` read/append/update paths (all resolved); Item-window GL fields stay read-only | [docs/11 § Updating Existing Location Fields](docs/11-Inventory-REST-API.md#updating-existing-location-fields) |
 | UDT Service quirks (errorMessage/errorNo, SQL-keyword filter, row_uid conditions) and the 2026.1 Bulk Data API (headerless-CSV silent zero-insert, scale rounding) | [docs/13-UDT-Service-API.md](docs/13-UDT-Service-API.md) · [§ Bulk Data API](docs/13-UDT-Service-API.md#bulk-data-api-20261) |
+| **A REST family's bare list route is an unbounded full-table dump** — no paging, and `$top` is **silently ignored** (byte-identical response); 28-63 MB measured, two families never returned. Key off OData instead | [docs/15 § unbounded collection GET](docs/15-Other-REST-Families.md#the-bare-collection-get-is-an-unbounded-full-table-dump) |
+| **`/ping` is not an existence probe** — a family can 404 on `/ping` and serve `/help` 200; read family names off `/docs/apiref.aspx` (takes a bearer token) | [docs/05 § Discovering what your tenant exposes](docs/05-Entity-API.md#discovering-what-your-tenant-actually-exposes) |
+| Child collections (`POLines`, `Lines`) are **always `null`** on REST-family reads, and `UserDefinedFields` is **always `{}`** even when the `*_ud` row has data — no expansion parameter changes either | [docs/15 § What all five have in common](docs/15-Other-REST-Families.md#child-collections-are-always-null-on-read) |
+| CRM task create refuses with **"Customer ID is required"** — the field is `LinkId`, which is not named customer anything | [docs/15 § sales/tasks](docs/15-Other-REST-Families.md#customer-id-is-required-means-linkid) |
+| PO create over REST silently **ignores the `UnitPrice` you send** (stored as 0.00) — pricing lookup wins; use the Transaction API `PurchaseOrder` service when price must be exact | [docs/15 § Creating a PO](docs/15-Other-REST-Families.md#creating-a-po-verified) |
+| PO create over REST fails **`Buyer ID... Invalid buyer ID`** and an unrelated-looking `Sales/Production/PO Intersection` error together — both are caused by an empty `BuyerId`; the create runs on P21's Import/Export engine | [docs/15 § Creating a PO](docs/15-Other-REST-Families.md#creating-a-po-verified) |
+| `createWmsAdjustment` needs an **active** `reason` record and a **`binCd`** on any bin-tracked location — neither is in `/help` | [docs/15 § createWmsAdjustment](docs/15-Other-REST-Families.md#createwmsadjustment-verified) |
+| **`GET /odataservice/odata/table/bin` (and `/view/bin`) 404 regardless of casing or surface** — an IIS routing collision, not a missing object; read `inv_loc.primary_bin` or `bin_ud` instead | [docs/02 § bin is unreachable](docs/02-OData-API.md#one-object-name-is-unreachable-regardless-of-surface-bin) |
+| **`service/serviceorders` isn't a distinct object** — resolves against any ordinary `oe_hdr.order_no`, service-flagged or not; the finding is what the family actually is | [docs/15 § service/serviceorders](docs/15-Other-REST-Families.md#serviceserviceorders) |
+| **`accounting/customerformtemplates` PUT is not a blind upsert** — null `CustomerFormTemplateUid` means create, and create fails "data already exists" if the customer already has a row; read the existing uid over OData first | [docs/15 § customerformtemplates](docs/15-Other-REST-Families.md#accountingcustomerformtemplates) |
+| `moveinventory`'s `moveAvailable`/`moveAllocations` are **`Y`/`N` strings, not booleans**, and a `200 "success"` **does not guarantee anything moved** — check `TransactionDetail.QuantityMoved` | [docs/15 § inventorymovement](docs/15-Other-REST-Families.md#inventoryinventorymovement) |
+| `externalcounts` create needs `ItemId` repeated on the **bin sub-record**, not just the line — omitting it fails with an error that never names the real cause | [docs/15 § externalcounts](docs/15-Other-REST-Families.md#inventoryexternalcounts) |
+| `sales/opportunities`, `sales/consignmentusageorders` and `accounting/exchangerates` creates can fail purely from **empty tenant configuration** (no CRM lookups, no consignment contract, one currency) — check the precondition before assuming the API is broken | [docs/15 §§ each family](docs/15-Other-REST-Families.md#salesopportunities) |
+| **`environment/systems` needs a trailing slash in C#** — the no-slash form 307-redirects and `HttpClient` strips `Authorization` across it, the same [documented redirect hazard](docs/06-Error-Handling.md#401-authorization-header-was-not-present-or-bearer-was-missing) as the router URL | [docs/15 § environment/systems](docs/15-Other-REST-Families.md#environmentsystems) |
 
 ---
 

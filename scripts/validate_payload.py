@@ -337,6 +337,46 @@ def validate_get_request(payload: dict, definitions_dir: Path, rpt: Report) -> N
     rpt.note("$", "transaction/get request — POST to /api/v2/transaction/get")
 
 
+def looks_like_rest_family_payload(payload: dict) -> bool:
+    """True for the flat domain-object shape used by the REST families in
+    docs/15 (sales/tasks, purchasing/purchaseorders, ...) -- no "Name" +
+    "Transactions" (Transaction API create), no "ServiceName" +
+    "TransactionStates" (Transaction API get). Those families have no
+    committed schema in definitions/ to check field names against -- their
+    contracts are typed C# on the SOA side, not p21 SDK definitions -- so
+    this validator can only confirm the shape is sane, not that a given
+    field name is real.
+    """
+    return ("Name" not in payload and "Transactions" not in payload
+            and "ServiceName" not in payload and "TransactionStates" not in payload)
+
+
+def validate_rest_family_payload(payload: dict, rpt: Report) -> None:
+    """Minimal structural check for a REST-family object payload (docs/15).
+
+    No offline schema exists for these -- unlike the Transaction API's
+    definitions/ library, there is no committed field list per family, so
+    this only confirms the payload is a flat-ish JSON object (P21's REST
+    families return/accept single-level objects with occasional nested
+    objects for things like DirectShipTo, not the DataElement/Row/Edit
+    nesting the Transaction API uses). Verify field names by reading the
+    family's own GET /new template or GET /{key} response -- see
+    docs/15-Other-REST-Families.md.
+    """
+    rpt.note("$", "no Name/Transactions or ServiceName/TransactionStates -- "
+                  "treating this as a REST-family object payload (docs/15), "
+                  "not a Transaction API payload. Field names are not "
+                  "checked: there is no committed schema for these "
+                  "families. Verify against the family's own GET /new "
+                  "template before relying on this shape.")
+    for key, value in payload.items():
+        if isinstance(value, list):
+            rpt.warn(f"$.{key}", "REST-family payloads documented so far are "
+                                 "flat objects -- a top-level array is "
+                                 "unusual for this shape. Confirm against "
+                                 "the family's own GET /new template.")
+
+
 def validate_payload_dict(payload: dict, definitions_dir: Path, rpt: Report) -> None:
     """Validate a parsed TransactionSet payload."""
     if not isinstance(payload, dict):
@@ -345,6 +385,9 @@ def validate_payload_dict(payload: dict, definitions_dir: Path, rpt: Report) -> 
         return
     if "ServiceName" in payload or "TransactionStates" in payload:
         validate_get_request(payload, definitions_dir, rpt)
+        return
+    if looks_like_rest_family_payload(payload):
+        validate_rest_family_payload(payload, rpt)
         return
     service = payload.get("Name")
     if not isinstance(service, str) or not service:

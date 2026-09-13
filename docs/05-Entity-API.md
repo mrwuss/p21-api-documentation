@@ -2312,7 +2312,7 @@ Verified on 26.1.5950.0 (September 2026). The page also prints the middleware ve
 | **Logistics** | `api/logistics/roadnet` · `api/pathguide` · `api/pathguideasync` · `api/rest/logistics/drivers` |
 | **Platform / infrastructure** | `api/.configuration` · `api/chat` · `api/custom/v2/HostFacade` · `api/document` · `api/ecommerce` · `api/eh` · `api/environment/systems` · `api/epicorhelpservice` · `api/extensibility/userdefinedfields` · `api/filehandler` · `api/folderbrowser` · `api/help` · `api/integrationProcedures` · `api/localization` · `api/printing` · `api/security/token` · `api/ui/UIServerRouter` · `api/ui/router/v1` · `data/erp/views/v1` |
 
-Notable among the ones that answer and aren't documented here yet: **`accounting/gl`**, **`extensibility/userdefinedfields`** (UDF access over REST), **`inventory/inventoryadjustments`**, **`sales/tasks`**, and **`purchasing/purchaseorders`**.
+Five of these now have their own page — **`accounting/gl`**, **`extensibility/userdefinedfields`**, **`inventory/inventoryadjustments`**, **`sales/tasks`** and **`purchasing/purchaseorders`** are documented in [Other REST Endpoint Families](15-Other-REST-Families.md), including the [unbounded collection-GET hazard](15-Other-REST-Families.md#the-bare-collection-get-is-an-unbounded-full-table-dump) they all share.
 
 > **`inventory/v2/parts` is not a different API.** It pings 200 and a single-item GET returns a **byte-identical** response to `inventory/parts` (1,396 bytes for the same item on the tested tenant). Treat it as an alias unless you find a divergence on a write path; [11 Inventory REST API](11-Inventory-REST-API.md) documents the v1 path and applies to both.
 

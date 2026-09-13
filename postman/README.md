@@ -18,6 +18,7 @@ This directory contains a **Postman Collection** for the Prophet 21 APIs. It all
 - **Transaction and Interactive APIs** use the UI Server URL (auto-captured), not the base P21 URL.
 - **Interactive API requests must run in order** - they share a stateful session. Always end your session when done.
 - **Entity API** — `/api/entity/` covers 4 entities (customers, vendors, contacts, addresses; composite keys like `ACME_10`); other REST endpoint families exist — see [docs/05-Entity-API.md](../docs/05-Entity-API.md).
+- **05. Other REST Families** covers UDF metadata, GL journal reads, a full CRM task create/read/update chain (the `TASK_NO` collection variable carries the created task's key between requests, set by the Create request's test script), and PO / inventory-adjustment header reads — see [docs/15-Other-REST-Families.md](../docs/15-Other-REST-Families.md).
 
 ## How to Contribute
 
