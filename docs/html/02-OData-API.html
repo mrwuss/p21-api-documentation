@@ -918,6 +918,15 @@
 </code></pre></div>
 
 <p>This is the quickest way to answer "is this table actually exposed to Data Services?" before debugging a 404 — and to find the real name of a table you're guessing at.</p>
+<p><strong>The same document also answers "what are this table's real column names" — check it before guessing a <code>$select</code>, not after a 404.</strong> Each table is a JSON CSDL <code>EntityType</code>, keyed by table name <strong>under its DB schema</strong> (<code>dbo</code> for base tables — not under <code>ns</code>, which only holds <code>ns.container</code>'s table <em>list</em>, no column detail). Every other key on the <code>EntityType</code> object is a column name (<code>$Kind</code>/<code>$Key</code> are the only non-column keys; a property with no <code>$Type</code> at all defaults to <code>Edm.String</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Continuing from the client/metadata above; needs Accept: application/json — this endpoint</span>
+<span class="c1"># answers in XML EDMX by default (see the token endpoint&#39;s own default-XML behavior, docs/00).</span>
+<span class="n">entity_type</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;dbo&quot;</span><span class="p">][</span><span class="s2">&quot;address&quot;</span><span class="p">]</span>          <span class="c1"># schema first, then table name</span>
+<span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">entity_type</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;$&quot;</span><span class="p">)]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>   <span class="c1"># e.g. [&#39;id&#39;, &#39;name&#39;, &#39;mail_address1&#39;, &#39;mail_address2&#39;, &#39;mail_city&#39;, ...]</span>
+</code></pre></div>
+
+<p>This is the address table's actual answer: the mailing columns are <code>mail_address1</code>/<code>mail_city</code>/<code>mail_postal_code</code>/<code>mail_country</code> (not <code>address1</code>/<code>city</code>), which cost a 404 to discover the hard way once — see <a href="#common-tables">Common Tables</a> for the full verified list. Checking <code>$metadata</code> first avoids that round trip entirely; it is the authoritative schema, not a cache of it. Verified live against a real <code>dbo.address</code> <code>EntityType</code>, 26.1, September 2026 — including catching a first draft of this exact note that guessed the wrong key path (<code>ns.address</code> / <code>$Properties</code>) before checking the real response.</p>
 <blockquote>
 <p><strong>Newly created tables need a manual refresh.</strong> A table added after the service started (e.g. a new UDT) is absent from <code>$metadata</code> and 404s on query until <strong>SOA Admin → Refresh OData API service</strong> is run. See <a href="#odata-schema-refresh">Schema Refresh</a>.</p>
 </blockquote>
@@ -1694,8 +1703,15 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <td><code>credit_status</code></td>
 <td>Decodes <code>customer.credit_status</code> (<code>GOOD</code>, <code>ACA</code>, <code>WATCH</code>, <code>TRC</code>, <code>PRC</code>, <code>COD</code>, <code>TBD</code>) and carries the order-entry action each one triggers</td>
 </tr>
+<tr>
+<td><code>address</code></td>
+<td>Mailing/physical address, one row per <code>id</code> (shared key space with <code>customer_id</code>/<code>supplier_id</code>/etc. — join on <code>id</code>)</td>
+</tr>
 </tbody>
 </table></div>
+<blockquote>
+<p><strong><code>address</code> columns keep their <code>mail_</code>/<code>phys_</code> prefix on OData</strong> — <code>mail_address1</code>, <code>mail_address2</code>, <code>mail_city</code>, <code>mail_state</code>, <code>mail_postal_code</code>, <code>mail_country</code> for the mailing address; <code>phys_address1</code>, <code>phys_address2</code>, <code>phys_city</code>, <code>phys_state</code>, <code>phys_postal_code</code>, <code>phys_country</code> for the physical one. A <code>$select</code> without the prefix (<code>address1</code>, <code>city</code>, <code>postal_code</code>, …) 404s: <code>Could not find a property named 'address1' on type 'dbo.address'.</code> Verified live, 26.1 (September 2026); confirmed against <code>definitions/Address.json</code>'s <code>DbColumnName</code> mapping (<code>address.mail_address1</code>, etc.). The <a href="05-Entity-API.html#address-fields-27-fields">Entity API's Address Fields</a> table documents the same columns under their PascalCase names (<code>MailAddress1</code>, <code>PhysAddress1</code>) if you're on that surface instead.</p>
+</blockquote>
 <hr />
 <h2 id="enterpriseglobal-search-views-p21_view_es_">Enterprise/Global Search Views (<code>p21_view_es_*</code>)</h2>
 <blockquote>

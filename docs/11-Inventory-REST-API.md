@@ -1594,6 +1594,18 @@ static string ReadField(string payload, string field)
 
 Units of Measure (`UnitsOfMeasure`) are defined at the `inv_mast` level and shared across all companies. You typically do not need to add company-specific UOMs — standard units like "EA", "BOX", etc. apply globally. Ensure existing UOMs are included in your PUT payload.
 
+### 7. An incomplete create payload 500s, but the message names what's actually missing
+
+There's no `/new` template ([Limitations](#limitations)) and no field-level 422 — an under-specified `POST /api/inventory/parts` fails with an HTTP 500 whose `ErrorMessage` is nonetheless specific about the missing prerequisite, verified by omitting each of the [Minimum Create Payload](#minimum-create-payload)'s required blocks in turn (26.1, September 2026):
+
+| Payload has | `ErrorMessage` |
+|---|---|
+| `ItemId`/`ItemDesc` only, no `Locations` | `No location or location default information could be found for item {ItemId}.` |
+| `Locations`, no `Suppliers` | `No supplier or default information could be found for item {ItemId} at location {LocationId}.` |
+| `Locations` **and** `Suppliers`, no `LocationSuppliers` | **The identical message** — `No supplier or default information could be found for item {ItemId} at location {LocationId}.` |
+
+The last row is the trap: the message doesn't distinguish "no supplier data anywhere" from "a `Suppliers` entry exists but isn't linked to the location via `LocationSuppliers`" — both read as if `Suppliers` were never sent at all. If you already have a `Suppliers` block and still get this error, check `LocationSuppliers` before re-checking `Suppliers` itself. Every failed attempt above left nothing behind — confirmed via a `GET` immediately after each one (`404`, not a partially-created record) — the create is atomic even though the error isn't a clean validation response.
+
 ---
 
 ## Automation Example

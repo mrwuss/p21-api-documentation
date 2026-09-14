@@ -502,6 +502,22 @@ The Address entity does not have a `/new` template endpoint. This is by design �
 
 ---
 
+## Inventory REST API Errors
+
+Unlike `/api/entity/*` above, `/api/inventory/parts` has **no structured `Errors` array and no field-level 422** — an incomplete `POST` fails with a plain HTTP 500, but the `ErrorMessage` text does name the actual missing prerequisite:
+
+```json
+500 {
+    "ErrorMessage": "Error updating WIDGET-002: Error updating inv_mast: No location or location default information could be found for item WIDGET-002.",
+    "ErrorType": "P21.Common.Exceptions.Prophet21Exception",
+    ...
+}
+```
+
+The message changes as each required block ([Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload)) is added — missing `Locations` names "location", missing `Suppliers` names "supplier" — **except** the last step: `Locations` + `Suppliers` present but no `LocationSuppliers` link gives the **identical** "no supplier or default information" message as having no `Suppliers` at all, so a present-but-unlinked `Suppliers` block is easy to misdiagnose as ignored. Every failed attempt is atomic — nothing persists (`GET` immediately after → `404`). See [Inventory REST API — full mapping](11-Inventory-REST-API.md#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing).
+
+---
+
 ## UDT Service Errors
 
 ### `"Invalid Row Uid!"` on Every Update (2026.1)

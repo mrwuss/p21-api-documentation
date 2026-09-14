@@ -135,6 +135,18 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
 
 This is the quickest way to answer "is this table actually exposed to Data Services?" before debugging a 404 — and to find the real name of a table you're guessing at.
 
+**The same document also answers "what are this table's real column names" — check it before guessing a `$select`, not after a 404.** Each table is a JSON CSDL `EntityType`, keyed by table name **under its DB schema** (`dbo` for base tables — not under `ns`, which only holds `ns.container`'s table *list*, no column detail). Every other key on the `EntityType` object is a column name (`$Kind`/`$Key` are the only non-column keys; a property with no `$Type` at all defaults to `Edm.String`):
+
+```python
+# Continuing from the client/metadata above; needs Accept: application/json — this endpoint
+# answers in XML EDMX by default (see the token endpoint's own default-XML behavior, docs/00).
+entity_type = metadata["dbo"]["address"]          # schema first, then table name
+columns = [k for k in entity_type if not k.startswith("$")]
+print(columns)   # e.g. ['id', 'name', 'mail_address1', 'mail_address2', 'mail_city', ...]
+```
+
+This is the address table's actual answer: the mailing columns are `mail_address1`/`mail_city`/`mail_postal_code`/`mail_country` (not `address1`/`city`), which cost a 404 to discover the hard way once — see [Common Tables](#common-tables) for the full verified list. Checking `$metadata` first avoids that round trip entirely; it is the authoritative schema, not a cache of it. Verified live against a real `dbo.address` `EntityType`, 26.1, September 2026 — including catching a first draft of this exact note that guessed the wrong key path (`ns.address` / `$Properties`) before checking the real response.
+
 > **Newly created tables need a manual refresh.** A table added after the service started (e.g. a new UDT) is absent from `$metadata` and 404s on query until **SOA Admin → Refresh OData API service** is run. See [Schema Refresh](#odata-schema-refresh).
 
 ### The table/view split, and the 404 it produces
@@ -756,6 +768,9 @@ static string ReadField(string payload, string field)
 | `ar_receipts` / `ar_receipts_detail` | Cash receipts and their per-invoice application. `ar_receipts_detail.invoice_no` joins to `invoice_hdr`; `ar_receipts.date_received` is when the money landed |
 | `terms` / `customer_terms` | Terms definitions (`net_days`, `discount_days`, `discount_pct`) and per-customer assignments |
 | `credit_status` | Decodes `customer.credit_status` (`GOOD`, `ACA`, `WATCH`, `TRC`, `PRC`, `COD`, `TBD`) and carries the order-entry action each one triggers |
+| `address` | Mailing/physical address, one row per `id` (shared key space with `customer_id`/`supplier_id`/etc. — join on `id`) |
+
+> **`address` columns keep their `mail_`/`phys_` prefix on OData** — `mail_address1`, `mail_address2`, `mail_city`, `mail_state`, `mail_postal_code`, `mail_country` for the mailing address; `phys_address1`, `phys_address2`, `phys_city`, `phys_state`, `phys_postal_code`, `phys_country` for the physical one. A `$select` without the prefix (`address1`, `city`, `postal_code`, …) 404s: `Could not find a property named 'address1' on type 'dbo.address'.` Verified live, 26.1 (September 2026); confirmed against `definitions/Address.json`'s `DbColumnName` mapping (`address.mail_address1`, etc.). The [Entity API's Address Fields](05-Entity-API.md#address-fields-27-fields) table documents the same columns under their PascalCase names (`MailAddress1`, `PhysAddress1`) if you're on that surface instead.
 
 ---
 

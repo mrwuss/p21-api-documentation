@@ -168,6 +168,8 @@ All documentation is derived from:
 | `Order` refuses **RMAs** — use the `RMA` service (same form, keyed `order_no`) | [docs/03 § RMA Service](docs/03-Transaction-API.md#rma-service-orders-the-order-service-refuses) |
 | **`po_line.supplier_ship_date` is not a supplier promise on direct-ship POs** — confirming writes the confirmation's date onto every line, destroying the promise for an unshipped balance. 100% of `po_type='D'` receipts vs 0% of all others. `date_due` is untouched and is the usable expectation | [docs/02 § Columns that don't mean what their name says](docs/02-OData-API.md#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise) · [docs/04 § DirectShipConfirmation](docs/04-Interactive-API.md#directshipconfirmation-writes-its-ship-date-down-onto-every-line) |
 | **Grid deletes are not all `delete_flag`** — the Customer salesrep grid deletes via `row_status_flag: "Delete"` (label, not the `700` code); soft delete, so both OData *and* `/transaction/get` still return the row | [docs/03 § Removing a Salesrep Grid Row](docs/03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
+| The OData `address` table keeps its `mail_`/`phys_` prefix (`mail_address1`, not `address1`) — the unprefixed guess 404s | [docs/02 § Common Tables](docs/02-OData-API.md#common-tables) |
+| **Creating a brand-new item via the raw `Item` service alone doesn't work** — the Units of Measure tab is disabled until the item exists, but the item's own save requires a default unit already set on it; use the Inventory REST API's create instead | [docs/03 § Item Service Gotchas](docs/03-Transaction-API.md#item-service-gotchas) · [docs/11 § Minimum Create Payload](docs/11-Inventory-REST-API.md#minimum-create-payload) |
 | What `Failed` guarantees (Transaction atomic; Transactions in one POST are **not**) and why `Required`/`basics` mislead | [docs/03 § What Failed actually guarantees](docs/03-Transaction-API.md#what-failed-actually-guarantees) · [§ What Required actually means](docs/03-Transaction-API.md#what-required-actually-means) |
 | Driving an **in-window wizard** (direct-ship PO) — commits at `cb_next` | [docs/04 § Driving an In-Window Wizard](docs/04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) |
 | Response windows: no dedicated answer-a-dialog endpoint — every type, **`w_message` included**, is driven via `GET`/`POST /tools` under `ResponseWindowHandlingEnabled: true`; `false` auto-answers and skips the window entirely (GL-overwrite trap); editable popups via `TabName: null` | [docs/04 § Response Windows](docs/04-Interactive-API.md#response-windows) · [§ Worked Example: w_message](docs/04-Interactive-API.md#worked-example-w_message-save-changes-before-closing) · [§ Response Window Types](docs/04-Interactive-API.md#response-window-types) |
@@ -191,4 +193,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-09-11*
+*Last updated: 2026-09-14*

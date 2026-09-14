@@ -755,6 +755,10 @@
 <td><a href="02-OData-API.html#company-scoping-company_id-vs-company_no">02 § Company Scoping</a></td>
 </tr>
 <tr>
+<td>Read a customer/supplier/ship-to <strong>mailing or physical address</strong> over OData (<code>address</code> table)</td>
+<td><a href="02-OData-API.html#common-tables">02 § Common Tables</a> — columns keep the <code>mail_</code>/<code>phys_</code> prefix (<code>mail_address1</code>, not <code>address1</code>); 404 without it</td>
+</tr>
+<tr>
 <td>Traverse relationships (no joins — chain by <code>_uid</code>)</td>
 <td><a href="02-OData-API.html#no-joins-chain-queries-by-uid">02 § No Joins</a></td>
 </tr>
@@ -1051,6 +1055,16 @@
 <td>Item: <strong>primary bin / primary supplier</strong> at a location</td>
 <td><a href="recipes/set-primary-bin-supplier.html">set-primary-bin-supplier</a></td>
 <td><a href="03-Transaction-API.html#item-service-nested-location-edits">03 § Item Service</a></td>
+</tr>
+<tr>
+<td><strong>Create a brand-new item</strong> — <code>Item</code> service alone 500s with <code>...tabpage: TABPAGE_2</code> or <code>A Default Sales Unit... Must Each Be Specified</code></td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#item-service-gotchas">03 § Item Service Gotchas</a> — use <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a> instead</td>
+</tr>
+<tr>
+<td>Inventory REST create 500s — what does the error actually mean, is anything left behind</td>
+<td>—</td>
+<td><a href="11-Inventory-REST-API.html#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing">11 § An incomplete create payload 500s</a> — message names the missing block; nothing persists on failure</td>
 </tr>
 <tr>
 <td>Item: <strong>add a supplier to a location's list</strong> (the flip's prerequisite — both keys + <code>IgnoreDisabled</code>)</td>

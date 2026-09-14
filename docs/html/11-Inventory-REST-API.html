@@ -689,6 +689,7 @@
 <li><a href="#4-post-returns-307-redirect">4. POST Returns 307 Redirect</a></li>
 <li><a href="#5-location-soft-delete-via-delete-flag">5. Location Soft-Delete via Delete Flag</a></li>
 <li><a href="#6-uom-handling">6. UOM Handling</a></li>
+<li><a href="#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing">7. An incomplete create payload 500s, but the message names what's actually missing</a></li>
 </ul>
 </li>
 <li><a href="#automation-example">Automation Example</a><ul>
@@ -2514,6 +2515,31 @@
 </blockquote>
 <h3 id="6-uom-handling">6. UOM Handling</h3>
 <p>Units of Measure (<code>UnitsOfMeasure</code>) are defined at the <code>inv_mast</code> level and shared across all companies. You typically do not need to add company-specific UOMs — standard units like "EA", "BOX", etc. apply globally. Ensure existing UOMs are included in your PUT payload.</p>
+<h3 id="7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing">7. An incomplete create payload 500s, but the message names what's actually missing</h3>
+<p>There's no <code>/new</code> template (<a href="#limitations">Limitations</a>) and no field-level 422 — an under-specified <code>POST /api/inventory/parts</code> fails with an HTTP 500 whose <code>ErrorMessage</code> is nonetheless specific about the missing prerequisite, verified by omitting each of the <a href="#minimum-create-payload">Minimum Create Payload</a>'s required blocks in turn (26.1, September 2026):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Payload has</th>
+<th><code>ErrorMessage</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ItemId</code>/<code>ItemDesc</code> only, no <code>Locations</code></td>
+<td><code>No location or location default information could be found for item {ItemId}.</code></td>
+</tr>
+<tr>
+<td><code>Locations</code>, no <code>Suppliers</code></td>
+<td><code>No supplier or default information could be found for item {ItemId} at location {LocationId}.</code></td>
+</tr>
+<tr>
+<td><code>Locations</code> <strong>and</strong> <code>Suppliers</code>, no <code>LocationSuppliers</code></td>
+<td><strong>The identical message</strong> — <code>No supplier or default information could be found for item {ItemId} at location {LocationId}.</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The last row is the trap: the message doesn't distinguish "no supplier data anywhere" from "a <code>Suppliers</code> entry exists but isn't linked to the location via <code>LocationSuppliers</code>" — both read as if <code>Suppliers</code> were never sent at all. If you already have a <code>Suppliers</code> block and still get this error, check <code>LocationSuppliers</code> before re-checking <code>Suppliers</code> itself. Every failed attempt above left nothing behind — confirmed via a <code>GET</code> immediately after each one (<code>404</code>, not a partially-created record) — the create is atomic even though the error isn't a clean validation response.</p>
 <hr />
 <h2 id="automation-example">Automation Example</h2>
 <div class="code-tabs">
@@ -3321,6 +3347,7 @@
 <li><a href="#4-post-returns-307-redirect">4. POST Returns 307 Redirect</a></li>
 <li><a href="#5-location-soft-delete-via-delete-flag">5. Location Soft-Delete via Delete Flag</a></li>
 <li><a href="#6-uom-handling">6. UOM Handling</a></li>
+<li><a href="#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing">7. An incomplete create payload 500s, but the message names what's actually missing</a></li>
 </ul>
 </li>
 <li><a href="#automation-example">Automation Example</a><ul>

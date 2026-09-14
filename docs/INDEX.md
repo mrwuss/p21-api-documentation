@@ -33,6 +33,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Age open AR / "how late is this invoice?" | [02 § `customer.terms_id` is the default for the *next* document](02-OData-API.md#customerterms_id-is-the-default-for-the-next-document-not-the-terms-on-an-existing-one) — age on the invoice's own `net_due_date` |
 | Filter 404s on a value that looks right (`Edm.Decimal` vs `Edm.String`) | [02 § Active Record Filter](02-OData-API.md#active-record-filter) — many `*_id` columns are numeric; don't quote them |
 | Company column is `company_id` on some tables, `company_no` on others | [02 § Company Scoping](02-OData-API.md#company-scoping-company_id-vs-company_no) |
+| Read a customer/supplier/ship-to **mailing or physical address** over OData (`address` table) | [02 § Common Tables](02-OData-API.md#common-tables) — columns keep the `mail_`/`phys_` prefix (`mail_address1`, not `address1`); 404 without it |
 | Traverse relationships (no joins — chain by `_uid`) | [02 § No Joins](02-OData-API.md#no-joins-chain-queries-by-uid) |
 | Page through large result sets (no nextLink) | [02 § Pagination Helper](02-OData-API.md#pagination-helper) · [02 § Page Size Guidance](02-OData-API.md#page-size-guidance) |
 | Date filters (`now()` is unsupported) | [02 § now() Not Supported](02-OData-API.md#now-function-not-supported) |
@@ -110,6 +111,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Job contract: **bin quantities** | [edit-contract-bins](recipes/edit-contract-bins.md) | [03 § Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract) (Interactive fallback: [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences)) |
 | **Assembly / BOM** definition | — | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
 | Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service-nested-location-edits) |
+| **Create a brand-new item** — `Item` service alone 500s with `...tabpage: TABPAGE_2` or `A Default Sales Unit... Must Each Be Specified` | — | [03 § Item Service Gotchas](03-Transaction-API.md#item-service-gotchas) — use [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) instead |
+| Inventory REST create 500s — what does the error actually mean, is anything left behind | — | [11 § An incomplete create payload 500s](11-Inventory-REST-API.md#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing) — message names the missing block; nothing persists on failure |
 | Item: **add a supplier to a location's list** (the flip's prerequisite — both keys + `IgnoreDisabled`) | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md#adding-the-missing-location-supplier-row) | [03 § Adding a Location Supplier Row](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert) |
 | Item: **enable bin tracking** at a location (`track_bins`, and the bin it auto-assigns) | — | [03 § Enabling Bin Tracking](03-Transaction-API.md#enabling-bin-tracking-at-a-location-track_bins) |
 | **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service-creating-bins) |

@@ -648,6 +648,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>
 <li><a href="#2026-09-12-v1240">2026-09-12 — v1.24.0</a></li>
 <li><a href="#2026-09-12-v1230">2026-09-12 — v1.23.0</a></li>
 <li><a href="#2026-09-12-v1220">2026-09-12 — v1.22.0</a></li>
@@ -741,6 +742,14 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-14-v1250">2026-09-14 — v1.25.0</h2>
+<p>Two findings surfaced while building an unrelated downstream service (a typed P21 gateway) hit real tenant behavior for the first time — an unverified guess this repo had already flagged turned out wrong, and a genuine API-design gap in the <code>Item</code> service had no documented workaround.</p>
+<ul>
+<li><strong>fix:</strong> <strong><a href="02-OData-API.html#common-tables">The OData <code>address</code> table's mailing columns keep the <code>mail_</code> prefix</a></strong> — <code>mail_address1</code>, <code>mail_city</code>, <code>mail_postal_code</code>, etc., not the unprefixed guess (<code>address1</code>, <code>city</code>, <code>postal_code</code>) a downstream consumer had shipped with an explicit "unverified" flag on it. Confirmed against <code>definitions/Address.json</code>'s <code>DbColumnName</code> mapping and a live <code>$select</code> (the unprefixed form 404s: <code>Could not find a property named 'address1' on type 'dbo.address'</code>). Cross-referenced against <a href="05-Entity-API.html#address-fields-27-fields">docs/05's Address Fields table</a>, which already had the same columns correctly under their PascalCase Entity API names (<code>MailAddress1</code>) — the gap was OData-specific — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#item-service-gotchas">Creating a brand-new item through the raw <code>Item</code> service alone doesn't work — documented as an Item Service Gotcha</a>.</strong> The Units of Measure tab is disabled until the item record exists, but the item header's own save validation requires a default sales/purchase unit already set on it — a circular dependency no field ordering or <code>IgnoreDisabled</code> resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults. <a href="11-Inventory-REST-API.html#minimum-create-payload"><code>POST /api/inventory/parts</code></a> (the Inventory REST API, a separate endpoint family) takes locations/suppliers/units in one flat payload and resolves the sequencing server-side — already the documented "When to Use" guidance in doc 11, now cross-linked from doc 03 so someone starting from the Transaction API side doesn't have to rediscover it the hard way — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="02-OData-API.html#discovering-whats-exposed-metadata"><code>$metadata</code> also answers "what are this table's real columns" — extended the existing discovery example</a> to show it, not just "is this table exposed."</strong> The <code>address</code> mistake above happened because <code>$metadata</code> was checked for table existence but never for column names before guessing them. The real path is <code>metadata["dbo"]["address"]</code> (an <code>EntityType</code> keyed by <strong>schema then table name</strong>, <code>dbo</code> for base tables — not <code>ns</code>, which only holds the queryable table <em>list</em>); every key besides <code>$Kind</code>/<code>$Key</code> is a real column. Caught mid-edit: a first draft of this same note guessed the wrong key path (<code>ns.address</code> / a <code>$Properties</code> array that doesn't exist) instead of checking the real JSON response — corrected before it shipped, which is itself the argument for the rule — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="11-Inventory-REST-API.html#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing"><code>POST /api/inventory/parts</code>'s incomplete-payload errors, mapped</a>.</strong> No field-level 422 and no <code>/new</code> template, but the <code>ErrorMessage</code> on a 500 does name the actual missing prerequisite — verified by omitting each required block from <a href="11-Inventory-REST-API.html#minimum-create-payload">Minimum Create Payload</a> in turn. The trap: <code>Locations</code> + <code>Suppliers</code> with no <code>LocationSuppliers</code> link gives the <strong>identical</strong> message to having no <code>Suppliers</code> at all, so a present-but-unlinked <code>Suppliers</code> block is easy to misdiagnose as ignored. Every failed attempt confirmed to leave nothing behind (<code>GET</code> immediately after → <code>404</code>) — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-12-v1240">2026-09-12 — v1.24.0</h2>
 <p>Workstream C tier 1 of the full-coverage program: all eleven business-object REST families from the discovery sweep, each explored via the official SDK contracts before a single live call was made, all verified against 26.1.5950.0.</p>
 <ul>
@@ -1572,6 +1581,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>
 <li><a href="#2026-09-12-v1240">2026-09-12 — v1.24.0</a></li>
 <li><a href="#2026-09-12-v1230">2026-09-12 — v1.23.0</a></li>
 <li><a href="#2026-09-12-v1220">2026-09-12 — v1.22.0</a></li>

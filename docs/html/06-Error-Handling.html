@@ -691,6 +691,7 @@
 <li><a href="#validation-errors">Validation Errors</a></li>
 </ul>
 </li>
+<li><a href="#inventory-rest-api-errors">Inventory REST API Errors</a></li>
 <li><a href="#udt-service-errors">UDT Service Errors</a><ul>
 <li><a href="#invalid-row-uid-on-every-update-20261">"Invalid Row Uid!" on Every Update (2026.1)</a></li>
 <li><a href="#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">"[0] rows deleted ... successfully!" — a Delete That Deletes Nothing (2026.1)</a></li>
@@ -1263,6 +1264,17 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 </code></pre></div>
 
 <p><strong>Solution</strong>: Check the <code>Errors</code> array for specific issues.</p>
+<hr />
+<h2 id="inventory-rest-api-errors">Inventory REST API Errors</h2>
+<p>Unlike <code>/api/entity/*</code> above, <code>/api/inventory/parts</code> has <strong>no structured <code>Errors</code> array and no field-level 422</strong> — an incomplete <code>POST</code> fails with a plain HTTP 500, but the <code>ErrorMessage</code> text does name the actual missing prerequisite:</p>
+<div class="highlight"><pre><span></span><code><span class="mi">500</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;ErrorMessage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Error updating WIDGET-002: Error updating inv_mast: No location or location default information could be found for item WIDGET-002.&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ErrorType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;P21.Common.Exceptions.Prophet21Exception&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="err">...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The message changes as each required block (<a href="11-Inventory-REST-API.html#minimum-create-payload">Minimum Create Payload</a>) is added — missing <code>Locations</code> names "location", missing <code>Suppliers</code> names "supplier" — <strong>except</strong> the last step: <code>Locations</code> + <code>Suppliers</code> present but no <code>LocationSuppliers</code> link gives the <strong>identical</strong> "no supplier or default information" message as having no <code>Suppliers</code> at all, so a present-but-unlinked <code>Suppliers</code> block is easy to misdiagnose as ignored. Every failed attempt is atomic — nothing persists (<code>GET</code> immediately after → <code>404</code>). See <a href="11-Inventory-REST-API.html#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing">Inventory REST API — full mapping</a>.</p>
 <hr />
 <h2 id="udt-service-errors">UDT Service Errors</h2>
 <h3 id="invalid-row-uid-on-every-update-20261"><code>"Invalid Row Uid!"</code> on Every Update (2026.1)</h3>
@@ -2248,6 +2260,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <li><a href="#validation-errors">Validation Errors</a></li>
 </ul>
 </li>
+<li><a href="#inventory-rest-api-errors">Inventory REST API Errors</a></li>
 <li><a href="#udt-service-errors">UDT Service Errors</a><ul>
 <li><a href="#invalid-row-uid-on-every-update-20261">"Invalid Row Uid!" on Every Update (2026.1)</a></li>
 <li><a href="#0-rows-deleted-successfully-a-delete-that-deletes-nothing-20261">"[0] rows deleted ... successfully!" — a Delete That Deletes Nothing (2026.1)</a></li>
