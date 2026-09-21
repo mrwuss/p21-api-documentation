@@ -1,0 +1,2897 @@
+{
+ "Name": "Location",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "Location",
+   "OnBehalfOf": null,
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "id",
+        "company_id"
+       ],
+       "Name": "TABPAGE_1.tp_1_dw_1",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_address1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_address2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_city",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_state",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_postal_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_country",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "central_phone_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "central_fax_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "calc_tax_for_mros_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "branch_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "parker_distributor_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "skip_parker_export_in_oe",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "general_manager_salesrep_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "roadnet_do_not_route_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dea_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dea_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "unrestricted_dea_sale_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dea_licensed_loc_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pedigree_contact_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "sales_tax_payable_gl_account",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "external_tax_backup_percent",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cardlock_acct_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cardlock_nexus_location",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "centeron_default_taker",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "quotebuilder_default_taker",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "do_not_sync_so_to_efsm_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_docs_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "outside_use_number_of_copies",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ext_tax_company_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ext_tax_freight_bkup_tax_exempt",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "eori_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "loc_add_surcharge_fc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "loc_add_surcharge_willcall",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pedigree_contact_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "branch_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cc_general_manager_salesrep_id_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_2.tp_2_dw_2",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_address1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_address2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_city",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_state",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_postal_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_county",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_country",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_fax_cover_uid",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_4.tp_4_dw_4",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "jurisdiction_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "jurisdiction_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_percentage",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "flat_fee_amount",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tax_group_line_taxable",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "id"
+       ],
+       "Name": "TABPAGE_INVENTORY.tabpage_inventory",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot_bin_integration",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "use_tags_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tag_prefix",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "high_velocity_level",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mid_velocity_level",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "available_to_transfer_calc_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "no_of_periods_to_supply",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "nonstock_available_to_transfer",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "nonstock_no_periods_to_supply",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_transfer_receipts_bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "prevent_auto_ts_creation_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "sporadic_item_threshold_periods",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cc_sporadic_use_system_default",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_po_receipts_bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "associated_location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "autoconfirm_prod_pick_ticket",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_prod_pick_ticket",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "strategic_retail_location_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "manufacturer_rebate_loc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ratelinx_location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_ph_def_rma_rcpt_bin_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rfnavigator_url",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rfnavigator_user_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rfnavigator_password",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rfnavigator_drop_location",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rfnavigator_start_unit_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "update_velocity_settings",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "associated_location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "CONSIGNMENT.d_dw_location_consignment",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "consigned_ship_to_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "customer_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "consigned_ship_to_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "customer_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "WIRELESS_WAREHOUSE_OPTIONS.wireless_warehouse_options",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rf_enabled_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "wwms_show_bin_alloc_warning",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "undershipment_allocation_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "use_bins_for_trans_schedule_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "use_pallets_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "use_pallet_types_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "print_packinglist_wwms",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pnt_transferpacklist_wwms",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "adjust_found_items_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "WWMS_RECEIPT_TYPELIST.wwms_session_defaults",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pom_pt_find_same_shipto",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pom_pt_find_same_carrier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pom_pt_find_same_route",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pom_ts_find_same_dest_loc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pom_ts_find_same_carrier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pom_ts_find_same_route",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dflt_wwms_forms_printer",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "WWMS_RECEIPT_TYPELIST.wwms_receipt_defaults_type",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "transaction_type",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "WWMS_RECEIPT_TYPELIST.wwms_receipt_defaults_de",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "approved_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "allocate_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "enter_lot_attributes_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "WWMS_RECEIPT_TYPELIST.wwms_label_defaults",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_label_qty_option",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "number_of_labels",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_INTERCOMPANY.tabpage_intercompany",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "calculator_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "calculation_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "revenue_acct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "taxable_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ap_tax_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ap_tax_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mark_up_source_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "revenue_account_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ap_tax_account_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_INTERNATIONAL.tabpage_international",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "customs_broker_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "track_pedimento_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "LOCATIONFORMTAB.locationformtab",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "transfer_filename",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "transfer_pl_filename",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "pick_ticket_filename",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "prod_order_filename",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "prod_pick_ticket_filename",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "so_pick_ticket_filename",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_order_rcpt_filename",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "so_parts_pick_ticket_filename",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "LOCATIONPODOPTIONSTAB.locationpodoptionstab",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_pod_receiving_bin_id",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_PACKINGOPTIONS.tabpage_packingoptions",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "req_pack_at_shipping_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dflt_scan_and_pack_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dflt_incremental_scan_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "wwms_create_scan_pack_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "prnt_crtn_lbl_after_finalize",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "prnt_ship_lbl_after_finalize",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_ABC.tabpage_abc",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_class_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_class_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "annual_threshold",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "exclude_from_ranking",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "exclude_from_reclassification",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_specific",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_1",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_PRINTER_DEFAULT.tp_printer_default",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_area_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "printer_name",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp_dw_audittrail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "column_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "old_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_display_key",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_sub_line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_line_no_visible",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_item_id_visible",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "location",
+    "DatawindowName": "d_location",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location.location_id",
+      "Label": "Location ID",
+      "Name": "id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.mail_address1",
+      "Label": "Mailing Address",
+      "Name": "mail_address1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.mail_address2",
+      "Label": "Mailing Address 2",
+      "Name": "mail_address2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.mail_city",
+      "Label": "Mailing City/St/Zip",
+      "Name": "mail_city",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.mail_state",
+      "Label": "",
+      "Name": "mail_state",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.mail_postal_code",
+      "Label": "",
+      "Name": "mail_postal_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.mail_country",
+      "Label": "Mailing Country",
+      "Name": "mail_country",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.central_phone_number",
+      "Label": "Central Phone",
+      "Name": "central_phone_number",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.central_fax_number",
+      "Label": "Central Fax",
+      "Name": "central_fax_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.tax_group_id",
+      "Label": "Tax Group ID",
+      "Name": "tax_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.calc_tax_for_mros_flag",
+      "Label": "Calculate Tax for Manufacturer Rep Orders",
+      "Name": "calc_tax_for_mros_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.default_branch_id",
+      "Label": "Branch ID",
+      "Name": "branch_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.parker_distributor_no",
+      "Label": "Parker Distributor Number",
+      "Name": "parker_distributor_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.skip_parker_export_in_oe",
+      "Label": "Skip Parker Export in Order Entry",
+      "Name": "skip_parker_export_in_oe",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.general_manager_salesrep_id",
+      "Label": "General Manager Salesrep ID",
+      "Name": "general_manager_salesrep_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.roadnet_do_not_route_flag",
+      "Label": "Do Not Route with UPS Roadnet",
+      "Name": "roadnet_do_not_route_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.dea_code",
+      "Label": "DEA Code",
+      "Name": "dea_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.dea_number",
+      "Label": "DEA Number",
+      "Name": "dea_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_dea.unrestricted_dea_sale_flag",
+      "Label": "No restrictions of sale",
+      "Name": "unrestricted_dea_sale_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_dea.dea_licensed_loc_flag",
+      "Label": "DEA-licensed location",
+      "Name": "dea_licensed_loc_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.pedigree_contact_id",
+      "Label": "Pedigree Contact ID",
+      "Name": "pedigree_contact_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.sales_tax_payable_gl_account",
+      "Label": "Sales Tax Payable GL",
+      "Name": "sales_tax_payable_gl_account",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location.external_tax_backup_percent",
+      "Label": "Backup Tax Percentage",
+      "Name": "external_tax_backup_percent",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.cardlock_acct_no",
+      "Label": "Cardlock Account #",
+      "Name": "cardlock_acct_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.cardlock_nexus_location",
+      "Label": "Cardlock Nexus Location",
+      "Name": "cardlock_nexus_location",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.centeron_default_taker",
+      "Label": "Centeron Default Taker",
+      "Name": "centeron_default_taker",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.quotebuilder_default_taker",
+      "Label": "Quotebuilder Default Taker",
+      "Name": "quotebuilder_default_taker",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.do_not_sync_so_to_efsm_flag",
+      "Label": "Do Not Sync Service Orders to FSM",
+      "Name": "do_not_sync_so_to_efsm_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_docs_flag",
+      "Label": "Send Outside Use Documents",
+      "Name": "send_outside_use_docs_flag",
+      "Required": false,
+      "ValidValues": [
+       "Yes",
+       "No"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_print_flag",
+      "Label": "Print",
+      "Name": "send_outside_use_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_fax_flag",
+      "Label": "Fax",
+      "Name": "send_outside_use_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_email_flag",
+      "Label": "Email",
+      "Name": "send_outside_use_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link_entity_req.outside_use_number_of_copies",
+      "Label": "Number of Copies",
+      "Name": "outside_use_number_of_copies",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.ext_tax_company_code",
+      "Label": "Company Code",
+      "Name": "ext_tax_company_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.ext_tax_freight_bkup_tax_exempt",
+      "Label": "Exempt Freight From Backup Tax",
+      "Name": "ext_tax_freight_bkup_tax_exempt",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.eori_no",
+      "Label": "EORI Number",
+      "Name": "eori_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.loc_add_surcharge_fc",
+      "Label": "Use Location Address for Surcharge on Front Counter",
+      "Name": "loc_add_surcharge_fc",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.loc_add_surcharge_willcall",
+      "Label": "Use Location Address for Surcharge on Will Call",
+      "Name": "loc_add_surcharge_willcall",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.tax_group_description",
+      "Label": "",
+      "Name": "tax_group_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "pedigree_contact_name",
+      "Label": "",
+      "Name": "pedigree_contact_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "branch.branch_description",
+      "Label": "",
+      "Name": "branch_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "cc_general_manager_salesrep_id_name",
+      "Label": "",
+      "Name": "cc_general_manager_salesrep_id_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "id",
+     "company_id"
+    ],
+    "Name": "TABPAGE_1.tp_1_dw_1",
+    "ParentText": "Location ",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location",
+    "DatawindowName": "d_loc_phy_add",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.phys_address1",
+      "Label": "Physical Address1",
+      "Name": "phys_address1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.phys_address2",
+      "Label": "Physical Address2",
+      "Name": "phys_address2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.phys_city",
+      "Label": "Physical City/St/Zip",
+      "Name": "phys_city",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.phys_state",
+      "Label": "",
+      "Name": "phys_state",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.phys_postal_code",
+      "Label": "",
+      "Name": "phys_postal_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.phys_county",
+      "Label": "Physical County",
+      "Name": "phys_county",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.phys_country",
+      "Label": "Physical Country",
+      "Name": "phys_country",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.default_fax_cover_uid",
+      "Label": "Default Fax Cover",
+      "Name": "default_fax_cover_uid",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_2.tp_2_dw_2",
+    "ParentText": "Physical Address",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "tax_jurisdiction",
+    "DatawindowName": "d_tax_jurisdictions_for_group",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.tax_group_id",
+      "Label": "Tax Group ID",
+      "Name": "tax_group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": null,
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_hdr.tax_group_description",
+      "Label": null,
+      "Name": "tax_group_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_line.jurisdiction_id",
+      "Label": "Jurisdiction ID",
+      "Name": "jurisdiction_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_jurisdiction.jurisdiction_desc",
+      "Label": "Jurisdiction Description",
+      "Name": "jurisdiction_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "tax_jurisdiction.tax_percentage",
+      "Label": "Tax Percentage",
+      "Name": "tax_percentage",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "tax_jurisdiction.flat_fee_amount",
+      "Label": "Flat Rate Amount",
+      "Name": "flat_fee_amount",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "tax_group_line.taxable",
+      "Label": "Taxable",
+      "Name": "tax_group_line_taxable",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_4.tp_4_dw_4",
+    "ParentText": "Jurisdiction",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "location",
+    "DatawindowName": "d_dw_location_inventory",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.lot_bin_integration",
+      "Label": "Require Lot/Bin Integration",
+      "Name": "lot_bin_integration",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.use_tags_flag",
+      "Label": "Use Tags at this Location",
+      "Name": "use_tags_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.tag_prefix",
+      "Label": "Tag Prefix",
+      "Name": "tag_prefix",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location.high_velocity_level",
+      "Label": "Normal Velocity",
+      "Name": "high_velocity_level",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location.mid_velocity_level",
+      "Label": "Moderate Velocity",
+      "Name": "mid_velocity_level",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.available_to_transfer_calc_cd",
+      "Label": "Available To Transfer Calculation for Stock",
+      "Name": "available_to_transfer_calc_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.no_of_periods_to_supply",
+      "Label": "Periods to Supply",
+      "Name": "no_of_periods_to_supply",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.nonstock_available_to_transfer",
+      "Label": "Available To Transfer Calculation for Non-Stock",
+      "Name": "nonstock_available_to_transfer",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.nonstock_no_periods_to_supply",
+      "Label": "Periods to Supply",
+      "Name": "nonstock_no_periods_to_supply",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "c_transfer_receipts_bin_id",
+      "Label": "Transfer Receipts Default Bin ID",
+      "Name": "c_transfer_receipts_bin_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.prevent_auto_ts_creation_flag",
+      "Label": "Prevent Auto Transfer Creation",
+      "Name": "prevent_auto_ts_creation_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.sporadic_item_threshold_periods",
+      "Label": "Sporadic Item Threshold Periods",
+      "Name": "sporadic_item_threshold_periods",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "cc_sporadic_use_system_default",
+      "Label": "Use System Default",
+      "Name": "cc_sporadic_use_system_default",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "c_po_receipts_bin_id",
+      "Label": "PO Receipts Default Bin ID",
+      "Name": "c_po_receipts_bin_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location.associated_location_id",
+      "Label": "Associated Location ID",
+      "Name": "associated_location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.autoconfirm_prod_pick_ticket",
+      "Label": "Automatically Confirm Production Order Pick Tickets at this Location",
+      "Name": "autoconfirm_prod_pick_ticket",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.print_prod_pick_ticket",
+      "Label": "Print Production Order Pick Tickets at this Location",
+      "Name": "print_prod_pick_ticket",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.strategic_retail_location_flag",
+      "Label": "Strategic Pricing Retail Location",
+      "Name": "strategic_retail_location_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.manufacturer_rebate_loc",
+      "Label": "Eaton Rebate Location",
+      "Name": "manufacturer_rebate_loc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.ratelinx_location_id",
+      "Label": "Ratelinx Location ID",
+      "Name": "ratelinx_location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "c_ph_def_rma_rcpt_bin_id",
+      "Label": "PH Default RMA Receipt Bin ID",
+      "Name": "c_ph_def_rma_rcpt_bin_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.rfnavigator_url",
+      "Label": "URL",
+      "Name": "rfnavigator_url",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.rfnavigator_user_name",
+      "Label": "User Name",
+      "Name": "rfnavigator_user_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.rfnavigator_password",
+      "Label": "Password",
+      "Name": "rfnavigator_password",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.rfnavigator_drop_location",
+      "Label": "Staging Location",
+      "Name": "rfnavigator_drop_location",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.rfnavigator_start_unit_no",
+      "Label": "RN Starting Unit Number",
+      "Name": "rfnavigator_start_unit_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.update_velocity_settings",
+      "Label": "Update Velocity Settings",
+      "Name": "update_velocity_settings",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location.location_id",
+      "Label": "Location ID",
+      "Name": "id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "associated_location.location_name",
+      "Label": "",
+      "Name": "associated_location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "id"
+    ],
+    "Name": "TABPAGE_INVENTORY.tabpage_inventory",
+    "ParentText": "Inventory",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location",
+    "DatawindowName": "d_dw_location_consignment",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "location.location_type",
+      "Label": "Consigned Inventory Location",
+      "Name": "location_type",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location.consigned_ship_to_id",
+      "Label": "Ship To ID",
+      "Name": "consigned_ship_to_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "ship_to.customer_id",
+      "Label": "Customer ID",
+      "Name": "customer_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.consigned_ship_to_name",
+      "Label": "",
+      "Name": "consigned_ship_to_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.customer_name",
+      "Label": "",
+      "Name": "customer_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "CONSIGNMENT.d_dw_location_consignment",
+    "ParentText": "Consignment",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location",
+    "DatawindowName": "d_dw_wireless_warehouse_options",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.rf_enabled_flag",
+      "Label": "Enable Wireless Warehouse at this Location",
+      "Name": "rf_enabled_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.wwms_show_bin_alloc_warning",
+      "Label": "Enable Wireless Warehouse Warning Message in Picking",
+      "Name": "wwms_show_bin_alloc_warning",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.undershipment_allocation_flag",
+      "Label": "Allow Allocation of Undershipments",
+      "Name": "undershipment_allocation_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.use_bins_for_trans_schedule_flag",
+      "Label": "Tie Transfer Schedule to Door Bins",
+      "Name": "use_bins_for_trans_schedule_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.use_pallets_flag",
+      "Label": "Use Pallets for Transfers",
+      "Name": "use_pallets_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.use_pallet_types_flag",
+      "Label": "Require separate pallets by transfer type",
+      "Name": "use_pallet_types_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.print_packinglist_in_wwms",
+      "Label": "Print Packing List from Sales Order Picking",
+      "Name": "print_packinglist_wwms",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.print_transfer_packinglist_in_wwms",
+      "Label": "Print Packing List from Transfer Picking",
+      "Name": "pnt_transferpacklist_wwms",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.adjust_found_items_flag",
+      "Label": "Adjust In Found Items",
+      "Name": "adjust_found_items_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "WIRELESS_WAREHOUSE_OPTIONS.wireless_warehouse_options",
+    "ParentText": "Wireless Warehouse Options",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "wwms_loc_session_defaults",
+    "DatawindowName": "d_dw_wwms_loc_session_defaults",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_loc_session_defaults.pom_pt_find_same_shipto_flag",
+      "Label": "Same Ship To",
+      "Name": "pom_pt_find_same_shipto",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_loc_session_defaults.pom_pt_find_same_carrier_flag",
+      "Label": "Same Carrier",
+      "Name": "pom_pt_find_same_carrier",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_loc_session_defaults.pom_pt_find_same_route_flag",
+      "Label": "Same Route",
+      "Name": "pom_pt_find_same_route",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_loc_session_defaults.pom_ts_find_same_dest_loc_flag",
+      "Label": "Same Destination Location",
+      "Name": "pom_ts_find_same_dest_loc",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_loc_session_defaults.pom_ts_find_same_carrier_flag",
+      "Label": "Same Carrier",
+      "Name": "pom_ts_find_same_carrier",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_loc_session_defaults.pom_ts_find_same_route_flag",
+      "Label": "Same Route",
+      "Name": "pom_ts_find_same_route",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_loc_session_defaults.dflt_wwms_forms_printer",
+      "Label": "Forms Printer",
+      "Name": "dflt_wwms_forms_printer",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "WWMS_RECEIPT_TYPELIST.wwms_session_defaults",
+    "ParentText": "Wireless Warehouse Session Defaults",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "wwms_receipt_defaults",
+    "DatawindowName": "d_dw_wwms_receipt_defaults_type",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "wwms_receipt_defaults.transaction_type",
+      "Label": "Transaction Type",
+      "Name": "transaction_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "WWMS_RECEIPT_TYPELIST.wwms_receipt_defaults_type",
+    "ParentText": "Wireless Warehouse Session Defaults",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "wwms_receipt_defaults",
+    "DatawindowName": "d_dw_wwms_receipt_defaults_de",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_receipt_defaults.approved_flag",
+      "Label": "Approved",
+      "Name": "approved_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_receipt_defaults.allocate_flag",
+      "Label": "",
+      "Name": "allocate_flag",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_receipt_defaults.enter_lot_attributes_flag",
+      "Label": "Enter Lot Attributes Via Wireless Device",
+      "Name": "enter_lot_attributes_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "WWMS_RECEIPT_TYPELIST.wwms_receipt_defaults_de",
+    "ParentText": "Wireless Warehouse Session Defaults",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "wwms_label_defaults",
+    "DatawindowName": "d_dw_wwms_label_defaults_rec_de",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "wwms_label_defaults.item_label_qty_option",
+      "Label": "",
+      "Name": "item_label_qty_option",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "wwms_label_defaults.number_of_labels",
+      "Label": "",
+      "Name": "number_of_labels",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "WWMS_RECEIPT_TYPELIST.wwms_label_defaults",
+    "ParentText": "Wireless Warehouse Session Defaults",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location_intercompany",
+    "DatawindowName": "d_dw_location_intercompany",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_intercompany.calculator_type",
+      "Label": "Source Location Calculation Type",
+      "Name": "calculator_type",
+      "Required": false,
+      "ValidValues": [
+       "None",
+       "Mark up",
+       "Difference",
+       "Multiplier",
+       "Percentage"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "location_intercompany.calculation_value",
+      "Label": "Source Location Calculation Value",
+      "Name": "calculation_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_intercompany.revenue_acct",
+      "Label": "Source Location Revenue Acct",
+      "Name": "revenue_acct",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_intercompany.taxable_flag",
+      "Label": "Sales Location Taxable",
+      "Name": "taxable_flag",
+      "Required": false,
+      "ValidValues": [
+       "Yes",
+       "No"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_intercompany.ap_tax_account_no",
+      "Label": "AP Tax Account",
+      "Name": "ap_tax_account_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_intercompany.ap_tax_description",
+      "Label": "AP Tax Description",
+      "Name": "ap_tax_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_intercompany.mark_up_source_cd",
+      "Label": "Source Location Mark Up Source",
+      "Name": "mark_up_source_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "revenue_account_desc",
+      "Label": "",
+      "Name": "revenue_account_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "ap_tax_account_desc",
+      "Label": "",
+      "Name": "ap_tax_account_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_INTERCOMPANY.tabpage_intercompany",
+    "ParentText": "Intercompany",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location_trade",
+    "DatawindowName": "d_dw_location_trade_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_trade.customs_broker_no",
+      "Label": "Customs Broker #",
+      "Name": "customs_broker_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_trade.track_pedimento_flag",
+      "Label": "Track Pedimento Layers",
+      "Name": "track_pedimento_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_INTERNATIONAL.tabpage_international",
+    "ParentText": "International",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location_form_template",
+    "DatawindowName": "d_dw_location_form_template",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.transfer_filename",
+      "Label": "Transfer",
+      "Name": "transfer_filename",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.transfer_pl_filename",
+      "Label": "Transfer Packing List",
+      "Name": "transfer_pl_filename",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.pick_ticket_filename",
+      "Label": "Pick Ticket",
+      "Name": "pick_ticket_filename",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.prod_order_filename",
+      "Label": "Production Order",
+      "Name": "prod_order_filename",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.prod_pick_ticket_filename",
+      "Label": "Production Order Pick Ticket",
+      "Name": "prod_pick_ticket_filename",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.so_pick_ticket_filename",
+      "Label": "Service Order Pick Ticket",
+      "Name": "so_pick_ticket_filename",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.service_order_rcpt_filename",
+      "Label": "Service Order Receipt",
+      "Name": "service_order_rcpt_filename",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_form_template.so_parts_pick_ticket_filename",
+      "Label": "Service Order Parts Pick Ticket",
+      "Name": "so_parts_pick_ticket_filename",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "LOCATIONFORMTAB.locationformtab",
+    "ParentText": "Forms",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location_pod_options",
+    "DatawindowName": "d_dw_location_pod_options",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "bin.c_pod_receiving_bin_id",
+      "Label": "Receiving Bin for material returned via POD",
+      "Name": "c_pod_receiving_bin_id",
+      "Required": true,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "LOCATIONPODOPTIONSTAB.locationpodoptionstab",
+    "ParentText": "Proof of Delivery Options",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "location_packing_options",
+    "DatawindowName": "d_dw_location_packing_options",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_packing_options.req_pack_at_shipping_flag",
+      "Label": "Require Packing at Shipping",
+      "Name": "req_pack_at_shipping_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_packing_options.dflt_scan_and_pack_flag",
+      "Label": "Default Scan and Pack",
+      "Name": "dflt_scan_and_pack_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_packing_options.dflt_incremental_scan_flag",
+      "Label": "Default Incremental Scan",
+      "Name": "dflt_incremental_scan_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_packing_options.wwms_create_scan_pack_flag",
+      "Label": "Create and Scan Packages in WWMS",
+      "Name": "wwms_create_scan_pack_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_packing_options.prnt_carton_label_after_final_pkg_flag",
+      "Label": "Print Carton Label after Finalizing Package",
+      "Name": "prnt_crtn_lbl_after_finalize",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_packing_options.prnt_shipping_lbl_after_final_pkg_flag",
+      "Label": "Print Shipping Label after Finalizing Package",
+      "Name": "prnt_ship_lbl_after_finalize",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_PACKINGOPTIONS.tabpage_packingoptions",
+    "ParentText": "Packing Options",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_purchase_class_x_location_view",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "ABC Class ID",
+      "Name": "purchase_class_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "ABC Class Description",
+      "Name": "purchase_class_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "",
+      "Label": "Annual Threshold",
+      "Name": "annual_threshold",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Exclude From Ranking",
+      "Name": "exclude_from_ranking",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Exclude From Reclassification",
+      "Name": "exclude_from_reclassification",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Location Specific",
+      "Name": "location_specific",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "compute_1",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_ABC.tabpage_abc",
+    "ParentText": "ABC Classes",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "location_printer_default",
+    "DatawindowName": "d_dw_location_printer_default_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "location_printer_default.default_area_cd",
+      "Label": "Default Area",
+      "Name": "default_area_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location_printer_default.printer_name",
+      "Label": "Printer Name",
+      "Name": "printer_name",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_PRINTER_DEFAULT.tp_printer_default",
+    "ParentText": "Printer Default",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_external_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp",
+    "ParentText": "Timestamp",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "p21_view_audit_trail",
+    "DatawindowName": "d_dw_audit_trail_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "line_no",
+      "Label": "Line No",
+      "Name": "line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "column_description",
+      "Label": "Column Changed",
+      "Name": "column_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "old_value",
+      "Label": "Old Value",
+      "Name": "old_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "new_value",
+      "Label": "New Value",
+      "Name": "new_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "created_by",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_display_key",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_sub_line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_line_no_visible",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_item_id_visible",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp_dw_audittrail",
+    "ParentText": "Timestamp",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "tp_1_dw_1",
+    "Name": "id"
+   },
+   {
+    "Location": "tp_1_dw_1",
+    "Name": "company_id"
+   }
+  ]
+ }
+}

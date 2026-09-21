@@ -3275,6 +3275,75 @@ The location-side elements chain Form → List → Form/List, and the tab number
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July–August 2026).
 
 - **Creating a brand-new item through the raw `Item` service alone does not work — use the [Inventory REST API](11-Inventory-REST-API.md#minimum-create-payload) instead.** The Units of Measure tab (`TABPAGE_2.tp_2_dw_2`) is disabled until the item record already exists (`General Exception: ... Ignored processing disabled tabpage: TABPAGE_2`), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (`A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.`) — a circular dependency that no field ordering, `IgnoreDisabled`, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. `POST /api/inventory/parts` (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt.
+- **A soft-deleted item is terminal for the raw `Item` service — not just for a second `delete_flag=ON`.** Setting `delete_flag=ON` (`ValidValues: ["ON", "OFF"]`, column `inv_mast.delete_flag`) on an item succeeds the first time; OData then shows `delete_flag = 'Y'` and the row is still returned (soft delete, not hidden — same pattern as the [Customer salesrep grid](#customer-service-removing-a-salesrep-grid-row)). **Any** subsequent `Item`-service write against that item is then `Blocked` — not only a repeated `delete_flag=ON`, but an unrelated field like `item_desc` fails identically:
+  ```
+  Null filter expression passed to of_Retrieve for Discount Group.
+   A valid discount group ID must be entered.
+   'Purchase Group' is a required column.
+  Transaction 1: TABPAGE_1.tp_1_dw_1, row 1: Blocked DataElement: tp_1_dw_1, Column: item_id, Value: <item_id>
+  ```
+  The message's exact missing-column list varies by request (sometimes `'Purchase Group'`, sometimes `Location ID`), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on *every* subsequent save, and — like the create gotcha above — the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat `delete_flag=ON` as one-shot. Callers that need idempotent delete should read `inv_mast.delete_flag` over OData first and skip the `Item` POST entirely when it is already `Y`. Verified live, 26.1 (September 2026), against throwaway items created through `POST /api/inventory/parts`. *(Filed as [#160](https://github.com/mrwuss/p21-api-documentation/issues/160).)*
+- **A REST-created item can silently end up with no default unit of measure at all**, not just the [40-character description cap](11-Inventory-REST-API.md#character-set-and-whitespace-verified) and other quirks below — observed once in seven otherwise-identical [minimum-payload](11-Inventory-REST-API.md#minimum-create-payload) creates (26.1, September 2026): `DefaultSellingUnit`/`DefaultPurchasingUnit` came back `null` and `UnitsOfMeasure` came back empty, where the other six got `EA` auto-assigned. An item in this state hits the exact same `A Default Sales Unit... Must Each Be Specified` block as the raw-create circular dependency above, on *any* later `Item`-service write, even though the item already exists. Check `DefaultSellingUnit` on the create response (or a follow-up `GET`) before assuming the item is usable; if it's `null`, set `UnitsOfMeasure` explicitly via a REST `PUT`.
+
+### Location Service — Creating a Warehouse
+
+`Location` / `TABPAGE_1.tp_1_dw_1` (business object `location`, datawindow `d_location`) is **Warehouse/Location Maintenance**. Keys are `id` (→ `location.location_id`) + `company_id`; `id` also fans out to a shared-keyspace `address` row (same [`mail_`-prefix convention](02-OData-API.md#common-tables) as everywhere else `address` is joined).
+
+#### Creating a new warehouse — `id` is server-generated, and you cannot request one
+
+A `location_id` is **never** supplied by the caller — every way of trying lands on a different failure mode:
+
+| What you send | Result |
+|---|---|
+| `Keys: ["id", "company_id"]`, `id` = a specific new number (e.g. `99999`) | **Refused**: `General Exception: Enter a valid ID or leave ID blank. DataElement: tp_1_dw_1, Column: id, Value: 99999` |
+| `Keys: ["id", "company_id"]`, `id` = `""` (blank) | **False success** — `Succeeded: 1`, the response even echoes back `id: "0"` — but nothing is created *or* updated. `location_id` **0** is a pre-existing reserved row on every tenant tested; the write silently no-ops against it (confirmed by re-reading both `location` and `address` before and after — neither changed) |
+| `Keys: []` (no key fields at all — `id` absent from the payload entirely, not just blank) | **Succeeds**, and P21 assigns a real, unused `location_id` (verified: `65329`), with `location_type` auto-set to `1330` |
+
+The working create, in full:
+
+```json
+{
+  "Name": "Location",
+  "UseCodeValues": false,
+  "IgnoreDisabled": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {"Name": "location_name",         "Value": "New Warehouse"},
+                {"Name": "central_phone_number",  "Value": "5155550100"},
+                {"Name": "company_id",            "Value": "IFPG"},
+                {"Name": "branch_id",             "Value": "10"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+`id`, `central_phone_number`, `company_id`, and `branch_id` are the four `Required: true` fields on this element — `location_name` is not required by the definition but is the only human-readable identifier, so treat it as required in practice. `branch_id` must be an existing `branch.branch_id`. The generated `location_id` comes back the same way a [Customer create's generated key](recipes/create-customer.md) does — as an `Edits` entry named `id` inside the `Passed` transaction's own `DataElements[].Rows[].Edits[]`, not a separate event.
+
+#### Updating an existing location — `company_id` is disabled after create
+
+Once a location exists, re-keying on `id` alone (`Keys: ["id"]`, or `Keys: ["id", "company_id"]` with `company_id` simply absent from `Edits`) updates it normally. Including `company_id` **in `Edits`** on an update — even unchanged, even still listed in `Keys` — is refused:
+
+```
+General Exception: Column is disabled: company_id
+```
+
+`company_id` is accepted only on the initial create; keep it out of every subsequent `Edits` list. `delete_flag` (`ValidValues: ["ON", "OFF"]`, column `location.delete_flag`) soft-deletes a location the same way — omit `company_id` from that request too.
+
+`GET /api/entity/locations` 404s (not one of the [Entity API's four entities](05-Entity-API.md)), and the Interactive Location window's tools are Save/Clear/Close — no `New` — so the `Keys: []` create above is the only verified path to a new warehouse number. Out of scope here: `inv_loc` (item-at-location, see [Item Service — Nested Location Edits](#item-service-nested-location-edits)) and location-append via the [Inventory REST API](11-Inventory-REST-API.md). *(Filed as [#161](https://github.com/mrwuss/p21-api-documentation/issues/161).)*
 
 ### BinLocation Service -- Creating Bins
 

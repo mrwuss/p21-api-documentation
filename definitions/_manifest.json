@@ -1,5 +1,5 @@
 {
- "fetched_date": "2026-08-29",
+ "fetched_date": "2026-09-21",
  "ok": [
   "Address",
   "Assembly",
@@ -12,6 +12,7 @@
   "JobContractPricing",
   "Labor",
   "LaborProcess",
+  "Location",
   "Order",
   "PickZone",
   "ProductionOrder",

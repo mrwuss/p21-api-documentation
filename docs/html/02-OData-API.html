@@ -658,6 +658,7 @@
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 <li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
+<li><a href="#read-after-write-consistency">Read-after-write consistency</a></li>
 </ul>
 </li>
 <li><a href="#authentication">Authentication</a><ul>
@@ -975,6 +976,16 @@
 <p><code>GET /odataservice/odata/table/bin</code> and <code>GET /odataservice/odata/view/bin</code> <strong>both 404</strong> — with a raw IIS "404 - File or directory not found" HTML page, not the normal OData JSON 404 body every other missing-object case in this section produces. Verified live on 26.1.5950.0, every casing tried (<code>bin</code>, <code>Bin</code>), both surfaces, with and without a <code>$select</code>/<code>$filter</code>.</p>
 <p>The table itself is real — <code>bin.$Key</code> appears in <code>table/$metadata</code>, and its data is reachable indirectly through <code>inv_loc.primary_bin</code> and the <code>bin_ud</code> extension table (which resolves fine; only the bare name <code>bin</code> fails). The most likely explanation is a routing collision: <code>bin</code> is also IIS's own reserved name for a website's compiled-assemblies folder, and something in the URL rewrite chain in front of the OData service appears to intercept a path segment named exactly <code>bin</code> before it reaches the OData handler — which would explain why the failure looks like a static-file 404 rather than an application-level one. Not confirmed against IIS configuration directly; recorded as an observed, reproducible symptom.</p>
 <p><strong>Read <code>bin</code> data through a join instead.</strong> <code>inv_loc.primary_bin</code> and <code>inv_loc.location_id</code> cover the common case (an item's primary bin at a location); for other bin attributes, <code>bin_ud</code> (its user-defined-field extension table) is reachable normally and may carry what you need.</p>
+<hr />
+<h3 id="read-after-write-consistency">Read-after-write consistency</h3>
+<p>Every write recipe in this repo verifies a <a href="03-Transaction-API.html">Transaction API</a> write by reading it back over OData (or <code>/transaction/get</code>) <strong>immediately</strong> afterward — no delay, no retry. That pattern is now a tested fact, not just an accident of every example happening to work: <strong>125 back-to-back single-field writes (<code>inv_mast.item_desc</code> via the <code>Item</code> service), each followed instantly by an OData <code>table:</code> read-back of the same field, returned zero stale reads</strong> — 75 sequential plus 50 more across 5 concurrently-writing items (26.1, September 2026). The OData <code>table:</code> surface reflects a Transaction API write with no observable lag, at least at this scale.</p>
+<p>What this does <strong>not</strong> establish, so do not over-read it:</p>
+<ul>
+<li><strong>Only the <code>table:</code> surface was tested.</strong> <code>inv_mast</code>/<code>Item</code> has no matching <code>view:</code> object to compare against (<code>$metadata</code> confirms no <code>item</code>/<code>inv_mast</code>/<code>v_item</code> view exists — <a href="#discovering-whats-exposed-metadata">Discovering What's Exposed</a>); whether a <code>view:</code> object (which may be backed by its own query/cache layer) lags is unconfirmed.</li>
+<li><strong>This was light load</strong> (5 concurrent writers, single tenant), not a stress test. Heavier concurrent write volume, a busier tenant, or a different middleware deployment could behave differently.</li>
+<li><strong>This is a snapshot of one build.</strong> Re-verify before relying on it as a hard invariant if the tenant's P21 or middleware version changes — see the <a href="14-Breaking-Changes.html">2026.1 breaking-changes registry</a> for how much this platform's behavior moves between builds.</li>
+</ul>
+<p>Within those bounds: a downstream integration treating an immediate post-write OData mismatch as a hard data-integrity alarm (no retry, no grace period) is not chasing a phantom on this surface — verified <code>table:</code> reads have not lagged a <code>Transaction</code> write in any attempt made here.</p>
 <hr />
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
@@ -2947,6 +2958,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 <li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
+<li><a href="#read-after-write-consistency">Read-after-write consistency</a></li>
 </ul>
 </li>
 <li><a href="#authentication">Authentication</a><ul>

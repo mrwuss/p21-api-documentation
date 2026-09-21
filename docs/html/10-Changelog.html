@@ -648,6 +648,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>
 <li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>
 <li><a href="#2026-09-12-v1240">2026-09-12 — v1.24.0</a></li>
 <li><a href="#2026-09-12-v1230">2026-09-12 — v1.23.0</a></li>
@@ -742,6 +743,14 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-21-v1260">2026-09-21 — v1.26.0</h2>
+<p>Closed the three open issues (#159, #160, #161) with live verification on play, 26.1 — a consistency question, a correction to a filed finding's stated cause, and a previously-unsolved create path.</p>
+<ul>
+<li><strong>docs:</strong> <strong><a href="02-OData-API.html#read-after-write-consistency">Read-after-write consistency between the Transaction API and OData, confirmed</a>.</strong> 125 single-field writes (<code>inv_mast.item_desc</code>) each immediately read back over OData — 75 sequential, 50 more across 5 concurrent writers — returned zero stale reads on the <code>table:</code> surface. Scoped honestly: only <code>table:</code> was tested (<code>item</code>/<code>inv_mast</code> has no <code>view:</code> counterpart to compare), and it's light load on one tenant, not a stress test. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/159">#159</a> — <em>@mrwuss</em></li>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#item-service-gotchas">The <code>Item</code> service's delete is terminal for more than just a repeated delete</a> — the filed issue's cause was narrower than the real one.</strong> <a href="https://github.com/mrwuss/p21-api-documentation/issues/160">#160</a> reported that a second <code>delete_flag=ON</code> post is refused; live testing found the block isn't specific to repeating the delete — <strong>any</strong> <code>Item</code>-service write against an already-deleted item fails identically (confirmed with an unrelated <code>item_desc</code> edit), because deleting invalidates the location/discount-group context the form revalidates on every save. Exact <code>Blocked</code> message captured. Closes #160 — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#location-service-creating-a-warehouse">A verified create path for a brand-new warehouse/location</a> — <a href="https://github.com/mrwuss/p21-api-documentation/issues/161">#161</a> had none.</strong> A specific <code>id</code> is refused (<code>Enter a valid ID or leave ID blank</code>) and a blank one is a <strong>false success</strong> — <code>Succeeded: 1</code> but nothing is created or updated, confirmed by re-reading <code>location</code> and <code>address</code> before/after. The actual fix: <code>Keys: []</code> with <code>id</code> omitted from the payload entirely (not just blank) — P21 then assigns a real <code>location_id</code> (verified: <code>65329</code>). Also documents that <code>company_id</code> becomes <code>Column is disabled</code> on every update after create. Full create → update → soft-delete lifecycle verified end-to-end. Closes #161 — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#item-service-gotchas">A REST-created item can end up with no default unit of measure at all</a></strong> — caught once in seven otherwise-identical <a href="11-Inventory-REST-API.html#minimum-create-payload">minimum-payload</a> creates during the read-after-write test; <code>DefaultSellingUnit</code> came back <code>null</code> where six siblings got <code>EA</code>. Hits the same circular-dependency block as the raw-create gotcha on any later <code>Item</code>-service write. Flagged as an occasional risk, not a reliable repro — check <code>DefaultSellingUnit</code> after create — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-14-v1250">2026-09-14 — v1.25.0</h2>
 <p>Two findings surfaced while building an unrelated downstream service (a typed P21 gateway) hit real tenant behavior for the first time — an unverified guess this repo had already flagged turned out wrong, and a genuine API-design gap in the <code>Item</code> service had no documented workaround.</p>
 <ul>
@@ -1581,6 +1590,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>
 <li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>
 <li><a href="#2026-09-12-v1240">2026-09-12 — v1.24.0</a></li>
 <li><a href="#2026-09-12-v1230">2026-09-12 — v1.23.0</a></li>

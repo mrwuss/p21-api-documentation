@@ -734,6 +734,7 @@
 <li><a href="#jobcontractpricing-service">JobContractPricing Service</a></li>
 <li><a href="#assembly-service">Assembly Service</a></li>
 <li><a href="#item-service-nested-location-edits">Item Service -- Nested Location Edits</a></li>
+<li><a href="#location-service-creating-a-warehouse">Location Service — Creating a Warehouse</a></li>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
@@ -4809,7 +4810,78 @@ successfully. Do you want to continue to retrieve? [Response: No]
 </blockquote>
 <ul>
 <li><strong>Creating a brand-new item through the raw <code>Item</code> service alone does not work — use the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST API</a> instead.</strong> The Units of Measure tab (<code>TABPAGE_2.tp_2_dw_2</code>) is disabled until the item record already exists (<code>General Exception: ... Ignored processing disabled tabpage: TABPAGE_2</code>), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (<code>A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.</code>) — a circular dependency that no field ordering, <code>IgnoreDisabled</code>, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. <code>POST /api/inventory/parts</code> (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt.</li>
+<li><strong>A soft-deleted item is terminal for the raw <code>Item</code> service — not just for a second <code>delete_flag=ON</code>.</strong> Setting <code>delete_flag=ON</code> (<code>ValidValues: ["ON", "OFF"]</code>, column <code>inv_mast.delete_flag</code>) on an item succeeds the first time; OData then shows <code>delete_flag = 'Y'</code> and the row is still returned (soft delete, not hidden — same pattern as the <a href="#customer-service-removing-a-salesrep-grid-row">Customer salesrep grid</a>). <strong>Any</strong> subsequent <code>Item</code>-service write against that item is then <code>Blocked</code> — not only a repeated <code>delete_flag=ON</code>, but an unrelated field like <code>item_desc</code> fails identically:
+  <code>Null filter expression passed to of_Retrieve for Discount Group.
+   A valid discount group ID must be entered.
+   'Purchase Group' is a required column.
+  Transaction 1: TABPAGE_1.tp_1_dw_1, row 1: Blocked DataElement: tp_1_dw_1, Column: item_id, Value: &lt;item_id&gt;</code>
+  The message's exact missing-column list varies by request (sometimes <code>'Purchase Group'</code>, sometimes <code>Location ID</code>), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on <em>every</em> subsequent save, and — like the create gotcha above — the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat <code>delete_flag=ON</code> as one-shot. Callers that need idempotent delete should read <code>inv_mast.delete_flag</code> over OData first and skip the <code>Item</code> POST entirely when it is already <code>Y</code>. Verified live, 26.1 (September 2026), against throwaway items created through <code>POST /api/inventory/parts</code>. <em>(Filed as <a href="https://github.com/mrwuss/p21-api-documentation/issues/160">#160</a>.)</em></li>
+<li><strong>A REST-created item can silently end up with no default unit of measure at all</strong>, not just the <a href="11-Inventory-REST-API.html#character-set-and-whitespace-verified">40-character description cap</a> and other quirks below — observed once in seven otherwise-identical <a href="11-Inventory-REST-API.html#minimum-create-payload">minimum-payload</a> creates (26.1, September 2026): <code>DefaultSellingUnit</code>/<code>DefaultPurchasingUnit</code> came back <code>null</code> and <code>UnitsOfMeasure</code> came back empty, where the other six got <code>EA</code> auto-assigned. An item in this state hits the exact same <code>A Default Sales Unit... Must Each Be Specified</code> block as the raw-create circular dependency above, on <em>any</em> later <code>Item</code>-service write, even though the item already exists. Check <code>DefaultSellingUnit</code> on the create response (or a follow-up <code>GET</code>) before assuming the item is usable; if it's <code>null</code>, set <code>UnitsOfMeasure</code> explicitly via a REST <code>PUT</code>.</li>
 </ul>
+<h3 id="location-service-creating-a-warehouse">Location Service — Creating a Warehouse</h3>
+<p><code>Location</code> / <code>TABPAGE_1.tp_1_dw_1</code> (business object <code>location</code>, datawindow <code>d_location</code>) is <strong>Warehouse/Location Maintenance</strong>. Keys are <code>id</code> (→ <code>location.location_id</code>) + <code>company_id</code>; <code>id</code> also fans out to a shared-keyspace <code>address</code> row (same <a href="02-OData-API.html#common-tables"><code>mail_</code>-prefix convention</a> as everywhere else <code>address</code> is joined).</p>
+<h4 id="creating-a-new-warehouse-id-is-server-generated-and-you-cannot-request-one">Creating a new warehouse — <code>id</code> is server-generated, and you cannot request one</h4>
+<p>A <code>location_id</code> is <strong>never</strong> supplied by the caller — every way of trying lands on a different failure mode:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>What you send</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Keys: ["id", "company_id"]</code>, <code>id</code> = a specific new number (e.g. <code>99999</code>)</td>
+<td><strong>Refused</strong>: <code>General Exception: Enter a valid ID or leave ID blank. DataElement: tp_1_dw_1, Column: id, Value: 99999</code></td>
+</tr>
+<tr>
+<td><code>Keys: ["id", "company_id"]</code>, <code>id</code> = <code>""</code> (blank)</td>
+<td><strong>False success</strong> — <code>Succeeded: 1</code>, the response even echoes back <code>id: "0"</code> — but nothing is created <em>or</em> updated. <code>location_id</code> <strong>0</strong> is a pre-existing reserved row on every tenant tested; the write silently no-ops against it (confirmed by re-reading both <code>location</code> and <code>address</code> before and after — neither changed)</td>
+</tr>
+<tr>
+<td><code>Keys: []</code> (no key fields at all — <code>id</code> absent from the payload entirely, not just blank)</td>
+<td><strong>Succeeds</strong>, and P21 assigns a real, unused <code>location_id</code> (verified: <code>65329</code>), with <code>location_type</code> auto-set to <code>1330</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The working create, in full:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Location&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;IgnoreDisabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">          </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">          </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">              </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_name&quot;</span><span class="p">,</span><span class="w">         </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New Warehouse&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;central_phone_number&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5155550100&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFPG&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;branch_id&quot;</span><span class="p">,</span><span class="w">             </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">}</span>
+<span class="w">              </span><span class="p">]</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">          </span><span class="p">]</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>id</code>, <code>central_phone_number</code>, <code>company_id</code>, and <code>branch_id</code> are the four <code>Required: true</code> fields on this element — <code>location_name</code> is not required by the definition but is the only human-readable identifier, so treat it as required in practice. <code>branch_id</code> must be an existing <code>branch.branch_id</code>. The generated <code>location_id</code> comes back the same way a <a href="recipes/create-customer.html">Customer create's generated key</a> does — as an <code>Edits</code> entry named <code>id</code> inside the <code>Passed</code> transaction's own <code>DataElements[].Rows[].Edits[]</code>, not a separate event.</p>
+<h4 id="updating-an-existing-location-company_id-is-disabled-after-create">Updating an existing location — <code>company_id</code> is disabled after create</h4>
+<p>Once a location exists, re-keying on <code>id</code> alone (<code>Keys: ["id"]</code>, or <code>Keys: ["id", "company_id"]</code> with <code>company_id</code> simply absent from <code>Edits</code>) updates it normally. Including <code>company_id</code> <strong>in <code>Edits</code></strong> on an update — even unchanged, even still listed in <code>Keys</code> — is refused:</p>
+<div class="highlight"><pre><span></span><code>General Exception: Column is disabled: company_id
+</code></pre></div>
+
+<p><code>company_id</code> is accepted only on the initial create; keep it out of every subsequent <code>Edits</code> list. <code>delete_flag</code> (<code>ValidValues: ["ON", "OFF"]</code>, column <code>location.delete_flag</code>) soft-deletes a location the same way — omit <code>company_id</code> from that request too.</p>
+<p><code>GET /api/entity/locations</code> 404s (not one of the <a href="05-Entity-API.html">Entity API's four entities</a>), and the Interactive Location window's tools are Save/Clear/Close — no <code>New</code> — so the <code>Keys: []</code> create above is the only verified path to a new warehouse number. Out of scope here: <code>inv_loc</code> (item-at-location, see <a href="#item-service-nested-location-edits">Item Service — Nested Location Edits</a>) and location-append via the <a href="11-Inventory-REST-API.html">Inventory REST API</a>. <em>(Filed as <a href="https://github.com/mrwuss/p21-api-documentation/issues/161">#161</a>.)</em></p>
 <h3 id="binlocation-service-creating-bins">BinLocation Service -- Creating Bins</h3>
 <p>The <code>BinLocation</code> service <em>is</em> the <strong>Bin Location Maintenance</strong> window: its form element <code>FORM.form</code> is business object <code>bin</code> (datawindow <code>d_dw_bin_form</code>), and every field in the payload is a real field on that screen. Bulk bin creation is a clean Transaction API use case — verified in production at hundreds of bins per run.</p>
 <blockquote>
@@ -6844,6 +6916,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#jobcontractpricing-service">JobContractPricing Service</a></li>
 <li><a href="#assembly-service">Assembly Service</a></li>
 <li><a href="#item-service-nested-location-edits">Item Service -- Nested Location Edits</a></li>
+<li><a href="#location-service-creating-a-warehouse">Location Service — Creating a Warehouse</a></li>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>

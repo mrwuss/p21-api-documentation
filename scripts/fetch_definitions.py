@@ -68,6 +68,7 @@ DOCUMENTED_SERVICES = [
     "JobContractPricing",
     "Labor",
     "LaborProcess",
+    "Location",
     "PickZone",
     "PutawayZone",
     "Order",

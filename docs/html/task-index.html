@@ -759,6 +759,10 @@
 <td><a href="02-OData-API.html#common-tables">02 § Common Tables</a> — columns keep the <code>mail_</code>/<code>phys_</code> prefix (<code>mail_address1</code>, not <code>address1</code>); 404 without it</td>
 </tr>
 <tr>
+<td><strong>Does an OData read immediately after a Transaction write ever return stale data?</strong></td>
+<td><a href="02-OData-API.html#read-after-write-consistency">02 § Read-after-write consistency</a> — 125/125 clean on the <code>table:</code> surface, light load; <code>view:</code> untested</td>
+</tr>
+<tr>
 <td>Traverse relationships (no joins — chain by <code>_uid</code>)</td>
 <td><a href="02-OData-API.html#no-joins-chain-queries-by-uid">02 § No Joins</a></td>
 </tr>
@@ -1067,6 +1071,11 @@
 <td><a href="11-Inventory-REST-API.html#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing">11 § An incomplete create payload 500s</a> — message names the missing block; nothing persists on failure</td>
 </tr>
 <tr>
+<td><strong>Soft-delete an item</strong> (<code>inv_mast.delete_flag</code>) idempotently — and why a second write of any kind then fails</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#item-service-gotchas">03 § Item Service Gotchas</a> — a deleted item blocks <em>every</em> further <code>Item</code>-service write, not just a repeated delete; check <code>delete_flag</code> over OData first</td>
+</tr>
+<tr>
 <td>Item: <strong>add a supplier to a location's list</strong> (the flip's prerequisite — both keys + <code>IgnoreDisabled</code>)</td>
 <td><a href="recipes/set-primary-bin-supplier.html#adding-the-missing-location-supplier-row">set-primary-bin-supplier</a></td>
 <td><a href="03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">03 § Adding a Location Supplier Row</a></td>
@@ -1080,6 +1089,16 @@
 <td><strong>Create warehouse bins</strong></td>
 <td><a href="recipes/create-bins.html">create-bins</a></td>
 <td><a href="03-Transaction-API.html#binlocation-service-creating-bins">03 § BinLocation Service</a></td>
+</tr>
+<tr>
+<td><strong>Create a new warehouse/location</strong> — a specific <code>id</code> is refused, a blank one false-succeeds at <code>location_id=0</code></td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#location-service-creating-a-warehouse">03 § Location Service</a> — the fix is <code>Keys: []</code> with no <code>id</code> at all; P21 assigns a real number</td>
+</tr>
+<tr>
+<td>Location: <strong>update or soft-delete an existing warehouse</strong> — <code>company_id</code> becomes <code>Column is disabled</code> after create</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#updating-an-existing-location-company_id-is-disabled-after-create">03 § Location Service — Updating</a></td>
 </tr>
 <tr>
 <td><strong>Sales price pages</strong> (codes, breaks, field order)</td>

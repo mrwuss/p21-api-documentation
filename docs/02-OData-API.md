@@ -179,6 +179,20 @@ The table itself is real — `bin.$Key` appears in `table/$metadata`, and its da
 
 ---
 
+### Read-after-write consistency
+
+Every write recipe in this repo verifies a [Transaction API](03-Transaction-API.md) write by reading it back over OData (or `/transaction/get`) **immediately** afterward — no delay, no retry. That pattern is now a tested fact, not just an accident of every example happening to work: **125 back-to-back single-field writes (`inv_mast.item_desc` via the `Item` service), each followed instantly by an OData `table:` read-back of the same field, returned zero stale reads** — 75 sequential plus 50 more across 5 concurrently-writing items (26.1, September 2026). The OData `table:` surface reflects a Transaction API write with no observable lag, at least at this scale.
+
+What this does **not** establish, so do not over-read it:
+
+- **Only the `table:` surface was tested.** `inv_mast`/`Item` has no matching `view:` object to compare against (`$metadata` confirms no `item`/`inv_mast`/`v_item` view exists — [Discovering What's Exposed](#discovering-whats-exposed-metadata)); whether a `view:` object (which may be backed by its own query/cache layer) lags is unconfirmed.
+- **This was light load** (5 concurrent writers, single tenant), not a stress test. Heavier concurrent write volume, a busier tenant, or a different middleware deployment could behave differently.
+- **This is a snapshot of one build.** Re-verify before relying on it as a hard invariant if the tenant's P21 or middleware version changes — see the [2026.1 breaking-changes registry](14-Breaking-Changes.md) for how much this platform's behavior moves between builds.
+
+Within those bounds: a downstream integration treating an immediate post-write OData mismatch as a hard data-integrity alarm (no retry, no grace period) is not chasing a phantom on this surface — verified `table:` reads have not lagged a `Transaction` write in any attempt made here.
+
+---
+
 ## Authentication
 
 Include the Bearer token in the Authorization header:
