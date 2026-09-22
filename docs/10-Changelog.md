@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-09-22 — v1.26.1
+
+- **fix:** **[A consumer key's API Scope does not restrict the Transaction API](00-Authentication.md#api-scopes)** — verified live, 26.1.5950.0: a key configured with only a single read-only OData table/view scope (no `/api`, no `/uiserver0`) could still complete an actual write via `POST /api/v2/transaction`, in addition to unrestricted `GET /api/v2/services` and `GET /api/v2/definition/{service}`. OData, the Entity API, and the Inventory REST API all correctly rejected the same out-of-scope key. This is an **unpatched, unresolved gap** — reported to Epicor. Reproduction detail is intentionally withheld from this doc pending their response; tracked in [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) — *@mrwuss*
+
 ## 2026-09-21 — v1.26.0
 
 Closed the three open issues (#159, #160, #161) with live verification on play, 26.1 — a consistency question, a correction to a filed finding's stated cause, and a previously-unsolved create path.

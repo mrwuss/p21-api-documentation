@@ -462,6 +462,8 @@ static async Task<JsonElement> GetConsumerTokenAsync(
 
 Consumer keys restrict access to specific endpoints. Scopes are configured in SOA Admin as semicolon-delimited paths with a leading slash.
 
+> ⚠️ **Do not treat API Scope as a Transaction API boundary.** Scoping a key away from `/api` — for example to a narrow, read-only `/odata:table-list` — does **not** prevent that key from reading or writing through the Transaction API. Verified live: a key configured with only an OData table scope (no `/api`, no `/uiserver0` in its `aud` claim) was still able to complete a real `POST /api/v2/transaction` write, in addition to unrestricted `GET /api/v2/services` and `GET /api/v2/definition/{service}`. OData, the Entity API, and the Inventory REST API all correctly reject an out-of-scope call — this gap is isolated to the Transaction API surface. **Treat every consumer key as a full read/write Transaction API credential, regardless of its configured API Scope**, until this is confirmed fixed. This compounds the impersonation risk in the warning above: a key an admin believes is safely restricted to OData is not. Reported to Epicor; reproduction detail intentionally withheld here pending their response — see [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) for status.
+
 ### URL Scopes
 
 | Scope | Access |

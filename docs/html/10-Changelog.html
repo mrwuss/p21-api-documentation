@@ -648,6 +648,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
 <li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>
 <li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>
 <li><a href="#2026-09-12-v1240">2026-09-12 — v1.24.0</a></li>
@@ -743,6 +744,10 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-09-22-v1261">2026-09-22 — v1.26.1</h2>
+<ul>
+<li><strong>fix:</strong> <strong><a href="00-Authentication.html#api-scopes">A consumer key's API Scope does not restrict the Transaction API</a></strong> — verified live, 26.1.5950.0: a key configured with only a single read-only OData table/view scope (no <code>/api</code>, no <code>/uiserver0</code>) could still complete an actual write via <code>POST /api/v2/transaction</code>, in addition to unrestricted <code>GET /api/v2/services</code> and <code>GET /api/v2/definition/{service}</code>. OData, the Entity API, and the Inventory REST API all correctly rejected the same out-of-scope key. This is an <strong>unpatched, unresolved gap</strong> — reported to Epicor. Reproduction detail is intentionally withheld from this doc pending their response; tracked in <a href="https://github.com/mrwuss/p21-api-documentation/issues/163">#163</a> — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-09-21-v1260">2026-09-21 — v1.26.0</h2>
 <p>Closed the three open issues (#159, #160, #161) with live verification on play, 26.1 — a consistency question, a correction to a filed finding's stated cause, and a previously-unsolved create path.</p>
 <ul>
@@ -1590,6 +1595,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
 <li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>
 <li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>
 <li><a href="#2026-09-12-v1240">2026-09-12 — v1.24.0</a></li>

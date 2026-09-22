@@ -193,7 +193,8 @@ All documentation is derived from:
 | `externalcounts` create needs `ItemId` repeated on the **bin sub-record**, not just the line — omitting it fails with an error that never names the real cause | [docs/15 § externalcounts](docs/15-Other-REST-Families.md#inventoryexternalcounts) |
 | `sales/opportunities`, `sales/consignmentusageorders` and `accounting/exchangerates` creates can fail purely from **empty tenant configuration** (no CRM lookups, no consignment contract, one currency) — check the precondition before assuming the API is broken | [docs/15 §§ each family](docs/15-Other-REST-Families.md#salesopportunities) |
 | **`environment/systems` needs a trailing slash in C#** — the no-slash form 307-redirects and `HttpClient` strips `Authorization` across it, the same [documented redirect hazard](docs/06-Error-Handling.md#401-authorization-header-was-not-present-or-bearer-was-missing) as the router URL | [docs/15 § environment/systems](docs/15-Other-REST-Families.md#environmentsystems) |
+| **A consumer key's API Scope does not restrict the Transaction API** — verified, unpatched; a key scoped to a single read-only OData object could still read and write via `/api/v2/transaction`. Treat every consumer key as full Transaction API access regardless of configured scope. Full detail withheld pending Epicor response — see [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) | [docs/00 § API Scopes](docs/00-Authentication.md#api-scopes) |
 
 ---
 
-*Last updated: 2026-09-21*
+*Last updated: 2026-09-22*

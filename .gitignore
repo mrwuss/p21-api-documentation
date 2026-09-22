@@ -26,6 +26,10 @@ scraped/
 # Local reference clones (third-party repos, never commit)
 reference/
 
+# Local-only notes never meant for the public repo (e.g. unpatched
+# vendor-security findings pending disclosure) -- never commit
+local/
+
 # Agent scratch: subagent worktrees and task transcripts
 .claude/worktrees/
 .claude/tasks/

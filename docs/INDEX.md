@@ -14,6 +14,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 |------|-------|
 | Get a bearer token (v2, credentials in body) | [00 § Method 1: User Credentials](00-Authentication.md#method-1-user-credentials) |
 | Authenticate with a consumer key | [00 § Method 2: Consumer Key](00-Authentication.md#method-2-consumer-key) |
+| **Limit a consumer key to OData-only / read-only** | [00 § API Scopes](00-Authentication.md#api-scopes) — scoping works for OData/Entity/Inventory REST, but **not** for the Transaction API; a "restricted" key is still a full TAPI read/write credential |
 | Get the UI server URL (Transaction/Interactive base) — 307 redirect gotcha | [00 § UI Server URL](00-Authentication.md#ui-server-url) |
 | Token TTL / reuse across APIs | [00 § Token Lifetime and Reuse](00-Authentication.md#token-lifetime-and-reuse) |
 | Detect P21 server version / production flag (undocumented endpoint) | [00 § Server Info Endpoint](00-Authentication.md#server-info-endpoint-version-environment-detection) |
