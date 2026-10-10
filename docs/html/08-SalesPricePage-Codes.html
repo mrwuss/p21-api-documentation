@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -654,7 +660,10 @@
 <li><a href="#why-order-matters">Why Order Matters</a></li>
 </ul>
 </li>
-<li><a href="#transaction-api-alternative">Transaction API Alternative</a></li>
+<li><a href="#transaction-api-alternative">Transaction API Alternative</a><ul>
+<li><a href="#creating-a-page-through-the-transaction-api">Creating a Page Through the Transaction API</a></li>
+</ul>
+</li>
 <li><a href="#calculation-method-values-tab">Calculation Method (VALUES Tab)</a></li>
 <li><a href="#price-page-type-form-tab">Price Page Type (FORM Tab)</a></li>
 <li><a href="#pricing-method-form-tab">Pricing Method (FORM Tab)</a></li>
@@ -694,6 +703,7 @@
 <li><a href="#purchase-side-pricing-services">Purchase-Side Pricing Services</a><ul>
 <li><a href="#header-fields-tabpage_1tp_1_dw_1">Header Fields (TABPAGE_1.tp_1_dw_1)</a></li>
 <li><a href="#header-and-link-services">Header and Link Services</a></li>
+<li><a href="#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">Editing a Supplier/Item Purchase Page (PurchasePricingPageSupplierItem)</a></li>
 </ul>
 </li>
 <li><a href="#related">Related</a></li>
@@ -1144,6 +1154,48 @@ field-order sequence: <code>FORM.form</code> keys on <code>price_page_uid</code>
 <code>POST /api/v2/transaction</code>. Interactive remains the better choice for <strong>creating</strong> a page,
 where the page type determines which subsequent fields are valid or required. In short, use
 Interactive for create workflows and the Transaction API for keyed updates.</p>
+<h3 id="creating-a-page-through-the-transaction-api">Creating a Page Through the Transaction API</h3>
+<p>A Transaction API create has also been verified, for an item-level page with a fixed price and a cost <code>Value</code> on the COSTS tab. It used three elements of <code>SalesPricePage</code> and then a second service for the book link:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Service · element</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>SalesPricePage</code> · <code>FORM.form</code></td>
+<td><code>item_id</code>, <code>description</code>, <code>price_page_type_cd</code>, <code>company_id</code>, effective/expiration dates, <code>contract_number</code>, <code>pricing_method_cd</code>, <code>source_price_cd</code>, <code>price</code>, <code>totaling_method_cd</code> / <code>totaling_basis_cd</code>, <code>strategic_price_applies_to_cd</code> — in the <a href="#required-field-order-for-page-creation">field order</a> above</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>SalesPricePage</code> · <code>COSTS.costs</code></td>
+<td><code>other_cost</code> and <code>commission_cost</code> type / value / source / calculation method / calculation value</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>SalesPricePage</code> · <code>VALUES.values</code></td>
+<td><code>calculation_method_cd</code>, <code>calculation_value1</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>SalesPriceBook</code> · <code>FORM.form</code> keyed <code>price_book_id</code>, then <code>LIST.list_detail</code> keyed <code>price_page_uid</code></td>
+<td>adds the <code>price_page_x_book</code> row</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Omit <code>calculator_type</code>.</strong> Its raw database value is refused (<em>"Invalid calculator_type value: B"</em> under <code>UseCodeValues: false</code>); the default lands as that same value anyway.</li>
+<li><strong>Link the page to its book immediately after the create.</strong> An unlinked page is invisible to customer pricing, and order lines priced in the gap never pick the page up later. Do the create and the link back to back in one run.</li>
+<li><strong>Link through <code>SalesPriceBook</code>, not through the page.</strong> <code>SalesPriceBook</code> · <code>FORM.form</code> keyed <code>price_book_id</code>, plus a <code>LIST.list_detail</code> row keyed <code>price_page_uid</code>, creates the <code>price_page_x_book</code> row. The page's own <code>USED BY.price_book_x_page</code> element cannot do it: sending <code>price_book_price_book_id</code> there fails cleanly with <code>Column is disabled: price_book_price_book_id</code> — and with <code>IgnoreDisabled: true</code> it reports <code>Succeeded: 1</code>, drops the element from the response and writes <strong>no</strong> link row (<a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a>). Read <code>price_page_x_book</code> back after the link. The Interactive alternative is <a href="04-Interactive-API.html#example-linking-price-page-to-price-book">Linking Price Page to Price Book</a>.</li>
+<li><strong>Unlink</strong> with the same <code>SalesPriceBook</code> <code>LIST.list_detail</code> row and <code>row_status_flag</code> = <code>Delete</code>. That <strong>physically deletes</strong> the <code>price_page_x_book</code> row — it is not a soft delete.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — create plus book link verified on play, then production, July 2026; the create is not re-run here. The book-link behavior (both elements, with and without <code>IgnoreDisabled</code>) and the unlink: verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by Alex Westemeier.</p>
+</blockquote>
 <hr />
 <h2 id="calculation-method-values-tab">Calculation Method (VALUES Tab)</h2>
 <p>The <code>calculation_method_cd</code> field on the VALUES tab controls how pricing calculations are applied.</p>
@@ -3591,7 +3643,21 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 </table></div>
 <p><code>SalesPriceBook</code>'s <code>LIST.list_detail</code> exposes <code>calculation_value1</code>, <code>calculation_value2</code>, <code>break1</code>, and <code>other_cost_value</code> as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.</p>
 <blockquote>
-<p><strong>The purchase-side write path is untested.</strong> Everything above is read from the service definitions and confirmed by a live read. No write to a purchase pricing page has been verified, so treat creating or updating one as unproven until you have tested it in your own environment.</p>
+<p><strong>The purchase-side write path is not re-verified here.</strong> Everything above is read from the service definitions and confirmed by a live read in this repo. The one write that has been reported verified is below; treat the other two services as unproven until you have tested them in your own environment.</p>
+</blockquote>
+<h3 id="editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">Editing a Supplier/Item Purchase Page (<code>PurchasePricingPageSupplierItem</code>)</h3>
+<p>Creates and in-place edits on <code>PurchasePricingPageSupplierItem</code> have been verified at batch scale (a couple of hundred pages edited, no duplicates, no errors):</p>
+<ul>
+<li><strong><code>"Status": "Edit"</code> is not a valid status</strong> — HTTP 400 enum error, like every status other than <a href="03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts"><code>New</code></a>. Edit in place with <strong><code>Status: "New"</code> and key values that exactly match the existing page</strong>; the window loads it and applies your edits.</li>
+<li><strong>A changed key creates a new page.</strong> The dates are keys. Send a different <code>effective_date</code> or <code>expiration_date</code> and you silently create a second page instead of editing the first. To re-date a page, expire the old one and create a new one.</li>
+<li><strong>Resend the full field set.</strong> The window re-validates required fields on every save — leave out <code>totaling_basis</code> and the edit fails <em>"This column is required."</em> Read the current values, mirror them, and change only what you mean to change.</li>
+<li><strong>Send window labels, not database codes.</strong> The table stores <code>PRICE</code> / <code>ITEM</code> / <code>MULTIPLIER</code>; the API wants <code>Price</code> / <code>Item</code> / <code>Multiplier</code>. Map them before sending.</li>
+<li><strong>A page is current only while <code>delete_flag = 'N'</code> and <code>expiration_date</code> is today or later.</strong> Many stale pages are date-expired with <code>delete_flag</code> still <code>N</code>.</li>
+<li><code>location_id</code> can be stored while <code>all_locations_flag</code> stays <code>Y</code>; a location-specific page overrides an all-locations page for that location.</li>
+<li>Quantity-break pages are <code>pricing_method</code> <code>None</code> + <code>calculation_type</code> <code>Fixed Price</code>, with tiers in <code>value{n}</code> / <code>break{n}</code>.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — create and in-place edit verified on play, July 2026; not re-run here.</p>
 </blockquote>
 <div class="code-tabs">
   <div class="tab-buttons">
@@ -3862,7 +3928,10 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <li><a href="#why-order-matters">Why Order Matters</a></li>
 </ul>
 </li>
-<li><a href="#transaction-api-alternative">Transaction API Alternative</a></li>
+<li><a href="#transaction-api-alternative">Transaction API Alternative</a><ul>
+<li><a href="#creating-a-page-through-the-transaction-api">Creating a Page Through the Transaction API</a></li>
+</ul>
+</li>
 <li><a href="#calculation-method-values-tab">Calculation Method (VALUES Tab)</a></li>
 <li><a href="#price-page-type-form-tab">Price Page Type (FORM Tab)</a></li>
 <li><a href="#pricing-method-form-tab">Pricing Method (FORM Tab)</a></li>
@@ -3902,6 +3971,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <li><a href="#purchase-side-pricing-services">Purchase-Side Pricing Services</a><ul>
 <li><a href="#header-fields-tabpage_1tp_1_dw_1">Header Fields (TABPAGE_1.tp_1_dw_1)</a></li>
 <li><a href="#header-and-link-services">Header and Link Services</a></li>
+<li><a href="#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">Editing a Supplier/Item Purchase Page (PurchasePricingPageSupplierItem)</a></li>
 </ul>
 </li>
 <li><a href="#related">Related</a></li>

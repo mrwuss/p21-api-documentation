@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchasing: Stock PO → Receipt → Voucher, and Drop Ship - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-header a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .nav-group {
+            padding: 10px 0 2px;
+        }
+
+        .nav-group > summary {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }
+
+        .nav-group > summary::-webkit-details-marker { display: none; }
+
+        .nav-group > summary::before {
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }
+
+        .nav-group[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .nav-group > summary:hover {
+            color: #a0b4c8;
+        }
+
+        .nav-count {
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }
+
+        .toc-rail-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }
+
+        .toc-inline {
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .toc-inline > summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }
+
+        .toc-inline .page-toc {
+            padding: 0 8px 10px;
+        }
+
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #5f7183;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #1a5276;
+        }
+
+        .page-toc a.active {
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+
+        /* ===== Main Content ===== */
+        .content {
+            /* Long unbreakable tokens appear in plain prose too, not just in
+               code spans (e.g. PurchaseDiscountGroup/SalesDiscountGroup). Let
+               any word break rather than push the page sideways; `break-word`
+               only acts when the word genuinely cannot fit. */
+            overflow-wrap: break-word;
+            flex: 1 1 0;
+            /* Without min-width: 0 a flex item refuses to shrink below its
+               content, so the sidebar + content overflow the viewport and the
+               whole PAGE scrolls sideways. */
+            min-width: 0;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Inline code carries long identifiers (d_dw_price_page_x_location_maint).
+           Break them rather than let them widen the line -- `break-word` only
+           breaks when the token genuinely cannot fit. Code BLOCKS are exempt:
+           they scroll inside their own box, where wrapping would corrupt the
+           code's meaning. */
+        :not(pre) > code {
+            /* `anywhere`, not `break-word`: only `anywhere` reduces the
+               element's min-content width, which is what lets a narrow
+               container actually shrink instead of being forced wide by an
+               unbreakable identifier. Code BLOCKS are exempt -- they scroll in
+               their own box, where wrapping would corrupt the code. */
+            overflow-wrap: anywhere;
+        }
+
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
+        table {
+            width: 100%;
+            max-width: 100%;
+            table-layout: auto;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
+        td code, th code {
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar,
+            .toc-rail,
+            .toc-inline {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            .copy-section-btn { display: none; }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {
+            .toc-rail {
+                display: none;
+            }
+            .toc-inline {
+                display: block;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 1100px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {
+                display: block;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* On a narrow screen a floating button pinned to the right edge is both
+           the wrong pattern and a source of horizontal overflow -- it is sized
+           from the layout viewport, so it widens the very box it is measured
+           against. Let it flow with the content instead. */
+        @media (max-width: 600px) {
+            .print-btn {
+                position: static;
+                display: block;
+                width: 100%;
+                margin: 0 0 20px;
+                box-shadow: none;
+            }
+        }
+
+        /* ===== Copy-section button ===== */
+        .copy-section-btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            vertical-align: middle;
+            margin-left: 12px;
+            padding: 4px 9px;
+            color: #2874a6;
+            background: #eaf2f8;
+            border: 1px solid #aed6f1;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity .15s ease, background .15s ease;
+        }
+
+        h2:hover > .copy-section-btn,
+        h3:hover > .copy-section-btn,
+        h4:hover > .copy-section-btn,
+        .copy-section-btn:focus {
+            opacity: 1;
+        }
+
+        .copy-section-btn:hover {
+            background: #d4e6f1;
+        }
+
+        .copy-section-btn.copied {
+            opacity: 1;
+            color: #1e8449;
+            background: #eafaf1;
+            border-color: #a9dfbf;
+        }
+
+        .copy-section-btn.failed {
+            opacity: 1;
+            color: #a93226;
+            background: #fdedec;
+            border-color: #f5b7b1;
+        }
+
+        /* Touch devices never hover -- keep the buttons visible there. */
+        @media (hover: none) {
+            .copy-section-btn { opacity: 1; }
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html"><strong>P21 API Docs</strong></a>
+        </div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+        <details class="nav-group" open>
+            <summary>Start Here</summary>
+            <ul class="nav-pages">
+            <li><a href="../task-index.html">Task Index</a></li>
+            <li><a href="../00-Authentication.html">Authentication</a></li>
+            <li><a href="../01-API-Selection-Guide.html">API Selection Guide</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>API Reference</summary>
+            <ul class="nav-pages">
+            <li><a href="../02-OData-API.html">OData API</a></li>
+            <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+            <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+            <li><a href="../05-Entity-API.html">Entity API</a></li>
+            <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+            <li><a href="../12-Production-Labor-API.html">Production & Labor</a></li>
+            <li><a href="../13-UDT-Service-API.html">UDT Service API</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Guides & Troubleshooting</summary>
+            <ul class="nav-pages">
+            <li><a href="../14-Breaking-Changes.html">Breaking Changes</a></li>
+            <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+            <li><a href="../07-Session-Pool-Troubleshooting.html">Session Pool Issues</a></li>
+            <li><a href="../08-SalesPricePage-Codes.html">SalesPricePage Codes</a></li>
+            <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Project</summary>
+            <ul class="nav-pages">
+            <li><a href="../10-Changelog.html">Changelog</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li><a href="../15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Recipes <span class="nav-count">23</span></summary>
+            <ul class="nav-pages">
+            <li><a href="../recipes/README.html">Recipes Overview</a></li>
+            <li><a href="../recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
+            <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+            <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+            <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="../recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
+            <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+            <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+            <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="../recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="../recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
+            <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+            <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li class="active"><a href="../recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
+            <li><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="../recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
+            <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="../recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
+            <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+            <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="../recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
+            <li><a href="../recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            </ul>
+        </details>
+        </details>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        <div class="toc">
+<ul>
+<li><a href="#path-a-bring-items-into-stock">Path A — bring items into stock</a></li>
+<li><a href="#path-b-drop-ship">Path B — drop ship</a></li>
+<li><a href="#failed-can-mean-already-committed">⚠️ "Failed" can mean "already committed"</a></li>
+<li><a href="#not-covered-here">Not covered here</a></li>
+</ul>
+</div>
+
+    </div>
+</details>
+<h1 id="purchasing-stock-po-receipt-voucher-and-drop-ship">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</h1>
+<p>The two buy-side paths that end in a vendor voucher in AP: bringing items into stock (create the PO, receive it, vouch it), and drop ship, where the vendor ships straight to the customer (sales order line → direct-ship PO → confirmation → voucher).</p>
+<p><strong>API:</strong> Transaction + Interactive · <strong>Services:</strong> <code>PurchaseOrder</code>, <code>PurchaseOrderReceipt</code>, <code>ConvertPOToVoucher</code>, <code>Order</code> (+ its PO wizard), <code>DirectShipConfirmation</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#purchaseorder-service-creating-a-po">PurchaseOrder</a> · <a href="../03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt</a> · <a href="../03-Transaction-API.html#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher</a> · <a href="../04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard</a></p>
+<p>This page is a <strong>checklist</strong>, not a script: it strings together sections of the manual that each carry the payload and the traps. For a different PO type, see <a href="create-requisition-po.html">create-requisition-po</a>.</p>
+<p><strong>Status legend:</strong> <strong>Verified</strong> = run with a read-back on a play tenant (August–October 2026), by the credited contributor and, where marked, re-verified in this repo; <strong>Inferred</strong> = follows from verified behavior but was not run as its own step.</p>
+<h2 id="path-a-bring-items-into-stock">Path A — bring items into stock</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Surface</th>
+<th>Read-back</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A1</td>
+<td>Create the PO</td>
+<td>Transaction <code>PurchaseOrder</code></td>
+<td><code>po_hdr</code> (<code>approved</code>), <code>po_line</code></td>
+</tr>
+<tr>
+<td>A2</td>
+<td>Receive it</td>
+<td>Transaction <code>PurchaseOrderReceipt</code> when every line has a usable primary bin; otherwise Interactive</td>
+<td><code>inventory_receipts_hdr</code> / <code>_line</code>, <code>po_line.qty_received</code>, <code>inv_bin</code></td>
+</tr>
+<tr>
+<td>A3</td>
+<td>Vouch the vendor invoice</td>
+<td>Transaction <code>ConvertPOToVoucher</code></td>
+<td><code>apinv_hdr</code>, <code>apinv_line</code>, receipt lines <code>vouch_complete = 'Y'</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>A1 — Create (Verified, re-verified here).</strong> Header <code>TABPAGE_1.tp_1_dw_1</code>: <code>location_id</code>, <code>vendor_id</code>, <code>buyer_id</code> (an employee <strong>number</strong>, stored in <code>po_hdr.requested_by</code>), <code>order_date</code>, <code>required_date</code> (genuinely required), optional <code>external_po_no</code> to tag the run. Lines <code>TABPAGE_17.tp_17_dw_17</code>: <code>item_id</code>, <code>unit_quantity</code>, <code>unit_of_measure</code>, <code>pricing_unit</code>, and the price in <strong><code>unit_price_display</code></strong> — not <code>unit_price</code>. Omit <code>division_id</code> and <code>company_id</code>; they default. <a href="../03-Transaction-API.html#purchaseorder-service-creating-a-po">Manual</a>.</p>
+<p><strong>A2 — Receive (Verified, both surfaces).</strong> Header <code>TABPAGE_1.tp_1_dw_po</code>: <code>po_no</code>, then <code>receive_all</code> = <code>Y</code>. That is the whole Transaction payload <strong>when every line's item has a usable primary bin</strong> (re-verified here). When a line has none — typically a primary bin of <code>0</code> that is put-locked — the Transaction API cannot address the bin grid, because its rows land on whichever line is selected. Drive the window instead: for each such line, find its row in <code>tp_17_dw_17</code> (the column <code>ufc_inv_loc_primary_bin</code> shows <code>0</code>), <code>select_row</code> it, change to <code>TABPAGE_BIN</code>, set <code>bin_cd</code> and <code>unit_quantity</code> on <code>tabpage_bin</code>, then save. The receipt number is not in the window after the save; find it by <code>po_number</code> in <code>inventory_receipts_hdr</code> (lines use <code>line_number</code>, not <code>line_no</code>). <a href="../03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">Manual</a>.</p>
+<p><strong>A3 — Vouch (Verified, re-verified here).</strong> Header <code>TABPAGE_1.tp_1_dw_1</code> (key <code>voucher_no</code>, left empty): <code>po_no</code>, <code>invoice_no</code>, <code>invoice_date</code>, <code>invoice_amount</code> (the real invoice total — it must equal the vouched lines or P21 holds the variance), <code>vendor_id</code>. Lines keyed <code>receipt_number</code> + <code>line_number</code> + <code>po_no</code>: <code>unit_qty_invoiced</code>, <code>unit_cost_display</code>. <strong>Send nothing else</strong> — <code>company_id</code>, <code>branch_id</code>, <code>period</code>, <code>year_for_period</code> are marked required and are disabled columns. The voucher lands approved and unpaid. <a href="../03-Transaction-API.html#convertpotovoucher-service-vouching-a-receipt">Manual</a>.</p>
+<h2 id="path-b-drop-ship">Path B — drop ship</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Surface</th>
+<th>Read-back</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B1</td>
+<td>Sales order with a direct-ship line (<code>disposition</code> = <code>D</code>), saved</td>
+<td>Interactive <code>Order</code></td>
+<td><code>oe_line.disposition = 'D'</code>, <code>po_cost</code></td>
+</tr>
+<tr>
+<td>B2</td>
+<td>Re-open the order, <code>c_create_po</code> = <code>ON</code>, save → PO wizard: <code>cb_next</code>, <code>cb_finish</code></td>
+<td>Interactive <code>Order</code> + wizard response window</td>
+<td><code>po_hdr</code> (<code>po_type = 'D'</code>), <code>oe_line_po</code> (<code>connection_type = 'P'</code>)</td>
+</tr>
+<tr>
+<td>B3</td>
+<td>Vendor ships; confirm the direct ship — receipt <strong>and</strong> customer invoice</td>
+<td>Interactive <code>DirectShipConfirmation</code> (see note)</td>
+<td><code>inventory_receipts_hdr</code> (type <code>P</code>), <code>po_line</code> complete, <code>oe_line.qty_invoiced</code>, <code>invoice_hdr</code></td>
+</tr>
+<tr>
+<td>B4</td>
+<td>Vouch the vendor invoice against that receipt</td>
+<td>Transaction <code>ConvertPOToVoucher</code> (as A3)</td>
+<td>as A3</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>B1 — The direct-ship line (Verified).</strong> <code>disposition</code> can be set <strong>only while the line is being entered</strong>, in the window — never on a saved line, never through the Transaction API. <strong>Set <code>quote</code> = <code>OFF</code> first</strong>: in quote mode <code>disposition</code> looks disabled and the wizard later builds an RFQ instead of a PO (<a href="../04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">details</a>). The header needs <code>contact_id</code>. Key the deal's buy price into the line's <code>po_cost</code>: it flows to the PO line's price, and without it the PO inherits the supplier's standard cost.</p>
+<p><strong>B2 — Two saves, then the wizard (Verified, re-verified here).</strong> Requesting the PO in the same save that creates the order derails — a new order's save stacks other prompts ahead of the wizard. Save the order, re-open it, set <code>c_create_po</code> = <code>ON</code>, save. The response window is the wizard only if its tools include <code>cb_finish</code>; check before pressing anything.</p>
+<ul>
+<li>The API user needs a <strong>Buyer ID</strong> in User Maintenance, or the trigger refuses.</li>
+<li><code>supplier_id</code> on the wizard is disabled to the API: it defaults to the item's primary supplier. When supplier choice matters, a person creates the PO.</li>
+<li><strong>The PO is committed at <code>cb_next</code>, before <code>cb_finish</code>.</strong> An abandoned wizard is not a no-op — go and look for the PO.</li>
+</ul>
+<p><strong>B3 — Confirm the direct ship (Verified — see note).</strong> Interactive <code>DirectShipConfirmation</code>: set <code>TABPAGE_1.tp_1_dw_po.po_no</code>, <code>receive_all</code> = <code>ON</code>, save. One save writes the receipt, completes the PO lines, invoices the sales-order lines and creates the customer's invoice. <strong>Do not</strong> try <code>PurchaseOrderReceipt</code> on a direct-ship PO; it refuses because the linked sales lines are locked. The confirmation also <strong>overwrites <code>po_line.supplier_ship_date</code> on every line</strong> — capture it first if you confirm partials (<a href="../04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">details</a>).</p>
+<blockquote>
+<p><strong>Note — which surface.</strong> The Interactive path above is verified on play 26.1 (October 2026). A Transaction API path (<code>receive_all</code> = <code>Y</code>, <code>print_invoice</code> = <code>N</code>, <code>fax_invoice</code> = <code>N</code>) was reported working on another play tenant in August 2026, but returned an empty no-op result on 26.1.5940.0 in this repo — see <a href="../04-Interactive-API.html#the-write-path-is-not-reproduced-here">The write path is not reproduced here</a>. On either surface, <strong>never send <code>c_email_invoice</code></strong>: it is disabled, and a transaction that tripped on it reported <code>Failed</code> <strong>after</strong> writing the receipt, the PO completion and the customer invoice.</p>
+</blockquote>
+<p><strong>B4 — Vouch (Inferred from A3).</strong> A direct-ship vendor invoice vouches like any other, against the receipt B3 created. A direct-ship PO "with no receipt yet" means the sales side has not confirmed the shipment — it is not a receiving task.</p>
+<h2 id="failed-can-mean-already-committed">⚠️ "Failed" can mean "already committed"</h2>
+<p>Twice on this path a call reported failure after the work was done: the wizard commits the PO at <code>cb_next</code>, and a direct-ship confirmation that tripped on a disabled column had already written the receipt and the invoices. <strong>Treat a failure as "go and read the tables", never as "nothing happened".</strong> See <a href="../03-Transaction-API.html#what-failed-actually-guarantees">What <code>Failed</code> actually guarantees</a>.</p>
+<h2 id="not-covered-here">Not covered here</h2>
+<p>Changing or closing a stock PO after creation, receipts for lot- or serial-tracked items, partial receipts across several receipts, and vouchers without a PO (<code>VoucherByItem</code>, <code>ConvertVendorInvoiceToVoucher</code>) — none verified.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — both paths verified on play, August 2026, with the Interactive receipt, the wizard, the Transaction direct-ship confirmation and the voucher; not re-run here except where marked. Path A's Transaction receipt and voucher and the wizard were re-verified in this repo (August 2026); the Interactive direct-ship confirmation and the quote-mode correction: <em>@mrwuss</em>, play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>).</p>
+</blockquote>
+    </main>
+
+    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            <div class="toc">
+<ul>
+<li><a href="#path-a-bring-items-into-stock">Path A — bring items into stock</a></li>
+<li><a href="#path-b-drop-ship">Path B — drop ship</a></li>
+<li><a href="#failed-can-mean-already-committed">⚠️ "Failed" can mean "already committed"</a></li>
+<li><a href="#not-covered-here">Not covered here</a></li>
+</ul>
+</div>
+
+        </div>
+    </aside>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {
+                if (mq.matches) { fold.removeAttribute('open'); }
+                else { fold.setAttribute('open', ''); }
+            }
+            if (mq.addEventListener) { mq.addEventListener('change', apply); }
+            else if (mq.addListener) { mq.addListener(apply); }
+            apply();
+        })();
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+
+
+    </script>
+</body>
+</html>

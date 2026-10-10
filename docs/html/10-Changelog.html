@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -648,6 +654,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>
 <li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
 <li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>
 <li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>
@@ -744,6 +751,30 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-10-v1270">2026-10-10 — v1.27.0</h2>
+<p>Brought in the verified findings from <a href="https://github.com/AWestemeier">Alex Westemeier</a>'s process work, generalized, and re-ran on play 26.1.5950.0 the four that contradicted or extended this repo. Closed three issues that already carried verified results, and documented a community answer to a fourth. All identifiers are placeholders.</p>
+<p><strong>Corrections from the live re-test (play, 26.1.5950.0, 2026-10-10)</strong></p>
+<ul>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#jobcontractpricing-service">JobContractPricing updates don't need <code>end_date</code></a></strong> — key the header by <code>job_no</code> + <code>contract_no</code> alone; the line still updates and the header isn't re-saved. Sending <code>end_date</code> is what triggers both <em>"You may not change the end date of this record…"</em> (only when the header's corporate address differs from the Customer/Ship To customer's) and <em>"The end date must be equal to or greater than today"</em>. An expired contract accepted header and line edits through the Transaction API without it, so the earlier "expired contracts need Interactive" guidance is withdrawn — <em>@mrwuss, reported by Alex Westemeier</em></li>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#assembly-service">Assembly create works through the Transaction API on a plain item</a></strong> — it fails only when the item is already a component of another assembly (the confirmation prompt is auto-answered No, then <code>Cannot insert the value NULL into column 'inv_mast_uid'</code>); create those through the Interactive API. Edits to existing assemblies (header flags, component quantity, component delete) work through the Transaction API without <code>IgnoreDisabled</code> — <em>@mrwuss, reported by Alex Westemeier</em></li>
+<li><strong>fix:</strong> <strong><a href="06-Error-Handling.html#a-failed-write-can-leave-rows-behind">A failed multi-line create is not rolled back</a></strong> — a failure on line 2 or later, or at save, leaves the header and earlier lines soft-deleted and consumes the document number; a failure on line 1 leaves nothing. An unsaved Interactive session that ran <code>add_row</code> behaves the same. Read-backs must filter <code>delete_flag</code> — <em>@mrwuss, reported by Alex Westemeier</em></li>
+<li><strong>docs:</strong> <strong><a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">A fourth <code>IgnoreDisabled</code> false-success surface</a></strong> — <code>SalesPricePage</code>'s <code>USED BY.price_book_x_page</code> link. Link pages through <code>SalesPriceBook</code> instead; <a href="08-SalesPricePage-Codes.html#creating-a-page-through-the-transaction-api">unlinking physically deletes the row</a> — <em>@mrwuss, reported by Alex Westemeier</em></li>
+</ul>
+<p><strong>From Alex Westemeier's process work (verified on his play tenant, August–September 2026; not re-run here unless noted)</strong></p>
+<ul>
+<li><strong>feat:</strong> <a href="06-Error-Handling.html#locks-and-orphaned-sessions">Locks and orphaned sessions</a> — the server finishes a write after the client dies and holds the record; an open Interactive window for the same user blocks the Transaction API</li>
+<li><strong>feat:</strong> <a href="03-Transaction-API.html#inventorycostedit-service-changing-an-items-average-cost"><code>InventoryCostEdit</code></a> — elements, field order, account format and GL effect, plus a <a href="recipes/inventory-cost-edit.html">recipe</a></li>
+<li><strong>feat:</strong> <a href="03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">Vendor create</a>, <a href="03-Transaction-API.html#locking-unlocking-and-deleting-bins">bin lock/unlock/delete</a>, <a href="03-Transaction-API.html#how-contract-costs-reach-the-order-and-the-invoice">contract ship-tos, binding and rebate prerequisites</a>, <a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">order appends, cancels, holds and item lookup errors</a>, <a href="08-SalesPricePage-Codes.html#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">purchase page edits</a>, <a href="12-Production-Labor-API.html#production-order-gotchas-field-verified">production order gotchas</a>, <a href="09-Batch-Processing-Patterns.html#large-sales-orders-split-at-about-100-lines">splitting large orders</a>, <a href="04-Interactive-API.html#creating-an-item-in-the-item-window">Interactive item create</a> and <a href="03-Transaction-API.html#merging-several-report-pdfs-into-one-file">merging report PDFs</a></li>
+<li><strong>feat:</strong> six runbooks as recipes — <a href="recipes/new-assembled-part.html">new assembled part</a>, <a href="recipes/rebate-assembly-program.html">rebate-tracked assembly program</a>, <a href="recipes/purchase-receive-vouch.html">stock PO and drop ship</a>, <a href="recipes/sales-order-to-invoice.html">sales order to invoice</a>, <a href="recipes/inventory-cost-edit.html">residual cost write-off</a> and <a href="recipes/dispose-zero-value-stock.html">zero-value stock disposal</a>; each step marked verified or inferred</li>
+</ul>
+<p><strong>Issues closed</strong></p>
+<ul>
+<li><strong>docs:</strong> <a href="03-Transaction-API.html#how-contract-costs-reach-the-order-and-the-invoice">How each contract cost setting reaches the order line and the invoice</a>, and <a href="04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">the Order window can open in quote mode</a> — set <code>quote = OFF</code> first; several earlier wizard and <code>disposition</code> results were quote-mode artifacts. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <a href="11-Inventory-REST-API.html#updating-a-suppliers-cost-supplierslistcost">The Inventory REST PUT updates a supplier's cost</a>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/170">#170</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> "Item Issues Detected" has a second trigger besides a zero cost-and-list supplier row, and the Inventory REST GET 404s on item IDs containing <code>/</code>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <a href="04-Interactive-API.html#managing-business-rules-through-the-dynachange-organizer">Enabling, disabling and scoping a business rule through the DynaChange Organizer tool</a> — verified by <a href="https://github.com/yeshayak">@yeshayak</a> on a 26.1 test database; not re-run here. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/167">#167</a></li>
+<li><strong>fix:</strong> two company-specific identifiers in older examples replaced with placeholders. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/172">#172</a></li>
+</ul>
 <h2 id="2026-09-22-v1261">2026-09-22 — v1.26.1</h2>
 <ul>
 <li><strong>fix:</strong> <strong><a href="00-Authentication.html#api-scopes">A consumer key's API Scope does not restrict the Transaction API</a></strong> — verified live, 26.1.5950.0: a key configured with only a single read-only OData table/view scope (no <code>/api</code>, no <code>/uiserver0</code>) could still complete an actual write via <code>POST /api/v2/transaction</code>, in addition to unrestricted <code>GET /api/v2/services</code> and <code>GET /api/v2/definition/{service}</code>. OData, the Entity API, and the Inventory REST API all correctly rejected the same out-of-scope key. This is an <strong>unpatched, unresolved gap</strong> — reported to Epicor. Reproduction detail is intentionally withheld from this doc pending their response; tracked in <a href="https://github.com/mrwuss/p21-api-documentation/issues/163">#163</a> — <em>@mrwuss</em></li>
@@ -855,7 +886,7 @@
 <ul>
 <li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</a>.</strong> There is <strong>no salesrep column on <code>oe_hdr</code></strong> — the rep lives in the <code>oe_hdr_salesrep</code> grid, exposed by the <code>Order</code> service as <code>TP_SALESREPS.tp_salesreps</code> (<code>Type: List</code>, keyed on <code>salesrep_id</code>, confirmed against the service definition). Add-then-retire in one transaction, and this grid has a real <code>delete_flag</code>, unlike <a href="03-Transaction-API.html#customer-service-removing-a-salesrep-grid-row"><code>customer_salesrep</code></a>, which needs <code>row_status_flag: "Delete"</code>. <code>TABPAGE_1.order</code> only loads the document. Have the incoming rep inherit the outgoing row's <code>primary_salesrep</code> and <code>commission_split</code> rather than hardcoding <code>100</code>, or a split-commission order quietly becomes a single-rep order. Verified across 66 successful writes — <em>@mrwuss</em></li>
 <li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#failure-detail-is-in-the-top-level-messages-not-on-the-transaction">Failure detail is in the top-level <code>Messages</code>, not on the transaction</a>.</strong> <code>Results.Transactions[0]</code> returns <code>Status: "Failed"</code> with its own <code>Messages</code> set to <strong>null</strong>; the reason is in the sibling top-level array. Reading the wrong one makes the API look like it failed for no stated reason — <em>@mrwuss</em></li>
-<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#oe_hdrcompleted--t-is-what-blocks-the-write"><code>oe_hdr.completed = 'T'</code> is what blocks the write</a>,</strong> and <a href="02-OData-API.html#oe_hdrcompleted-is-not-a-boolean--t-is-a-real-third-value"><code>completed</code> is not a boolean</a>. A document in an in-progress editing state raises <em>"may currently be edited by USER"</em>, which the stateless API auto-answers <code>No</code>. Production distribution: <code>Y</code> 639,247 · <code>N</code> 184,408 · <strong><code>T</code> 308</strong>. Pre-screen a batch with <code>WHERE completed &lt;&gt; 'T'</code> — <strong><code>process_in_progress_lock</code> is the wrong table</strong> and was empty (0 rows) while the prompt was firing. These locks are usually abandoned rather than live: the <code>T</code> rows span every year from <strong>2011 to 2026</strong>, only 31 of 308 in the current year, so "wait for the user to finish" is generally wrong and retrying never clears it — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#oe_hdrcompleted-t-is-what-blocks-the-write"><code>oe_hdr.completed = 'T'</code> is what blocks the write</a>,</strong> and <a href="02-OData-API.html#oe_hdrcompleted-is-not-a-boolean--t-is-a-real-third-value"><code>completed</code> is not a boolean</a>. A document in an in-progress editing state raises <em>"may currently be edited by USER"</em>, which the stateless API auto-answers <code>No</code>. Production distribution: <code>Y</code> 639,247 · <code>N</code> 184,408 · <strong><code>T</code> 308</strong>. Pre-screen a batch with <code>WHERE completed &lt;&gt; 'T'</code> — <strong><code>process_in_progress_lock</code> is the wrong table</strong> and was empty (0 rows) while the prompt was firing. These locks are usually abandoned rather than live: the <code>T</code> rows span every year from <strong>2011 to 2026</strong>, only 31 of 308 in the current year, so "wait for the user to finish" is generally wrong and retrying never clears it — <em>@mrwuss</em></li>
 <li><strong>feat:</strong> <strong><a href="02-OData-API.html#quotes-are-oe_hdrprojected_order--y--quote_type-is-empty-and-there-is-no-quote_flag">Quotes are <code>oe_hdr.projected_order = 'Y'</code></a>.</strong> <code>quote_type</code> is NULL on every row and there is no <code>quote_flag</code>. Over three months of production orders, <code>projected_order = 'Y'</code> → <strong>0 of 5,469 ever invoiced</strong>; <code>'N'</code> → 66.8% invoiced. A live-document query that doesn't exclude <code>'Y'</code> mixes a third of the book in as quotes, and a quote query filtered on <code>quote_type</code> returns nothing and looks like the site doesn't use them — <em>@mrwuss</em></li>
 </ul>
 <h2 id="2026-09-11-v1140">2026-09-11 — v1.14.0</h2>
@@ -1595,6 +1626,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>
 <li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
 <li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>
 <li><a href="#2026-09-14-v1250">2026-09-14 — v1.25.0</a></li>

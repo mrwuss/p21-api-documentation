@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -683,6 +689,7 @@
 <li><a href="#shipping-and-invoicing-the-linked-sales-order">Shipping and Invoicing the Linked Sales Order</a></li>
 <li><a href="#inventory-adjustment-write-offs">Inventory Adjustment (Write-Offs)</a></li>
 <li><a href="#cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</a></li>
+<li><a href="#production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</a></li>
 <li><a href="#key-tables">Key Tables</a></li>
 </ul>
 </li>
@@ -1755,6 +1762,36 @@
 <li><strong>Moving-average pooling:</strong> while two or more units of the same item sit in stock, a cost added to one (e.g. a labor overrun) smears across all of them — an unrelated unit ships at a blended cost. Make-to-order (one in, one out) is largely immune; <strong>build-to-stock is exposed by design</strong>. True per-job cost is the <code>PROP</code> receipt, not the invoice COGS.</li>
 <li><strong>Labor posted after invoicing</strong> generates a separate <em>"Post Freight/Labor Prod. Order: NNNN"</em> invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched.</li>
 </ul>
+<h3 id="production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</h3>
+<p>Learned running production orders at volume through the API. Credit <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production and play, September 2026; not re-run here.</p>
+<p><strong>Creating</strong></p>
+<ul>
+<li><strong>Set <code>source_loc_id</code> before <code>inventory_location_id</code>, in separate calls.</strong> On <code>TABPAGE_1.tp_1_dw_1</code>, <code>source_loc_id</code> is the make (WIP) location and <code>inventory_location_id</code> is where the parts are pulled. On one tenant, setting the make location <strong>reset</strong> the parts location — a cascade the test copy did not have. Set the make location first, then the parts location, and read both back after the save.</li>
+<li>A component's pull location is <code>TABPAGE_19.componentdetail.source_location_id</code>. It is locked while the component is allocated; zero the allocation first.</li>
+<li><strong>Header user-defined fields can be invisible to the API role.</strong> UD columns on the header (<code>ufc_prod_order_hdr_ud_*</code>) appear only for a role that has the DynaChange <strong>screen version</strong> carrying them assigned. If a UD column is "disabled" or missing for the API user and present for people, assign that screen version to the API user's role. Free-text UD columns that the role already sees are plain Transaction edits keyed on <code>prod_order_number</code>.</li>
+</ul>
+<p><strong>Pick tickets and allocation states</strong></p>
+<ul>
+<li><strong>Only run the pick ticket when every component is fully allocated.</strong> On a short order it creates a partial ticket that then has to be cancelled.</li>
+<li><strong>Cancel a pick ticket</strong> in <code>ProductionOrderPicking</code> with <code>row_status_flag</code> = the literal <strong><code>"Canceled"</code></strong> (one L) and answer the two Yes prompts. The ticket goes to status <code>976</code> and the parts return to allocated.</li>
+<li><strong>Component quantity moves through three states</strong>: <code>qty_allocated</code> at the parts location when the order is created → <code>qty_on_pick_tickets</code> when the ticket prints (stock still physically at the parts location, and still inside <code>inv_loc.qty_allocated</code>) → <code>qty_confirmed</code> at the make location when the pick is confirmed (the transfer into WIP). An allocation report has to add all three; <code>inv_loc.qty_allocated</code> alone mixes them. Confirm promptly after printing so the parts location's count is real.</li>
+</ul>
+<p><strong>Completing</strong></p>
+<ul>
+<li><strong>P21 pre-fills <code>qty_to_complete</code> with the remaining quantity on every assembly line.</strong> Set every line's <code>qty_to_complete</code> explicitly — <code>0</code> for lines you are not completing — or you complete more than you meant to.</li>
+<li><strong>Skip the assembly-bin tab when the item does not track bins at the make location</strong> — selecting it fails <em>"Tab page is disabled"</em>.</li>
+<li>Completion receives finished goods at the <strong>make</strong> location and posts GL journal <code>PD</code>. Components still consume at their own moving average; a <code>new_cost</code> override books a production variance.</li>
+<li><strong>Labor on a line that is still open locks its completion quantity</strong> until the labor/intangibles ticket is reprinted and confirmed. Log labor before printing (<a href="#labor-timing-log-labor-before-printing">Labor Timing</a>) or after completion.</li>
+</ul>
+<p><strong>Printing and reprinting</strong></p>
+<ul>
+<li><strong>Only the first print returns a PDF.</strong> Reprint the form with the <code>m_productionorders</code> report, <code>reprint = ON</code>, at the <strong>make</strong> location (at the parts location it returns nothing). Reprint a pick ticket with <code>m_reprintpicktickets</code>, type "Production Order", at the parts location. See <a href="03-Transaction-API.html#pdf-report-generation">PDF Report Generation</a>.</li>
+<li><code>print_incomplete_assemblies = Y</code> on the <strong>assembly</strong> lets the form print while a component is short. Edit that flag on the assembly, not on the order: editing it on an existing order's line un-prints the order.</li>
+</ul>
+<p><strong>Not reachable through the API</strong></p>
+<ul>
+<li><strong>Linking an existing production order to a sales order line.</strong> The "Transactions to Assign" tab (<code>TABPAGE_TRANSACTIONS_TO_ASSIGN</code>) fills only through a <code>retrieve_open_transactions</code> control that is a disabled column for the API user (on both an API-only role and an all-permissions role), and a Transaction row keyed <code>trans_number</code> + <code>customer_id</code> fails <em>"Object reference not set"</em>. A plain (<code>assembly = 'N'</code>) sales line cannot be switched to disposition <code>P</code> afterwards either. Do this in the UI, or enter the sales line as a production-order assembly in the first place so P21 creates and links the order itself.</li>
+</ul>
 <h3 id="key-tables">Key Tables</h3>
 <p><code>assembly_hdr</code> / <code>assembly_line</code> (BOM + behavior flags) · <code>oe_hdr</code> / <code>oe_line</code> (<code>assembly</code> B/N/P/S) · <code>prod_order_line_link</code> · <code>prod_order_hdr</code> / <code>prod_order_line</code> / <code>prod_order_line_component</code> · <code>prod_pick_ticket_hdr</code> / <code>prod_pick_ticket_detail</code> · <code>oe_pick_ticket</code> · <code>prod_order_line_comp_labor</code> · <code>invoice_hdr</code> / <code>invoice_line</code> · <code>inv_loc</code> (min/max, moving average, primary bin) · <code>inv_tran</code> (<code>PROP</code> receipt / <code>WO</code> ship).</p>
 <hr />
@@ -2574,6 +2611,7 @@
 <li><a href="#shipping-and-invoicing-the-linked-sales-order">Shipping and Invoicing the Linked Sales Order</a></li>
 <li><a href="#inventory-adjustment-write-offs">Inventory Adjustment (Write-Offs)</a></li>
 <li><a href="#cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</a></li>
+<li><a href="#production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</a></li>
 <li><a href="#key-tables">Key Tables</a></li>
 </ul>
 </li>

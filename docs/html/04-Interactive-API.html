@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -715,6 +721,7 @@
 </ul>
 </li>
 <li><a href="#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard (Direct-Ship PO Generation)</a><ul>
+<li><a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode">Set quote to OFF first: the window can open in quote mode</a></li>
 <li><a href="#why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</a></li>
 <li><a href="#the-flow">The flow</a></li>
 <li><a href="#related-dead-ends">Related dead ends</a></li>
@@ -725,6 +732,7 @@
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
+<li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>
@@ -743,6 +751,7 @@
 <li><a href="#gotchas">Gotchas</a></li>
 </ul>
 </li>
+<li><a href="#managing-business-rules-through-the-dynachange-organizer">Managing Business Rules Through the DynaChange Organizer</a></li>
 <li><a href="#verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</a></li>
 <li><a href="#best-practices">Best Practices</a></li>
 <li><a href="#common-errors">Common Errors</a></li>
@@ -3937,6 +3946,17 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <blockquote>
 <p><strong>Prerequisite: the API user needs a Buyer ID.</strong> Without one, setting the trigger returns <code>Status: 2</code> with <code>To create a PO, you must have a valid Buyer ID.</code>; with one it returns <code>Status: 1</code>. Both verified on 26.1 (August 2026). The Buyer ID is set per user in <strong>User Maintenance</strong> — a P21 configuration change, not something the API can do for you. Check it before writing any of the rest, because every other step works right up until the save.</p>
 </blockquote>
+<h3 id="set-quote-to-off-first-the-window-can-open-in-quote-mode">Set <code>quote</code> to <code>OFF</code> first: the window can open in quote mode</h3>
+<p>On a 26.1 play tenant the <code>Order</code> window opened through the Interactive API defaulted to <strong><code>quote = ON</code></strong>, and every order saved that way was a quote (<code>oe_hdr.projected_order = 'Y'</code>). Quote mode quietly changes what the rest of this section observes:</p>
+<ul>
+<li><strong>A quote never allocates</strong>, so allocation fields look disabled.</li>
+<li><strong><code>disposition</code> looks disabled at line entry.</strong></li>
+<li><strong>The wizard comes up as an RFQ.</strong> On a quote, the save opens the "Create RFQ/Purchase Orders" wizard (<code>w_create_po_from_oe_wzd</code>) with <code>quote_item = Y</code>; finishing it creates an <strong>RFQ</strong> (<code>po_type = 'Q'</code>, <code>oe_line_po.connection_type = 'Q'</code>). On a real order the same wizard defaults <code>quote_item = N</code>, and <code>cb_next</code> then <code>cb_finish</code> creates a <code>po_type = 'D'</code> PO linked with <code>connection_type = 'P'</code>.</li>
+</ul>
+<p><strong>Set <code>TABPAGE_1.order.quote = OFF</code> as the first header edit</strong> and read <code>projected_order</code> back after the save.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, October 2026, including the correction of an earlier round that ran in quote mode by accident (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>).</p>
+</blockquote>
 <h3 id="why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</h3>
 <p>The line's <code>disposition</code> field is the trigger for a direct-ship line, and it is a <strong>disabled column</strong> — <code>Column is disabled: disposition</code>, verified both through <code>/transaction</code> and through an interactive change on an existing line. Its valid values are <code>B</code>, <code>C</code>, <code>D</code>, <code>H</code>, <code>M</code>, <code>P</code>, <code>S</code>; <code>D</code> is direct ship. Set it <strong>as the line is entered</strong>, in the Interactive window — there is no stateless path.</p>
 <h3 id="the-flow">The flow</h3>
@@ -3987,6 +4007,18 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li>The path described elsewhere is <code>receive_all</code> on — a <strong>full</strong> confirmation. Nothing documents driving a <strong>partial</strong> one, which is the case that matters for the date overwrite. <code>TABPAGE_17.tp_17_dw_17</code> exposes <code>unit_quantity</code> and a <code>complete</code> bound to <code>po_line.complete</code>, so a partial looks expressible in principle.</li>
 </ul>
 <p>The date-overwrite behavior above rests on the field binding and on the receipt data, not on a live write from this repo — the data is unambiguous, the write path is not yet.</p>
+<h5 id="the-interactive-path-works">The Interactive path works</h5>
+<p>Driving the window instead of posting a transaction confirmed a direct ship on play 26.1 (October 2026):</p>
+<ol>
+<li>Open <code>{"ServiceName": "DirectShipConfirmation"}</code>.</li>
+<li>Set <code>TABPAGE_1.tp_1_dw_po.po_no</code>.</li>
+<li>Set <code>TABPAGE_1.tp_1_dw_po.receive_all</code> = <code>ON</code>.</li>
+<li>Save.</li>
+</ol>
+<p><code>shipment_date</code>, <code>period</code> and <code>year_for_period</code> came pre-filled. One save completed the PO, created a pick ticket and invoiced the sales-order line, with no popups. Read back <code>po_line.complete</code>, <code>oe_line.qty_invoiced</code> and the new <code>invoice_hdr</code> row.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). The Transaction API path that returned an empty result on 26.1.5940.0 above is the same one <a href="https://github.com/AWestemeier">Alex Westemeier</a> reports working on his play tenant in August 2026 (<code>receive_all = 'Y'</code>, <code>print_invoice = 'N'</code>, <code>fax_invoice = 'N'</code>, and <strong>never</strong> <code>c_email_invoice</code>, which is disabled and fails the transaction <em>after</em> the documents are written). The difference is not explained.</p>
+</blockquote>
 <h3 id="setting-disposition-only-at-line-entry">Setting <code>disposition</code> — only at line entry</h3>
 <p><code>disposition</code> behaves as a <strong>disabled column everywhere except a line being entered</strong>. Verified three ways on 26.1:</p>
 <div class="table-wrap"><table>
@@ -4013,6 +4045,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 </table></div>
 <p>So there is no way to convert an existing order line to direct ship through either API, and no stateless path at all. The line must be created in the window with <code>disposition = 'D'</code> set during entry.</p>
 <blockquote>
+<p><strong>Correction for quote mode (October 2026).</strong> A later run on play 26.1 found that the window had been opening in <a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode">quote mode</a>. With <code>quote = OFF</code> set first, the <strong>service account</strong> set <code>disposition = D</code> at line entry with <code>Status: 1</code>, and the wizard then built a <code>po_type = 'D'</code> PO. Whether the A/B result below was also a quote-mode artifact has not been re-tested; check <code>quote</code> before you conclude a user is gated. <em>(@mrwuss, <a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>.)</em></p>
 <p><strong>And it is user-gated on top of that.</strong> In a controlled A/B on the same tenant — identical request sequence, two tokens differing only in the user — a CSR login set <code>disposition</code> successfully while a <strong>service account was refused with <code>Column is disabled: disposition</code></strong>, even after that account was given a Buyer ID. The Buyer ID clears the <code>c_create_po</code> gate; it does not clear this one. See <a href="03-Transaction-API.html#column-is-disabled-can-mean-disabled-for-you"><code>Column is disabled</code> Can Mean "Disabled For You"</a>.</p>
 <p><strong>Consequence for automation:</strong> a service account may be able to <em>trigger</em> the wizard and still be unable to <em>create the line that feeds it</em>. Verify both gates against the account that will actually run the integration before designing around this flow.</p>
 </blockquote>
@@ -4172,7 +4205,38 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</cod
 <li>Select the areas tab (<code>PageName: "TABPAGE_17"</code>) and run <strong><code>cb_selectall</code></strong> (<code>POST /v2/tools</code>) — this selects <strong>every</strong> area the note can display in. To pick a single area, select its row in the Available Areas grid (<code>tp_17_dw_dragdrop</code>) first and run <code>cb_select</code> (not separately verified).</li>
 <li>Save (<code>PUT /v2/data</code>, bare window-GUID body) — <code>savesucceeded</code>.</li>
 </ol>
-<p><code>CustomerNotepad</code> / <code>SupplierNotepad</code> / <code>VendorNotepad</code> publish the identical element shape (header form + <code>TABPAGE_17</code> area pair) and the same tools; only the header key field differs (<code>customer_id</code> / <code>supplier_id</code> / <code>vendor_id</code>). They have not been separately exercised.</p>
+<p><code>CustomerNotepad</code> / <code>SupplierNotepad</code> / <code>VendorNotepad</code> publish the identical element shape (header form + <code>TABPAGE_17</code> area pair) and the same tools; only the header key field differs (<code>customer_id</code> / <code>supplier_id</code> / <code>vendor_id</code>). They have not been separately exercised here.</p>
+<p>Field-level notes from the item, supplier and customer notepads:</p>
+<ul>
+<li><strong><code>mandatory</code> takes <code>Y</code>/<code>N</code> interactively</strong> but <code>ON</code>/<code>OFF</code> through the Transaction API.</li>
+<li><strong><code>notepad_class</code> takes the class description</strong>, not its code (the code fails <em>Invalid notepad_class value</em>).</li>
+<li><strong>The <code>TIMESTAMP</code> tabs cannot be selected by name.</strong> Two tabs share the name, and selecting it fails <em>"Multiple tabs have a name..."</em>. They hold audit columns only; skip them.</li>
+<li>Header fields of an existing note (<code>topic</code>, <code>note</code>, <code>mandatory</code>, dates) are editable through the Transaction API keyed on <code>note_id</code>; the areas are not.</li>
+<li><strong>A note displays only while <code>row_status_flag</code> is Active and <code>expiration_date</code> is today or later.</strong> Match both when you look for "the note P21 shows" — superseded notes are often end-dated rather than deleted.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026; not re-run here.</p>
+</blockquote>
+<h2 id="creating-an-item-in-the-item-window">Creating an Item in the Item Window</h2>
+<p>The Transaction API <a href="03-Transaction-API.html#item-service-gotchas">cannot create an item</a> (the Units of Measure tab is disabled until the item exists, and the item cannot save without a unit). The Interactive <code>Item</code> window can, because it sequences the tabs the way the UI does. The usual route is still the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a>; use this one when you need the window's own defaults and prompts.</p>
+<ol>
+<li>Typing a new <code>item_id</code> on <code>TABPAGE_1.tp_1_dw_1</code> returns <strong><code>Status: 2</code> with <code>tabpageenabled</code> events</strong> — that is "new item" mode, not an error. Set <code>item_desc</code> and the discount groups.</li>
+<li><code>TABPAGE_2.tp_2_dw_2</code>, row 1 (it already exists; <code>add_row</code> is refused): <code>unit_id</code>, then <strong>all four</strong> of <code>default_sales_unit</code>, <code>sales_pricing_unit</code>, <code>default_purchasing_unit</code>, <code>purchase_pricing_unit</code> = <code>ON</code>. Leave one out and the save is refused.</li>
+<li><code>TABPAGE_17.invloclist</code>, row 1: <code>location_id</code>, <code>stockable</code>.</li>
+<li><code>TABPAGE_18.inv_loc_detail</code>: <code>product_group_id</code> — answer <strong>Yes</strong> (<code>cb_1</code>) to the <em>"set the GL accounts for product group?"</em> prompt — then the discount groups, tax group and <code>track_bins</code>.</li>
+<li><code>TABPAGE_6.tp_6_dw_6</code>, row 1: <code>supplier_id</code>, <code>division_id</code>.</li>
+<li><code>SUPPLIER_X_LOCATION.supplier_x_location</code>, row 1: fill <code>location_id</code> (and supplier). Visiting the tab creates a blank row that the save otherwise rejects.</li>
+<li>
+<p>Save.</p>
+</li>
+<li>
+<p><strong>One location per session.</strong> Add the remaining locations afterwards through the Transaction <code>Item</code> service — one POST per location, <code>IgnoreDisabled: true</code>, with <code>TABPAGE_17.invloclist</code>, <code>TABPAGE_18.inv_loc_detail</code> and a keyed <a href="03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">location supplier row</a>.</p>
+</li>
+<li><strong>The Units of Measure grid can be locked for your role by a DynaChange screen version.</strong> On one tenant the same steps worked in production and failed on the test copy for exactly that reason — check <a href="03-Transaction-API.html#column-is-disabled-can-mean-disabled-for-you">which role the API user runs as</a>.</li>
+</ol>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production, September 2026 (two items created end to end); not re-run here.</p>
+</blockquote>
 <h2 id="sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</h2>
 <p>Use the Interactive API to create a sales order when a line is an <strong>assembly</strong> that should explode into components and/or spawn a <strong>production order</strong>. The Transaction API cannot do this: entering an assembly item fires an <em>"add as assembly?"</em> prompt, and the stateless API auto-answers <strong>No</strong>, killing the explode (see <a href="03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a>). Verified end-to-end: interactive order entry created a sales order whose assembly line (<code>oe_line.assembly = 'P'</code>) auto-linked to a new production order.</p>
 <p>The flow (session started with <code>ResponseWindowHandlingEnabled: true</code>):</p>
@@ -4190,6 +4254,13 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</cod
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — flow and gotchas verified end-to-end on a play environment (June 2026).</p>
 </blockquote>
+<p>More from order entry in the window:</p>
+<ul>
+<li><strong>Answer <em>"add as assembly?"</em> with No (<code>cb_2</code>) for a plain stock line.</strong> The line is then <code>assembly = 'N'</code>, backordered when there is no stock, and it <strong>cannot</strong> become a production-order line later (<em>"Disposition 'P' is valid only for assembly items that need processing"</em>). The order window's production-order tab is display-only. <em>(Alex Westemeier, play, September 2026; not re-run here.)</em></li>
+<li><strong>Lines after the first need <code>add_row("items")</code></strong> — the grid has no blank trailing row. <code>GET /v2/data</code> returns only the current <code>items</code> row, so verify all lines in the database after the save. <em>(Alex Westemeier, play, September 2026; not re-run here.)</em></li>
+<li><strong>The window can open in quote mode</strong> — set <code>quote = OFF</code> first. See <a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode">Set <code>quote</code> to <code>OFF</code> first</a>.</li>
+<li><strong>Front-counter invoice in the same save.</strong> <code>TABPAGE_1.order.fc_create_invoice = ON</code>, with <code>quote = OFF</code> on a stocked line, creates the pick ticket and the invoice in the order's own save. <em>(@mrwuss, play 26.1, October 2026, <a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>.)</em></li>
+</ul>
 <hr />
 <h2 id="data-structures-reference">Data Structures Reference</h2>
 <h3 id="result-object">Result Object</h3>
@@ -4897,6 +4968,91 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</cod
 </ul>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — surface reverse-engineered from the web client and first verified in production (August 2026); re-verified here on 26.1.5940.0.</p>
+</blockquote>
+<h2 id="managing-business-rules-through-the-dynachange-organizer">Managing Business Rules Through the DynaChange Organizer</h2>
+<p><strong>No service enables, disables or scopes a DynaChange business rule</strong> — the Transaction service list has none, the 26.1 rules service (<code>api/rules</code>, <code>api/rules/execute</code>, <code>api/rules/unload</code>) only executes or unloads rule code, and <code>frame_menu</code> registers no rule-maintenance window with a service name. <strong>The route is a tool.</strong> Every open window carries the DynaChange Organizer tool <strong><code>dc.organizer.rule</code></strong> ("Rules"). Running it opens <strong><code>w_business_rule_organizer</code></strong> ("Business Rule Organizer") as a response window, and that window can switch a rule on or off and change who it runs for.</p>
+<p>This is how you take a rule such as the <a href="03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">Item Issues Detected save rule</a> out of an integration's path: scope it to specific roles or users and leave the API user out.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Call</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Session</td>
+<td><code>POST /api/ui/interactive/sessions/</code> <code>{"SessionType": "Auto", "ResponseWindowHandlingEnabled": true}</code></td>
+<td></td>
+</tr>
+<tr>
+<td>Host window</td>
+<td><code>POST /v2/window</code> <code>{"ServiceName": "Customer"}</code></td>
+<td>Any registered service works as the host</td>
+</tr>
+<tr>
+<td>Open the organizer</td>
+<td><code>POST /v2/tools</code> <code>{"WindowId": "&lt;host&gt;", "ToolName": "dc.organizer.rule"}</code></td>
+<td><code>Status: 3</code>; the organizer's id is <code>windowid</code> on the <code>windowopened</code> event</td>
+</tr>
+<tr>
+<td>Read the rules</td>
+<td><code>GET /v2/data?id=&lt;organizer&gt;</code></td>
+<td><code>LIST.list</code> holds one row per rule</td>
+</tr>
+<tr>
+<td>Select a rule</td>
+<td><code>PUT /v2/row</code> <code>{"WindowId": "&lt;organizer&gt;", "DatawindowName": "list", "Row": n}</code></td>
+<td><code>Status: 1</code></td>
+</tr>
+<tr>
+<td>Enable / disable</td>
+<td><code>PUT /v2/change</code> <code>{"WindowId": "&lt;organizer&gt;", "List": [{"TabName": "LIST", "DatawindowName": "list", "FieldName": "row_status_flag", "Value": "Inactive"}]}</code></td>
+<td><code>Status: 1</code>. Values are <code>"Active"</code> / <code>"Inactive"</code></td>
+</tr>
+<tr>
+<td>Scope: stop running for all users</td>
+<td>same call, <code>FieldName: "run_for_all_flag"</code>, <code>Value: "OFF"</code></td>
+<td><code>Status: 1</code></td>
+</tr>
+<tr>
+<td>Scope: open the permissions tab</td>
+<td><code>PUT /v2/tab</code> <code>{"WindowId": "&lt;organizer&gt;", "PageName": "MANAGE_PERMISSIONS"}</code></td>
+<td>Builds <code>business_rule_x_role</code> (<code>role</code>, <code>selected</code>) and <code>business_rule_x_users</code> (<code>users_id</code>, <code>selected</code>) for the selected rule</td>
+</tr>
+<tr>
+<td>Scope: pick a user or role</td>
+<td><code>PUT /v2/row</code> on <code>business_rule_x_users</code> or <code>business_rule_x_role</code>, then <code>PUT /v2/change</code> with <code>TabName: "MANAGE_PERMISSIONS"</code>, <code>FieldName: "selected"</code>, <code>Value: "ON"</code></td>
+<td><code>Status: 1</code></td>
+</tr>
+<tr>
+<td>Commit</td>
+<td><code>POST /v2/tools</code> <code>{"WindowId": "&lt;organizer&gt;", "ToolName": "cb_apply"}</code></td>
+<td><code>Status: 1</code></td>
+</tr>
+<tr>
+<td>Close</td>
+<td><code>POST /v2/tools</code> <code>{"WindowId": "&lt;organizer&gt;", "ToolName": "cb_cancel"}</code>, then <code>DELETE /v2/window?id=&lt;host&gt;</code> and <code>DELETE /sessions/</code></td>
+<td><code>Status: 1</code> with a <code>close</code> event</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Confirmed by read-back:</strong> <code>business_rule.row_status_flag</code> went <code>704</code> → <code>705</code> → <code>704</code> (Active → Inactive → Active), with <code>date_last_modified</code> updated on each apply, read through the <code>p21_view_business_rule</code> OData view. <code>run_for_all_flag</code> went <code>Y</code> → <code>N</code> with one user and one role ticked, and the ticks were still there after the organizer was closed and reopened. The <code>business_rule_x_users</code> / <code>business_rule_x_roles</code> rows themselves could not be read back: no OData view exposes them, and the raw tables returned 401 for the tester's user.</p>
+<p><strong>Gotchas:</strong></p>
+<ul>
+<li><strong><code>Row</code> inside a <code>/v2/change</code> item is ignored.</strong> The edit lands on the <strong>active</strong> row. Without a <code>PUT /v2/row</code> first, a change returned <code>Status: 1</code> and did not land on the row it named. Always select the row first.</li>
+<li><strong>Display values, not codes.</strong> <code>row_status_flag</code> takes <code>"Active"</code> / <code>"Inactive"</code>; the checkboxes (<code>run_for_all_flag</code>, <code>selected</code>) take <code>"ON"</code> / <code>"OFF"</code>.</li>
+<li><strong>Closing with an unapplied edit raises a prompt</strong> (<code>Status: 3</code> and a new window) instead of closing. Run <code>cb_apply</code> first.</li>
+<li><strong>The grid has no <code>business_rule_uid</code> column.</strong> Match a row on <code>rule_name</code> + <code>field_name</code> + <code>window_title</code>; <code>rule_name</code> alone is not unique.</li>
+<li><strong>The list covers rules for all windows</strong>, not only the host window's — but only non-internal rules (<code>internal_rule_flag = 'N'</code>).</li>
+<li><code>LIST.list</code> columns: <code>apply_during_save_flag</code>, <code>class_name</code>, <code>field_name</code>, <code>front_counter_flag</code>, <code>log_rule_verbosity</code>, <code>multirow_flag</code>, <code>order_entry_flag</code>, <code>rma_entry_flag</code>, <code>row_status_flag</code>, <code>rule_name</code>, <code>rule_type_cd</code>, <code>run_for_all_flag</code>, <code>run_type_cd</code>, <code>window_title</code>.</li>
+<li>The organizer also exposes <code>cb_import</code>, <code>cb_export</code>, <code>cb_delete</code> and <code>cb_sqlrule</code> ("Create Pre-SQL Rule"). They were not run.</li>
+<li><strong>The same tool works on the <a href="#the-uifull-surface-the-web-clients-own-rest-api"><code>ui/full</code> surface</a></strong> (<code>POST ui/full/v2/window/tools</code>), where the fields take codes (<code>705</code>, <code>"N"</code>, <code>"Y"</code>) instead of display values.</li>
+</ul>
+<p><strong>Still open:</strong> whether role scoping is honored for a consumer-key token's <code>username</code>, and whether a user without DynaChange rights gets the <code>dc.organizer.rule</code> tool at all (the verified run used an admin user). Test both with the account your integration runs as.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/yeshayak">@yeshayak</a> — verified on a 26.1 test database, reported October 2026 (disable, re-enable and user/role scoping, each confirmed over OData and reverted); not re-run here. Filed under <a href="https://github.com/mrwuss/p21-api-documentation/issues/167">#167</a>.</p>
 </blockquote>
 <h2 id="verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</h2>
 <p>An Interactive save (<code>PUT /api/ui/interactive/v2/data</code>) can return <code>Status: 1</code> with a <code>savesucceeded</code> event for the <strong>primary</strong> datawindow (<code>tp_1_dw_1</code>) even when a change staged into a <strong>child grid</strong> on another tab never actually persisted. The overall call looks fully successful.</p>
@@ -5755,6 +5911,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 </ul>
 </li>
 <li><a href="#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard (Direct-Ship PO Generation)</a><ul>
+<li><a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode">Set quote to OFF first: the window can open in quote mode</a></li>
 <li><a href="#why-this-cannot-start-in-the-transaction-api">Why this cannot start in the Transaction API</a></li>
 <li><a href="#the-flow">The flow</a></li>
 <li><a href="#related-dead-ends">Related dead ends</a></li>
@@ -5765,6 +5922,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
+<li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>
@@ -5783,6 +5941,7 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#gotchas">Gotchas</a></li>
 </ul>
 </li>
+<li><a href="#managing-business-rules-through-the-dynachange-organizer">Managing Business Rules Through the DynaChange Organizer</a></li>
 <li><a href="#verifying-writes-dont-trust-save-status-alone">Verifying Writes (Don't Trust Save Status Alone)</a></li>
 <li><a href="#best-practices">Best Practices</a></li>
 <li><a href="#common-errors">Common Errors</a></li>

@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -670,6 +676,7 @@
 <li><a href="#transaction-api-errors">Transaction API Errors</a><ul>
 <li><a href="#summary-object">Summary Object</a></li>
 <li><a href="#common-transaction-errors">Common Transaction Errors</a></li>
+<li><a href="#soft-deleted-residue-locks-and-orphaned-sessions">Soft-Deleted Residue, Locks, and Orphaned Sessions</a></li>
 <li><a href="#session-pool-contamination">Session Pool Contamination</a></li>
 </ul>
 </li>
@@ -1030,7 +1037,7 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 <p><strong><code>This column is required.</code> (no column named)</strong></p>
 <p>A required field is absent from the payload, and the message does not say which. Diff your header against a working example or the full <code>definition</code> — on <code>Order</code>, the trigger is omitting <code>ship_to_id</code> (a field the abbreviated <a href="03-Transaction-API.html#endpoints"><code>basics</code></a> skeleton doesn't even list).</p>
 <p><strong><code>Summary</code> shows <code>Failed: 1</code> — did anything land?</strong></p>
-<p>Depends on the scope. A <strong>single Transaction is atomic</strong> — a failure anywhere rolls back its own edits, verified on <code>Order</code>. But <strong>Transactions in one POST are independent</strong>, so <code>{"Failed": 1, "Succeeded": 1}</code> means half your batch is live; branch on <code>Results.Transactions[].Status</code>, not the tally, or a retry double-applies. And atomicity covers the record, not <strong>downstream documents</strong> a service generates on save — those can survive a later failure. See <a href="03-Transaction-API.html#what-failed-actually-guarantees">Transaction API - What <code>Failed</code> actually guarantees</a>.</p>
+<p>Depends on the scope. A <strong>single Transaction is atomic for edits</strong> — a failure anywhere rolls back its own edits, verified on <code>Order</code>. <strong>A failed create is not:</strong> it consumes a document number and can leave soft-deleted rows — see <a href="#a-failed-write-can-leave-rows-behind">A failed write can leave rows behind</a>. But <strong>Transactions in one POST are independent</strong>, so <code>{"Failed": 1, "Succeeded": 1}</code> means half your batch is live; branch on <code>Results.Transactions[].Status</code>, not the tally, or a retry double-applies. And atomicity covers the record, not <strong>downstream documents</strong> a service generates on save — those can survive a later failure. See <a href="03-Transaction-API.html#what-failed-actually-guarantees">Transaction API - What <code>Failed</code> actually guarantees</a>.</p>
 <p><strong><code>Invalid column name: {name}</code></strong></p>
 <p>The field is not on that data element. Two flavors, and the second is the one that misleads:</p>
 <ul>
@@ -1072,6 +1079,35 @@ Found operand types &#39;Edm.Decimal&#39; and &#39;Edm.String&#39; for operator 
 <p>See <a href="03-Transaction-API.html#pdf-report-generation">Transaction API - PDF Report Generation</a>.</p>
 <p><strong>Service Fails on <code>/transaction</code> Endpoint</strong></p>
 <p>Some services silently fail or return errors when sent to <code>/api/v2/transaction</code>. These services must use <code>/api/v2/commands</code> instead. See <a href="03-Transaction-API.html#commands-endpoint">Transaction API - Commands Endpoint</a> for the full list of affected services.</p>
+<p><strong><code>Ambiguous data detected (PopUp encountered)</code> on an item ID</strong></p>
+<p>Item IDs are prefix-matched, and yours matches more than one item — typically two IDs that differ only in spacing. Send the exact ID. See <a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">Order Service — Line Appends, Cancels, Holds, and Item Lookup</a>.</p>
+<p><strong><code>'X' has been deleted</code> on an item ID</strong></p>
+<p>The item was merged into another one. The old ID survives with <code>inv_mast.delete_flag = 'Y'</code>, and <code>inv_mast.extended_desc</code> names the item it was merged into. Use the survivor.</p>
+<h3 id="soft-deleted-residue-locks-and-orphaned-sessions">Soft-Deleted Residue, Locks, and Orphaned Sessions</h3>
+<p>Three behaviors that make a failed or interrupted write look different from what actually happened on the server.</p>
+<h4 id="a-failed-write-can-leave-rows-behind">A failed write can leave rows behind</h4>
+<ul>
+<li>A failed <code>Order</code> <strong>create</strong> whose first line was accepted consumes an order number and leaves <code>oe_hdr</code> (<code>delete_flag = 'Y'</code>, <code>completed = 'Y'</code>), the accepted line(s) (<code>delete_flag = 'Y'</code>, <code>disposition = 'C'</code>, quantity moved to <code>qty_canceled</code>) and an <code>oe_hdr_salesrep</code> row. A create whose <strong>first</strong> line fails leaves nothing.</li>
+<li>A failed multi-row line <strong>append</strong> to a saved order leaves its lines soft-deleted the same way.</li>
+<li>In an Interactive session, <strong><code>add_row</code> commits the header and line 1 mid-session</strong> (<code>completed = 'T'</code>); ending the session without saving flips them to <code>delete_flag = 'Y'</code>.</li>
+</ul>
+<p>Filter every read-back on <code>delete_flag = 'N'</code> (and <code>cancel_flag = 'N'</code> where the table has one), and look for the stray document before retrying a failed create. Detail and the verified cases: <a href="03-Transaction-API.html#a-failed-create-leaves-rows-behind">03 § A failed create leaves rows behind</a>.</p>
+<h4 id="locks-and-orphaned-sessions">Locks and orphaned sessions</h4>
+<p><strong>A killed client does not stop the server.</strong> A Transaction (or an Interactive save) that is already running keeps running after your client times out or is killed, and it holds the record lock until it finishes. Writes to that record meanwhile fail with:</p>
+<div class="highlight"><pre><span></span><code>General Exception: Order 123456 may currently be edited by APIUSER. Please verify with that user first ...
+</code></pre></div>
+
+<p>— where the user named is <strong>your own API user</strong>. Wait for the server to finish (watch <code>oe_hdr.completed</code> leave <code>'T'</code>); do not retry or split the batch while the lock is held. Give long server-side calls a generous client timeout (minutes, not seconds) so this happens less often.</p>
+<p><strong>An open Interactive window for the same user blocks the Transaction API.</strong> If an Interactive session for the API user was never ended — a crash, a script that forgot <code>DELETE /sessions/</code> — identical, previously working Transaction payloads can fail with:</p>
+<div class="highlight"><pre><span></span><code>Item ID X has been saved; therefore, the Item ID cannot be edited
+</code></pre></div>
+
+<p>The same payload passes once the orphaned session is gone. <strong>End any Interactive session before Transaction API work</strong> for the same user, and always end sessions in a <code>finally</code> block.</p>
+<p><strong>An order left in a <code>t~</code> status by a crashed session</strong> blocks shipment confirmation of its pick tickets. Re-open the order in the <code>Order</code> window and save it, then ship.</p>
+<p>See also <a href="03-Transaction-API.html#oe_hdrcompleted-t-is-what-blocks-the-write"><code>oe_hdr.completed = 'T'</code></a> for the pre-screen and for locks abandoned by people, and <a href="07-Session-Pool-Troubleshooting.html">Session Pool Troubleshooting</a> for the unrelated session-pool failure mode.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — locks, orphaned sessions and soft-deleted residue observed on play and production, September 2026; not re-run here. Failed-create leftovers: verified by the maintainer on 26.1.5950.0 (October 2026).</p>
+</blockquote>
 <h3 id="session-pool-contamination">Session Pool Contamination</h3>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -2176,6 +2212,26 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Send the label, not the <code>code_p21</code> integer — <a href="03-Transaction-API.html#usecodevalues">details</a></td>
 </tr>
 <tr>
+<td><code>may currently be edited by &lt;your API user&gt;</code></td>
+<td>Transaction</td>
+<td>A killed client's request is still running server-side — wait, don't retry — <a href="#locks-and-orphaned-sessions">details</a></td>
+</tr>
+<tr>
+<td><code>Item ID X has been saved; therefore, the Item ID cannot be edited</code> on a payload that used to work</td>
+<td>Transaction</td>
+<td>An Interactive session for the same user is still open — end it — <a href="#locks-and-orphaned-sessions">details</a></td>
+</tr>
+<tr>
+<td>Failed write, but rows show up in the table</td>
+<td>Transaction</td>
+<td>Soft-deleted residue — filter <code>delete_flag = 'N' AND cancel_flag = 'N'</code> — <a href="#a-failed-write-can-leave-rows-behind">details</a></td>
+</tr>
+<tr>
+<td><code>Ambiguous data detected (PopUp encountered)</code></td>
+<td>Transaction</td>
+<td>Item ID prefix-matches several items — send the exact ID — <a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">details</a></td>
+</tr>
+<tr>
 <td>404 on entity</td>
 <td>Entity</td>
 <td>Check if Entity API enabled</td>
@@ -2239,6 +2295,7 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <li><a href="#transaction-api-errors">Transaction API Errors</a><ul>
 <li><a href="#summary-object">Summary Object</a></li>
 <li><a href="#common-transaction-errors">Common Transaction Errors</a></li>
+<li><a href="#soft-deleted-residue-locks-and-orphaned-sessions">Soft-Deleted Residue, Locks, and Orphaned Sessions</a></li>
 <li><a href="#session-pool-contamination">Session Pool Contamination</a></li>
 </ul>
 </li>

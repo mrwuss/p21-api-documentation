@@ -25,7 +25,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
 ## Prerequisites
 
 - The contract already exists — know its `contract_no` and its `job_no`. Renewals can leave the same `contract_no` on two header rows; `job_no` is unique, so include it whenever it's known.
-- Look up the current header values (`company_id`, `job_no`, `end_date`) before writing — the header is re-validated on every save. Use `POST {ui_server}/api/v2/transaction/get`:
+- Look up the current header values (`company_id`, `job_no`, `end_date`) before writing. Use `POST {ui_server}/api/v2/transaction/get`:
 
   ```json
   {
@@ -36,7 +36,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
     }]
   }
   ```
-- The contract's `end_date` must be **>= today** (or you must move it forward in the same call — a real side effect). Expired contracts cannot have their lines edited this way; use the Interactive API for those.
+- **`end_date` is optional.** Send it only when you are changing it. Sent — even unchanged — it re-saves the header and runs the *"must be equal to or greater than today"* and corporate-address checks; omitted, line **updates** work on an expired contract too. The examples below send the current value, which is fine on an active contract; drop it for an expired one. Whether line **inserts** go through without it has not been separately verified. See [Updating an Existing Contract](../03-Transaction-API.md#updating-an-existing-contract).
 - For **commission costs only**: the payload needs `IgnoreDisabled: true` at the top level — see [IgnoreDisabled](../03-Transaction-API.md#ignoredisabled).
 
 ## Payload
@@ -61,7 +61,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
                         {"Name": "company_id",  "Value": "ACME"},
                         {"Name": "contract_no", "Value": "JOB-1001"},
                         {"Name": "job_no",      "Value": "31"},        // unique across renewals
-                        {"Name": "end_date",    "Value": "2030-01-01"} // required on EVERY submit, must be >= today
+                        {"Name": "end_date",    "Value": "2030-01-01"} // optional: send only to change it (see Prerequisites)
                     ],
                     "RelativeDateEdits": []
                 }]
@@ -116,7 +116,7 @@ USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 CONTRACT = {"company_id": "ACME", "contract_no": "JOB-1001",
-            "job_no": "31", "end_date": "2030-01-01"}   # end_date must be >= today
+            "job_no": "31", "end_date": "2030-01-01"}   # end_date optional for updates
 # One POST per line: inserts re-save the shared header and collide when batched.
 LINES = [
     ("WIDGET-001", "EA", 36.58, 17.19),  # already on contract -> updated
@@ -251,7 +251,7 @@ var contract = new
     CompanyId = "ACME",
     ContractNo = "JOB-1001",
     JobNo = "31",
-    EndDate = "2030-01-01",   // must be >= today
+    EndDate = "2030-01-01",   // optional for updates -- drop it for an expired contract
 };
 // One POST per line: inserts re-save the shared header and collide when batched.
 var lines = new (string ItemId, string Uom, decimal Price, decimal? Commission)[]
@@ -462,7 +462,7 @@ static string ReadField(string payload, string field)
 - **`pricing_method` must precede `price` in the Edits.** Changing `pricing_method` clears the typed price, exactly as in the UI — reversed order writes the line with **price = $0** and the transaction still reports `Succeeded`. Verified live. Order the Edits `item_id`, `pricing_method`, `price`.
 - **One transaction per POST when inserting lines.** Every transaction re-saves the shared FORM header; batched inserts collide — all but one fail with an optimistic-concurrency error, and the ones that land can get **duplicate `line_no`** values. Edits to existing keyed rows batch fine.
 - **`Status: "Existing"` (or `"Update"`, `"Change"`) is rejected** — [the enum has one member, `"New"`](../03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts). HTTP 400 on 26.1.5940.0, HTTP 500 `NullReferenceException` on older builds. Use `"New"` for both create and update.
-- **`end_date` must be >= today** — the header is validated on every save, so you cannot edit lines on an expired contract without also moving its `end_date` forward. For expired contracts, use the Interactive API.
+- **Send `end_date` only to change it.** The today-or-later check and the corporate-address check (*"You may not change the end date of this record…"*) fire only when `end_date` is in the payload; line updates on an expired contract work without it — [Updating an Existing Contract](../03-Transaction-API.md#updating-an-existing-contract).
 - **Include `job_no` to disambiguate renewals** — the same `contract_no` can exist on two header rows; `job_no` is unique.
 - **`IgnoreDisabled: true` goes at the payload top level** (alongside `Name`/`Transactions`). Inside a Transaction object it is silently ignored and commission-cost writes fail with `Column is disabled: commission_cost_value`.
 - **Set `commission_cost_type_cd` before `commission_cost_value`.** Accepted display labels (with `UseCodeValues: false`): `Order`, `Source`, `Value`, `None`. Setting only the commission cost leaves `other_cost` untouched.

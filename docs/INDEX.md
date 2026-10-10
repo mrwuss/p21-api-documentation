@@ -63,14 +63,17 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Read one record whole / **clone** an existing record | [03 § Reading One Record](03-Transaction-API.md#reading-one-record-post-transactionget) |
 | Read **several** records in one `/transaction/get` call (no field/element subsetting exists) | [03 § Reading several records in one call](03-Transaction-API.md#reading-several-records-in-one-call) |
 | **`Failed: 1` but part of my batch landed** | [03 § What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees) — a Transaction is atomic; Transactions in one POST are not |
+| **A failed create still left an order behind** / an order number was skipped | [03 § A failed create leaves rows behind](03-Transaction-API.md#a-failed-create-leaves-rows-behind) — soft-deleted header and lines, number consumed; filter `delete_flag = 'N'` |
+| **Append many lines** to a saved order · **cancel** an order · **release a Hold** · `Ambiguous data detected` / `'X' has been deleted` | [03 § Order Service — Line Appends, Cancels, Holds, and Item Lookup](03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup) |
+| **Order with hundreds of lines is slow** — split it | [09 § Large Sales Orders: Split at About 100 Lines](09-Batch-Processing-Patterns.md#large-sales-orders-split-at-about-100-lines) |
 | Create a **purchase order** | [03 § PurchaseOrder Service](03-Transaction-API.md#purchaseorder-service-creating-a-po) |
 | Create a **direct-ship PO** from a sales order (drive a wizard) | [04 § Driving an In-Window Wizard](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) — needs a Buyer ID; commits at `cb_next` |
 | **Change the salesrep on an order or quote** | [03 § Order Service — Reassigning the Salesrep](03-Transaction-API.md#order-service-reassigning-the-salesrep) — `TP_SALESREPS.tp_salesreps`; `oe_hdr` has no salesrep column |
 | Transaction `Failed` with no reason on the transaction | [03 § Failure detail is in the top-level Messages](03-Transaction-API.md#failure-detail-is-in-the-top-level-messages-not-on-the-transaction) |
-| "may currently be edited by USER" — write refused | [03 § `oe_hdr.completed = 'T'`](03-Transaction-API.md#oe_hdrcompleted--t-is-what-blocks-the-write) — pre-screen `WHERE completed <> 'T'`; usually an abandoned lock |
+| "may currently be edited by USER" — write refused | [03 § `oe_hdr.completed = 'T'`](03-Transaction-API.md#oe_hdrcompleted-t-is-what-blocks-the-write) — pre-screen `WHERE completed <> 'T'`; usually an abandoned lock |
 | Telling **quotes** from live orders | [02 § Quotes are `projected_order = 'Y'`](02-OData-API.md#quotes-are-oe_hdrprojected_order--y--quote_type-is-empty-and-there-is-no-quote_flag) — `quote_type` is NULL everywhere |
 | "When did the supplier say this would ship?" | [02 § `po_line.supplier_ship_date`](02-OData-API.md#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise) — **not a promise on direct-ship POs**; use `date_due` |
-| Confirm a **direct ship** (`DirectShipConfirmation`) | [04 § DirectShipConfirmation writes its ship date down](04-Interactive-API.md#directshipconfirmation-writes-its-ship-date-down-onto-every-line) — overwrites `supplier_ship_date` on every line; checkboxes take `ON`/`OFF` |
+| Confirm a **direct ship** (`DirectShipConfirmation`) | [04 § The Interactive path works](04-Interactive-API.md#the-interactive-path-works) · [04 § DirectShipConfirmation writes its ship date down](04-Interactive-API.md#directshipconfirmation-writes-its-ship-date-down-onto-every-line) — overwrites `supplier_ship_date` on every line; checkboxes take `ON`/`OFF` |
 | **Receive** a PO / receipt won't post (bin errors) | [03 § PurchaseOrderReceipt Service](03-Transaction-API.md#purchaseorderreceipt-service-receiving-a-po) |
 | **Vouch** a receipt against a vendor invoice | [03 § ConvertPOToVoucher Service](03-Transaction-API.md#convertpotovoucher-service-vouching-a-receipt) |
 | **`Column is disabled` for my service account but not for a person** | [03 § Column is disabled Can Mean "Disabled For You"](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you) — role/DynaChange-scoped; test with the account that will run it |
@@ -111,7 +114,10 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Job contract**: create, lines, breaks | — | [03 § JobContractPricing Service](03-Transaction-API.md#jobcontractpricing-service) |
 | Job contract: update / add lines / commission costs | [update-contract-lines](recipes/update-contract-lines.md) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) · [03 § Upsert Semantics](03-Transaction-API.md#upsert-semantics-keyed-rows-insert-when-absent) · [03 § Commission Costs](03-Transaction-API.md#commission-costs) |
 | Job contract: **bin quantities** | [edit-contract-bins](recipes/edit-contract-bins.md) | [03 § Editing Bin Quantities](03-Transaction-API.md#editing-bin-quantities-on-an-existing-contract) (Interactive fallback: [04 § Tab Unlock Sequences](04-Interactive-API.md#tab-unlock-sequences)) |
-| **Assembly / BOM** definition | — | [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
+| Job contract: **attach a ship-to** (pricing follows the ship-to grid, not the header) | — | [03 § Attaching a ship-to](03-Transaction-API.md#attaching-a-ship-to-to-an-existing-contract) |
+| Job contract: **edit an expired contract** / *"You may not change the end date of this record"* | [update-contract-lines](recipes/update-contract-lines.md) | [03 § Updating an Existing Contract](03-Transaction-API.md#updating-an-existing-contract) — omit `end_date` unless you are changing it |
+| Job contract: **how cost settings reach the order and invoice** (binding at entry, commission `Value` vs `Order` vs `Source`, rebate prerequisites, duplicate `item_id` lines) | [rebate-assembly-program](recipes/rebate-assembly-program.md) | [03 § How Contract Costs Reach the Order and the Invoice](03-Transaction-API.md#how-contract-costs-reach-the-order-and-the-invoice) |
+| **Assembly / BOM** definition — create (Transaction on a plain item, Interactive when the item is already a component) and edit | [new-assembled-part](recipes/new-assembled-part.md) | [03 § Part + Assembly Creation Workflow](03-Transaction-API.md#part-assembly-creation-workflow) · [03 § Assembly Service](03-Transaction-API.md#assembly-service) |
 | Item: **primary bin / primary supplier** at a location | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md) | [03 § Item Service](03-Transaction-API.md#item-service-nested-location-edits) |
 | **Create a brand-new item** — `Item` service alone 500s with `...tabpage: TABPAGE_2` or `A Default Sales Unit... Must Each Be Specified` | — | [03 § Item Service Gotchas](03-Transaction-API.md#item-service-gotchas) — use [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) instead |
 | Inventory REST create 500s — what does the error actually mean, is anything left behind | — | [11 § An incomplete create payload 500s](11-Inventory-REST-API.md#7-an-incomplete-create-payload-500s-but-the-message-names-whats-actually-missing) — message names the missing block; nothing persists on failure |
@@ -119,10 +125,13 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Item: **add a supplier to a location's list** (the flip's prerequisite — both keys + `IgnoreDisabled`) | [set-primary-bin-supplier](recipes/set-primary-bin-supplier.md#adding-the-missing-location-supplier-row) | [03 § Adding a Location Supplier Row](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert) |
 | Item: **enable bin tracking** at a location (`track_bins`, and the bin it auto-assigns) | — | [03 § Enabling Bin Tracking](03-Transaction-API.md#enabling-bin-tracking-at-a-location-track_bins) |
 | **Create warehouse bins** | [create-bins](recipes/create-bins.md) | [03 § BinLocation Service](03-Transaction-API.md#binlocation-service-creating-bins) |
+| **Lock, unlock or delete bins** (a skipped delete reports no error — verify in SQL) | — | [03 § Locking, Unlocking, and Deleting Bins](03-Transaction-API.md#locking-unlocking-and-deleting-bins) |
 | **Create a new warehouse/location** — a specific `id` is refused, a blank one false-succeeds at `location_id=0` | — | [03 § Location Service](03-Transaction-API.md#location-service-creating-a-warehouse) — the fix is `Keys: []` with no `id` at all; P21 assigns a real number |
 | Location: **update or soft-delete an existing warehouse** — `company_id` becomes `Column is disabled` after create | — | [03 § Location Service — Updating](03-Transaction-API.md#updating-an-existing-location-company_id-is-disabled-after-create) |
 | **Sales price pages** (codes, breaks, field order) | — | [08 SalesPricePage Codes](08-SalesPricePage-Codes.md) · [08 § Transaction API Alternative](08-SalesPricePage-Codes.md#transaction-api-alternative) |
 | **Purchase-side pricing pages** (supplier / item / discount group) | — | [08 § Purchase-Side Pricing Services](08-SalesPricePage-Codes.md#purchase-side-pricing-services) |
+| **Create a sales price page through the Transaction API** + link it to a price book (`USED BY` cannot link) | — | [08 § Creating a Page Through the Transaction API](08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api) |
+| **Edit a supplier/item purchase page in place** (exact keys, full field set, labels not codes) | — | [08 § Editing a Supplier/Item Purchase Page](08-SalesPricePage-Codes.md#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem) |
 | Break fields named differently per service (`calculation_value1` vs `value1`) | — | [08 § Cross-Service Break-Field Names](08-SalesPricePage-Codes.md#cross-service-break-field-names) |
 | **Set a carrier tracking number** on a pick ticket (and why not after invoicing) | — | [03 § Shipping Service — Carrier Tracking Number](03-Transaction-API.md#shipping-service-carrier-tracking-number) |
 | **Reassign a salesrep** (customer + ship-to) | [reassign-salesrep](recipes/reassign-salesrep.md) | [03 § Payload Anatomy](03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes) |
@@ -136,9 +145,15 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | **Create a customer** (salesrep_id + default_branch gotchas, no zip→rep cascade) | [create-customer](recipes/create-customer.md) | [03 § Common Services](03-Transaction-API.md#common-services) |
 | **Create a requisition PO** (`po_type` 'R'; disabled `po_hdr_po_type`; vendor vs supplier) | [create-requisition-po](recipes/create-requisition-po.md) | [03 § Purchase Order Types](03-Transaction-API.md#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
 | **GL dimensions via API** (voucher services carry them; POs don't) | — | [03 § GL Dimensions in the API](03-Transaction-API.md#gl-dimensions-in-the-api) |
+| **Create a vendor** (and its auto-created supplier; ID rule; rebate tracking) | [rebate-assembly-program](recipes/rebate-assembly-program.md) | [03 § Vendor Service](03-Transaction-API.md#vendor-service-creating-a-vendor-and-its-supplier) |
+| **Change an item's average cost** / write residual cost down (`InventoryCostEdit`) | [inventory-cost-edit](recipes/inventory-cost-edit.md) | [03 § InventoryCostEdit Service](03-Transaction-API.md#inventorycostedit-service-changing-an-items-average-cost) |
+| **Dispose of zero-value stock** on a $0 order | [dispose-zero-value-stock](recipes/dispose-zero-value-stock.md) | [03 § Order Service — Line Appends](03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup) |
+| **Stock PO → receipt → voucher**, and **drop ship** end to end | [purchase-receive-vouch](recipes/purchase-receive-vouch.md) | [03 § PurchaseOrder](03-Transaction-API.md#purchaseorder-service-creating-a-po) · [04 § Driving an In-Window Wizard](04-Interactive-API.md#driving-an-in-window-wizard-direct-ship-po-generation) |
+| **Sales order → pick ticket → invoice** | [sales-order-to-invoice](recipes/sales-order-to-invoice.md) | [03 § Create Order](03-Transaction-API.md#create-order) · [12 § Shipping and Invoicing](12-Production-Labor-API.md#shipping-and-invoicing-the-linked-sales-order) |
 | Customers / vendors / contacts / addresses (simple CRUD) | — | [05 § CRUD Operations](05-Entity-API.md#crud-operations) |
 | Read/create **sales orders via REST** (`/api/sales/orders`) | — | [05 § Other REST Endpoint Families](05-Entity-API.md#other-rest-endpoint-families) · [05 § Creating an Order](05-Entity-API.md#creating-an-order-post-apisalesorders) — **trailing slash required; lines nest under `Lines.list`** |
 | Inventory items: read / create / update locations | — | [11 § Reading Items](11-Inventory-REST-API.md#reading-items) · [11 § Minimum Create Payload](11-Inventory-REST-API.md#minimum-create-payload) · [11 § Updating Existing Location Fields](11-Inventory-REST-API.md#updating-existing-location-fields) |
+| Update a **supplier's cost** over REST (`Suppliers.list[].Cost`; restamps every `inv_loc`) | — | [11 § Updating a Supplier's Cost](11-Inventory-REST-API.md#updating-a-suppliers-cost-supplierslistcost) |
 | Append locations **at scale** (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin) | — | [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale) |
 | Customer-specific **price + availability** lookup | — | [11 § Pricing Endpoints](11-Inventory-REST-API.md#pricing-endpoints) |
 | **Batch** price + availability lookup (multiple items in one call, JSON *or* XML) | — | [11 § Batch Pricing](11-Inventory-REST-API.md#batch-pricing) |
@@ -158,6 +173,9 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | "Cannot open window **  ** because is not available" — the name came back blank | [04 § Open Window](04-Interactive-API.md#2-open-window) — blank means the `ServiceName` never resolved |
 | **Handle popups / response windows** (Status 3, windowopened) | [04 § Response Windows](04-Interactive-API.md#response-windows) · [04 § Response Window Types](04-Interactive-API.md#response-window-types) |
 | Answer a rule-callback dialog ("Item Issues Detected") | [04 § Worked Example](04-Interactive-API.md#worked-example-item-issues-detected-rule-callback) — but fix the data first: [03 § Root Cause and Data Fix](03-Transaction-API.md#item-issues-detected-popup-root-cause-and-data-fix) |
+| **Enable, disable or re-scope a DynaChange business rule** through the API | [04 § Managing Business Rules Through the DynaChange Organizer](04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer) — the `dc.organizer.rule` tool on any open window |
+| Interactive order saved as a **quote** / `disposition` looks disabled / wizard made an RFQ | [04 § Set `quote` to `OFF` first](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode) |
+| **Create an item in the Item window** (unit flags, one location per session) | [04 § Creating an Item in the Item Window](04-Interactive-API.md#creating-an-item-in-the-item-window) |
 | Answer a `w_message` dialog — it's fully controllable, not just auto-answered | [04 § Worked Example: w_message](04-Interactive-API.md#worked-example-w_message-save-changes-before-closing) |
 | Fill fields in a popup (`TabName: null`) | [04 § Response Window Handling (Tabless)](04-Interactive-API.md#response-window-handling-tabless-windows) |
 | Buttons / tools (`?windowId=`, not `?id=`) | [04 § Running Tools](04-Interactive-API.md#running-tools-buttons) |
@@ -183,6 +201,8 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Ship + invoice | [12 § Shipping and Invoicing](12-Production-Labor-API.md#shipping-and-invoicing-the-linked-sales-order) |
 | Inventory write-off / adjustment | [recipe: inventory-adjustment](recipes/inventory-adjustment.md) · [12 § Inventory Adjustment](12-Production-Labor-API.md#inventory-adjustment-write-offs) |
 | Why COGS doesn't match the receipt | [12 § Cost Model](12-Production-Labor-API.md#cost-model-know-this-before-trusting-cogs) |
+| Make vs parts location, UD fields hidden from the API role, cancel a pick ticket, `qty_to_complete` pre-fill, reprints, linking an existing order to a sales line | [12 § Production Order Gotchas (Field-Verified)](12-Production-Labor-API.md#production-order-gotchas-field-verified) |
+| **New assembled part** end to end (item → BOM → contract line → first production order) | [recipe: new-assembled-part](recipes/new-assembled-part.md) |
 
 ## Documents & reports (PDF)
 
@@ -193,6 +213,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Report returns nothing / runs forever / works for one user only | [03 § Report windows are still windows](03-Transaction-API.md#pdf-report-generation) — permissions, DynaChange date caps, **cancelling the request does not stop the run** |
 | Production pick ticket at a specific location | [03 § m_picktickets example](03-Transaction-API.md#example-generate-a-production-order-pick-ticket-m_picktickets) |
 | PDFs from print flags on a normal transaction | [03 § PDFs from the /transaction endpoint](03-Transaction-API.md#pdfs-from-the-transaction-endpoint-print-flags) |
+| **Merge several report PDFs** — barcodes print as text | [03 § Merging Several Report PDFs into One File](03-Transaction-API.md#merging-several-report-pdfs-into-one-file) — rename the font-subset tags |
 
 ## When something breaks
 
@@ -231,6 +252,7 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 | Auth failures | [06 § Authentication Errors](06-Error-Handling.md#authentication-errors) |
 | **401 right after a token call that worked** (`Authorization header was not present`) | [06 § 401 Authorization header was not present](06-Error-Handling.md#401-authorization-header-was-not-present-or-bearer-was-missing) — a 307 stripped the header; send the trailing-slash router URL |
 | Intermittent interactive failures under load | [07 Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) |
+| `may currently be edited by <your API user>` · Transaction fails while an Interactive session is open · order stuck after a crash | [06 § Locks and orphaned sessions](06-Error-Handling.md#locks-and-orphaned-sessions) |
 | What changed in these docs recently | [10 Changelog](10-Changelog.md) |
 
 ---

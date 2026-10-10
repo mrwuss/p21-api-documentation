@@ -571,7 +571,7 @@ The `po_hdr_po_type` `ValidValues` in the definition carry **display names only,
 
 | Scope | Behavior | Verified by |
 |---|---|---|
-| **Within one Transaction** | **Atomic.** A failure anywhere rolls the whole Transaction back — including edits that already validated. | A valid line-quantity edit paired with a disabled column, both in the same element and in a later element: `Failed: 1`, and the quantity was **unchanged** both times. |
+| **Within one Transaction** | **Atomic for edits to existing values.** A failure anywhere rolls the whole Transaction back — including edits that already validated. **Not atomic for creates:** a failed create can leave soft-deleted rows and consume a document number — see [A failed create leaves rows behind](#a-failed-create-leaves-rows-behind). | A valid line-quantity edit paired with a disabled column, both in the same element and in a later element: `Failed: 1`, and the quantity was **unchanged** both times. |
 | **Across Transactions in one POST** | **Independent.** Earlier Transactions commit and stay committed. | Transaction 1 (valid) + Transaction 2 (poisoned) → `Summary: {"Failed": 1, "Succeeded": 1}` and Transaction 1's quantity change **persisted**. |
 | **Downstream work a service triggers** | **Not covered by either.** Cascading business processes can complete before the Transaction's own validation fails. | See the warning below. |
 
@@ -579,11 +579,35 @@ The practical trap is the second row. **A `Summary` with `Failed ≥ 1` does not
 
 > **⚠️ Atomicity covers the record, not the consequences.** Some services do substantial downstream work on save — writing related records, completing linked documents, generating invoices. Those side effects are **not** rolled back by a later validation failure in the same Transaction.
 >
-> The reported case is `DirectShipConfirmation`, which returned `Summary: {"Failed": 1}` — tripped by a disabled `c_email_invoice` column — **after it had already written** the inventory receipt, completed the purchase-order line, invoiced the sales-order line, and created the customer AR invoice. The failure was real; so was everything it had done first. *(Reported by [Alex Westemeier](https://github.com/AWestemeier); not reproduced here — ordinary `Order` writes are atomic as the table above shows, so this is specific to services that cascade.)*
+> The reported case is `DirectShipConfirmation`, which returned `Summary: {"Failed": 1}` — tripped by a disabled `c_email_invoice` column — **after it had already written** the inventory receipt, completed the purchase-order line, invoiced the sales-order line, and created the customer AR invoice. The failure was real; so was everything it had done first. *(Reported by [Alex Westemeier](https://github.com/AWestemeier); not reproduced here — ordinary `Order` edits are atomic as the table above shows, so this is specific to services that cascade; failed `Order` *creates* are a separate case, [below](#a-failed-create-leaves-rows-behind).)*
 >
 > The same shape appears in the Interactive API, where an in-window wizard can commit at an intermediate step: the PO/RFQ generation wizard creates and links the PO at `cb_next`, **before** `cb_finish`, so an abandoned wizard is not a no-op.
 >
 > **On any write that triggers downstream documents, read the record back — `Failed` is a reason to go and look, not proof that nothing landed.**
+
+#### A failed create leaves rows behind
+
+The atomicity row above holds for **edits** to existing records. A Transaction that **creates** a document and then fails does not vanish: rows it already wrote stay in the table, flagged deleted, and the document number it drew is used up. Verified on the `Order` service on 26.1.5950.0:
+
+| How the create failed | What is left in the database |
+|---|---|
+| **Line 2** failed — *"Ambiguous data detected (PopUp encountered)…"* on its item ID | An order number is consumed. `oe_hdr` with `delete_flag = 'Y'`, `completed = 'Y'`; line 1 in `oe_line` with `delete_flag = 'Y'`, `disposition = 'C'`, `qty_canceled` = its quantity; one `oe_hdr_salesrep` row |
+| **Line 2** tripped a margin popup — *"…profit percentage … greater than the acceptable limit … [Response: No]"* | The same pattern |
+| **Save-time** required-column failure — `source_loc_id` omitted, *"This column is required."* | The same pattern |
+| **Line 1** failed — *"Contact Id is required"* | **Nothing** |
+
+The Interactive API behaves the same way once rows are committed mid-session:
+
+- A never-saved session with **one** line leaves nothing.
+- **`add_row` commits the header and line 1 mid-session** (`delete_flag = 'N'`, `completed = 'T'` — the in-edit state that [blocks other writes](#oe_hdrcompleted-t-is-what-blocks-the-write)). Ending the session without saving then flips them to `delete_flag = 'Y'`. An unsaved multi-line session is **not** a dry run.
+
+What to do about it:
+
+- **Filter every read-back on `delete_flag = 'N'`** (and `cancel_flag = 'N'` where the table has one). Unfiltered, the leftovers count as real lines.
+- **Before retrying a failed create, look for the stray document** — it already has a number, and a blind retry creates a second one. Expect gaps in the order-number sequence.
+- A failed multi-row **append** to a saved order leaves its rows soft-deleted the same way.
+
+> **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier) (soft-deleted residue from failed appends and unsaved sessions) and in [#169](https://github.com/mrwuss/p21-api-documentation/issues/169) (a stray header after a failed create).
 
 ---
 
@@ -661,7 +685,7 @@ Two placement rules:
 >
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) for mapping the placement failure mode and the disabled-tab unlock behavior.
 
-> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column `corp_address_id` and on `Order`'s `LINE_NOTE.line_note` — three unrelated surfaces, marking it as platform behavior. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
+> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column `corp_address_id` on `Order`'s `LINE_NOTE.line_note`, and on `SalesPricePage`'s `USED BY.price_book_x_page` link — four unrelated surfaces, marking it as platform behavior. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
 
 ---
 
@@ -1548,7 +1572,21 @@ All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 - **RMAs are not `Order` records.** An order with `rma_flag = 'Y'` is refused outright: `General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.` Use the [`RMA` service](#rma-service-orders-the-order-service-refuses).
 - **The same item on two lines collapses to one** with `Keys: []` — `TP_ITEMS.items` folds rows on its declared key (`oe_order_item_id`), last value wins, `Succeeded: 1`, no warning. Add `Keys: ["unit_quantity"]` (or another differing column) when an order legitimately repeats an item — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap).
 - The created `order_no` comes back in the result rows; check `Summary.Succeeded`, not the HTTP status.
-- **A document with `oe_hdr.completed = 'T'` refuses every write** — the record-lock prompt fires and the stateless API answers it `No`. See [Order Service — Reassigning the Salesrep](#order-service-reassigning-the-salesrep) for the pre-screen.
+- **A document with `oe_hdr.completed = 'T'` refuses every write** — the record-lock prompt fires and the stateless API answers it `No`. See [Order Service — Reassigning the Salesrep](#order-service-reassigning-the-salesrep) for the pre-screen. The holder can be **your own API user**: a client that was killed mid-request, or an Interactive session that was never ended, keeps the order locked until the server finishes — see [Locks and orphaned sessions](06-Error-Handling.md#locks-and-orphaned-sessions).
+
+#### Order Service — Line Appends, Cancels, Holds, and Item Lookup
+
+Field-verified on the `Order` service. Unless marked otherwise, credit [Alex Westemeier](https://github.com/AWestemeier) — verified on play and production, September 2026; not re-run here.
+
+- **Append many lines to a saved order in one Transaction, not one per line.** Key the header on `order_no` (`TABPAGE_1.order`, `Keys: ["order_no"]`) and send the new lines as multiple rows of one `TP_ITEMS.items` element (`Keys: []`). One Transaction per line fails: the rows collide with the existing line and the server answers *"Item ID X has been saved; therefore, the Item ID cannot be edited"*. (The same message also appears, transiently, when an orphaned Interactive session for the same user is still open — end it first; see [Locks and orphaned sessions](06-Error-Handling.md#locks-and-orphaned-sessions).)
+- **Per-line cost grows with the size of the order.** P21 re-reads the whole document after every Transaction, so appending to a large order slows down as it grows. Split very large line lists into orders of about 100 lines — measured numbers and the pattern are in [Batch Processing § Large Sales Orders](09-Batch-Processing-Patterns.md#large-sales-orders-split-at-about-100-lines).
+- **A failed append soft-deletes its rows.** Filter read-backs on `delete_flag = 'N' AND cancel_flag = 'N'` — see [A failed create leaves rows behind](#a-failed-create-leaves-rows-behind).
+- **Cancel an order through the header `cancel_flag`.** `TABPAGE_1.order` keyed on `order_no` with the edit `cancel_flag = "ON"` sets `oe_hdr.cancel_flag = 'Y'` and `completed = 'Y'` and releases every line's allocation. P21 reloads the whole order first, so cancelling a very large order takes minutes.
+- **Release a Hold through Ship Info when the header copy is disabled.** On some tenants the header `packing_basis` is a disabled column for the API user (*"Column is disabled: packing_basis"*). The same field on `TP_SHIPINFO.shipinfo` (`Type: Form`, `Keys: []`, after the keyed `TABPAGE_1.order` row) is enabled: set it to `Partial` to release the Hold. Allocation is untouched.
+- **`TP_SALESREPS` on a *new* order adds rows; it does not replace the default.** The customer's default rep row is created at save, after the element is processed (a keyed edit finds *"row 0 not found"*), and any rep row you send is added on top of it. Two 100% rows then trip the *"Do not use the Full Commission flag"* rule and the create fails. Rep changes on a new order need either a customer or ship-to whose default rep already satisfies your rules, or the Interactive window (`TP_SALESREPS`, select row 1, set `salesrep_id`). [Add-then-retire on a saved order](#order-service-reassigning-the-salesrep) is unaffected.
+- **Item IDs are prefix-matched.** An ID that matches more than one item fails with *"Ambiguous data detected (PopUp encountered)"* — check for near-duplicates that differ only in spacing (`ITEM-001 3/8 NPT` versus `ITEM-001 3/8NPT`) and send the exact ID.
+- **A merged-away item fails with *"'X' has been deleted"*.** After an item merge the old ID stays in `inv_mast` with `delete_flag = 'Y'`, and `inv_mast.extended_desc` names the survivor. Build line lists from live data at run time, not from a saved spreadsheet.
+- **A failed create consumes an order number and can leave a soft-deleted header and lines.** Look for the stray order before retrying — see [A failed create leaves rows behind](#a-failed-create-leaves-rows-behind) (verified by the maintainer on 26.1.5950.0).
 
 #### Order Service — Reassigning the Salesrep
 
@@ -1656,6 +1694,37 @@ GET /api/v2/definition/JobContractPricing
 | `activation_date` | Datetime | Ship-to activation date |
 | `expiration_date` | Datetime | Ship-to expiration date |
 | `address_name` | Char | Ship-to address name |
+
+##### Attaching a ship-to to an existing contract
+
+**Contract pricing follows this grid, not the header.** On a saved contract, `job_price_hdr.customer_id` and `ship_to_id` are NULL; the customers and ship-tos the contract serves are rows in `job_price_customer_shipto`. A sales order line gets the contract price only when the order's customer **and ship-to** are a row here — a ship-to missing from the grid prices as if the contract did not exist.
+
+To add one, load the header by `job_no` + `contract_no` (header `Keys: []`, both in `Edits`) and send a `CUSTOMER_SHIP_TO.customer_ship_to` row keyed on `customer_id` + `ship_to_id`, with `IgnoreDisabled: true` at the payload top level:
+
+> Payload shape only. Full runnable version — same endpoint and response checks: [Updating an Existing Contract](#updating-an-existing-contract).
+
+```json
+{
+  "Name": "JobContractPricing", "UseCodeValues": false, "IgnoreDisabled": true,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
+      "Rows": [{ "Edits": [
+        {"Name": "job_no",      "Value": "JOB-001"},
+        {"Name": "contract_no", "Value": "CONTRACT-001"}
+      ], "RelativeDateEdits": [] }] },
+    { "Name": "CUSTOMER_SHIP_TO.customer_ship_to", "Type": "List",
+      "Keys": ["customer_id", "ship_to_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "customer_id", "Value": "100198"},
+        {"Name": "ship_to_id",  "Value": "100199"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+Read back `job_price_customer_shipto` for the contract, then confirm on a test order: a blank-price line for that ship-to should now fill in the contract price. Because `IgnoreDisabled` is on, [never trust `Passed` alone](#ignoredisabled).
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (a blank-price order to the newly added ship-to auto-priced from the contract); not re-run here.
 
 #### Line Items -- `JOBPRICELINE.jobpriceline` (List, 29 fields)
 
@@ -1802,14 +1871,72 @@ The `JOBPRICECOST` DataElement includes `commission_cost_value` and related comm
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) verified the `IgnoreDisabled` commission-cost write path. The Interactive API (JobContractPricing window) remains an alternative.
 
+**`commission_cost_value` is disabled unless the type is `Value`.** Switching a line back to type `Order` while still sending the value fails with `Column is disabled: commission_cost_value`. Drop the value field when you restore type `Order`. *(@mrwuss, play 26.1, October 2026.)*
+
+**Duplicate `item_id`s on one contract: key the line by `line_no`.** `JOBPRICECOST.jobpricecost` has no `line_no` key, so it binds to whichever line `JOBPRICELINE` selected. Key `JOBPRICELINE` by `item_id` on a contract that carries the same item twice and both elements silently hit the **first** matching line. Select the line with `Keys: ["line_no"]` (and `line_no` in `Edits`) first; the cost form then binds to that line. *(Credit: [Alex Westemeier](https://github.com/AWestemeier) — verified on production, July 2026; not re-run here.)*
+
+#### How Contract Costs Reach the Order and the Invoice
+
+The contract's cost settings are not copied to an order once and forgotten, and they are not re-read every time either. Which one happens depends on the cost type and on whether the order line was bound to the contract when it was entered.
+
+##### Binding happens once, at line entry
+
+A sales order line picks up the contract when it is **entered**: P21 fills the contract price and stamps `oe_line.job_price_hdr_uid`. That binding is permanent for the line.
+
+- **A bound line re-reads its contract cost at invoicing.** `oe_line.other_cost` is only an entry-time snapshot; after the contract's other cost was changed, the invoice booked the new contract value. No delete and re-add is needed. The price stays as entered.
+- **An unbound line never binds later.** A line entered before its item was on the contract (`job_price_hdr_uid` NULL) kept average cost on the invoice even after the contract line was added. Delete the order line and re-enter it.
+- Contract pricing at entry needs the customer **and ship-to** on the contract ([Attaching a ship-to](#attaching-a-ship-to-to-an-existing-contract)), an approved contract, and an order date inside its window. Leave `unit_price` unset on the order line so P21 can fill it.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — binding rules verified on play, September 2026; not re-run here.
+
+##### Order-entry effect of each commission cost setting
+
+Verified on play 26.1 by entering real (non-quote) order lines interactively against one contract line, then invoicing them. The line in the first table had a sales price above both costs, a location moving average cost (MAC) and a lower supplier PO cost.
+
+| Contract line setting | Order line result |
+|---|---|
+| Default: `commission_cost_type_cd` = `Order`, multiplier 1.02 | `sales_cost` = MAC; `commission_cost` = MAC × 1.02 |
+| `JOBPRICELINE.po_cost` set to the PO cost | **No effect** on a stock or blank-disposition line: `sales_cost` = MAC, `po_cost` 0, `commission_cost` = MAC × 1.02 |
+| `JOBPRICECOST` type **`Value`**, `commission_cost_value` = the PO cost, multiplier 1.02 | `commission_cost` = value × 1.02, independent of `sales_cost` |
+| Same, then `sales_cost` edited down to the PO cost through the `Order` service | `commission_cost` unchanged (value × 1.02); `order_cost_edited` = `Y`; `other_cost` stays MAC |
+| `JOBPRICECOST` type **`Source`**, source `Primary Supplier Cost`, multiplier 1.02 | `commission_cost` **0.00** when `inventory_supplier.cost` is 0 — there is no fallback, so a blank supplier cost gives a zero commission cost |
+
+And at invoicing:
+
+| Line | Contract commission cost | `invoice_line.commission_cost` |
+|---|---|---|
+| Stock line | **`Value`** × 1.02 | value × 1.02 — **not** based on COGS |
+| Stock line (control) | **`Order`** × 1.02 | COGS × 1.02 — recalculated at invoicing |
+| Direct-ship line | **`Value`** × 1.02 | value × 1.02 |
+
+So a `Value` commission cost **is** multiplied by `commission_cost_calc_value`; a multiplier of 1.00 cannot show the difference. An `Order`-type commission cost on the order line is computed once at entry and is **not** recalculated when the order cost changes later (for example a disposition change that replaces MAC with the PO cost) — but the invoice recalculates it from COGS.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 (entry and invoice), with supporting production observations ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). An earlier round of this test ran in quote mode by accident — see [Set `quote` to `OFF` first](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode); only the results re-confirmed on real orders are shown here.
+
+##### Rebate prerequisites (other cost `Value` + a rebate-tracking vendor)
+
+For a contract-priced line to write a supplier rebate at invoice, both of these must hold:
+
+1. The bound contract line carries **other cost type `Value`** (`other_cost_type_cd` = `Value`, `other_cost_value` = the rebated cost) below the actual cost.
+2. The item's **primary supplier at the line's ship-from location** belongs to a vendor with **Track Rebates** on. `oe_line.supplier_id` is stamped at entry from the primary supplier at `source_loc_id`, not the sales location — the sales location's primary supplier is irrelevant.
+
+Then at invoice, `invoice_line.cogs_amount` = the contract value, a `vendor_rebate` row is written for the difference, and GL posts the sale at MAC plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable. Setting only the other cost lowers COGS but writes no rebate. The same holds for assemblies built on production orders. Creating the vendor: [Vendor Service](#vendor-service-creating-a-vendor-and-its-supplier). The end-to-end setup: [recipe: rebate-assembly-program](recipes/rebate-assembly-program.md).
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — rebate trigger proven end to end on play, September 2026; not re-run here.
+
 #### Updating an Existing Contract
 
 Use `Status = "New"` to update existing contracts -- there is no separate "Update" or "Existing" status. The Transaction API distinguishes create from update by whether the FORM key fields land on an existing record:
 
 - Leave the FORM `Keys` array empty.
 - Send the FORM key fields (`company_id`, `contract_no`, `job_no`) inside `Edits`.
-- Also include `end_date` in `Edits` -- the API validates required fields on every submit and rejects with `"Required value missing for End Date"` if it's absent.
+- **Leave `end_date` out unless you are changing it.** `job_no` + `contract_no` in `Edits` identify the header; with only those and a keyed `JOBPRICELINE` row, the line changes and the header is not re-saved (its `date_last_modified` stays put). Sending `end_date` — even unchanged — re-saves the header and runs its date validations, which is where both errors below come from:
+  - *"The end date must be equal to or greater than today"* fires **only when `end_date` is sent**. An **expired** contract accepted a header edit and a line `qty_maximum` edit through the Transaction API with `end_date` omitted.
+  - *"You may not change the end date of this record. The customer defined on the Customer/Ship To tab, {customer}, has an associated corporate address ID of {corp}. This is different from the corporate address id of the Job/Contract header, {header}."* fires **only when `end_date` is sent and** the header's `corp_address_id` differs from the corporate address of the customer on the Customer/Ship To tab. Cancellation is not the cause.
+- Batching many line-field **updates** in one POST is fine (25 Transactions per POST in production use); the one-Transaction-per-POST rule applies to **inserts**, where `line_no` allocation and the header re-save collide.
 - On `JOBPRICELINE`, set `Keys: ["item_id"]` and put the `item_id` value in `Edits` alongside the fields you're changing.
+
+> **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier). This replaces earlier guidance in this section that `end_date` had to be sent on every update.
 
 > Empirically verified 2026-05-14: 173 successful price updates against contract `JOB-1001` on a production tenant. Each call returned HTTP 200 with `Summary.Succeeded = 1`, and OData confirmed each `job_price_line.price` matched the submitted value.
 
@@ -1830,7 +1957,6 @@ VERIFY_SSL = False                        # True once you trust the cert chain
 COMPANY_ID = "ACME"                       # FORM key fields go in Edits, not Keys
 CONTRACT_NO = "JOB-1001"
 JOB_NO = "31"                             # unique per header; survives renewals
-END_DATE = "2030-01-01"                   # must be >= today -- validated every save
 ITEM_ID = "WIDGET-001"                    # the line to update
 UOM = "EA"
 PRICE = "36.58"
@@ -1906,7 +2032,6 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                             {"Name": "company_id",  "Value": COMPANY_ID},
                             {"Name": "contract_no", "Value": CONTRACT_NO},
                             {"Name": "job_no",      "Value": JOB_NO},
-                            {"Name": "end_date",    "Value": END_DATE},
                         ],
                         "RelativeDateEdits": [],
                     }],
@@ -1974,7 +2099,6 @@ const string Password = "your-password";
 const string CompanyId = "ACME";              // FORM key fields go in Edits, not Keys
 const string ContractNo = "JOB-1001";
 const string JobNo = "31";                    // unique per header; survives renewals
-const string EndDate = "2030-01-01";          // must be >= today -- validated every save
 const string ItemId = "WIDGET-001";           // the line to update
 const string Uom = "EA";
 const string Price = "36.58";
@@ -2018,7 +2142,6 @@ var payload = new
                                 new { Name = "company_id", Value = CompanyId },
                                 new { Name = "contract_no", Value = ContractNo },
                                 new { Name = "job_no", Value = JobNo },
-                                new { Name = "end_date", Value = EndDate },
                             },
                             RelativeDateEdits = Array.Empty<object>(),
                         }
@@ -2177,7 +2300,7 @@ static string ReadField(string payload, string field)
   }
   ```
 - **Per-line latency** observed at ~0.8s. For bulk updates, single-line calls are easier to retry on failure than batches.
-- **`end_date` must be >= today.** The header is validated on every save; a past date is rejected with *"end date must be equal to or greater than today"*. This means you cannot edit lines on an **expired** contract without also moving its `end_date` forward (a real side effect) -- for expired contracts, use the Interactive API instead.
+- **Expired contracts are editable here** as long as you do not send `end_date` — the *"end date must be equal to or greater than today"* check runs only when `end_date` is in the payload. See the `end_date` bullet above.
 - **Identify renewals by `job_no`.** Contract renewals can leave the same `contract_no` on two header rows; `job_no` is unique. Include it in the FORM Edits whenever it's known.
 
 #### Upsert Semantics -- Keyed Rows Insert When Absent
@@ -2246,7 +2369,7 @@ Gotchas (all verified live):
 - **`IgnoreDisabled: true` is mandatory** -- without it the defaults template trips *"Column is disabled: ..."* and the BINS tab stays locked.
 - **Select the line by `item_id`** (the JOBPRICELINE key). Selecting by `line_no` alone fails with *"Sequence contains no matching element."* If the same item appears on multiple lines, add `line_no` as a second key.
 - **Batching is fine here**: repeat the `JOBPRICELINE` + `BINS.bins` pair per bin inside the same Transaction. Unlike line inserts, bin edits don't collide on the header.
-- **No `end_date` required** on this path -- it works on expired contracts too, unlike line-field updates.
+- **No `end_date` required** on this path -- it works on expired contracts too, as line-field updates do when `end_date` is omitted.
 - HTTP 200 can still carry `Summary.Failed > 0` -- check `Summary` and `Messages`.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) discovered and verified the `IgnoreDisabled` bins path (single and multi-bin batches, database-confirmed). The Interactive API (select ship-to row, then line, then BINS tab) also works as a slower fallback.
@@ -2790,9 +2913,23 @@ Assembly definitions are metadata attached to existing inventory items. Creating
 
 The Assembly service does NOT create new inventory items -- it adds BOM metadata to an item that already exists.
 
+**Create through the Transaction API works on a plain item, and fails on an item that is already a component of another assembly.**
+
+| Case | Result |
+|---|---|
+| Item is not a component anywhere | Header `TABPAGE_1.assemblyhdr` with `inv_mast_item_id` + component rows on `TABPAGE_17.tp_17_dw_17` → `Succeeded: 1`; `assembly_hdr` and one `assembly_line` per component written |
+| Item is already a component of an existing assembly | The window asks *"…is a component of an existing assembly, continue?"*; the Transaction API answers **No** and the save throws `Cannot insert the value NULL into column 'inv_mast_uid', table '…assembly_hdr'` (SQL error 3621, "No changes made to database"). Nothing is left behind |
+
+For the second case use the **Interactive** `Assembly` window: set `TABPAGE_1.assemblyhdr.inv_mast_item_id`, answer the popup **Yes** (`cb_1`), fill row 1 of `tp_17_dw_17` (it already exists — `add_row` + `select_row` for each further component), set the header flags, save. Check `assembly_line` before the first write: a `component_inv_mast_uid` match tells you which path the item needs. Leave `copy_item_id` out — it was not tested.
+
+**Edits to an existing assembly work through the Transaction API**, with keyed `Status: "New"` and **no `IgnoreDisabled`**: a header flag keyed on `inv_mast_item_id`; a component's `quantity` keyed on `item_id_service_labor_id`; and removing a component with `delete_flag` = `ON` on its row.
+
+> **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier).
+
 #### Known Limitations
 
-- **Status "Existing" is rejected:** Same as every other service — HTTP 400 on 26.1.5940.0, `NullReferenceException` HTTP 500 on earlier builds. Use the Interactive API (Assembly window) for modifications to existing assemblies.
+- **Status "Existing" is rejected:** Same as every other service — HTTP 400 on 26.1.5940.0, `NullReferenceException` HTTP 500 on earlier builds. Modify an existing assembly with keyed `Status: "New"` Transactions instead (see above).
+- **An item that is already a component of another assembly** cannot be given its own assembly through the Transaction API — use the Interactive window (see above).
 - **Item must exist first:** `inv_mast_item_id` must reference an existing item.
 - **No re-creation:** Items that already have assembly definitions cannot have a second assembly created.
 
@@ -3274,7 +3411,7 @@ The location-side elements chain Form → List → Form/List, and the tab number
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — patterns and gotchas verified in production (July–August 2026).
 
-- **Creating a brand-new item through the raw `Item` service alone does not work — use the [Inventory REST API](11-Inventory-REST-API.md#minimum-create-payload) instead.** The Units of Measure tab (`TABPAGE_2.tp_2_dw_2`) is disabled until the item record already exists (`General Exception: ... Ignored processing disabled tabpage: TABPAGE_2`), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (`A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.`) — a circular dependency that no field ordering, `IgnoreDisabled`, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. `POST /api/inventory/parts` (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt.
+- **Creating a brand-new item through the raw `Item` service alone does not work — use the [Inventory REST API](11-Inventory-REST-API.md#minimum-create-payload) instead.** The Units of Measure tab (`TABPAGE_2.tp_2_dw_2`) is disabled until the item record already exists (`General Exception: ... Ignored processing disabled tabpage: TABPAGE_2`), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (`A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.`) — a circular dependency that no field ordering, `IgnoreDisabled`, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. `POST /api/inventory/parts` (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt. The Interactive `Item` window can also create an item, because it sequences the tabs the way the UI does — see [Creating an Item in the Item Window](04-Interactive-API.md#creating-an-item-in-the-item-window).
 - **A soft-deleted item is terminal for the raw `Item` service — not just for a second `delete_flag=ON`.** Setting `delete_flag=ON` (`ValidValues: ["ON", "OFF"]`, column `inv_mast.delete_flag`) on an item succeeds the first time; OData then shows `delete_flag = 'Y'` and the row is still returned (soft delete, not hidden — same pattern as the [Customer salesrep grid](#customer-service-removing-a-salesrep-grid-row)). **Any** subsequent `Item`-service write against that item is then `Blocked` — not only a repeated `delete_flag=ON`, but an unrelated field like `item_desc` fails identically:
   ```
   Null filter expression passed to of_Retrieve for Discount Group.
@@ -3319,7 +3456,7 @@ The working create, in full:
               "Edits": [
                 {"Name": "location_name",         "Value": "New Warehouse"},
                 {"Name": "central_phone_number",  "Value": "5155550100"},
-                {"Name": "company_id",            "Value": "IFPG"},
+                {"Name": "company_id",            "Value": "ACME"},
                 {"Name": "branch_id",             "Value": "10"}
               ]
             }
@@ -3396,6 +3533,38 @@ The `BinLocation` service *is* the **Bin Location Maintenance** window: its form
 - **Read-back:** the raw `bin` table isn't always exposed via OData — verify through the `p21_view_bin` view instead, and compare field-for-field against the twin after the first run.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — pattern verified in production (July 2026), including the `IgnoreDisabled` placement failure mode.
+
+#### Locking, Unlocking, and Deleting Bins
+
+Same service, same element, same three-field key — the keyed `Status: "New"` upsert edits the existing bin.
+
+| Operation | Edits | `IgnoreDisabled` |
+|---|---|---|
+| Lock | `pick_locked_flag` and/or `put_locked_flag` = `ON` | **Not needed** — both flags are enabled columns. Creation only needs it because it sends system columns such as `frozen_flag` |
+| Unlock | the same flags = `OFF` | Not needed |
+| Delete | `delete_flag` = `ON` | **Send it** (payload top level) |
+
+```json
+{ "Name": "BinLocation", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "FORM.form", "Type": "Form",
+      "Keys": ["company_id", "location_id", "bin_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "company_id",       "Value": "ACME"},
+        {"Name": "location_id",      "Value": "10"},
+        {"Name": "bin_id",           "Value": "A01-02-03"},
+        {"Name": "pick_locked_flag", "Value": "ON"},
+        {"Name": "put_locked_flag",  "Value": "ON"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+- **Verify a delete in the database.** A skipped delete reports no error. Read `bin.delete_flag` (SQL, or the `p21_view_bin` view) after the run and treat any bin still at `N` as a failure. The delete is a soft delete: flipping `delete_flag` back to `OFF` restores the bin.
+- **Only lock or delete a bin that is not in use**: no `inv_bin` row with `quantity > 0`, and no `inv_loc.primary_bin` pointing at it. Locking or deleting a bin in active use strands stock and putaways. Clear primary-bin claims first ([set-primary-bin-supplier](recipes/set-primary-bin-supplier.md)).
+- Many Transactions per POST is fine, as with creation. Take a backup of the current flag values before a bulk run.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — lock and delete verified on play and production, July 2026 (thousands of bins, zero silent skips after SQL verification); not re-run here.
 
 ### PutawayZone / PickZone Services — Creating Bin Zones
 
@@ -3861,6 +4030,55 @@ Step three of **build → receive → vouch**, and another clean one-POST. Verif
 
 *(Cycle and payload shapes from [Alex Westemeier](https://github.com/AWestemeier); all three steps re-verified end-to-end here.)*
 
+### Vendor Service — Creating a Vendor (and Its Supplier)
+
+Create the **vendor** first. Saving it creates the same-ID **supplier** and the `vendor_supplier` link for you; creating the supplier first is a dead end.
+
+> Payload shape only. Full runnable version — same endpoint and response checks: [Create Order](#create-order).
+
+```json
+{
+  "Name": "Vendor", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["company_id", "id"],
+      "Rows": [{ "Edits": [
+        {"Name": "company_id",           "Value": "ACME"},
+        {"Name": "id",                   "Value": "100500"},
+        {"Name": "vendor",               "Value": "ON"},
+        {"Name": "name",                 "Value": "Example Vendor"},
+        {"Name": "mail_address1",        "Value": "100 Main St"},
+        {"Name": "mail_city",            "Value": "Springfield"},
+        {"Name": "mail_state",           "Value": "IL"},
+        {"Name": "mail_postal_code",     "Value": "62701"},
+        {"Name": "ap_account_no",        "Value": "2222200"},
+        {"Name": "default_terms_id",     "Value": "Net 30 Days"},
+        {"Name": "track_rebates",        "Value": "ON"}
+      ], "RelativeDateEdits": [] }] },
+    { "Name": "REBATE_ACCOUNTS.d_vendor_rebate_accounts", "Type": "Form", "Keys": [],
+      "Rows": [{ "Edits": [
+        {"Name": "rebate_account_no",           "Value": "1111100"},
+        {"Name": "rebate_allowance_account_no", "Value": "3333300"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+| Field | Rule |
+|---|---|
+| `vendor` | **Must be `ON`.** Without it: *"To add a vendor, the vendor flag must be checked."* |
+| `id` | **A typed ID is accepted only if that ID already exists in `address`** (the keyspace that customers, suppliers, vendors and locations share). The verified create used an existing address ID (`100500` above). Per the same notes, a blank ID makes P21 number it from the address sequence — but a blank ID is a [false success on the `Location` service](#location-service-creating-a-warehouse), so read back before relying on it. The refusal reads *"Enter a valid ID or leave ID blank."* — the same rule, with the same message, applies to the Supplier and Location windows. To give a vendor the same ID as a location, create the location first (blank ID), then create the vendor with that ID |
+| `default_terms_id` | **The terms description** (`Net 30 Days`), not the terms ID — the ID fails *Invalid default_terms_id value* |
+| `currency_id` | **Omit it.** The ID is rejected (*Invalid currency_id value*); the default is the company currency |
+| `ap_account_no`, `name` | Required |
+| `track_rebates` | `ON` for a vendor that books supplier rebates — the second half of the [rebate prerequisites](#rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor). The rebate receivable is re-suffixed to the sales location at posting |
+
+- **Do not send the supplier link tab (`TABPAGE_6.tp_6_dw_6`) on the create.** If the supplier does not exist yet it fails *"A valid supplier ID must be entered"*. The vendor save creates the supplier itself.
+- **Supplier-first fails.** The `Supplier` service requires *"At least one valid primary vendor"*, and that vendor in turn needs its address to exist.
+- **The `Supplier` service silently substitutes the next number** when you type an ID that has no address row. Read back what was actually created.
+- Read back `vendor`, `supplier`, `vendor_supplier` (`primary_vendor = 'Y'`) and `address`.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (vendor plus auto-created supplier); not re-run here.
+
 ### RMA Service — Orders the `Order` Service Refuses
 
 Return Merchandise Authorizations live in `oe_hdr` alongside ordinary sales orders, but the **`Order` service will not touch them**. Loading one by `order_no` fails immediately:
@@ -4034,6 +4252,59 @@ Element map (from `GET /api/v2/definition/ItemDefaults`):
 > **Gotcha — the pricing units are required.** `unit_id`/`unit_size` on TABPAGE_1 and `price_unit_id`/`price_unit_size` on TABPAGE_3 must be sent — omitting them fails the whole transaction with `'Sales Pricing Unit' is a required column`, even though the window shows them as ordinary defaults. Send e.g. `EA` / `1`.
 
 *(From [issue #111](https://github.com/mrwuss/p21-api-documentation/issues/111), verified 2026-08-14.)*
+
+### InventoryCostEdit Service — Changing an Item's Average Cost
+
+The `InventoryCostEdit` service is the **Edit Inventory Cost** window. It sets `inv_loc.moving_average_cost` for one item at one location and posts the value difference to the GL. It is a clean Transaction API case: one POST per item, no popups.
+
+> Payload shape only. Full runnable version: [recipe: inventory-cost-edit](recipes/inventory-cost-edit.md).
+
+```json
+{
+  "Name": "InventoryCostEdit", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "QUERY.query", "Type": "List", "Keys": ["location_id", "item_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "location_id", "Value": "10"},
+        {"Name": "item_id",     "Value": "WIDGET-001"}
+      ], "RelativeDateEdits": [] }] },
+    { "Name": "FORM.form", "Type": "Form", "Keys": ["location_id", "item_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "location_id", "Value": "10"},
+        {"Name": "item_id",     "Value": "WIDGET-001"},
+        {"Name": "new_cost",    "Value": "0.02"}
+      ], "RelativeDateEdits": [] }] },
+    { "Name": "FORM.account", "Type": "Form", "Keys": ["account_no"],
+      "Rows": [{ "Edits": [
+        {"Name": "account_no",      "Value": "1111100"},
+        {"Name": "year_for_period", "Value": "2026"},
+        {"Name": "period",          "Value": "12"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+| Element | What it does |
+|---|---|
+| `QUERY.query` (List) | Selects the item/location row, keyed `location_id` + `item_id` |
+| `FORM.form` (Form) | Same keys; carries **`new_cost`** |
+| `FORM.account` (Form) | The offset GL account plus the posting period: **`account_no`**, **`year_for_period`**, **`period`** — all three required |
+
+**Gotchas:**
+
+- **`account_no` is the stored form, without the dash.** The window displays the account as `11111-00`; send `1111100`. The dashed form fails *"A valid GL account must be entered"* and nothing posts.
+- **Send `year_for_period` before `period`.** The window validates the period against the year already in the form (a default year), so period-first fails *"Period 12, Year 2000 have not been setup for company …"*.
+- `period` / `year_for_period` are **fiscal**, not calendar. A stray period-0 value fails *"Period has no value or is zero"*.
+- Skip items already at the target cost and items with no `inv_loc` row at the location before you post.
+
+**What it writes — and what it doesn't:**
+
+- `inv_loc.moving_average_cost` changes (`last_maintained_by` = the API user) and one `audit_trail` row is written (`column_changed = 'moving_average_cost'`).
+- A GL pair under journal **`IC`**, description `Cost Edit - <old> TO <new>`: the inventory account and the offset account you sent, for `qty_on_hand × (old − new)`. Sub-cent rounding posts to a separate rounding account.
+- **No `inv_tran` row and no `inv_adj` row.** The cost edit is invisible to the inventory transaction tables; `audit_trail` and the GL are its only history. The `inv_cost_edit` table stays empty.
+- The GL shape is identical to the same edit made by hand in the window.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026; not re-run here.
 
 ## PDF Report Generation
 
@@ -4482,8 +4753,15 @@ Caveats (verified on `ProductionOrder`):
 
 - Documents are only returned on a **savable** transaction — a bare reprint with nothing new to save errors with *"Save is not enabled"*.
 - `print_pick_ticket` emits only at the order's **make location**. If components stock elsewhere, the pick ticket comes back empty or missing — generate it with `m_picktickets` at the stock `location_id` instead (previous section).
+- **Only the first print returns a PDF.** To reprint a production order form, run `m_productionorders` with `reprint = ON` at the **make** location (it returns nothing at the parts location); reprint a production pick ticket with `m_reprintpicktickets`, type "Production Order", at the parts location. See [12 § Production Order Gotchas](12-Production-Labor-API.md#production-order-gotchas-field-verified).
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier).
+
+### Merging Several Report PDFs into One File
+
+The Crystal-rendered PDFs these endpoints return all name their embedded font subsets with the **same** six-letter tag (for example `AAAAAB+Arial`). Concatenate several of them and viewers and print drivers can draw a page with another page's glyphs — in the reported case, a Code 39 barcode printed as plain Arial text. When you merge, rename each font subset to a tag that is unique **per document and per font**.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — observed on production print runs, September 2026; not re-run here.
 
 ---
 
@@ -4833,6 +5111,13 @@ Its `business_rule_data_element` rows covered:
 #### Step 2 -- Find the rows that trip it
 
 On that system the specific trigger was an `inventory_supplier` row with **`cost = 0` AND `list_price = 0`**. Either value being non-zero satisfies the rule (confirmed in both directions).
+
+> **The zero/zero row is one trigger, not the only one.** On production (October 2026) the same rule fired on an Interactive `Item` save for an item with **no** zero/zero row: it had two supplier rows, one with a cost and a zero list price, the other with a zero cost and a list price. Editing the first row's cost (`TABPAGE_6.tp_6_dw_6` row selected, `TABPAGE_7.tp_7_dw_7.cost` changed) raised the popup. A per-row check that needs both values non-zero, or that compares cost with list price, would explain it — that is not confirmed. Two more things from that run:
+>
+> - **The rule's message is not readable through the API.** The popup's `rule_callback_fields` datawindow comes back with no fields, so you cannot read which condition fired.
+> - `cb_2` cancels cleanly with no change; `cb_1` commits. The save also restamps `date_last_modified` / `last_maintained_by` on the item's *other* supplier rows, even though their values do not change.
+>
+> *(@mrwuss, production 26.1, October 2026 — [#171](https://github.com/mrwuss/p21-api-documentation/issues/171).)*
 
 **It is the zero rows that matter, not the primary supplier row.** An item can have one supplier row carrying a real cost and still be blocked by a *different* supplier row on the same item with both values at zero. Find them all:
 

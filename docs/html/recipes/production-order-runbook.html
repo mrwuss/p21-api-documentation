@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group" open>
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="../recipes/README.html">Recipes Overview</a></li>
             <li><a href="../recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="../recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="../recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="../recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li class="active"><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="../recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="../recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="../recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="../recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -672,7 +678,7 @@
 <p>This page is a <strong>checklist</strong>, not a script. Each stage says what to call, the fields that matter, and the trap that costs an afternoon — with a link to the deep section. The one complete example below covers the stage most people automate first: generating the pick ticket and reading back its status. For runnable code on the other stages, see <a href="record-labor-time.html">record-labor-time</a>, <a href="inventory-adjustment.html">inventory-adjustment</a>, <a href="order-with-assembly.html">order-with-assembly</a>, <a href="create-sales-order.html">create-sales-order</a>, and <a href="generate-pick-ticket-pdf.html">generate-pick-ticket-pdf</a>.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li><strong>An assembly (BOM) definition exists</strong> for the item — you cannot create a production order for an item without one. Create it with the Transaction API <code>Assembly</code> service (<a href="../12-Production-Labor-API.html#assembly-service-cross-reference">manual</a>).</li>
+<li><strong>An assembly (BOM) definition exists</strong> for the item — you cannot create a production order for an item without one. Create it with the Transaction API <code>Assembly</code> service (<a href="../12-Production-Labor-API.html#assembly-service-cross-reference">manual</a>) — or with the Interactive window when the item is already a component of another assembly (<a href="../03-Transaction-API.html#part-assembly-creation-workflow">why</a>).</li>
 <li><strong>The finished item is set up at the source location</strong>, or the save fails with <em>"item ID does not exist at your source location."</em></li>
 <li><strong>Know your assembly behavior flags</strong> (<a href="../12-Production-Labor-API.html#assembly-behavior-flags">manual</a>) — three ON/OFF flags on <code>assembly_hdr</code> decide how the item behaves:</li>
 </ul>
@@ -1079,6 +1085,7 @@
 <li><strong>Status codes:</strong> <code>702</code> Open, <code>1962</code> Confirmed, <code>1268</code> Completed — a <code>1962</code> alone does not prove stock moved (see shell confirm).</li>
 <li><strong>Auto-create nets against stock</strong> — stock on hand means no production order spawns; salesrep must be valid at the sales location; order date must differ from required date (Stage 1).</li>
 <li><strong>Confirm every ticket</strong> — parts <em>and</em> the labor/intangibles ticket.</li>
+<li><strong>More field-verified traps</strong> — make location before parts location, UD fields hidden by a screen version, <code>"Canceled"</code> to cancel a ticket, <code>qty_to_complete</code> pre-filled on every line, reprints via <code>m_productionorders</code>, and the sales-line link the API cannot make: <a href="../12-Production-Labor-API.html#production-order-gotchas-field-verified">12 § Production Order Gotchas</a>.</li>
 </ul>
 <h2 id="verify">Verify</h2>
 <p>After each stage, read back — don't trust the HTTP status:</p>

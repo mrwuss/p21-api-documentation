@@ -544,6 +544,38 @@ The `InventoryAdjustment` service posts on-hand adjustments with no invoice: hea
 - **Moving-average pooling:** while two or more units of the same item sit in stock, a cost added to one (e.g. a labor overrun) smears across all of them — an unrelated unit ships at a blended cost. Make-to-order (one in, one out) is largely immune; **build-to-stock is exposed by design**. True per-job cost is the `PROP` receipt, not the invoice COGS.
 - **Labor posted after invoicing** generates a separate *"Post Freight/Labor Prod. Order: NNNN"* invoice ($0 price, ± COGS) — P21's standard post-order cost-adjustment channel; the original invoice is untouched.
 
+### Production Order Gotchas (Field-Verified)
+
+Learned running production orders at volume through the API. Credit [Alex Westemeier](https://github.com/AWestemeier) — verified on production and play, September 2026; not re-run here.
+
+**Creating**
+
+- **Set `source_loc_id` before `inventory_location_id`, in separate calls.** On `TABPAGE_1.tp_1_dw_1`, `source_loc_id` is the make (WIP) location and `inventory_location_id` is where the parts are pulled. On one tenant, setting the make location **reset** the parts location — a cascade the test copy did not have. Set the make location first, then the parts location, and read both back after the save.
+- A component's pull location is `TABPAGE_19.componentdetail.source_location_id`. It is locked while the component is allocated; zero the allocation first.
+- **Header user-defined fields can be invisible to the API role.** UD columns on the header (`ufc_prod_order_hdr_ud_*`) appear only for a role that has the DynaChange **screen version** carrying them assigned. If a UD column is "disabled" or missing for the API user and present for people, assign that screen version to the API user's role. Free-text UD columns that the role already sees are plain Transaction edits keyed on `prod_order_number`.
+
+**Pick tickets and allocation states**
+
+- **Only run the pick ticket when every component is fully allocated.** On a short order it creates a partial ticket that then has to be cancelled.
+- **Cancel a pick ticket** in `ProductionOrderPicking` with `row_status_flag` = the literal **`"Canceled"`** (one L) and answer the two Yes prompts. The ticket goes to status `976` and the parts return to allocated.
+- **Component quantity moves through three states**: `qty_allocated` at the parts location when the order is created → `qty_on_pick_tickets` when the ticket prints (stock still physically at the parts location, and still inside `inv_loc.qty_allocated`) → `qty_confirmed` at the make location when the pick is confirmed (the transfer into WIP). An allocation report has to add all three; `inv_loc.qty_allocated` alone mixes them. Confirm promptly after printing so the parts location's count is real.
+
+**Completing**
+
+- **P21 pre-fills `qty_to_complete` with the remaining quantity on every assembly line.** Set every line's `qty_to_complete` explicitly — `0` for lines you are not completing — or you complete more than you meant to.
+- **Skip the assembly-bin tab when the item does not track bins at the make location** — selecting it fails *"Tab page is disabled"*.
+- Completion receives finished goods at the **make** location and posts GL journal `PD`. Components still consume at their own moving average; a `new_cost` override books a production variance.
+- **Labor on a line that is still open locks its completion quantity** until the labor/intangibles ticket is reprinted and confirmed. Log labor before printing ([Labor Timing](#labor-timing-log-labor-before-printing)) or after completion.
+
+**Printing and reprinting**
+
+- **Only the first print returns a PDF.** Reprint the form with the `m_productionorders` report, `reprint = ON`, at the **make** location (at the parts location it returns nothing). Reprint a pick ticket with `m_reprintpicktickets`, type "Production Order", at the parts location. See [PDF Report Generation](03-Transaction-API.md#pdf-report-generation).
+- `print_incomplete_assemblies = Y` on the **assembly** lets the form print while a component is short. Edit that flag on the assembly, not on the order: editing it on an existing order's line un-prints the order.
+
+**Not reachable through the API**
+
+- **Linking an existing production order to a sales order line.** The "Transactions to Assign" tab (`TABPAGE_TRANSACTIONS_TO_ASSIGN`) fills only through a `retrieve_open_transactions` control that is a disabled column for the API user (on both an API-only role and an all-permissions role), and a Transaction row keyed `trans_number` + `customer_id` fails *"Object reference not set"*. A plain (`assembly = 'N'`) sales line cannot be switched to disposition `P` afterwards either. Do this in the UI, or enter the sales line as a production-order assembly in the first place so P21 creates and links the order itself.
+
 ### Key Tables
 
 `assembly_hdr` / `assembly_line` (BOM + behavior flags) · `oe_hdr` / `oe_line` (`assembly` B/N/P/S) · `prod_order_line_link` · `prod_order_hdr` / `prod_order_line` / `prod_order_line_component` · `prod_pick_ticket_hdr` / `prod_pick_ticket_detail` · `oe_pick_ticket` · `prod_order_line_comp_labor` · `invoice_hdr` / `invoice_line` · `inv_loc` (min/max, moving average, primary bin) · `inv_tran` (`PROP` receipt / `WO` ship).
