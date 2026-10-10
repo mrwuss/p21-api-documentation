@@ -494,12 +494,12 @@ The `price_page_type_cd` field determines the page type. The column stores the `
 | 212 | Item | `item_id` (`price_page.inv_mast_uid` is set) |
 | 213 | Supplier / Discount Group | `supplier_id` + `discount_group_id` |
 | 214 | Supplier / Product Group | `supplier_id` + `product_group_id` |
-| 216 | Supplier | not exercised here |
-| 217 | Discount Group | not exercised here |
-| 218 | Product Group | not exercised here |
-| 219 | Customer Part Number | not exercised here |
+| 216 | Supplier | `supplier_id` only (no item, product group or discount group set) |
+| 217 | Discount Group | `discount_group_id` |
+| 218 | Product Group | `product_group_id` |
+| 219 | Customer Part Number | customer part (`price_page.inv_mast_uid` is set) |
 
-The service definition also accepts *Supplier / Manufacturing Class*, *Price Family* and *Supplier/Price Family* (see [Discovery Method](#discovery-method)); their codes are not confirmed here. *Customer* and *Customer / Item* are not page types — neither is in the definition's `ValidValues`, and an earlier version of this table that listed them as 210 and 211 (plus a 215 "alt" discount-group type) was not backed by a `code_p21` read.
+Key fields for every row were read from stored production pages joined to `code_p21` (26.1, 2026-10-10); only 212–214 were also created through the API here. The service definition also accepts *Supplier / Manufacturing Class*, *Price Family* and *Supplier/Price Family* (see [Discovery Method](#discovery-method)); their codes are not confirmed here. *Customer* and *Customer / Item* are not page types — neither is in the definition's `ValidValues`, and an earlier version of this table that listed them as 210 and 211 (plus a 215 "alt" discount-group type) was not backed by a `code_p21` read.
 
 > **The same number means different things in different columns.** `code_p21` is one code space, and a column stores whichever `code_no` its dropdown points at. `212` is *Item* as a page type, and `totaling_method_cd = 212` on a page is also *Item*, but `212` is not a calculation method. Map every code through `code_p21`, not through a table for another column — see [03 § Labels vs What the Database Stores](03-Transaction-API.md#labels-vs-what-the-database-stores-code_p21).
 

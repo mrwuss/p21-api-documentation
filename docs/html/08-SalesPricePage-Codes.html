@@ -1293,26 +1293,26 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <tr>
 <td>216</td>
 <td>Supplier</td>
-<td>not exercised here</td>
+<td><code>supplier_id</code> only (no item, product group or discount group set)</td>
 </tr>
 <tr>
 <td>217</td>
 <td>Discount Group</td>
-<td>not exercised here</td>
+<td><code>discount_group_id</code></td>
 </tr>
 <tr>
 <td>218</td>
 <td>Product Group</td>
-<td>not exercised here</td>
+<td><code>product_group_id</code></td>
 </tr>
 <tr>
 <td>219</td>
 <td>Customer Part Number</td>
-<td>not exercised here</td>
+<td>customer part (<code>price_page.inv_mast_uid</code> is set)</td>
 </tr>
 </tbody>
 </table></div>
-<p>The service definition also accepts <em>Supplier / Manufacturing Class</em>, <em>Price Family</em> and <em>Supplier/Price Family</em> (see <a href="#discovery-method">Discovery Method</a>); their codes are not confirmed here. <em>Customer</em> and <em>Customer / Item</em> are not page types — neither is in the definition's <code>ValidValues</code>, and an earlier version of this table that listed them as 210 and 211 (plus a 215 "alt" discount-group type) was not backed by a <code>code_p21</code> read.</p>
+<p>Key fields for every row were read from stored production pages joined to <code>code_p21</code> (26.1, 2026-10-10); only 212–214 were also created through the API here. The service definition also accepts <em>Supplier / Manufacturing Class</em>, <em>Price Family</em> and <em>Supplier/Price Family</em> (see <a href="#discovery-method">Discovery Method</a>); their codes are not confirmed here. <em>Customer</em> and <em>Customer / Item</em> are not page types — neither is in the definition's <code>ValidValues</code>, and an earlier version of this table that listed them as 210 and 211 (plus a 215 "alt" discount-group type) was not backed by a <code>code_p21</code> read.</p>
 <blockquote>
 <p><strong>The same number means different things in different columns.</strong> <code>code_p21</code> is one code space, and a column stores whichever <code>code_no</code> its dropdown points at. <code>212</code> is <em>Item</em> as a page type, and <code>totaling_method_cd = 212</code> on a page is also <em>Item</em>, but <code>212</code> is not a calculation method. Map every code through <code>code_p21</code>, not through a table for another column — see <a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">03 § Labels vs What the Database Stores</a>.</p>
 <p><strong>Note:</strong> Type 213 ("Supplier / Discount Group") uses <code>discount_group_id</code> instead of <code>product_group_id</code>. The field order changes slightly for this type - see <a href="#discount-group-pages-type-213">Discount Group Pages</a> below.</p>

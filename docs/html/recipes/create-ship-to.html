@@ -916,6 +916,8 @@
         <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">reps</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="c1"># OData returns the stored column (primary_salesrep_flag); the ShipTo service</span>
+    <span class="c1"># grid below names the same field primary_salesrep.</span>
     <span class="n">inherited</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;salesrep_id&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">reps</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;value&quot;</span><span class="p">]</span>
                  <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;primary_salesrep_flag&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Y&quot;</span><span class="p">]</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Customer&#39;s primary rep (inherited by the ship-to): </span><span class="si">{</span><span class="n">inherited</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

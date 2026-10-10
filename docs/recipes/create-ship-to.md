@@ -229,6 +229,8 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         headers=headers,
     )
     reps.raise_for_status()
+    # OData returns the stored column (primary_salesrep_flag); the ShipTo service
+    # grid below names the same field primary_salesrep.
     inherited = [r["salesrep_id"] for r in reps.json()["value"]
                  if r.get("primary_salesrep_flag") == "Y"]
     print(f"Customer's primary rep (inherited by the ship-to): {inherited}")
