@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -1427,6 +1428,122 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 
 <p>Join to <code>po_hdr.po_type</code> to tell which rows are affected — the line carries no flag of its own, which is the whole trap.</p>
 <p>The write itself is documented on the service that performs it: <a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">Interactive API § Direct-ship confirmation</a>.</p>
+<h4 id="oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag"><code>oe_line_po</code> holds stale links: join on both keys and filter <code>delete_flag</code></h4>
+<p><code>po_line</code> has no sales-order column. The link from a PO line to the sales-order line it was bought for lives in <strong><code>oe_line_po</code></strong>: <code>order_number</code>, <code>line_number</code>, <code>po_no</code>, <code>po_line_number</code>, <code>quantity_on_po</code>, <code>connection_type</code>, <code>delete_flag</code>. (On a direct-ship PO, <code>po_hdr.sales_order_number</code> also names the order.)</p>
+<p><strong>The table keeps stale rows.</strong> Some rows carry a <code>po_no</code> that matches a current PO but point at unrelated sales orders years older than it. Match on <code>po_no</code> alone and those old orders attach themselves to today's PO. To get only real links:</p>
+<ol>
+<li>Match <strong><code>(po_no, po_line_number)</code></strong> to <code>po_line.(po_no, line_no)</code>.</li>
+<li>Match <strong><code>(order_number, line_number)</code></strong> to <code>oe_line.(order_no, line_no)</code>.</li>
+<li>Drop rows with <code>delete_flag = 'Y'</code>. Treat a NULL <code>delete_flag</code> as not deleted.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/oe_line_po</span>
+<span class="err">    ?$select=order_number,line_number,po_no,po_line_number,quantity_on_po,delete_flag</span>
+<span class="err">    &amp;$filter=po_no eq {po_no} and po_line_number eq {line_no}</span>
+</code></pre></div>
+
+<p>Write each literal to match the column's type in <code>$metadata</code> — a quoted numeric key 404s (<a href="06-Error-Handling.html#404-incompatible-operand-types-a-quoted-numeric-key">details</a>). Then keep the rows whose <code>order_number</code> + <code>line_number</code> pair exists in <code>oe_line</code> and whose <code>delete_flag</code> is not <code>Y</code>.</p>
+<p><strong>A deleted PO leaves its sales-order lines open with nothing on order.</strong> Deleting the PO sets <code>delete_flag = 'Y'</code> on its <code>oe_line_po</code> rows, but the sales-order lines it was bought for stay open. A query that filters <code>delete_flag</code> correctly shows those lines with no PO, which is the true state: the demand is uncovered and needs a new PO. See <a href="03-Transaction-API.html#purchase-order-types-and-the-disabled-po_hdr_po_type-column">03 § Purchase Order Types</a> for the flags on the deleted PO itself.</p>
+<p><code>oe_line_po</code> also returns every historical link for a PO line, not the receipt layer that is on the shelf now. Tracing current stock to the order it was bought for needs lot or receipt matching on top of this join.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified against production 26.1 reads, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/184">#184</a>).</p>
+</blockquote>
+<h4 id="kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too">Kit and assembly lines: parent cost ignores rebates, and component lines carry COGS too</h4>
+<p>Two traps make kit (assembly) margin wrong when you read <code>oe_line</code> or <code>invoice_line</code> naively.</p>
+<p><strong>1. The parent's <code>commission_cost</code> is the pre-rebate rollup.</strong> A kit parent line rolls up its components' <strong><code>sales_cost</code></strong> (the pre-rebate average) into <code>commission_cost</code>. A rebate price page that lowers a component's cost does not reach the parent's <code>commission_cost</code>, so margin computed from it shows rebated kits as losses.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parent <code>assembly</code></th>
+<th><code>commission_cost</code></th>
+<th><code>other_cost</code> / COGS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>B</code> (kit parent)</td>
+<td>Pre-rebate rollup</td>
+<td>Rebated rollup</td>
+</tr>
+<tr>
+<td><code>P</code> (production-order line)</td>
+<td>Pre-rebate rollup on the invoice</td>
+<td>Pre-rebate rollup on the invoice — the invoice posts both at the pre-rebate value</td>
+</tr>
+</tbody>
+</table></div>
+<p>For rebated kits, read the after-rebate cost from the parent's <code>other_cost</code> on <code>assembly = 'B'</code> lines, or from the components; do not use <code>commission_cost</code>. The contract-side fix is in <a href="recipes/rebate-assembly-program.html">rebate-assembly-program</a>.</p>
+<p><strong>2. Summing every invoice line double-counts kit cost.</strong> Component lines carry their own COGS on the invoice, in addition to the parent's rolled-up cost. <strong><code>invoice_line.invoice_line_uid_parent</code> ≠ 0 marks a component line.</strong> Count cost from the parent lines or from the components, never both:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/invoice_line</span>
+<span class="err">    ?$select=invoice_no,line_no,invoice_line_uid_parent,commission_cost,other_cost,cogs_amount</span>
+<span class="err">    &amp;$filter=invoice_no eq {invoice_no} and invoice_line_uid_parent eq 0</span>
+</code></pre></div>
+
+<p>As with <code>oe_line_po</code> above, write <code>{invoice_no}</code> to match the column's type in <code>$metadata</code>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified against production data 26.1, June 2026, re-checked October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/183">#183</a>).</p>
+</blockquote>
+<h4 id="inv_adj_linecost-is-0-on-lines-valued-at-moving-average"><code>inv_adj_line.cost</code> is 0 on lines valued at moving average</h4>
+<p>An inventory adjustment writes <code>inv_adj_hdr</code> / <code>inv_adj_line</code> and posts <code>inv_tran</code> rows with <code>trans_type = 'IA'</code>. On lines that P21 values at moving-average cost when the adjustment posts, <strong><code>inv_adj_line.cost</code> stays <code>0</code></strong>. The cost that reached the books is <strong><code>inv_tran.unit_cost_amt</code></strong> on the <code>IA</code> row. Value adjustments from <code>inv_tran</code>, not from the adjustment lines.</p>
+<p>Two more traps when you total adjustments:</p>
+<ul>
+<li><strong>Net both directions per item.</strong> A filter on negative quantity counts one half of every lost-then-found pair and overstates loss.</li>
+<li><strong>Check the reason codes for automated transfers.</strong> Some sites book automatic location-to-location replenishment as paired <code>IA</code> rows under an adjustment reason. Those pairs net to zero and are not losses; exclude that reason from a loss view. (Real transfers are <code>trans_type = 'TR'</code>.)</li>
+</ul>
+<p>The reason text is in <code>reason</code>, joined on <code>reason.id = inv_adj_hdr.reason_id</code> <strong>and <code>reason.company_no = inv_adj_hdr.company_id</code></strong> — <code>company_no</code> on <code>reason</code>, not <code>company_id</code> (see <a href="#company-scoping-company_id-vs-company_no">Company Scoping</a>).</p>
+<h4 id="user-defined-dropdown-labels-are-in-extensibility_dropdown_value-not-on-the-row">User-defined dropdown labels are in <code>extensibility_dropdown_value</code>, not on the row</h4>
+<p>A user-defined dropdown column (on a <code>*_ud</code> table) stores the <strong>data value</strong>, not the label users see. The labels live in <strong><code>extensibility_dropdown_value</code></strong>, keyed by <code>table_name</code> and <code>field_name</code>, mapping <code>data_value</code> to <code>display_value</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="err">GET {base}/odataservice/odata/table/extensibility_dropdown_value</span>
+<span class="err">    ?$select=table_name,field_name,data_value,display_value</span>
+<span class="err">    &amp;$filter=table_name eq &#39;oe_hdr_ud&#39; and field_name eq &#39;{ud_column}&#39;</span>
+</code></pre></div>
+
+<p>They are not in <code>code_p21</code>, which holds P21's own enums.</p>
+<h4 id="column-names-that-trip-queries">Column names that trip queries</h4>
+<p>The obvious guess is wrong for these, and a wrong name in <code>$select</code> or <code>$filter</code> fails with a 404 (<code>Could not find a property named ...</code>) rather than returning an empty column:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Use</th>
+<th>Not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prod_order_line_component</code></td>
+<td><code>qty_used</code> (also <code>qty_needed</code>, <code>qty_requested</code>, <code>qty_allocated</code>)</td>
+<td><code>qty_completed</code>, <code>qty_required</code></td>
+</tr>
+<tr>
+<td><code>prod_order_line_component</code></td>
+<td>join on <code>prod_order_number</code></td>
+<td><code>prod_order_id</code></td>
+</tr>
+<tr>
+<td><code>prod_order_hdr</code></td>
+<td><code>source_location_id</code> · <code>complete</code> · <code>cancel</code></td>
+<td><code>location_id</code>, <code>completed</code>, <code>complete_date</code></td>
+</tr>
+<tr>
+<td><code>prod_order_line</code></td>
+<td><code>completed</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>invoice_line</code></td>
+<td><code>line_no</code></td>
+<td><code>line_number</code></td>
+</tr>
+<tr>
+<td><code>prod_order_line_comp_labor</code></td>
+<td><code>service_technician_uid</code> (the worker)</td>
+<td><code>created_by</code> (who keyed the entry) — see <a href="12-Production-Labor-API.html#reading-labor-actuals-and-production-order-columns">12 § Reading Labor Actuals</a></td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — the adjustment, dropdown-label and column-name findings verified against production 26.1 reads, June to October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/185">#185</a>).</p>
+</blockquote>
 <h2 id="data-type-formatting">Data Type Formatting</h2>
 <div class="table-wrap"><table>
 <thead>

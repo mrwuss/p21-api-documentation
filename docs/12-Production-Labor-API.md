@@ -580,6 +580,34 @@ Learned running production orders at volume through the API. Credit [Alex Westem
 
 `assembly_hdr` / `assembly_line` (BOM + behavior flags) · `oe_hdr` / `oe_line` (`assembly` B/N/P/S) · `prod_order_line_link` · `prod_order_hdr` / `prod_order_line` / `prod_order_line_component` · `prod_pick_ticket_hdr` / `prod_pick_ticket_detail` · `oe_pick_ticket` · `prod_order_line_comp_labor` · `invoice_hdr` / `invoice_line` · `inv_loc` (min/max, moving average, primary bin) · `inv_tran` (`PROP` receipt / `WO` ship).
 
+### Reading Labor Actuals and Production Order Columns
+
+Labor actually recorded against production orders is in **`prod_order_line_comp_labor`** — the table [TimeEntry](#recording-labor-hours-timeentry-service) writes. `prod_line_component_labor` holds the *estimated* labor rate and cost per component, not actuals. On the tenant checked, the similarly named `prodorder_labor`, `prodorder_labor_proc_dtl` and `labor` tables were empty; check yours before you use them.
+
+**The worker is `service_technician_uid`, not `created_by`.** `created_by` is whoever keyed the entry, often a supervisor or clerk entering time for a crew. Resolve the worker's name through the technician's contact:
+
+```text
+prod_order_line_comp_labor.service_technician_uid
+  -> service_technician.service_technician_uid  (.contacts_id)
+  -> contacts.id                                 (first_name, last_name)
+```
+
+**There is no work-performed date column.** A date filter on the table uses `date_created` or `date_last_modified`, so it answers "when was the labor entered", not "when was it worked". Say so when you report labor by period.
+
+Useful columns: `hours_worked`, `minutes_worked`, `total_cost`, `sales_cost`, `labor_type_cd`, `location_id`. The path from a labor row to its order and item:
+
+```text
+prod_order_line_comp_labor.prod_order_line_component_uid
+  -> prod_order_line_component  (prod_order_number, line_number, qty_used)
+  -> prod_order_hdr             (source_location_id, complete, cancel)
+  -> prod_order_line            (line_number, inv_mast_uid, qty_to_make, completed)
+  -> inv_mast                   (item_id, item_desc)
+```
+
+The production column names are not the obvious guesses: `prod_order_line_component.qty_used` (no `qty_completed`); `prod_order_hdr.source_location_id`, `complete` and `cancel` (no `location_id` or `completed`); `completed` is on `prod_order_line`. The full list is in [02 § Column names that trip queries](02-OData-API.md#column-names-that-trip-queries).
+
+> **Credit:** *@mrwuss* — verified against production 26.1 reads, June to October 2026 ([#185](https://github.com/mrwuss/p21-api-documentation/issues/185)).
+
 ---
 
 ## Labor Service -- Labor Code Maintenance

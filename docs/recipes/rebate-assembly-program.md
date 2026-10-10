@@ -76,6 +76,17 @@ On a test order shipped and invoiced:
 
 If COGS dropped but **no** `vendor_rebate` row appeared, the primary supplier at the ship-from location is not the Track Rebates vendor (step 4). The same mechanics apply to assemblies built on production orders, linked or build-to-stock.
 
+## Reporting cost and margin without double-counting (Verified)
+
+Margin reports on a program like this go wrong in two ways, even when the setup above is correct:
+
+- **Kit parent `commission_cost` ignores rebate pages.** A kit parent line rolls up its components' pre-rebate `sales_cost` into `commission_cost`, even when rebate price pages lower the components' own cost. On `assembly = 'B'` parents, `other_cost` and COGS get the rebated rollup. On `assembly = 'P'` parents, the invoice posts both `commission_cost` and `other_cost` at the pre-rebate rollup. A report on `commission_cost` shows the program at a loss.
+- **Component lines carry COGS too.** Summing cost over every invoice line counts each kit twice. `invoice_line.invoice_line_uid_parent` ≠ 0 marks a component line; take cost from the parents or from the components, not both.
+
+Detail and an OData query: [02 § Kit and assembly lines](../02-OData-API.md#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too).
+
+> **Credit:** *@mrwuss* — reporting traps verified against production data 26.1, June 2026, re-checked October 2026 ([#183](https://github.com/mrwuss/p21-api-documentation/issues/183)).
+
 ## Maintenance
 
 | Trigger | Action |

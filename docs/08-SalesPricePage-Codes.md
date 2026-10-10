@@ -487,17 +487,25 @@ await ChangeAsync("VALUES", "values", "calculation_method_cd", "229");
 
 ## Price Page Type (FORM Tab)
 
-The `price_page_type_cd` field determines the page type.
+The `price_page_type_cd` field determines the page type. The column stores the `code_p21` `code_no`; you send the display value.
 
-| Code | Display Value | Key Field |
+| `price_page_type_cd` | Display Value (`code_p21`) | Key Field |
 |------|---------------|-----------|
-| 210 | Customer | `customer_id` |
-| 211 | Customer / Item | `customer_id` + `item_id` |
-| 213 | Supplier / Discount Group | `discount_group_id` |
-| 214 | Supplier / Product Group | `product_group_id` |
-| 215 | Supplier / Discount Group (alt) | `discount_group_id` |
+| 212 | Item | `item_id` (`price_page.inv_mast_uid` is set) |
+| 213 | Supplier / Discount Group | `supplier_id` + `discount_group_id` |
+| 214 | Supplier / Product Group | `supplier_id` + `product_group_id` |
+| 216 | Supplier | not exercised here |
+| 217 | Discount Group | not exercised here |
+| 218 | Product Group | not exercised here |
+| 219 | Customer Part Number | not exercised here |
+
+The service definition also accepts *Supplier / Manufacturing Class*, *Price Family* and *Supplier/Price Family* (see [Discovery Method](#discovery-method)); their codes are not confirmed here. *Customer* and *Customer / Item* are not page types — neither is in the definition's `ValidValues`, and an earlier version of this table that listed them as 210 and 211 (plus a 215 "alt" discount-group type) was not backed by a `code_p21` read.
+
+> **The same number means different things in different columns.** `code_p21` is one code space, and a column stores whichever `code_no` its dropdown points at. `212` is *Item* as a page type, and `totaling_method_cd = 212` on a page is also *Item*, but `212` is not a calculation method. Map every code through `code_p21`, not through a table for another column — see [03 § Labels vs What the Database Stores](03-Transaction-API.md#labels-vs-what-the-database-stores-code_p21).
 
 > **Note:** Type 213 ("Supplier / Discount Group") uses `discount_group_id` instead of `product_group_id`. The field order changes slightly for this type - see [Discount Group Pages](#discount-group-pages-type-213) below.
+
+> **Credit:** *@mrwuss* — `price_page.price_page_type_cd` values read from production 26.1 and joined to `code_p21`, October 2026; every `212` page has `inv_mast_uid` set ([#179](https://github.com/mrwuss/p21-api-documentation/issues/179)).
 
 ---
 
@@ -554,16 +562,16 @@ Using the wrong combination of source price and calculation method produces inco
 
 ## Commission Cost Calculation Method (COSTS Tab)
 
-The `commission_cost_calc_method_cd` on the COSTS tab (different from VALUES tab).
+The `commission_cost_calc_method_cd` field on the COSTS tab. Its accepted display values are `Difference`, `Mark up`, `Multiplier` and `Percentage` (no `Fixed Price`).
 
-| Code | Display Value |
-|------|---------------|
-| 211 | Multiplier |
-| 212 | Difference |
-| 213 | Mark Up |
-| 214 | Percentage |
+| `commission_cost_calc_method_cd` | Display Value | Status |
+|------|---------------|--------|
+| 211 | Multiplier | Confirmed — stored on production pages, and `code_p21` 211 is *Multiplier* |
+| 212 | Difference | **Not confirmed** — conflicts with `code_p21`, where 212 is *Item* |
+| 213 | Mark Up | **Not confirmed** — conflicts with `code_p21`, where 213 is *Supplier / Discount Group* |
+| 214 | Percentage | **Not confirmed** — conflicts with `code_p21`, where 214 is *Supplier / Product Group* |
 
-**Note:** These codes differ from the VALUES tab `calculation_method_cd` codes.
+> ⚠️ **The 212–214 rows are unverified and probably wrong.** They are not page types (see [Price Page Type](#price-page-type-form-tab)), but they reuse page-type numbers, and `code_p21` gives each `code_no` one description. The verified calc-method codes elsewhere are `Difference`=228, `Mark up`=229 and `Percentage`=230 ([03 § Labels vs What the Database Stores](03-Transaction-API.md#labels-vs-what-the-database-stores-code_p21)). Before you interpret a stored `commission_cost_calc_method_cd` other than 211, join it to `code_p21`. Writes are unaffected: you send the display value.
 
 ---
 
@@ -2438,22 +2446,21 @@ await ChangeAsync("COSTS", "costs", "commission_cost_value1", "1.01");
 
 <!-- /tabs -->
 
-### Commission Cost Codes (Different from VALUES Tab)
+### Commission Cost Codes vs VALUES Tab Codes
 
-The COSTS tab uses **different code numbers** than the VALUES tab for calculation methods:
+The COSTS tab's `commission_cost_calc_method_cd` accepts four of the VALUES tab's five display values — there is no `Fixed Price`. You send the display value on both tabs, so the stored code does not change what you write.
 
-| Tab | Code | Display Value |
+| Tab · column | Code | Display Value |
 |-----|------|---------------|
-| VALUES | 211 | Multiplier |
-| VALUES | 228 | Difference |
-| VALUES | 229 | Mark Up |
-| VALUES | 230 | Percentage |
-| COSTS | 211 | Multiplier |
-| COSTS | 212 | Difference |
-| COSTS | 213 | Mark Up |
-| COSTS | 214 | Percentage |
+| VALUES · `calculation_method_cd` | 211 | Multiplier |
+| VALUES · `calculation_method_cd` | 228 | Difference |
+| VALUES · `calculation_method_cd` | 229 | Mark Up |
+| VALUES · `calculation_method_cd` | 230 | Percentage |
+| VALUES · `calculation_method_cd` | 1292 | Fixed Price |
+| COSTS · `commission_cost_calc_method_cd` | 211 | Multiplier |
+| COSTS · `commission_cost_calc_method_cd` | 212–214 (published earlier, not confirmed) | Difference · Mark Up · Percentage |
 
-> **Warning:** Do not assume codes are the same across tabs. "Difference" is 228 on VALUES but 212 on COSTS.
+> **Warning:** An earlier version of this table said "Difference is 228 on VALUES but 212 on COSTS." `code_p21` gives 212 to the page type *Item*, so treat the COSTS-tab 212–214 codes as unverified — see [Commission Cost Calculation Method](#commission-cost-calculation-method-costs-tab).
 
 ---
 

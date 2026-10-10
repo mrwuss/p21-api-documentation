@@ -3049,6 +3049,42 @@ The Transaction API [cannot create an item](03-Transaction-API.md#item-service-g
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on production, September 2026 (two items created end to end); not re-run here.
 
+## Customer Window: Adding a Price Library
+
+A customer's price libraries are a grid on the Customer window's Sales Pricing tab. The window's service name is **`Customer`** (not `CustomerMaintenance`); its tabs are named `TABPAGE_1`, `TABPAGE_2`, and so on, and the price-library grid is **`TABPAGE_7.tp_7_dw_price_library`**.
+
+| Column | Notes |
+|---|---|
+| `price_library_id` | The library's **ID string** as users see it, not the integer `price_library_uid` |
+| `description` | Filled in by P21 when you set `price_library_id` |
+| `row_status_flag` | Active (`704`) for a live row |
+| `sequence_number` | Precedence — `1` is checked first. **Not kept as sent** (see below) |
+
+To add a library:
+
+1. Open `{"ServiceName": "Customer"}`.
+2. Load the customer: `TabName: "TABPAGE_1"`, `DatawindowName: "tp_1_dw_1"`, `FieldName: "customer_id"`, `Value: "CUST-100"` — sent as a string; use your customer's ID.
+3. Change to `TABPAGE_7` and `add_row` on `tp_7_dw_price_library`.
+4. Set `price_library_id` on the new row (`TabName: "TABPAGE_7"`, `DatawindowName: "tp_7_dw_price_library"`).
+5. Save, then read the rows back — see [Verifying Writes](#verifying-writes-dont-trust-save-status-alone).
+
+### P21 renumbers `sequence_number` on save
+
+Whatever `sequence_number` you set is discarded. On save, P21 renumbers the grid by insertion order, so a new row always lands last (`N+1`). Selecting an existing row and changing its sequence is overridden the same way. If the new library must be checked before the existing ones, add it through the window first — the window writes the row's audit and default columns — and then set the order **after** the save.
+
+The grid's backing table is `price_library_x_cust_x_cmpy` (`price_lib_x_cust_x_cmpy_uid`, `company_id`, `customer_id`, `price_library_uid`, `sequence_number`, `row_status_flag`, audit columns). No API path that was tried keeps the order, so the post-save fix is SQL. A unique constraint on `customer_id` + `sequence_number` means you swap in three steps:
+
+```sql
+-- Move the new row to sequence 1 and the old first row to 2.
+UPDATE price_library_x_cust_x_cmpy SET sequence_number = -1 WHERE price_lib_x_cust_x_cmpy_uid = ?;  -- old first row
+UPDATE price_library_x_cust_x_cmpy SET sequence_number =  1 WHERE price_lib_x_cust_x_cmpy_uid = ?;  -- new row
+UPDATE price_library_x_cust_x_cmpy SET sequence_number =  2 WHERE price_lib_x_cust_x_cmpy_uid = ?;  -- old first row
+```
+
+Set `date_last_modified` and `last_maintained_by` in the same statements if you track them. A direct SQL write is unsupported by Epicor and leaves no application-level audit record: test it on a non-production tenant first, log the before-image yourself, and read the sequence back afterwards.
+
+> **Credit:** *@mrwuss* — verified on production 26.1, May 2026 ([#181](https://github.com/mrwuss/p21-api-documentation/issues/181)).
+
 ## Sales Order Entry with Assembly Lines
 
 Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. The Transaction API cannot do this: entering an assembly item fires an *"add as assembly?"* prompt, and the stateless API auto-answers **No**, killing the explode (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.

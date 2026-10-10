@@ -458,6 +458,7 @@ Other verified XML specifics:
 | `Order` | Order Entry | Create/edit sales orders |
 | `Invoice` | Invoice Entry | Create/edit invoices |
 | `Customer` | Customer Maintenance | Customer records |
+| `ShipTo` | Ship To Maintenance | Ship-to records and their salesrep grid (see [ShipTo Service — Creating a Ship-To](#shipto-service-creating-a-ship-to)) |
 | `Supplier` | Supplier Maintenance | Supplier records |
 | `SalesPricePage` | Sales Price Page Maintenance | Price page management — also drivable through the Transaction API, see [08 § Transaction API Alternative](08-SalesPricePage-Codes.md#transaction-api-alternative) |
 | `PurchaseOrder` | Purchase Order Entry | Create POs (Regular). Pick a non-Regular PO type via a **type-specific service**, not by setting `po_hdr_po_type` — see [Purchase Order Types](#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
@@ -498,20 +499,24 @@ See [Production & Labor API](12-Production-Labor-API.md) for detailed field defi
 
 You **cannot** choose a PO type by setting `po_hdr_po_type` on the `PurchaseOrder` service — it is a **disabled column** and sending it fails with `Column is disabled: po_hdr_po_type`. The PO type is selected by choosing the **type-specific service** instead (each maps to the same PO Entry window, `w_purchase_order_entry_sheet`, with the type preset). `RequisitionPurchaseOrder` is the verified example; see [create-requisition-po](recipes/create-requisition-po.md).
 
-The `po_hdr_po_type` `ValidValues` in the definition carry **display names only, no code list** — the stored `po_hdr.po_type` letters are undocumented. Verified/inferred mapping from the definition's display list plus live data:
+The `po_hdr_po_type` `ValidValues` in the definition carry **display names only, no code list** — the stored `po_hdr.po_type` letters are not in the definition. The mapping below comes from P21's own report views (which label each letter) and `po_hdr.source_type`, which records the program that created the PO:
 
-| Letter | Display name | Notes |
-|--------|-------------|-------|
-| `B` | Regular | Backorder |
-| `S` | Regular | Stock replenishment (both `B` and `S` display "Regular") |
-| `P` | Special | |
-| `D` | Direct Ship | |
-| `N` | Non-Stock | |
-| `R` | **Requisition** | **verified** via `RequisitionPurchaseOrder` create + DB read-back |
-| `X` | Process PO | |
-| `Q` | Vendor RFQ | |
+| Letter | Display name | Usual `source_type` | What it is |
+|--------|-------------|---------------------|------------|
+| `B` | Regular | 948 PO Entry | A regular PO **keyed by a buyer** in PO Entry. Not "Backorder" — few `B` lines link to a sales order |
+| `S` | Regular | 949 PO Generation | A system-generated stock-replenishment PO. `B` and `S` both display "Regular"; the difference is manual vs generated |
+| `D` | Direct Ship | 951 Order Entry | Ships from the supplier straight to the customer on a sales order |
+| `P` | Special | 951 Order Entry | Bought for a specific sales order, received at your warehouse, then shipped |
+| `X` | Process PO | 950 Process Transactions | Outside processing |
+| `Q` | Vendor RFQ | 951 Order Entry | Request for quote; rarely used |
+| `N` | Non-Stock | — | Exists in older data |
+| `R` | **Requisition** | — | **verified** via `RequisitionPurchaseOrder` create + DB read-back |
 
-> Only `R` (Requisition) is verified end-to-end; the rest are inferred from the display-name order and live data — treat them as strong hints, not confirmed. Environment: 26.1.5894.1 (play), July 2026.
+`source_type` stores a `code_p21` number: **948** PO Entry, **949** PO Generation, **950** Process Transactions, **951** Order Entry. Don't confuse `po_type` with `oe_line.disposition`, the sales-line field where `B` really is Backorder and `S` is Special Order.
+
+**A deleted PO stays in the table.** Deleting a PO sets `po_hdr.delete_flag = 'Y'` and `po_hdr.complete = 'Y'`, and sets `cancel_flag = 'Y'` and `complete = 'Y'` on each of its `po_line` rows. Filter on `delete_flag` when you count open or historical POs. The PO's links to sales-order lines are soft-deleted too — see [02 § `oe_line_po`](02-OData-API.md#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag).
+
+> **Credit:** *@mrwuss* — `R` verified end to end on play 26.1.5894.1, July 2026. The other letters, `source_type` codes and the deleted-PO flags verified against production data 26.1, September 2026 ([#178](https://github.com/mrwuss/p21-api-documentation/issues/178)).
 
 ---
 
@@ -2927,6 +2932,20 @@ For the second case use the **Interactive** `Assembly` window: set `TABPAGE_1.as
 
 > **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier).
 
+#### Defaults and Disabled Fields on Create
+
+**Send `production_order_processing` explicitly.** On a create that omits it, the new assembly came back with `production_order_processing` = `ON`, which makes it a production-order assembly rather than a kit (see [12 § Assembly Behavior Flags](12-Production-Labor-API.md#assembly-behavior-flags)). The `ON` default may come from a system setting rather than the service, so it can differ on your tenant. The field is writable on create — send `ON` or `OFF` deliberately and read `assembly_hdr` back.
+
+**`item_desc` and `prorate_cost_by` are disabled on create.** Sending either aborts the transaction:
+
+```text
+TABPAGE_1.assemblyhdr: Error processing data element: assemblyhdr : Column is disabled: item_desc
+```
+
+`item_desc` comes from the item itself (`inv_mast.item_desc`); change it on the item. The service fails on the first disabled field it meets, so a payload copied from an existing assembly's read fails one field at a time. Create with the minimum — header `inv_mast_item_id` plus `production_order_processing`, and `item_id_service_labor_id` + `quantity` per component row — then set other header fields with a second keyed `Status: "New"` Transaction on `inv_mast_item_id`. A follow-up Transaction is also how you change `production_order_processing` on an assembly created with the wrong value.
+
+> **Credit:** *@mrwuss* — verified on production 26.1, May 2026 ([#180](https://github.com/mrwuss/p21-api-documentation/issues/180)).
+
 #### Known Limitations
 
 - **Status "Existing" is rejected:** Same as every other service — HTTP 400 on 26.1.5940.0, `NullReferenceException` HTTP 500 on earlier builds. Modify an existing assembly with keyed `Status: "New"` Transactions instead (see above).
@@ -3462,6 +3481,7 @@ Whether the [Inventory REST API's `ProductGroupId` update](11-Inventory-REST-API
   The message's exact missing-column list varies by request (sometimes `'Purchase Group'`, sometimes `Location ID`), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on *every* subsequent save, and — like the create gotcha above — the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat `delete_flag=ON` as one-shot. Callers that need idempotent delete should read `inv_mast.delete_flag` over OData first and skip the `Item` POST entirely when it is already `Y`. Verified live, 26.1 (September 2026), against throwaway items created through `POST /api/inventory/parts`. *(Filed as [#160](https://github.com/mrwuss/p21-api-documentation/issues/160).)*
 - **A REST-created item can silently end up with no default unit of measure at all**, not just the [40-character description cap](11-Inventory-REST-API.md#character-set-and-whitespace-verified) and other quirks below — observed once in seven otherwise-identical [minimum-payload](11-Inventory-REST-API.md#minimum-create-payload) creates (26.1, September 2026): `DefaultSellingUnit`/`DefaultPurchasingUnit` came back `null` and `UnitsOfMeasure` came back empty, where the other six got `EA` auto-assigned. An item in this state hits the exact same `A Default Sales Unit... Must Each Be Specified` block as the raw-create circular dependency above, on *any* later `Item`-service write, even though the item already exists. Check `DefaultSellingUnit` on the create response (or a follow-up `GET`) before assuming the item is usable; if it's `null`, set `UnitsOfMeasure` explicitly via a REST `PUT`.
 - **A `product_group_id` edit on a location silently rewrites its GL, revenue, and COS accounts** to the target group's defaults, including branch-specific accounts, and `TABPAGE_24.inv_loc_accounts` is disabled, so you cannot send the originals back in the same payload. Snapshot before, restore after — see [Changing a Location's Product Group Re-Syncs Its GL Accounts](#changing-a-locations-product-group-re-syncs-its-gl-accounts).
+- **The item header's `default_product_group` cannot be written through any API.** `TABPAGE_1.tp_1_dw_1` rejects both `default_product_group` and `product_group_id`; the service's only `product_group_id` belongs to the location (`TABPAGE_18.inv_loc_detail`). The Inventory REST API ignores the header product group on create and PUT as well ([11 § Known Limitations](11-Inventory-REST-API.md#known-limitations)). The location product group is the one sales, GL and pricing read, and it is writable — see [Changing a Location's Product Group](#changing-a-locations-product-group-re-syncs-its-gl-accounts). Verified on production and play 26.1, May and August 2026 ([#177](https://github.com/mrwuss/p21-api-documentation/issues/177)).
 
 ### Location Service — Creating a Warehouse
 
@@ -4274,6 +4294,25 @@ The same `ValidValues` array is what tells you to send `Delete` rather than `700
 
 *(From [issue #140](https://github.com/mrwuss/p21-api-documentation/issues/140), independently re-verified on 26.1 — the definition, every write case in the tables above, the primary guard, row ordering, the revive path, both read surfaces and the `code_p21` mapping, 2026-08-25.)*
 
+### ShipTo Service — Creating a Ship-To
+
+`ShipTo` with `Status: "New"`, `Keys: []` on `TABPAGE_1.shiptomain` and no `address_id` creates a new ship-to on an existing customer; P21 assigns the `address_id` and returns it in the result rows. The fields are spread across five elements, and two fields you would look for on the main form are not there — `salesrep_id` and `ship_to_name` both fail with `Invalid column name` on `TABPAGE_1.shiptomain`:
+
+| Element | Fields |
+|---|---|
+| `TABPAGE_1.shiptomain` (Form) | `company_id`, `customer_id`, `address_name`, `default_branch`, `terms_id`, `invoice_type`, `tax_group_id`, `phys_*` address |
+| `TABPAGE_2.tp_2_dw_2` (Form) | `mail_*` address |
+| `TABPAGE_5.tp_5_dw_5` (Form) | `central_phone_number` |
+| `TABPAGE_OEOPTIONS.tabpage_oeoptions` (Form) | `preferred_location_id`, `packing_basis`, `pick_ticket_type` |
+| `TABPAGE_SALESREP.tabpage_salesrep` (List, key `salesrep_id`) | `salesrep_id`, `primary_salesrep`, `commission_percentage`, `delete_flag` |
+
+- **Use `UseCodeValues: true` and send stored codes** — under `false`, `terms_id` wants the terms description. Under `true`, flags are `Y`/`N`; `primary_salesrep: "ON"` fails with `Invalid primary_salesrep value: ON`.
+- **The new ship-to inherits the customer's primary rep.** To assign a different rep, add the new rep (`primary_salesrep` `Y`, `commission_percentage` `100`) **and** retire the inherited one (`delete_flag` `Y`) in the same call, new rep first. Otherwise the save fails: *"The total commission percentage for all outside salesreps must equal 100 percent."* This is the same add-then-retire shape as [Removing a Salesrep Grid Row](#the-sibling-grid-on-shipto-does-not-work-this-way).
+
+Full payload, Python and C#: [recipe: create-ship-to](recipes/create-ship-to.md).
+
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026 ([#182](https://github.com/mrwuss/p21-api-documentation/issues/182)).
+
 ### Salesrep Service — Editing a Rep's Name and Email
 
 The `Salesrep` service is the write surface for a salesrep's own contact record (the `contacts` row where `salesrep = 'Y'`). Verified against P21 26.1 in production (2026-08-11): a misspelled rep name and its email corrected in one transaction, `Status: "Passed"`, confirmed by read-after-write against `contacts`.
@@ -4322,7 +4361,7 @@ Gotchas:
 
 The `ItemDefaults` service is the **Item Defaults Maintenance** window (Inventory > Inventory Management > System), business object `inventory_defaults`, keyed on `company_id` + `location_id`. `Status: "New"` creates the per-company/location defaults record that new `inv_loc` rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).
 
-**Why you care:** a location without an `inventory_defaults` row breaks downstream flows — Inventory REST location-appends demand explicit GL (`Required value missing for Revenue Account`, see [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale)), and new `inv_loc` rows land with `replenishment_location = NULL`. Create the defaults row first and both problems disappear.
+**Why you care:** a location without an `inventory_defaults` row breaks downstream flows — Inventory REST location-appends demand explicit GL (`Required value missing for Revenue Account`, see [11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale)), and new `inv_loc` rows land with `replenishment_location = NULL`. Creating a brand-new item at such a location fails the same way — see [11 § GL accounts when the location has no defaults](11-Inventory-REST-API.md#gl-accounts-when-the-location-has-no-defaults). Create the defaults row first and these problems disappear. The row's discount groups also matter: a location appended to an existing item takes its discount groups from these defaults, not from the item's other locations ([11 § Location-Append & Update Gotchas](11-Inventory-REST-API.md#location-append-update-gotchas-verified-at-scale), item 7).
 
 Element map (from `GET /api/v2/definition/ItemDefaults`):
 

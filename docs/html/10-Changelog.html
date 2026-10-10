@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -654,6 +655,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>
 <li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>
 <li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>
 <li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
@@ -752,6 +754,22 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-10-v1280">2026-10-10 — v1.28.0</h2>
+<p>The first sweep of the maintainer's working notes against these docs: eleven gaps filed (#175–#185) and closed here. All verified against production or play 26.1 during real work; identifiers are placeholders.</p>
+<ul>
+<li><strong>feat:</strong> <strong><a href="11-Inventory-REST-API.html#cloning-an-existing-item">Cloning an existing item through the Inventory REST API</a></strong>, and <code>ListPrice</code> and <code>Stockable</code> confirmed writable by PUT. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/175">#175</a></li>
+<li><strong>docs:</strong> Inventory REST create needs explicit GL accounts when the location has no defaults; <code>DivisionId</code> usually mirrors the supplier ID; a location appended later takes its discount groups from location defaults, not the item's other locations. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/176">#176</a></li>
+<li><strong>docs:</strong> The item header's default product group has no API write path. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/177">#177</a></li>
+<li><strong>fix:</strong> <code>po_type</code> <code>B</code> is a buyer-keyed regular PO, not "Backorder"; <code>source_type</code> 948–951 and the deleted-PO flag state added. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/178">#178</a></li>
+<li><strong>fix:</strong> <strong><a href="08-SalesPricePage-Codes.html">Price page type <code>212</code> is Item</a></strong> — the old "212 Difference" row belonged to the commission-cost calculation method column; the page-type table is now complete and the two code families are labeled separately. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/179">#179</a></li>
+<li><strong>docs:</strong> Assembly create defaults and the fields disabled on create. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/180">#180</a></li>
+<li><strong>docs:</strong> <strong><a href="04-Interactive-API.html#customer-window-adding-a-price-library">Adding a price library in the Customer window</a></strong>, and the sequence reset on save. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/181">#181</a></li>
+<li><strong>feat:</strong> <strong><a href="recipes/create-ship-to.html">Recipe: create a ship-to</a></strong>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/182">#182</a></li>
+<li><strong>docs:</strong> Reporting kit and assembly cost without double-counting component lines. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/183">#183</a></li>
+<li><strong>docs:</strong> <code>oe_line_po</code> holds stale links; join on both PO and order line keys and filter <code>delete_flag</code>. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/184">#184</a></li>
+<li><strong>docs:</strong> OData read gotchas: adjustment cost, dropdown labels, labor actuals and column names that trip queries. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/185">#185</a></li>
+</ul>
+<p>All <em>@mrwuss</em>.</p>
 <h2 id="2026-10-10-v1271">2026-10-10 — v1.27.1</h2>
 <p>Closed the five open issues that already carried verified results. <a href="https://github.com/mrwuss/p21-api-documentation/issues/163">#163</a> stays open on purpose until Epicor responds.</p>
 <ul>
@@ -1636,6 +1654,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>
 <li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>
 <li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>
 <li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
