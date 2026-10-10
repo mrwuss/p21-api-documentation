@@ -674,6 +674,21 @@ The GET -> Modify -> PUT pattern also works for **updating fields on existing `i
 
 **Verified writable fields:** `Sellable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`, `ReplenishmentLocation`, `PrimaryBin` (see [Location-Append & Update Gotchas](#location-append-update-gotchas-verified-at-scale) — `PrimaryBin` verified across 276 rows; the bin must already exist at that location)
 
+### Updating a Supplier's Cost (`Suppliers.list[].Cost`)
+
+The same GET → modify → PUT round trip updates **`inventory_supplier.cost`** on an existing supplier row. `GET /api/inventory/parts/{ItemId}?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure`, change `Suppliers.list[n].Cost`, and PUT the full payload back → HTTP 200.
+
+A full-row before/after diff showed exactly this:
+
+| Table | What changed |
+|---|---|
+| `inventory_supplier` (the edited row) | `cost` to the new value; **`date_cost_last_modified` set by P21** (it was NULL); `date_last_modified` and `last_maintained_by` (the API user) updated. Nothing else |
+| `inv_loc` (every location on the item) | Only `date_last_modified` and `last_maintained_by` — **the PUT restamps every location's audit columns even when no location field changed** |
+
+If something downstream keys off `inv_loc.date_last_modified` (a sync job, a "recently changed" report), expect every location of the item to show up after a supplier-cost PUT. `ListPrice` is very likely writable the same way but was not exercised. Items whose ID contains `/` cannot take this path — [the GET itself 404s](#url-encoding-for-special-characters); use the Interactive `Item` window instead.
+
+> **Credit:** *@mrwuss* — verified on production 26.1, October 2026 ([#170](https://github.com/mrwuss/p21-api-documentation/issues/170)).
+
 This API is the recommended path for `inv_loc` modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) **read-only**, so they cannot be edited there either.
 
 P21 validates changed values through business logic. For example, setting an invalid `ProductGroupId` returns:
@@ -1984,6 +1999,8 @@ When item IDs contain special characters, URL encoding is required:
 | `+` | `%2B` | Use standard URL encoding |
 
 > **Known Issue**: Forward slash (`/`) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets `%2F` as a literal path separator, returning 404. There is no known workaround for items containing `/` in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)
+>
+> **It is not only the pricing endpoints.** `GET /api/inventory/parts/{ItemId}` also returns 404 for an item ID containing `/` (sent as `%2F`), so the GET → modify → PUT update path cannot reach such items either. For supplier cost and other item edits on them, use the Interactive `Item` window. *(@mrwuss, production 26.1, October 2026 — [#171](https://github.com/mrwuss/p21-api-documentation/issues/171).)*
 
 ---
 

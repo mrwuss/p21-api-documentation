@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -741,10 +747,12 @@
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
+<li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
+<li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>
@@ -754,6 +762,7 @@
 <li><a href="#example-generate-and-save-a-po-reprint">Example: Generate and Save a PO Reprint</a></li>
 <li><a href="#example-generate-a-production-order-pick-ticket-m_picktickets">Example: Generate a Production-Order Pick Ticket (m_picktickets)</a></li>
 <li><a href="#pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint (print flags)</a></li>
+<li><a href="#merging-several-report-pdfs-into-one-file">Merging Several Report PDFs into One File</a></li>
 </ul>
 </li>
 <li><a href="#gl-dimensions-in-the-api">GL Dimensions in the API</a></li>
@@ -1710,7 +1719,7 @@ HTTP 400
 <tbody>
 <tr>
 <td><strong>Within one Transaction</strong></td>
-<td><strong>Atomic.</strong> A failure anywhere rolls the whole Transaction back — including edits that already validated.</td>
+<td><strong>Atomic for edits to existing values.</strong> A failure anywhere rolls the whole Transaction back — including edits that already validated. <strong>Not atomic for creates:</strong> a failed create can leave soft-deleted rows and consume a document number — see <a href="#a-failed-create-leaves-rows-behind">A failed create leaves rows behind</a>.</td>
 <td>A valid line-quantity edit paired with a disabled column, both in the same element and in a later element: <code>Failed: 1</code>, and the quantity was <strong>unchanged</strong> both times.</td>
 </tr>
 <tr>
@@ -1728,9 +1737,51 @@ HTTP 400
 <p>The practical trap is the second row. <strong>A <code>Summary</code> with <code>Failed ≥ 1</code> does not mean "nothing happened"</strong> — if <code>Succeeded</code> is also non-zero, part of your batch is live. A client that reads only <code>Failed</code> and retries the whole POST will re-apply everything that already worked. Branch on <code>Results.Transactions[].Status</code> per transaction, not on the tally.</p>
 <blockquote>
 <p><strong>⚠️ Atomicity covers the record, not the consequences.</strong> Some services do substantial downstream work on save — writing related records, completing linked documents, generating invoices. Those side effects are <strong>not</strong> rolled back by a later validation failure in the same Transaction.</p>
-<p>The reported case is <code>DirectShipConfirmation</code>, which returned <code>Summary: {"Failed": 1}</code> — tripped by a disabled <code>c_email_invoice</code> column — <strong>after it had already written</strong> the inventory receipt, completed the purchase-order line, invoiced the sales-order line, and created the customer AR invoice. The failure was real; so was everything it had done first. <em>(Reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>; not reproduced here — ordinary <code>Order</code> writes are atomic as the table above shows, so this is specific to services that cascade.)</em></p>
+<p>The reported case is <code>DirectShipConfirmation</code>, which returned <code>Summary: {"Failed": 1}</code> — tripped by a disabled <code>c_email_invoice</code> column — <strong>after it had already written</strong> the inventory receipt, completed the purchase-order line, invoiced the sales-order line, and created the customer AR invoice. The failure was real; so was everything it had done first. <em>(Reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>; not reproduced here — ordinary <code>Order</code> edits are atomic as the table above shows, so this is specific to services that cascade; failed <code>Order</code> </em>creates<em> are a separate case, <a href="#a-failed-create-leaves-rows-behind">below</a>.)</em></p>
 <p>The same shape appears in the Interactive API, where an in-window wizard can commit at an intermediate step: the PO/RFQ generation wizard creates and links the PO at <code>cb_next</code>, <strong>before</strong> <code>cb_finish</code>, so an abandoned wizard is not a no-op.</p>
 <p><strong>On any write that triggers downstream documents, read the record back — <code>Failed</code> is a reason to go and look, not proof that nothing landed.</strong></p>
+</blockquote>
+<h4 id="a-failed-create-leaves-rows-behind">A failed create leaves rows behind</h4>
+<p>The atomicity row above holds for <strong>edits</strong> to existing records. A Transaction that <strong>creates</strong> a document and then fails does not vanish: rows it already wrote stay in the table, flagged deleted, and the document number it drew is used up. Verified on the <code>Order</code> service on 26.1.5950.0:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>How the create failed</th>
+<th>What is left in the database</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Line 2</strong> failed — <em>"Ambiguous data detected (PopUp encountered)…"</em> on its item ID</td>
+<td>An order number is consumed. <code>oe_hdr</code> with <code>delete_flag = 'Y'</code>, <code>completed = 'Y'</code>; line 1 in <code>oe_line</code> with <code>delete_flag = 'Y'</code>, <code>disposition = 'C'</code>, <code>qty_canceled</code> = its quantity; one <code>oe_hdr_salesrep</code> row</td>
+</tr>
+<tr>
+<td><strong>Line 2</strong> tripped a margin popup — <em>"…profit percentage … greater than the acceptable limit … [Response: No]"</em></td>
+<td>The same pattern</td>
+</tr>
+<tr>
+<td><strong>Save-time</strong> required-column failure — <code>source_loc_id</code> omitted, <em>"This column is required."</em></td>
+<td>The same pattern</td>
+</tr>
+<tr>
+<td><strong>Line 1</strong> failed — <em>"Contact Id is required"</em></td>
+<td><strong>Nothing</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>The Interactive API behaves the same way once rows are committed mid-session:</p>
+<ul>
+<li>A never-saved session with <strong>one</strong> line leaves nothing.</li>
+<li><strong><code>add_row</code> commits the header and line 1 mid-session</strong> (<code>delete_flag = 'N'</code>, <code>completed = 'T'</code> — the in-edit state that <a href="#oe_hdrcompleted-t-is-what-blocks-the-write">blocks other writes</a>). Ending the session without saving then flips them to <code>delete_flag = 'Y'</code>. An unsaved multi-line session is <strong>not</strong> a dry run.</li>
+</ul>
+<p>What to do about it:</p>
+<ul>
+<li><strong>Filter every read-back on <code>delete_flag = 'N'</code></strong> (and <code>cancel_flag = 'N'</code> where the table has one). Unfiltered, the leftovers count as real lines.</li>
+<li><strong>Before retrying a failed create, look for the stray document</strong> — it already has a number, and a blind retry creates a second one. Expect gaps in the order-number sequence.</li>
+<li>A failed multi-row <strong>append</strong> to a saved order leaves its rows soft-deleted the same way.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a> (soft-deleted residue from failed appends and unsaved sessions) and in <a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a> (a stray header after a failed create).</p>
 </blockquote>
 <hr />
 <h2 id="field-order-matters">Field Order Matters</h2>
@@ -1805,7 +1856,7 @@ HTTP 400
 <blockquote>
 <p><strong>Caution:</strong> the flag lets edits through columns P21 normally protects. Only send fields you intend to change, and verify results after the first run.</p>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> for mapping the placement failure mode and the disabled-tab unlock behavior.</p>
-<p><strong>It is not a universal unlock — and it can hide the failure.</strong> On P21 26.1, writes to the JobContractPricing <code>VALUES.values</code> element are refused with <code>General Exception: Tab page is disabled and cannot be selected</code>. Adding <code>IgnoreDisabled: true</code> flips the response to <code>Summary: {"Failed": 0, "Succeeded": 1}</code> / <code>Status: "Passed"</code> and <strong>writes nothing</strong> — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column <code>corp_address_id</code> and on <code>Order</code>'s <code>LINE_NOTE.line_note</code> — three unrelated surfaces, marking it as platform behavior. <strong>Always read back after a write that used this flag.</strong> Detail: <a href="#values-writes-are-refused-on-261">VALUES Writes Are Refused on 26.1</a> and <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a>.</p>
+<p><strong>It is not a universal unlock — and it can hide the failure.</strong> On P21 26.1, writes to the JobContractPricing <code>VALUES.values</code> element are refused with <code>General Exception: Tab page is disabled and cannot be selected</code>. Adding <code>IgnoreDisabled: true</code> flips the response to <code>Summary: {"Failed": 0, "Succeeded": 1}</code> / <code>Status: "Passed"</code> and <strong>writes nothing</strong> — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column <code>corp_address_id</code> on <code>Order</code>'s <code>LINE_NOTE.line_note</code>, and on <code>SalesPricePage</code>'s <code>USED BY.price_book_x_page</code> link — four unrelated surfaces, marking it as platform behavior. <strong>Always read back after a write that used this flag.</strong> Detail: <a href="#values-writes-are-refused-on-261">VALUES Writes Are Refused on 26.1</a> and <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a>.</p>
 </blockquote>
 <hr />
 <h2 id="usecodevalues">UseCodeValues</h2>
@@ -2774,7 +2825,20 @@ When creating items with lot tracking, interleave item and lot DataElements:
 <li><strong>RMAs are not <code>Order</code> records.</strong> An order with <code>rma_flag = 'Y'</code> is refused outright: <code>General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.</code> Use the <a href="#rma-service-orders-the-order-service-refuses"><code>RMA</code> service</a>.</li>
 <li><strong>The same item on two lines collapses to one</strong> with <code>Keys: []</code> — <code>TP_ITEMS.items</code> folds rows on its declared key (<code>oe_order_item_id</code>), last value wins, <code>Succeeded: 1</code>, no warning. Add <code>Keys: ["unit_quantity"]</code> (or another differing column) when an order legitimately repeats an item — see <a href="#keys-row-identity-and-the-collapse-trap">Keys — Row Identity and the Collapse Trap</a>.</li>
 <li>The created <code>order_no</code> comes back in the result rows; check <code>Summary.Succeeded</code>, not the HTTP status.</li>
-<li><strong>A document with <code>oe_hdr.completed = 'T'</code> refuses every write</strong> — the record-lock prompt fires and the stateless API answers it <code>No</code>. See <a href="#order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</a> for the pre-screen.</li>
+<li><strong>A document with <code>oe_hdr.completed = 'T'</code> refuses every write</strong> — the record-lock prompt fires and the stateless API answers it <code>No</code>. See <a href="#order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</a> for the pre-screen. The holder can be <strong>your own API user</strong>: a client that was killed mid-request, or an Interactive session that was never ended, keeps the order locked until the server finishes — see <a href="06-Error-Handling.html#locks-and-orphaned-sessions">Locks and orphaned sessions</a>.</li>
+</ul>
+<h4 id="order-service-line-appends-cancels-holds-and-item-lookup">Order Service — Line Appends, Cancels, Holds, and Item Lookup</h4>
+<p>Field-verified on the <code>Order</code> service. Unless marked otherwise, credit <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on play and production, September 2026; not re-run here.</p>
+<ul>
+<li><strong>Append many lines to a saved order in one Transaction, not one per line.</strong> Key the header on <code>order_no</code> (<code>TABPAGE_1.order</code>, <code>Keys: ["order_no"]</code>) and send the new lines as multiple rows of one <code>TP_ITEMS.items</code> element (<code>Keys: []</code>). One Transaction per line fails: the rows collide with the existing line and the server answers <em>"Item ID X has been saved; therefore, the Item ID cannot be edited"</em>. (The same message also appears, transiently, when an orphaned Interactive session for the same user is still open — end it first; see <a href="06-Error-Handling.html#locks-and-orphaned-sessions">Locks and orphaned sessions</a>.)</li>
+<li><strong>Per-line cost grows with the size of the order.</strong> P21 re-reads the whole document after every Transaction, so appending to a large order slows down as it grows. Split very large line lists into orders of about 100 lines — measured numbers and the pattern are in <a href="09-Batch-Processing-Patterns.html#large-sales-orders-split-at-about-100-lines">Batch Processing § Large Sales Orders</a>.</li>
+<li><strong>A failed append soft-deletes its rows.</strong> Filter read-backs on <code>delete_flag = 'N' AND cancel_flag = 'N'</code> — see <a href="#a-failed-create-leaves-rows-behind">A failed create leaves rows behind</a>.</li>
+<li><strong>Cancel an order through the header <code>cancel_flag</code>.</strong> <code>TABPAGE_1.order</code> keyed on <code>order_no</code> with the edit <code>cancel_flag = "ON"</code> sets <code>oe_hdr.cancel_flag = 'Y'</code> and <code>completed = 'Y'</code> and releases every line's allocation. P21 reloads the whole order first, so cancelling a very large order takes minutes.</li>
+<li><strong>Release a Hold through Ship Info when the header copy is disabled.</strong> On some tenants the header <code>packing_basis</code> is a disabled column for the API user (<em>"Column is disabled: packing_basis"</em>). The same field on <code>TP_SHIPINFO.shipinfo</code> (<code>Type: Form</code>, <code>Keys: []</code>, after the keyed <code>TABPAGE_1.order</code> row) is enabled: set it to <code>Partial</code> to release the Hold. Allocation is untouched.</li>
+<li><strong><code>TP_SALESREPS</code> on a <em>new</em> order adds rows; it does not replace the default.</strong> The customer's default rep row is created at save, after the element is processed (a keyed edit finds <em>"row 0 not found"</em>), and any rep row you send is added on top of it. Two 100% rows then trip the <em>"Do not use the Full Commission flag"</em> rule and the create fails. Rep changes on a new order need either a customer or ship-to whose default rep already satisfies your rules, or the Interactive window (<code>TP_SALESREPS</code>, select row 1, set <code>salesrep_id</code>). <a href="#order-service-reassigning-the-salesrep">Add-then-retire on a saved order</a> is unaffected.</li>
+<li><strong>Item IDs are prefix-matched.</strong> An ID that matches more than one item fails with <em>"Ambiguous data detected (PopUp encountered)"</em> — check for near-duplicates that differ only in spacing (<code>ITEM-001 3/8 NPT</code> versus <code>ITEM-001 3/8NPT</code>) and send the exact ID.</li>
+<li><strong>A merged-away item fails with <em>"'X' has been deleted"</em>.</strong> After an item merge the old ID stays in <code>inv_mast</code> with <code>delete_flag = 'Y'</code>, and <code>inv_mast.extended_desc</code> names the survivor. Build line lists from live data at run time, not from a saved spreadsheet.</li>
+<li><strong>A failed create consumes an order number and can leave a soft-deleted header and lines.</strong> Look for the stray order before retrying — see <a href="#a-failed-create-leaves-rows-behind">A failed create leaves rows behind</a> (verified by the maintainer on 26.1.5950.0).</li>
 </ul>
 <h4 id="order-service-reassigning-the-salesrep">Order Service — Reassigning the Salesrep</h4>
 <p><strong>There is no salesrep column on <code>oe_hdr</code>.</strong> The rep on a sales order or quote lives in the <code>oe_hdr_salesrep</code> grid, which the <code>Order</code> service exposes as <code>TP_SALESREPS.tp_salesreps</code> — <code>Type: List</code>, keyed on <code>salesrep_id</code> in the service definition. Per-line splits live in <code>oe_line_salesrep</code>. Verified live on production 26.1 across 66 successful writes (sales orders and quotes).</p>
@@ -2959,6 +3023,34 @@ successfully. Do you want to continue to retrieve? [Response: No]
 </tr>
 </tbody>
 </table></div>
+<h5 id="attaching-a-ship-to-to-an-existing-contract">Attaching a ship-to to an existing contract</h5>
+<p><strong>Contract pricing follows this grid, not the header.</strong> On a saved contract, <code>job_price_hdr.customer_id</code> and <code>ship_to_id</code> are NULL; the customers and ship-tos the contract serves are rows in <code>job_price_customer_shipto</code>. A sales order line gets the contract price only when the order's customer <strong>and ship-to</strong> are a row here — a ship-to missing from the grid prices as if the contract did not exist.</p>
+<p>To add one, load the header by <code>job_no</code> + <code>contract_no</code> (header <code>Keys: []</code>, both in <code>Edits</code>) and send a <code>CUSTOMER_SHIP_TO.customer_ship_to</code> row keyed on <code>customer_id</code> + <code>ship_to_id</code>, with <code>IgnoreDisabled: true</code> at the payload top level:</p>
+<blockquote>
+<p>Payload shape only. Full runnable version — same endpoint and response checks: <a href="#updating-an-existing-contract">Updating an Existing Contract</a>.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JobContractPricing&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;IgnoreDisabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.d_dw_job_price_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;job_no&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JOB-001&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;contract_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CONTRACT-001&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUSTOMER_SHIP_TO.customer_ship_to&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100198&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100199&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Read back <code>job_price_customer_shipto</code> for the contract, then confirm on a test order: a blank-price line for that ship-to should now fill in the contract price. Because <code>IgnoreDisabled</code> is on, <a href="#ignoredisabled">never trust <code>Passed</code> alone</a>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on play, September 2026 (a blank-price order to the newly added ship-to auto-priced from the contract); not re-run here.</p>
+</blockquote>
 <h4 id="line-items-jobpricelinejobpriceline-list-29-fields">Line Items -- <code>JOBPRICELINE.jobpriceline</code> (List, 29 fields)</h4>
 <div class="table-wrap"><table>
 <thead>
@@ -3217,15 +3309,106 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> verified the <code>IgnoreDisabled</code> commission-cost write path. The Interactive API (JobContractPricing window) remains an alternative.</p>
 </blockquote>
+<p><strong><code>commission_cost_value</code> is disabled unless the type is <code>Value</code>.</strong> Switching a line back to type <code>Order</code> while still sending the value fails with <code>Column is disabled: commission_cost_value</code>. Drop the value field when you restore type <code>Order</code>. <em>(@mrwuss, play 26.1, October 2026.)</em></p>
+<p><strong>Duplicate <code>item_id</code>s on one contract: key the line by <code>line_no</code>.</strong> <code>JOBPRICECOST.jobpricecost</code> has no <code>line_no</code> key, so it binds to whichever line <code>JOBPRICELINE</code> selected. Key <code>JOBPRICELINE</code> by <code>item_id</code> on a contract that carries the same item twice and both elements silently hit the <strong>first</strong> matching line. Select the line with <code>Keys: ["line_no"]</code> (and <code>line_no</code> in <code>Edits</code>) first; the cost form then binds to that line. <em>(Credit: <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production, July 2026; not re-run here.)</em></p>
+<h4 id="how-contract-costs-reach-the-order-and-the-invoice">How Contract Costs Reach the Order and the Invoice</h4>
+<p>The contract's cost settings are not copied to an order once and forgotten, and they are not re-read every time either. Which one happens depends on the cost type and on whether the order line was bound to the contract when it was entered.</p>
+<h5 id="binding-happens-once-at-line-entry">Binding happens once, at line entry</h5>
+<p>A sales order line picks up the contract when it is <strong>entered</strong>: P21 fills the contract price and stamps <code>oe_line.job_price_hdr_uid</code>. That binding is permanent for the line.</p>
+<ul>
+<li><strong>A bound line re-reads its contract cost at invoicing.</strong> <code>oe_line.other_cost</code> is only an entry-time snapshot; after the contract's other cost was changed, the invoice booked the new contract value. No delete and re-add is needed. The price stays as entered.</li>
+<li><strong>An unbound line never binds later.</strong> A line entered before its item was on the contract (<code>job_price_hdr_uid</code> NULL) kept average cost on the invoice even after the contract line was added. Delete the order line and re-enter it.</li>
+<li>Contract pricing at entry needs the customer <strong>and ship-to</strong> on the contract (<a href="#attaching-a-ship-to-to-an-existing-contract">Attaching a ship-to</a>), an approved contract, and an order date inside its window. Leave <code>unit_price</code> unset on the order line so P21 can fill it.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — binding rules verified on play, September 2026; not re-run here.</p>
+</blockquote>
+<h5 id="order-entry-effect-of-each-commission-cost-setting">Order-entry effect of each commission cost setting</h5>
+<p>Verified on play 26.1 by entering real (non-quote) order lines interactively against one contract line, then invoicing them. The line in the first table had a sales price above both costs, a location moving average cost (MAC) and a lower supplier PO cost.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Contract line setting</th>
+<th>Order line result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default: <code>commission_cost_type_cd</code> = <code>Order</code>, multiplier 1.02</td>
+<td><code>sales_cost</code> = MAC; <code>commission_cost</code> = MAC × 1.02</td>
+</tr>
+<tr>
+<td><code>JOBPRICELINE.po_cost</code> set to the PO cost</td>
+<td><strong>No effect</strong> on a stock or blank-disposition line: <code>sales_cost</code> = MAC, <code>po_cost</code> 0, <code>commission_cost</code> = MAC × 1.02</td>
+</tr>
+<tr>
+<td><code>JOBPRICECOST</code> type <strong><code>Value</code></strong>, <code>commission_cost_value</code> = the PO cost, multiplier 1.02</td>
+<td><code>commission_cost</code> = value × 1.02, independent of <code>sales_cost</code></td>
+</tr>
+<tr>
+<td>Same, then <code>sales_cost</code> edited down to the PO cost through the <code>Order</code> service</td>
+<td><code>commission_cost</code> unchanged (value × 1.02); <code>order_cost_edited</code> = <code>Y</code>; <code>other_cost</code> stays MAC</td>
+</tr>
+<tr>
+<td><code>JOBPRICECOST</code> type <strong><code>Source</code></strong>, source <code>Primary Supplier Cost</code>, multiplier 1.02</td>
+<td><code>commission_cost</code> <strong>0.00</strong> when <code>inventory_supplier.cost</code> is 0 — there is no fallback, so a blank supplier cost gives a zero commission cost</td>
+</tr>
+</tbody>
+</table></div>
+<p>And at invoicing:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Contract commission cost</th>
+<th><code>invoice_line.commission_cost</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stock line</td>
+<td><strong><code>Value</code></strong> × 1.02</td>
+<td>value × 1.02 — <strong>not</strong> based on COGS</td>
+</tr>
+<tr>
+<td>Stock line (control)</td>
+<td><strong><code>Order</code></strong> × 1.02</td>
+<td>COGS × 1.02 — recalculated at invoicing</td>
+</tr>
+<tr>
+<td>Direct-ship line</td>
+<td><strong><code>Value</code></strong> × 1.02</td>
+<td>value × 1.02</td>
+</tr>
+</tbody>
+</table></div>
+<p>So a <code>Value</code> commission cost <strong>is</strong> multiplied by <code>commission_cost_calc_value</code>; a multiplier of 1.00 cannot show the difference. An <code>Order</code>-type commission cost on the order line is computed once at entry and is <strong>not</strong> recalculated when the order cost changes later (for example a disposition change that replaces MAC with the PO cost) — but the invoice recalculates it from COGS.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, October 2026 (entry and invoice), with supporting production observations (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). An earlier round of this test ran in quote mode by accident — see <a href="04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">Set <code>quote</code> to <code>OFF</code> first</a>; only the results re-confirmed on real orders are shown here.</p>
+</blockquote>
+<h5 id="rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor">Rebate prerequisites (other cost <code>Value</code> + a rebate-tracking vendor)</h5>
+<p>For a contract-priced line to write a supplier rebate at invoice, both of these must hold:</p>
+<ol>
+<li>The bound contract line carries <strong>other cost type <code>Value</code></strong> (<code>other_cost_type_cd</code> = <code>Value</code>, <code>other_cost_value</code> = the rebated cost) below the actual cost.</li>
+<li>The item's <strong>primary supplier at the line's ship-from location</strong> belongs to a vendor with <strong>Track Rebates</strong> on. <code>oe_line.supplier_id</code> is stamped at entry from the primary supplier at <code>source_loc_id</code>, not the sales location — the sales location's primary supplier is irrelevant.</li>
+</ol>
+<p>Then at invoice, <code>invoice_line.cogs_amount</code> = the contract value, a <code>vendor_rebate</code> row is written for the difference, and GL posts the sale at MAC plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable. Setting only the other cost lowers COGS but writes no rebate. The same holds for assemblies built on production orders. Creating the vendor: <a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service</a>. The end-to-end setup: <a href="recipes/rebate-assembly-program.html">recipe: rebate-assembly-program</a>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — rebate trigger proven end to end on play, September 2026; not re-run here.</p>
+</blockquote>
 <h4 id="updating-an-existing-contract">Updating an Existing Contract</h4>
 <p>Use <code>Status = "New"</code> to update existing contracts -- there is no separate "Update" or "Existing" status. The Transaction API distinguishes create from update by whether the FORM key fields land on an existing record:</p>
 <ul>
 <li>Leave the FORM <code>Keys</code> array empty.</li>
 <li>Send the FORM key fields (<code>company_id</code>, <code>contract_no</code>, <code>job_no</code>) inside <code>Edits</code>.</li>
-<li>Also include <code>end_date</code> in <code>Edits</code> -- the API validates required fields on every submit and rejects with <code>"Required value missing for End Date"</code> if it's absent.</li>
+<li><strong>Leave <code>end_date</code> out unless you are changing it.</strong> <code>job_no</code> + <code>contract_no</code> in <code>Edits</code> identify the header; with only those and a keyed <code>JOBPRICELINE</code> row, the line changes and the header is not re-saved (its <code>date_last_modified</code> stays put). Sending <code>end_date</code> — even unchanged — re-saves the header and runs its date validations, which is where both errors below come from:</li>
+<li><em>"The end date must be equal to or greater than today"</em> fires <strong>only when <code>end_date</code> is sent</strong>. An <strong>expired</strong> contract accepted a header edit and a line <code>qty_maximum</code> edit through the Transaction API with <code>end_date</code> omitted.</li>
+<li><em>"You may not change the end date of this record. The customer defined on the Customer/Ship To tab, {customer}, has an associated corporate address ID of {corp}. This is different from the corporate address id of the Job/Contract header, {header}."</em> fires <strong>only when <code>end_date</code> is sent and</strong> the header's <code>corp_address_id</code> differs from the corporate address of the customer on the Customer/Ship To tab. Cancellation is not the cause.</li>
+<li>Batching many line-field <strong>updates</strong> in one POST is fine (25 Transactions per POST in production use); the one-Transaction-per-POST rule applies to <strong>inserts</strong>, where <code>line_no</code> allocation and the header re-save collide.</li>
 <li>On <code>JOBPRICELINE</code>, set <code>Keys: ["item_id"]</code> and put the <code>item_id</code> value in <code>Edits</code> alongside the fields you're changing.</li>
 </ul>
 <blockquote>
+<p><strong>Credit:</strong> verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>. This replaces earlier guidance in this section that <code>end_date</code> had to be sent on every update.</p>
 <p>Empirically verified 2026-05-14: 173 successful price updates against contract <code>JOB-1001</code> on a production tenant. Each call returned HTTP 200 with <code>Summary.Succeeded = 1</code>, and OData confirmed each <code>job_price_line.price</code> matched the submitted value.</p>
 </blockquote>
 <p><strong>Example -- update one line's price:</strong></p>
@@ -3248,7 +3431,6 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <span class="n">COMPANY_ID</span> <span class="o">=</span> <span class="s2">&quot;ACME&quot;</span>                       <span class="c1"># FORM key fields go in Edits, not Keys</span>
 <span class="n">CONTRACT_NO</span> <span class="o">=</span> <span class="s2">&quot;JOB-1001&quot;</span>
 <span class="n">JOB_NO</span> <span class="o">=</span> <span class="s2">&quot;31&quot;</span>                             <span class="c1"># unique per header; survives renewals</span>
-<span class="n">END_DATE</span> <span class="o">=</span> <span class="s2">&quot;2030-01-01&quot;</span>                   <span class="c1"># must be &gt;= today -- validated every save</span>
 <span class="n">ITEM_ID</span> <span class="o">=</span> <span class="s2">&quot;WIDGET-001&quot;</span>                    <span class="c1"># the line to update</span>
 <span class="n">UOM</span> <span class="o">=</span> <span class="s2">&quot;EA&quot;</span>
 <span class="n">PRICE</span> <span class="o">=</span> <span class="s2">&quot;36.58&quot;</span>
@@ -3324,7 +3506,6 @@ successfully. Do you want to continue to retrieve? [Response: No]
                             <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span>  <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">},</span>
                             <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;contract_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">CONTRACT_NO</span><span class="p">},</span>
                             <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;job_no&quot;</span><span class="p">,</span>      <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">JOB_NO</span><span class="p">},</span>
-                            <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;end_date&quot;</span><span class="p">,</span>    <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">END_DATE</span><span class="p">},</span>
                         <span class="p">],</span>
                         <span class="s2">&quot;RelativeDateEdits&quot;</span><span class="p">:</span> <span class="p">[],</span>
                     <span class="p">}],</span>
@@ -3392,7 +3573,6 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span><span class="w">              </span><span class="c1">// FORM key fields go in Edits, not Keys</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ContractNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;JOB-1001&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">JobNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;31&quot;</span><span class="p">;</span><span class="w">                    </span><span class="c1">// unique per header; survives renewals</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">EndDate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2030-01-01&quot;</span><span class="p">;</span><span class="w">          </span><span class="c1">// must be &gt;= today -- validated every save</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">           </span><span class="c1">// the line to update</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;EA&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Price</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;36.58&quot;</span><span class="p">;</span>
@@ -3436,7 +3616,6 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;contract_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ContractNo</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;job_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JobNo</span><span class="w"> </span><span class="p">},</span>
-<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;end_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EndDate</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                            </span><span class="p">},</span>
 <span class="w">                            </span><span class="n">RelativeDateEdits</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">object</span><span class="o">&gt;</span><span class="p">(),</span>
 <span class="w">                        </span><span class="p">}</span>
@@ -3594,7 +3773,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
     }]
   }</code>
 - <strong>Per-line latency</strong> observed at ~0.8s. For bulk updates, single-line calls are easier to retry on failure than batches.
-- <strong><code>end_date</code> must be &gt;= today.</strong> The header is validated on every save; a past date is rejected with <em>"end date must be equal to or greater than today"</em>. This means you cannot edit lines on an <strong>expired</strong> contract without also moving its <code>end_date</code> forward (a real side effect) -- for expired contracts, use the Interactive API instead.
+- <strong>Expired contracts are editable here</strong> as long as you do not send <code>end_date</code> — the <em>"end date must be equal to or greater than today"</em> check runs only when <code>end_date</code> is in the payload. See the <code>end_date</code> bullet above.
 - <strong>Identify renewals by <code>job_no</code>.</strong> Contract renewals can leave the same <code>contract_no</code> on two header rows; <code>job_no</code> is unique. Include it in the FORM Edits whenever it's known.</p>
 <h4 id="upsert-semantics-keyed-rows-insert-when-absent">Upsert Semantics -- Keyed Rows Insert When Absent</h4>
 <p><code>Status: "New"</code> with a keyed List row is an <strong>upsert</strong>: if the key matches an existing row it updates that row, and if it doesn't match, P21 <strong>inserts a new row</strong>. This means the Transaction API can add brand-new lines to an existing contract -- no Interactive API needed. Verified live: 81 new lines added to an existing contract in one run (price, pricing_method, and commission cost all confirmed in the database with unique <code>line_no</code> values).</p>
@@ -3657,7 +3836,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <li><strong><code>IgnoreDisabled: true</code> is mandatory</strong> -- without it the defaults template trips <em>"Column is disabled: ..."</em> and the BINS tab stays locked.</li>
 <li><strong>Select the line by <code>item_id</code></strong> (the JOBPRICELINE key). Selecting by <code>line_no</code> alone fails with <em>"Sequence contains no matching element."</em> If the same item appears on multiple lines, add <code>line_no</code> as a second key.</li>
 <li><strong>Batching is fine here</strong>: repeat the <code>JOBPRICELINE</code> + <code>BINS.bins</code> pair per bin inside the same Transaction. Unlike line inserts, bin edits don't collide on the header.</li>
-<li><strong>No <code>end_date</code> required</strong> on this path -- it works on expired contracts too, unlike line-field updates.</li>
+<li><strong>No <code>end_date</code> required</strong> on this path -- it works on expired contracts too, as line-field updates do when <code>end_date</code> is omitted.</li>
 <li>HTTP 200 can still carry <code>Summary.Failed &gt; 0</code> -- check <code>Summary</code> and <code>Messages</code>.</li>
 </ul>
 <blockquote>
@@ -4307,9 +4486,34 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <li><strong>Create the assembly definition</strong> via Transaction API (<code>Assembly</code> service)</li>
 </ol>
 <p>The Assembly service does NOT create new inventory items -- it adds BOM metadata to an item that already exists.</p>
+<p><strong>Create through the Transaction API works on a plain item, and fails on an item that is already a component of another assembly.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Item is not a component anywhere</td>
+<td>Header <code>TABPAGE_1.assemblyhdr</code> with <code>inv_mast_item_id</code> + component rows on <code>TABPAGE_17.tp_17_dw_17</code> → <code>Succeeded: 1</code>; <code>assembly_hdr</code> and one <code>assembly_line</code> per component written</td>
+</tr>
+<tr>
+<td>Item is already a component of an existing assembly</td>
+<td>The window asks <em>"…is a component of an existing assembly, continue?"</em>; the Transaction API answers <strong>No</strong> and the save throws <code>Cannot insert the value NULL into column 'inv_mast_uid', table '…assembly_hdr'</code> (SQL error 3621, "No changes made to database"). Nothing is left behind</td>
+</tr>
+</tbody>
+</table></div>
+<p>For the second case use the <strong>Interactive</strong> <code>Assembly</code> window: set <code>TABPAGE_1.assemblyhdr.inv_mast_item_id</code>, answer the popup <strong>Yes</strong> (<code>cb_1</code>), fill row 1 of <code>tp_17_dw_17</code> (it already exists — <code>add_row</code> + <code>select_row</code> for each further component), set the header flags, save. Check <code>assembly_line</code> before the first write: a <code>component_inv_mast_uid</code> match tells you which path the item needs. Leave <code>copy_item_id</code> out — it was not tested.</p>
+<p><strong>Edits to an existing assembly work through the Transaction API</strong>, with keyed <code>Status: "New"</code> and <strong>no <code>IgnoreDisabled</code></strong>: a header flag keyed on <code>inv_mast_item_id</code>; a component's <code>quantity</code> keyed on <code>item_id_service_labor_id</code>; and removing a component with <code>delete_flag</code> = <code>ON</code> on its row.</p>
+<blockquote>
+<p><strong>Credit:</strong> verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
+</blockquote>
 <h4 id="known-limitations_1">Known Limitations</h4>
 <ul>
-<li><strong>Status "Existing" is rejected:</strong> Same as every other service — HTTP 400 on 26.1.5940.0, <code>NullReferenceException</code> HTTP 500 on earlier builds. Use the Interactive API (Assembly window) for modifications to existing assemblies.</li>
+<li><strong>Status "Existing" is rejected:</strong> Same as every other service — HTTP 400 on 26.1.5940.0, <code>NullReferenceException</code> HTTP 500 on earlier builds. Modify an existing assembly with keyed <code>Status: "New"</code> Transactions instead (see above).</li>
+<li><strong>An item that is already a component of another assembly</strong> cannot be given its own assembly through the Transaction API — use the Interactive window (see above).</li>
 <li><strong>Item must exist first:</strong> <code>inv_mast_item_id</code> must reference an existing item.</li>
 <li><strong>No re-creation:</strong> Items that already have assembly definitions cannot have a second assembly created.</li>
 </ul>
@@ -4809,7 +5013,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — patterns and gotchas verified in production (July–August 2026).</p>
 </blockquote>
 <ul>
-<li><strong>Creating a brand-new item through the raw <code>Item</code> service alone does not work — use the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST API</a> instead.</strong> The Units of Measure tab (<code>TABPAGE_2.tp_2_dw_2</code>) is disabled until the item record already exists (<code>General Exception: ... Ignored processing disabled tabpage: TABPAGE_2</code>), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (<code>A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.</code>) — a circular dependency that no field ordering, <code>IgnoreDisabled</code>, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. <code>POST /api/inventory/parts</code> (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt.</li>
+<li><strong>Creating a brand-new item through the raw <code>Item</code> service alone does not work — use the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST API</a> instead.</strong> The Units of Measure tab (<code>TABPAGE_2.tp_2_dw_2</code>) is disabled until the item record already exists (<code>General Exception: ... Ignored processing disabled tabpage: TABPAGE_2</code>), but the item header's own save validation refuses to persist without a default sales/purchase unit already set on it (<code>A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified.</code>) — a circular dependency that no field ordering, <code>IgnoreDisabled</code>, or retry resolves, because the Transaction API has no wizard session to sequence the item window's cascading defaults the way the UI does. <code>POST /api/inventory/parts</code> (a separate, higher-level REST endpoint family, not the Transaction API) takes one flat payload — item, locations, suppliers, and units together — and P21 resolves the sequencing server-side in a single call. Verified live, 26.1 (September 2026): every raw-Transaction-API create attempt failed and rolled back atomically (nothing partial persisted); the REST endpoint created the same record cleanly on the first well-formed attempt. The Interactive <code>Item</code> window can also create an item, because it sequences the tabs the way the UI does — see <a href="04-Interactive-API.html#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a>.</li>
 <li><strong>A soft-deleted item is terminal for the raw <code>Item</code> service — not just for a second <code>delete_flag=ON</code>.</strong> Setting <code>delete_flag=ON</code> (<code>ValidValues: ["ON", "OFF"]</code>, column <code>inv_mast.delete_flag</code>) on an item succeeds the first time; OData then shows <code>delete_flag = 'Y'</code> and the row is still returned (soft delete, not hidden — same pattern as the <a href="#customer-service-removing-a-salesrep-grid-row">Customer salesrep grid</a>). <strong>Any</strong> subsequent <code>Item</code>-service write against that item is then <code>Blocked</code> — not only a repeated <code>delete_flag=ON</code>, but an unrelated field like <code>item_desc</code> fails identically:
   <code>Null filter expression passed to of_Retrieve for Discount Group.
    A valid discount group ID must be entered.
@@ -4862,7 +5066,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <span class="w">              </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_name&quot;</span><span class="p">,</span><span class="w">         </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New Warehouse&quot;</span><span class="p">},</span>
 <span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;central_phone_number&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5155550100&quot;</span><span class="p">},</span>
-<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IFPG&quot;</span><span class="p">},</span>
+<span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
 <span class="w">                </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;branch_id&quot;</span><span class="p">,</span><span class="w">             </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">}</span>
 <span class="w">              </span><span class="p">]</span>
 <span class="w">            </span><span class="p">}</span>
@@ -4931,6 +5135,57 @@ successfully. Do you want to continue to retrieve? [Response: No]
 </ul>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — pattern verified in production (July 2026), including the <code>IgnoreDisabled</code> placement failure mode.</p>
+</blockquote>
+<h4 id="locking-unlocking-and-deleting-bins">Locking, Unlocking, and Deleting Bins</h4>
+<p>Same service, same element, same three-field key — the keyed <code>Status: "New"</code> upsert edits the existing bin.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Edits</th>
+<th><code>IgnoreDisabled</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lock</td>
+<td><code>pick_locked_flag</code> and/or <code>put_locked_flag</code> = <code>ON</code></td>
+<td><strong>Not needed</strong> — both flags are enabled columns. Creation only needs it because it sends system columns such as <code>frozen_flag</code></td>
+</tr>
+<tr>
+<td>Unlock</td>
+<td>the same flags = <code>OFF</code></td>
+<td>Not needed</td>
+</tr>
+<tr>
+<td>Delete</td>
+<td><code>delete_flag</code> = <code>ON</code></td>
+<td><strong>Send it</strong> (payload top level)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BinLocation&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bin_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">       </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bin_id&quot;</span><span class="p">,</span><span class="w">           </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A01-02-03&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pick_locked_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;put_locked_flag&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li><strong>Verify a delete in the database.</strong> A skipped delete reports no error. Read <code>bin.delete_flag</code> (SQL, or the <code>p21_view_bin</code> view) after the run and treat any bin still at <code>N</code> as a failure. The delete is a soft delete: flipping <code>delete_flag</code> back to <code>OFF</code> restores the bin.</li>
+<li><strong>Only lock or delete a bin that is not in use</strong>: no <code>inv_bin</code> row with <code>quantity &gt; 0</code>, and no <code>inv_loc.primary_bin</code> pointing at it. Locking or deleting a bin in active use strands stock and putaways. Clear primary-bin claims first (<a href="recipes/set-primary-bin-supplier.html">set-primary-bin-supplier</a>).</li>
+<li>Many Transactions per POST is fine, as with creation. Take a backup of the current flag values before a bulk run.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — lock and delete verified on play and production, July 2026 (thousands of bins, zero silent skips after SQL verification); not re-run here.</p>
 </blockquote>
 <h3 id="putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</h3>
 <p>A freshly created P21 location has <strong>no bin zones</strong>, and <code>BinLocation</code> (above) requires <code>putaway_zone_id</code>/<code>pick_zone_id</code> codes that resolve within the location — so on a new location the bin recipe fails until zones exist. The <code>PutawayZone</code> and <code>PickZone</code> services create them (verified in production, August 2026).</p>
@@ -5444,6 +5699,80 @@ General Exception: This pick ticket has already been invoiced.
 <li>The voucher lands <code>approved='Y'</code>, <code>paid_in_full='N'</code>, ready for the payment run, and writes <code>apinv_hdr</code> + <code>apinv_line</code> (with <code>po_line_uid</code> links) plus the <code>apinv_hdr_x_inventory_receipts</code> cross-reference.</li>
 </ul>
 <p><em>(Cycle and payload shapes from <a href="https://github.com/AWestemeier">Alex Westemeier</a>; all three steps re-verified end-to-end here.)</em></p>
+<h3 id="vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</h3>
+<p>Create the <strong>vendor</strong> first. Saving it creates the same-ID <strong>supplier</strong> and the <code>vendor_supplier</code> link for you; creating the supplier first is a dead end.</p>
+<blockquote>
+<p>Payload shape only. Full runnable version — same endpoint and response checks: <a href="#create-order">Create Order</a>.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Vendor&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">           </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;id&quot;</span><span class="p">,</span><span class="w">                   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100500&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;vendor&quot;</span><span class="p">,</span><span class="w">               </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;name&quot;</span><span class="p">,</span><span class="w">                 </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Example Vendor&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_address1&quot;</span><span class="p">,</span><span class="w">        </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;100 Main St&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_city&quot;</span><span class="p">,</span><span class="w">            </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Springfield&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_state&quot;</span><span class="p">,</span><span class="w">           </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;IL&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mail_postal_code&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;62701&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ap_account_no&quot;</span><span class="p">,</span><span class="w">        </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2222200&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default_terms_id&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Net 30 Days&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;track_rebates&quot;</span><span class="p">,</span><span class="w">        </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;REBATE_ACCOUNTS.d_vendor_rebate_accounts&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rebate_account_no&quot;</span><span class="p">,</span><span class="w">           </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1111100&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rebate_allowance_account_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;3333300&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vendor</code></td>
+<td><strong>Must be <code>ON</code>.</strong> Without it: <em>"To add a vendor, the vendor flag must be checked."</em></td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td><strong>A typed ID is accepted only if that ID already exists in <code>address</code></strong> (the keyspace that customers, suppliers, vendors and locations share). The verified create used an existing address ID (<code>100500</code> above). Per the same notes, a blank ID makes P21 number it from the address sequence — but a blank ID is a <a href="#location-service-creating-a-warehouse">false success on the <code>Location</code> service</a>, so read back before relying on it. The refusal reads <em>"Enter a valid ID or leave ID blank."</em> — the same rule, with the same message, applies to the Supplier and Location windows. To give a vendor the same ID as a location, create the location first (blank ID), then create the vendor with that ID</td>
+</tr>
+<tr>
+<td><code>default_terms_id</code></td>
+<td><strong>The terms description</strong> (<code>Net 30 Days</code>), not the terms ID — the ID fails <em>Invalid default_terms_id value</em></td>
+</tr>
+<tr>
+<td><code>currency_id</code></td>
+<td><strong>Omit it.</strong> The ID is rejected (<em>Invalid currency_id value</em>); the default is the company currency</td>
+</tr>
+<tr>
+<td><code>ap_account_no</code>, <code>name</code></td>
+<td>Required</td>
+</tr>
+<tr>
+<td><code>track_rebates</code></td>
+<td><code>ON</code> for a vendor that books supplier rebates — the second half of the <a href="#rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor">rebate prerequisites</a>. The rebate receivable is re-suffixed to the sales location at posting</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Do not send the supplier link tab (<code>TABPAGE_6.tp_6_dw_6</code>) on the create.</strong> If the supplier does not exist yet it fails <em>"A valid supplier ID must be entered"</em>. The vendor save creates the supplier itself.</li>
+<li><strong>Supplier-first fails.</strong> The <code>Supplier</code> service requires <em>"At least one valid primary vendor"</em>, and that vendor in turn needs its address to exist.</li>
+<li><strong>The <code>Supplier</code> service silently substitutes the next number</strong> when you type an ID that has no address row. Read back what was actually created.</li>
+<li>Read back <code>vendor</code>, <code>supplier</code>, <code>vendor_supplier</code> (<code>primary_vendor = 'Y'</code>) and <code>address</code>.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on play, September 2026 (vendor plus auto-created supplier); not re-run here.</p>
+</blockquote>
 <h3 id="rma-service-orders-the-order-service-refuses">RMA Service — Orders the <code>Order</code> Service Refuses</h3>
 <p>Return Merchandise Authorizations live in <code>oe_hdr</code> alongside ordinary sales orders, but the <strong><code>Order</code> service will not touch them</strong>. Loading one by <code>order_no</code> fails immediately:</p>
 <div class="highlight"><pre><span></span><code>General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.
@@ -5691,6 +6020,74 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 <p><strong>Gotcha — the pricing units are required.</strong> <code>unit_id</code>/<code>unit_size</code> on TABPAGE_1 and <code>price_unit_id</code>/<code>price_unit_size</code> on TABPAGE_3 must be sent — omitting them fails the whole transaction with <code>'Sales Pricing Unit' is a required column</code>, even though the window shows them as ordinary defaults. Send e.g. <code>EA</code> / <code>1</code>.</p>
 </blockquote>
 <p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/111">issue #111</a>, verified 2026-08-14.)</em></p>
+<h3 id="inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</h3>
+<p>The <code>InventoryCostEdit</code> service is the <strong>Edit Inventory Cost</strong> window. It sets <code>inv_loc.moving_average_cost</code> for one item at one location and posts the value difference to the GL. It is a clean Transaction API case: one POST per item, no popups.</p>
+<blockquote>
+<p>Payload shape only. Full runnable version: <a href="recipes/inventory-cost-edit.html">recipe: inventory-cost-edit</a>.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;InventoryCostEdit&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;QUERY.query&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;10&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w">     </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;new_cost&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.02&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.account&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;account_no&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;account_no&quot;</span><span class="p">,</span><span class="w">      </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1111100&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;year_for_period&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;period&quot;</span><span class="p">,</span><span class="w">          </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;12&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Element</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>QUERY.query</code> (List)</td>
+<td>Selects the item/location row, keyed <code>location_id</code> + <code>item_id</code></td>
+</tr>
+<tr>
+<td><code>FORM.form</code> (Form)</td>
+<td>Same keys; carries <strong><code>new_cost</code></strong></td>
+</tr>
+<tr>
+<td><code>FORM.account</code> (Form)</td>
+<td>The offset GL account plus the posting period: <strong><code>account_no</code></strong>, <strong><code>year_for_period</code></strong>, <strong><code>period</code></strong> — all three required</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Gotchas:</strong></p>
+<ul>
+<li><strong><code>account_no</code> is the stored form, without the dash.</strong> The window displays the account as <code>11111-00</code>; send <code>1111100</code>. The dashed form fails <em>"A valid GL account must be entered"</em> and nothing posts.</li>
+<li><strong>Send <code>year_for_period</code> before <code>period</code>.</strong> The window validates the period against the year already in the form (a default year), so period-first fails <em>"Period 12, Year 2000 have not been setup for company …"</em>.</li>
+<li><code>period</code> / <code>year_for_period</code> are <strong>fiscal</strong>, not calendar. A stray period-0 value fails <em>"Period has no value or is zero"</em>.</li>
+<li>Skip items already at the target cost and items with no <code>inv_loc</code> row at the location before you post.</li>
+</ul>
+<p><strong>What it writes — and what it doesn't:</strong></p>
+<ul>
+<li><code>inv_loc.moving_average_cost</code> changes (<code>last_maintained_by</code> = the API user) and one <code>audit_trail</code> row is written (<code>column_changed = 'moving_average_cost'</code>).</li>
+<li>A GL pair under journal <strong><code>IC</code></strong>, description <code>Cost Edit - &lt;old&gt; TO &lt;new&gt;</code>: the inventory account and the offset account you sent, for <code>qty_on_hand × (old − new)</code>. Sub-cent rounding posts to a separate rounding account.</li>
+<li><strong>No <code>inv_tran</code> row and no <code>inv_adj</code> row.</strong> The cost edit is invisible to the inventory transaction tables; <code>audit_trail</code> and the GL are its only history. The <code>inv_cost_edit</code> table stays empty.</li>
+<li>The GL shape is identical to the same edit made by hand in the window.</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026; not re-run here.</p>
+</blockquote>
 <h2 id="pdf-report-generation">PDF Report Generation</h2>
 <p>The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.</p>
 <p><strong>Endpoint:</strong> <code>POST {ui_server}/api/v2/process/pdfreport</code></p>
@@ -6149,9 +6546,15 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <ul>
 <li>Documents are only returned on a <strong>savable</strong> transaction — a bare reprint with nothing new to save errors with <em>"Save is not enabled"</em>.</li>
 <li><code>print_pick_ticket</code> emits only at the order's <strong>make location</strong>. If components stock elsewhere, the pick ticket comes back empty or missing — generate it with <code>m_picktickets</code> at the stock <code>location_id</code> instead (previous section).</li>
+<li><strong>Only the first print returns a PDF.</strong> To reprint a production order form, run <code>m_productionorders</code> with <code>reprint = ON</code> at the <strong>make</strong> location (it returns nothing at the parts location); reprint a production pick ticket with <code>m_reprintpicktickets</code>, type "Production Order", at the parts location. See <a href="12-Production-Labor-API.html#production-order-gotchas-field-verified">12 § Production Order Gotchas</a>.</li>
 </ul>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
+</blockquote>
+<h3 id="merging-several-report-pdfs-into-one-file">Merging Several Report PDFs into One File</h3>
+<p>The Crystal-rendered PDFs these endpoints return all name their embedded font subsets with the <strong>same</strong> six-letter tag (for example <code>AAAAAB+Arial</code>). Concatenate several of them and viewers and print drivers can draw a page with another page's glyphs — in the reported case, a Code 39 barcode printed as plain Arial text. When you merge, rename each font subset to a tag that is unique <strong>per document and per font</strong>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — observed on production print runs, September 2026; not re-run here.</p>
 </blockquote>
 <hr />
 <h2 id="gl-dimensions-in-the-api">GL Dimensions in the API</h2>
@@ -6608,6 +7011,14 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 </ul>
 <h4 id="step-2-find-the-rows-that-trip-it">Step 2 -- Find the rows that trip it</h4>
 <p>On that system the specific trigger was an <code>inventory_supplier</code> row with <strong><code>cost = 0</code> AND <code>list_price = 0</code></strong>. Either value being non-zero satisfies the rule (confirmed in both directions).</p>
+<blockquote>
+<p><strong>The zero/zero row is one trigger, not the only one.</strong> On production (October 2026) the same rule fired on an Interactive <code>Item</code> save for an item with <strong>no</strong> zero/zero row: it had two supplier rows, one with a cost and a zero list price, the other with a zero cost and a list price. Editing the first row's cost (<code>TABPAGE_6.tp_6_dw_6</code> row selected, <code>TABPAGE_7.tp_7_dw_7.cost</code> changed) raised the popup. A per-row check that needs both values non-zero, or that compares cost with list price, would explain it — that is not confirmed. Two more things from that run:</p>
+<ul>
+<li><strong>The rule's message is not readable through the API.</strong> The popup's <code>rule_callback_fields</code> datawindow comes back with no fields, so you cannot read which condition fired.</li>
+<li><code>cb_2</code> cancels cleanly with no change; <code>cb_1</code> commits. The save also restamps <code>date_last_modified</code> / <code>last_maintained_by</code> on the item's <em>other</em> supplier rows, even though their values do not change.</li>
+</ul>
+<p><em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
+</blockquote>
 <p><strong>It is the zero rows that matter, not the primary supplier row.</strong> An item can have one supplier row carrying a real cost and still be blocked by a <em>different</em> supplier row on the same item with both values at zero. Find them all:</p>
 <div class="highlight"><pre><span></span><code><span class="k">SET</span><span class="w"> </span><span class="k">TRANSACTION</span><span class="w"> </span><span class="k">ISOLATION</span><span class="w"> </span><span class="k">LEVEL</span><span class="w"> </span><span class="k">READ</span><span class="w"> </span><span class="k">UNCOMMITTED</span><span class="p">;</span>
 <span class="k">SET</span><span class="w"> </span><span class="n">LOCK_TIMEOUT</span><span class="w"> </span><span class="mi">10000</span><span class="p">;</span>
@@ -6923,10 +7334,12 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
+<li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
+<li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>
@@ -6936,6 +7349,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#example-generate-and-save-a-po-reprint">Example: Generate and Save a PO Reprint</a></li>
 <li><a href="#example-generate-a-production-order-pick-ticket-m_picktickets">Example: Generate a Production-Order Pick Ticket (m_picktickets)</a></li>
 <li><a href="#pdfs-from-the-transaction-endpoint-print-flags">PDFs from the /transaction endpoint (print flags)</a></li>
+<li><a href="#merging-several-report-pdfs-into-one-file">Merging Several Report PDFs into One File</a></li>
 </ul>
 </li>
 <li><a href="#gl-dimensions-in-the-api">GL Dimensions in the API</a></li>

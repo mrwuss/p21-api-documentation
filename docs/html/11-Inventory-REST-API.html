@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -678,6 +684,7 @@
 </li>
 <li><a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas (Verified at Scale)</a></li>
 <li><a href="#updating-existing-location-fields">Updating Existing Location Fields</a><ul>
+<li><a href="#updating-a-suppliers-cost-supplierslistcost">Updating a Supplier's Cost (Suppliers.list[].Cost)</a></li>
 <li><a href="#example-update-location-fields">Example: Update Location Fields</a></li>
 </ul>
 </li>
@@ -1628,6 +1635,31 @@
 <h2 id="updating-existing-location-fields">Updating Existing Location Fields</h2>
 <p>The GET -&gt; Modify -&gt; PUT pattern also works for <strong>updating fields on existing <code>inv_loc</code> records</strong>, not just appending new ones.</p>
 <p><strong>Verified writable fields:</strong> <code>Sellable</code>, <code>ProductGroupId</code>, <code>PurchaseDiscountGroup</code>, <code>SalesDiscountGroup</code>, <code>ReplenishmentLocation</code>, <code>PrimaryBin</code> (see <a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas</a> — <code>PrimaryBin</code> verified across 276 rows; the bin must already exist at that location)</p>
+<h3 id="updating-a-suppliers-cost-supplierslistcost">Updating a Supplier's Cost (<code>Suppliers.list[].Cost</code>)</h3>
+<p>The same GET → modify → PUT round trip updates <strong><code>inventory_supplier.cost</code></strong> on an existing supplier row. <code>GET /api/inventory/parts/{ItemId}?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure</code>, change <code>Suppliers.list[n].Cost</code>, and PUT the full payload back → HTTP 200.</p>
+<p>A full-row before/after diff showed exactly this:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Table</th>
+<th>What changed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inventory_supplier</code> (the edited row)</td>
+<td><code>cost</code> to the new value; <strong><code>date_cost_last_modified</code> set by P21</strong> (it was NULL); <code>date_last_modified</code> and <code>last_maintained_by</code> (the API user) updated. Nothing else</td>
+</tr>
+<tr>
+<td><code>inv_loc</code> (every location on the item)</td>
+<td>Only <code>date_last_modified</code> and <code>last_maintained_by</code> — <strong>the PUT restamps every location's audit columns even when no location field changed</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>If something downstream keys off <code>inv_loc.date_last_modified</code> (a sync job, a "recently changed" report), expect every location of the item to show up after a supplier-cost PUT. <code>ListPrice</code> is very likely writable the same way but was not exercised. Items whose ID contains <code>/</code> cannot take this path — <a href="#url-encoding-for-special-characters">the GET itself 404s</a>; use the Interactive <code>Item</code> window instead.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on production 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/170">#170</a>).</p>
+</blockquote>
 <p>This API is the recommended path for <code>inv_loc</code> modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) <strong>read-only</strong>, so they cannot be edited there either.</p>
 <p>P21 validates changed values through business logic. For example, setting an invalid <code>ProductGroupId</code> returns:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -2954,6 +2986,7 @@
 </table></div>
 <blockquote>
 <p><strong>Known Issue</strong>: Forward slash (<code>/</code>) in item IDs cannot be URL-encoded for the pricing endpoints. The API (or IIS) interprets <code>%2F</code> as a literal path separator, returning 404. There is no known workaround for items containing <code>/</code> in their ID. (Credit: John Kennedy, confirmed by Felipe Maurer)</p>
+<p><strong>It is not only the pricing endpoints.</strong> <code>GET /api/inventory/parts/{ItemId}</code> also returns 404 for an item ID containing <code>/</code> (sent as <code>%2F</code>), so the GET → modify → PUT update path cannot reach such items either. For supplier cost and other item edits on them, use the Interactive <code>Item</code> window. <em>(@mrwuss, production 26.1, October 2026 — <a href="https://github.com/mrwuss/p21-api-documentation/issues/171">#171</a>.)</em></p>
 </blockquote>
 <hr />
 <h3 id="batch-pricing">Batch Pricing</h3>
@@ -3336,6 +3369,7 @@
 </li>
 <li><a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas (Verified at Scale)</a></li>
 <li><a href="#updating-existing-location-fields">Updating Existing Location Fields</a><ul>
+<li><a href="#updating-a-suppliers-cost-supplierslistcost">Updating a Supplier's Cost (Suppliers.list[].Cost)</a></li>
 <li><a href="#example-update-location-fields">Example: Update Location Fields</a></li>
 </ul>
 </li>

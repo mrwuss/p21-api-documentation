@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -676,6 +682,7 @@
 </ul>
 </li>
 <li><a href="#complete-batch-workflow-example">Complete Batch Workflow Example</a></li>
+<li><a href="#large-sales-orders-split-at-about-100-lines">Large Sales Orders: Split at About 100 Lines</a></li>
 <li><a href="#performance-summary">Performance Summary</a></li>
 <li><a href="#related">Related</a></li>
 </ul>
@@ -6053,6 +6060,41 @@ class above:</p>
 </div>
 </div>
 <hr />
+<h2 id="large-sales-orders-split-at-about-100-lines">Large Sales Orders: Split at About 100 Lines</h2>
+<p>Order entry costs time <strong>inside P21</strong>, whichever API you use, and the cost per line grows with the number of lines already on the order. The Transaction API also re-reads the whole order after every Transaction, so appending to a large order slows down as it grows.</p>
+<p>Measured on a play tenant, appending lines in 100-row Transactions to one order:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Lines already on the order</th>
+<th>Server time per line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1–100</td>
+<td>about 0.8 s</td>
+</tr>
+<tr>
+<td>about 900</td>
+<td>about 3 s</td>
+</tr>
+</tbody>
+</table></div>
+<p>A single order of about a thousand lines took about half an hour. The same list split into <strong>ten orders of about 100 lines</strong> ran at a flat <strong>~0.9 s per line</strong> — roughly half the total time — with zero failures, and it repeated at the same speed on production. Cancelling the thousand-line order was mostly re-read time: P21 reloads the order before it applies the cancel.</p>
+<p><strong>The pattern:</strong></p>
+<ol>
+<li>Slice the line list into chunks of about 100.</li>
+<li>Per chunk, create the order header plus the first line, then append the rest in <strong>one</strong> multi-row <code>TP_ITEMS.items</code> Transaction keyed on <code>order_no</code> (one Transaction per line collides — see <a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">Order Service — Line Appends</a>).</li>
+<li>Give each order a recognizable suffix on <code>po_no</code> (<code>- 01</code>, <code>- 02</code>, …) so the warehouse can tell the slices apart.</li>
+<li>Read back per order with <code>delete_flag = 'N' AND cancel_flag = 'N'</code> — a failed append <a href="03-Transaction-API.html#a-failed-create-leaves-rows-behind">leaves soft-deleted rows</a>.</li>
+<li>If an order reports a lock held by your own API user, <strong>wait</strong> — a killed client's request is still running server-side (<a href="06-Error-Handling.html#locks-and-orphaned-sessions">Locks and orphaned sessions</a>). Don't bisect or retry into the lock.</li>
+</ol>
+<p>The orders are independent, so they could run in parallel; that has not been tested. For contrast, the Interactive API costs about five HTTP calls per line, so it is slower per line than a multi-row Transaction even though the server-side cost is the same.</p>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — measured on play and repeated on production, September 2026; not re-run here.</p>
+</blockquote>
+<hr />
 <h2 id="performance-summary">Performance Summary</h2>
 <p>Measured from production use creating and managing 700+ price pages:</p>
 <div class="table-wrap"><table>
@@ -6160,6 +6202,7 @@ class above:</p>
 </ul>
 </li>
 <li><a href="#complete-batch-workflow-example">Complete Batch Workflow Example</a></li>
+<li><a href="#large-sales-orders-split-at-about-100-lines">Large Sales Orders: Split at About 100 Lines</a></li>
 <li><a href="#performance-summary">Performance Summary</a></li>
 <li><a href="#related">Related</a></li>
 </ul>

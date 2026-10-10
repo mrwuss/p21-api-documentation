@@ -8,7 +8,7 @@ This page is a **checklist**, not a script. Each stage says what to call, the fi
 
 ## Prerequisites
 
-- **An assembly (BOM) definition exists** for the item — you cannot create a production order for an item without one. Create it with the Transaction API `Assembly` service ([manual](../12-Production-Labor-API.md#assembly-service-cross-reference)).
+- **An assembly (BOM) definition exists** for the item — you cannot create a production order for an item without one. Create it with the Transaction API `Assembly` service ([manual](../12-Production-Labor-API.md#assembly-service-cross-reference)) — or with the Interactive window when the item is already a component of another assembly ([why](../03-Transaction-API.md#part-assembly-creation-workflow)).
 - **The finished item is set up at the source location**, or the save fails with *"item ID does not exist at your source location."*
 - **Know your assembly behavior flags** ([manual](../12-Production-Labor-API.md#assembly-behavior-flags)) — three ON/OFF flags on `assembly_hdr` decide how the item behaves:
 
@@ -412,6 +412,7 @@ static string ReadField(string payload, string field)
 - **Status codes:** `702` Open, `1962` Confirmed, `1268` Completed — a `1962` alone does not prove stock moved (see shell confirm).
 - **Auto-create nets against stock** — stock on hand means no production order spawns; salesrep must be valid at the sales location; order date must differ from required date (Stage 1).
 - **Confirm every ticket** — parts *and* the labor/intangibles ticket.
+- **More field-verified traps** — make location before parts location, UD fields hidden by a screen version, `"Canceled"` to cancel a ticket, `qty_to_complete` pre-filled on every line, reprints via `m_productionorders`, and the sales-line link the API cannot make: [12 § Production Order Gotchas](../12-Production-Labor-API.md#production-order-gotchas-field-verified).
 
 ## Verify
 

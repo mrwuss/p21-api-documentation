@@ -315,6 +315,17 @@ Separate the "trigger" fields into a second transaction:
 3. Look for rules triggered by `acknowledged` or `c_shipped_flag`
 4. Consider adding condition: `IF user <> 'API_USER'`
 
+To change a rule's scope without the desktop client, see [Managing Business Rules Through the DynaChange Organizer](04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer).
+
+#### Rule Out Your Own Orphaned Sessions First
+
+Two failures look like pool contamination but are not:
+
+- **An Interactive window left open for the same API user** makes previously working Transaction payloads fail (for example *"Item ID X has been saved; therefore, the Item ID cannot be edited"*). End the session and the identical payload passes.
+- **A client that was killed mid-request** leaves the server finishing the work and holding the record lock (*"may currently be edited by <your API user>"*).
+
+Neither is intermittent in the pool sense: both clear once the session ends or the server finishes. See [Locks and orphaned sessions](06-Error-Handling.md#locks-and-orphaned-sessions).
+
 ### 4.3 Long-Term: Report to Epicor
 
 This is arguably a **bug in P21's session pool management**. Sessions with open dialogs should not be returned to the pool.

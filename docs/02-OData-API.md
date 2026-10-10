@@ -165,7 +165,7 @@ Every base table is on `table`, every view is on `view`, and nothing is on both.
 - **Don't infer the surface from the name.** `class_expansion_view` is a `BASE TABLE` despite the suffix, so it lives on `table` and 404s on `view`. The object's `TABLE_TYPE` decides, never its name.
 - **Check the matching `$metadata` before concluding something is unexposed.** A view missing from `table/$metadata` proves nothing — all 3,759 of them are missing from it.
 - **User-defined tables are fully readable**, and this is not obvious from the table list: P21's own `*_ud` tables (`oe_hdr_ud`, `oe_line_ud`, `inv_mast_ud`, `customer_ud`, `supplier_ud`, `location_ud`, `po_line_ud`) and site-custom base tables alike are ordinary base tables on the `table` surface.
-- **Object names are case-insensitive.** `ifp_G21_Alerts`, `ifp_g21_alerts` and `IFP_G21_ALERTS` all resolve.
+- **Object names are case-insensitive.** `Custom_Alerts`, `custom_alerts` and `CUSTOM_ALERTS` all resolve.
 
 The 25 [Enterprise/Global Search views](#enterpriseglobal-search-views-p21_view_es_) documented below are on the `view` surface, which is why they do not appear in `table/$metadata`.
 

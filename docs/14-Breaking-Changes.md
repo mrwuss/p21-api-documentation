@@ -220,6 +220,8 @@ General Exception: Column is disabled: note
 
 Add `IgnoreDisabled: true` — payload otherwise byte-identical — and it returns `Summary: {"Failed": 0, "Succeeded": 1}`, `Status: "Passed"` and no messages, while a `/transaction/get` read-back shows the note **unchanged**. The echoed transaction drops the `LINE_NOTE.line_note` element entirely and returns only `TABPAGE_1.order`, so nothing in the response marks the omission.
 
+**A fourth surface: `SalesPricePage`'s price-book link** (26.1.5950.0, 2026-10-10). Writing `USED BY.price_book_x_page` with `price_book_price_book_id` is refused loudly without the flag — `Column is disabled: price_book_price_book_id`. With `IgnoreDisabled: true` it returns `Succeeded: 1`, drops the element from the echoed response, and writes no `price_page_x_book` row. The link that does work goes through the `SalesPriceBook` service instead — see [Creating a Page Through the Transaction API](08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api). Originally reported by [Alex Westemeier](https://github.com/AWestemeier); confirmed here.
+
 > **Don't key off the column name in the loud form.** Which column the unflagged refusal names is just the first disabled one the transaction reaches, so it moves with your payload: the 5950.0 re-run sent `note_id` in `Keys` **and** in `Edits` and got `Column is disabled: note_id` instead. Same refusal, same false success under the flag — only the named column differs. Match on `Column is disabled:`, not on the column.
 
 That was three unrelated services showing the same false success, which is what marked this as a platform behavior rather than a `JobContractPricing` quirk.

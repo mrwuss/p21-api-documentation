@@ -2811,6 +2811,18 @@ The Transaction API [cannot drive wizards](03-Transaction-API.md#limitations) �
 
 > **Prerequisite: the API user needs a Buyer ID.** Without one, setting the trigger returns `Status: 2` with `To create a PO, you must have a valid Buyer ID.`; with one it returns `Status: 1`. Both verified on 26.1 (August 2026). The Buyer ID is set per user in **User Maintenance** — a P21 configuration change, not something the API can do for you. Check it before writing any of the rest, because every other step works right up until the save.
 
+### Set `quote` to `OFF` first: the window can open in quote mode
+
+On a 26.1 play tenant the `Order` window opened through the Interactive API defaulted to **`quote = ON`**, and every order saved that way was a quote (`oe_hdr.projected_order = 'Y'`). Quote mode quietly changes what the rest of this section observes:
+
+- **A quote never allocates**, so allocation fields look disabled.
+- **`disposition` looks disabled at line entry.**
+- **The wizard comes up as an RFQ.** On a quote, the save opens the "Create RFQ/Purchase Orders" wizard (`w_create_po_from_oe_wzd`) with `quote_item = Y`; finishing it creates an **RFQ** (`po_type = 'Q'`, `oe_line_po.connection_type = 'Q'`). On a real order the same wizard defaults `quote_item = N`, and `cb_next` then `cb_finish` creates a `po_type = 'D'` PO linked with `connection_type = 'P'`.
+
+**Set `TABPAGE_1.order.quote = OFF` as the first header edit** and read `projected_order` back after the save.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, October 2026, including the correction of an earlier round that ran in quote mode by accident ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)).
+
 ### Why this cannot start in the Transaction API
 
 The line's `disposition` field is the trigger for a direct-ship line, and it is a **disabled column** — `Column is disabled: disposition`, verified both through `/transaction` and through an interactive change on an existing line. Its valid values are `B`, `C`, `D`, `H`, `M`, `P`, `S`; `D` is direct ship. Set it **as the line is entered**, in the Interactive window — there is no stateless path.
@@ -2876,6 +2888,19 @@ Two notes for whoever picks this up:
 
 The date-overwrite behavior above rests on the field binding and on the receipt data, not on a live write from this repo — the data is unambiguous, the write path is not yet.
 
+##### The Interactive path works
+
+Driving the window instead of posting a transaction confirmed a direct ship on play 26.1 (October 2026):
+
+1. Open `{"ServiceName": "DirectShipConfirmation"}`.
+2. Set `TABPAGE_1.tp_1_dw_po.po_no`.
+3. Set `TABPAGE_1.tp_1_dw_po.receive_all` = `ON`.
+4. Save.
+
+`shipment_date`, `period` and `year_for_period` came pre-filled. One save completed the PO, created a pick ticket and invoiced the sales-order line, with no popups. Read back `po_line.complete`, `oe_line.qty_invoiced` and the new `invoice_hdr` row.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path that returned an empty result on 26.1.5940.0 above is the same one [Alex Westemeier](https://github.com/AWestemeier) reports working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`, which is disabled and fails the transaction *after* the documents are written). The difference is not explained.
+
 ### Setting `disposition` — only at line entry
 
 `disposition` behaves as a **disabled column everywhere except a line being entered**. Verified three ways on 26.1:
@@ -2887,6 +2912,8 @@ The date-overwrite behavior above rests on the field binding and on the receipt 
 | Interactive change on the line **as it is entered** | **`Status: 1`** — accepted *(for a user permitted to set it)* |
 
 So there is no way to convert an existing order line to direct ship through either API, and no stateless path at all. The line must be created in the window with `disposition = 'D'` set during entry.
+
+> **Correction for quote mode (October 2026).** A later run on play 26.1 found that the window had been opening in [quote mode](#set-quote-to-off-first-the-window-can-open-in-quote-mode). With `quote = OFF` set first, the **service account** set `disposition = D` at line entry with `Status: 1`, and the wizard then built a `po_type = 'D'` PO. Whether the A/B result below was also a quote-mode artifact has not been re-tested; check `quote` before you conclude a user is gated. *(@mrwuss, [#169](https://github.com/mrwuss/p21-api-documentation/issues/169).)*
 
 > **And it is user-gated on top of that.** In a controlled A/B on the same tenant — identical request sequence, two tokens differing only in the user — a CSR login set `disposition` successfully while a **service account was refused with `Column is disabled: disposition`**, even after that account was given a Buyer ID. The Buyer ID clears the `c_create_po` gate; it does not clear this one. See [`Column is disabled` Can Mean "Disabled For You"](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you).
 >
@@ -2993,7 +3020,34 @@ Verified end-to-end on `ItemNotepad` (26.1, August 2026; note confirmed in the `
 3. Select the areas tab (`PageName: "TABPAGE_17"`) and run **`cb_selectall`** (`POST /v2/tools`) — this selects **every** area the note can display in. To pick a single area, select its row in the Available Areas grid (`tp_17_dw_dragdrop`) first and run `cb_select` (not separately verified).
 4. Save (`PUT /v2/data`, bare window-GUID body) — `savesucceeded`.
 
-`CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` publish the identical element shape (header form + `TABPAGE_17` area pair) and the same tools; only the header key field differs (`customer_id` / `supplier_id` / `vendor_id`). They have not been separately exercised.
+`CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` publish the identical element shape (header form + `TABPAGE_17` area pair) and the same tools; only the header key field differs (`customer_id` / `supplier_id` / `vendor_id`). They have not been separately exercised here.
+
+Field-level notes from the item, supplier and customer notepads:
+
+- **`mandatory` takes `Y`/`N` interactively** but `ON`/`OFF` through the Transaction API.
+- **`notepad_class` takes the class description**, not its code (the code fails *Invalid notepad_class value*).
+- **The `TIMESTAMP` tabs cannot be selected by name.** Two tabs share the name, and selecting it fails *"Multiple tabs have a name..."*. They hold audit columns only; skip them.
+- Header fields of an existing note (`topic`, `note`, `mandatory`, dates) are editable through the Transaction API keyed on `note_id`; the areas are not.
+- **A note displays only while `row_status_flag` is Active and `expiration_date` is today or later.** Match both when you look for "the note P21 shows" — superseded notes are often end-dated rather than deleted.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026; not re-run here.
+
+## Creating an Item in the Item Window
+
+The Transaction API [cannot create an item](03-Transaction-API.md#item-service-gotchas) (the Units of Measure tab is disabled until the item exists, and the item cannot save without a unit). The Interactive `Item` window can, because it sequences the tabs the way the UI does. The usual route is still the [Inventory REST create](11-Inventory-REST-API.md#minimum-create-payload); use this one when you need the window's own defaults and prompts.
+
+1. Typing a new `item_id` on `TABPAGE_1.tp_1_dw_1` returns **`Status: 2` with `tabpageenabled` events** — that is "new item" mode, not an error. Set `item_desc` and the discount groups.
+2. `TABPAGE_2.tp_2_dw_2`, row 1 (it already exists; `add_row` is refused): `unit_id`, then **all four** of `default_sales_unit`, `sales_pricing_unit`, `default_purchasing_unit`, `purchase_pricing_unit` = `ON`. Leave one out and the save is refused.
+3. `TABPAGE_17.invloclist`, row 1: `location_id`, `stockable`.
+4. `TABPAGE_18.inv_loc_detail`: `product_group_id` — answer **Yes** (`cb_1`) to the *"set the GL accounts for product group?"* prompt — then the discount groups, tax group and `track_bins`.
+5. `TABPAGE_6.tp_6_dw_6`, row 1: `supplier_id`, `division_id`.
+6. `SUPPLIER_X_LOCATION.supplier_x_location`, row 1: fill `location_id` (and supplier). Visiting the tab creates a blank row that the save otherwise rejects.
+7. Save.
+
+- **One location per session.** Add the remaining locations afterwards through the Transaction `Item` service — one POST per location, `IgnoreDisabled: true`, with `TABPAGE_17.invloclist`, `TABPAGE_18.inv_loc_detail` and a keyed [location supplier row](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert).
+- **The Units of Measure grid can be locked for your role by a DynaChange screen version.** On one tenant the same steps worked in production and failed on the test copy for exactly that reason — check [which role the API user runs as](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you).
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on production, September 2026 (two items created end to end); not re-run here.
 
 ## Sales Order Entry with Assembly Lines
 
@@ -3013,6 +3067,13 @@ The flow (session started with `ResponseWindowHandlingEnabled: true`):
 Assembly behavior is item-level (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save. On the saved order, `oe_line.assembly` codes: `B` = kit parent, `N` = component, `P` = production-order line, `S` = build-to-stock allocation. The production-order link is `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`). See the [Production & Labor API guide](12-Production-Labor-API.md) for the full production lifecycle.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — flow and gotchas verified end-to-end on a play environment (June 2026).
+
+More from order entry in the window:
+
+- **Answer *"add as assembly?"* with No (`cb_2`) for a plain stock line.** The line is then `assembly = 'N'`, backordered when there is no stock, and it **cannot** become a production-order line later (*"Disposition 'P' is valid only for assembly items that need processing"*). The order window's production-order tab is display-only. *(Alex Westemeier, play, September 2026; not re-run here.)*
+- **Lines after the first need `add_row("items")`** — the grid has no blank trailing row. `GET /v2/data` returns only the current `items` row, so verify all lines in the database after the save. *(Alex Westemeier, play, September 2026; not re-run here.)*
+- **The window can open in quote mode** — set `quote = OFF` first. See [Set `quote` to `OFF` first](#set-quote-to-off-first-the-window-can-open-in-quote-mode).
+- **Front-counter invoice in the same save.** `TABPAGE_1.order.fc_create_invoice = ON`, with `quote = OFF` on a stocked line, creates the pick ticket and the invoice in the order's own save. *(@mrwuss, play 26.1, October 2026, [#169](https://github.com/mrwuss/p21-api-documentation/issues/169).)*
 
 ---
 
@@ -3448,6 +3509,43 @@ async Task CreateSupplierGroupAsync(
 - **Verify the write independently**, as everywhere else in this repo. The cleared caption tells you the window committed, not what it wrote.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — surface reverse-engineered from the web client and first verified in production (August 2026); re-verified here on 26.1.5940.0.
+
+## Managing Business Rules Through the DynaChange Organizer
+
+**No service enables, disables or scopes a DynaChange business rule** — the Transaction service list has none, the 26.1 rules service (`api/rules`, `api/rules/execute`, `api/rules/unload`) only executes or unloads rule code, and `frame_menu` registers no rule-maintenance window with a service name. **The route is a tool.** Every open window carries the DynaChange Organizer tool **`dc.organizer.rule`** ("Rules"). Running it opens **`w_business_rule_organizer`** ("Business Rule Organizer") as a response window, and that window can switch a rule on or off and change who it runs for.
+
+This is how you take a rule such as the [Item Issues Detected save rule](03-Transaction-API.md#item-issues-detected-popup-root-cause-and-data-fix) out of an integration's path: scope it to specific roles or users and leave the API user out.
+
+| Step | Call | Result |
+|---|---|---|
+| Session | `POST /api/ui/interactive/sessions/` `{"SessionType": "Auto", "ResponseWindowHandlingEnabled": true}` | |
+| Host window | `POST /v2/window` `{"ServiceName": "Customer"}` | Any registered service works as the host |
+| Open the organizer | `POST /v2/tools` `{"WindowId": "<host>", "ToolName": "dc.organizer.rule"}` | `Status: 3`; the organizer's id is `windowid` on the `windowopened` event |
+| Read the rules | `GET /v2/data?id=<organizer>` | `LIST.list` holds one row per rule |
+| Select a rule | `PUT /v2/row` `{"WindowId": "<organizer>", "DatawindowName": "list", "Row": n}` | `Status: 1` |
+| Enable / disable | `PUT /v2/change` `{"WindowId": "<organizer>", "List": [{"TabName": "LIST", "DatawindowName": "list", "FieldName": "row_status_flag", "Value": "Inactive"}]}` | `Status: 1`. Values are `"Active"` / `"Inactive"` |
+| Scope: stop running for all users | same call, `FieldName: "run_for_all_flag"`, `Value: "OFF"` | `Status: 1` |
+| Scope: open the permissions tab | `PUT /v2/tab` `{"WindowId": "<organizer>", "PageName": "MANAGE_PERMISSIONS"}` | Builds `business_rule_x_role` (`role`, `selected`) and `business_rule_x_users` (`users_id`, `selected`) for the selected rule |
+| Scope: pick a user or role | `PUT /v2/row` on `business_rule_x_users` or `business_rule_x_role`, then `PUT /v2/change` with `TabName: "MANAGE_PERMISSIONS"`, `FieldName: "selected"`, `Value: "ON"` | `Status: 1` |
+| Commit | `POST /v2/tools` `{"WindowId": "<organizer>", "ToolName": "cb_apply"}` | `Status: 1` |
+| Close | `POST /v2/tools` `{"WindowId": "<organizer>", "ToolName": "cb_cancel"}`, then `DELETE /v2/window?id=<host>` and `DELETE /sessions/` | `Status: 1` with a `close` event |
+
+**Confirmed by read-back:** `business_rule.row_status_flag` went `704` → `705` → `704` (Active → Inactive → Active), with `date_last_modified` updated on each apply, read through the `p21_view_business_rule` OData view. `run_for_all_flag` went `Y` → `N` with one user and one role ticked, and the ticks were still there after the organizer was closed and reopened. The `business_rule_x_users` / `business_rule_x_roles` rows themselves could not be read back: no OData view exposes them, and the raw tables returned 401 for the tester's user.
+
+**Gotchas:**
+
+- **`Row` inside a `/v2/change` item is ignored.** The edit lands on the **active** row. Without a `PUT /v2/row` first, a change returned `Status: 1` and did not land on the row it named. Always select the row first.
+- **Display values, not codes.** `row_status_flag` takes `"Active"` / `"Inactive"`; the checkboxes (`run_for_all_flag`, `selected`) take `"ON"` / `"OFF"`.
+- **Closing with an unapplied edit raises a prompt** (`Status: 3` and a new window) instead of closing. Run `cb_apply` first.
+- **The grid has no `business_rule_uid` column.** Match a row on `rule_name` + `field_name` + `window_title`; `rule_name` alone is not unique.
+- **The list covers rules for all windows**, not only the host window's — but only non-internal rules (`internal_rule_flag = 'N'`).
+- `LIST.list` columns: `apply_during_save_flag`, `class_name`, `field_name`, `front_counter_flag`, `log_rule_verbosity`, `multirow_flag`, `order_entry_flag`, `rma_entry_flag`, `row_status_flag`, `rule_name`, `rule_type_cd`, `run_for_all_flag`, `run_type_cd`, `window_title`.
+- The organizer also exposes `cb_import`, `cb_export`, `cb_delete` and `cb_sqlrule` ("Create Pre-SQL Rule"). They were not run.
+- **The same tool works on the [`ui/full` surface](#the-uifull-surface-the-web-clients-own-rest-api)** (`POST ui/full/v2/window/tools`), where the fields take codes (`705`, `"N"`, `"Y"`) instead of display values.
+
+**Still open:** whether role scoping is honored for a consumer-key token's `username`, and whether a user without DynaChange rights gets the `dc.organizer.rule` tool at all (the verified run used an admin user). Test both with the account your integration runs as.
+
+> **Credit:** [@yeshayak](https://github.com/yeshayak) — verified on a 26.1 test database, reported October 2026 (disable, re-enable and user/role scoping, each confirmed over OData and reverted); not re-run here. Filed under [#167](https://github.com/mrwuss/p21-api-documentation/issues/167).
 
 ## Verifying Writes (Don't Trust Save Status Alone)
 

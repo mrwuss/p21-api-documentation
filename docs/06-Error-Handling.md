@@ -250,7 +250,7 @@ A required field is absent from the payload, and the message does not say which.
 
 **`Summary` shows `Failed: 1` — did anything land?**
 
-Depends on the scope. A **single Transaction is atomic** — a failure anywhere rolls back its own edits, verified on `Order`. But **Transactions in one POST are independent**, so `{"Failed": 1, "Succeeded": 1}` means half your batch is live; branch on `Results.Transactions[].Status`, not the tally, or a retry double-applies. And atomicity covers the record, not **downstream documents** a service generates on save — those can survive a later failure. See [Transaction API - What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees).
+Depends on the scope. A **single Transaction is atomic for edits** — a failure anywhere rolls back its own edits, verified on `Order`. **A failed create is not:** it consumes a document number and can leave soft-deleted rows — see [A failed write can leave rows behind](#a-failed-write-can-leave-rows-behind). But **Transactions in one POST are independent**, so `{"Failed": 1, "Succeeded": 1}` means half your batch is live; branch on `Results.Transactions[].Status`, not the tally, or a retry double-applies. And atomicity covers the record, not **downstream documents** a service generates on save — those can survive a later failure. See [Transaction API - What `Failed` actually guarantees](03-Transaction-API.md#what-failed-actually-guarantees).
 
 **`Invalid column name: {name}`**
 
@@ -292,6 +292,50 @@ See [Transaction API - PDF Report Generation](03-Transaction-API.md#pdf-report-g
 **Service Fails on `/transaction` Endpoint**
 
 Some services silently fail or return errors when sent to `/api/v2/transaction`. These services must use `/api/v2/commands` instead. See [Transaction API - Commands Endpoint](03-Transaction-API.md#commands-endpoint) for the full list of affected services.
+
+**`Ambiguous data detected (PopUp encountered)` on an item ID**
+
+Item IDs are prefix-matched, and yours matches more than one item — typically two IDs that differ only in spacing. Send the exact ID. See [Order Service — Line Appends, Cancels, Holds, and Item Lookup](03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup).
+
+**`'X' has been deleted` on an item ID**
+
+The item was merged into another one. The old ID survives with `inv_mast.delete_flag = 'Y'`, and `inv_mast.extended_desc` names the item it was merged into. Use the survivor.
+
+### Soft-Deleted Residue, Locks, and Orphaned Sessions
+
+Three behaviors that make a failed or interrupted write look different from what actually happened on the server.
+
+#### A failed write can leave rows behind
+
+- A failed `Order` **create** whose first line was accepted consumes an order number and leaves `oe_hdr` (`delete_flag = 'Y'`, `completed = 'Y'`), the accepted line(s) (`delete_flag = 'Y'`, `disposition = 'C'`, quantity moved to `qty_canceled`) and an `oe_hdr_salesrep` row. A create whose **first** line fails leaves nothing.
+- A failed multi-row line **append** to a saved order leaves its lines soft-deleted the same way.
+- In an Interactive session, **`add_row` commits the header and line 1 mid-session** (`completed = 'T'`); ending the session without saving flips them to `delete_flag = 'Y'`.
+
+Filter every read-back on `delete_flag = 'N'` (and `cancel_flag = 'N'` where the table has one), and look for the stray document before retrying a failed create. Detail and the verified cases: [03 § A failed create leaves rows behind](03-Transaction-API.md#a-failed-create-leaves-rows-behind).
+
+#### Locks and orphaned sessions
+
+**A killed client does not stop the server.** A Transaction (or an Interactive save) that is already running keeps running after your client times out or is killed, and it holds the record lock until it finishes. Writes to that record meanwhile fail with:
+
+```text
+General Exception: Order 123456 may currently be edited by APIUSER. Please verify with that user first ...
+```
+
+— where the user named is **your own API user**. Wait for the server to finish (watch `oe_hdr.completed` leave `'T'`); do not retry or split the batch while the lock is held. Give long server-side calls a generous client timeout (minutes, not seconds) so this happens less often.
+
+**An open Interactive window for the same user blocks the Transaction API.** If an Interactive session for the API user was never ended — a crash, a script that forgot `DELETE /sessions/` — identical, previously working Transaction payloads can fail with:
+
+```text
+Item ID X has been saved; therefore, the Item ID cannot be edited
+```
+
+The same payload passes once the orphaned session is gone. **End any Interactive session before Transaction API work** for the same user, and always end sessions in a `finally` block.
+
+**An order left in a `t~` status by a crashed session** blocks shipment confirmation of its pick tickets. Re-open the order in the `Order` window and save it, then ship.
+
+See also [`oe_hdr.completed = 'T'`](03-Transaction-API.md#oe_hdrcompleted-t-is-what-blocks-the-write) for the pre-screen and for locks abandoned by people, and [Session Pool Troubleshooting](07-Session-Pool-Troubleshooting.md) for the unrelated session-pool failure mode.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — locks, orphaned sessions and soft-deleted residue observed on play and production, September 2026; not re-run here. Failed-create leftovers: verified by the maintainer on 26.1.5950.0 (October 2026).
 
 ### Session Pool Contamination
 
@@ -1381,6 +1425,10 @@ void CheckTokenExpiry(string token)
 | 404 `Edm.Decimal` / `Edm.String` operand types | OData | Numeric key column — drop the quotes: `customer_id eq 100198` — [details](#404-incompatible-operand-types-a-quoted-numeric-key) |
 | `Invalid column name: delete_flag` on a grid | Transaction | That grid may delete another way — check `ValidValues` for `row_status_flag` — [details](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
 | `Invalid {field} value: 700` on an enum | Transaction | Send the label, not the `code_p21` integer — [details](03-Transaction-API.md#usecodevalues) |
+| `may currently be edited by <your API user>` | Transaction | A killed client's request is still running server-side — wait, don't retry — [details](#locks-and-orphaned-sessions) |
+| `Item ID X has been saved; therefore, the Item ID cannot be edited` on a payload that used to work | Transaction | An Interactive session for the same user is still open — end it — [details](#locks-and-orphaned-sessions) |
+| Failed write, but rows show up in the table | Transaction | Soft-deleted residue — filter `delete_flag = 'N' AND cancel_flag = 'N'` — [details](#a-failed-write-can-leave-rows-behind) |
+| `Ambiguous data detected (PopUp encountered)` | Transaction | Item ID prefix-matches several items — send the exact ID — [details](03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup) |
 | 404 on entity | Entity | Check if Entity API enabled |
 | 405 on address update | Entity | Address has no PUT — by design |
 | 500 on address `/new` | Entity | Address has no template — by design |

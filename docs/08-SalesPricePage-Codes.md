@@ -422,6 +422,24 @@ field-order sequence: `FORM.form` keys on `price_page_uid`, so it supports a key
 where the page type determines which subsequent fields are valid or required. In short, use
 Interactive for create workflows and the Transaction API for keyed updates.
 
+### Creating a Page Through the Transaction API
+
+A Transaction API create has also been verified, for an item-level page with a fixed price and a cost `Value` on the COSTS tab. It used three elements of `SalesPricePage` and then a second service for the book link:
+
+| Step | Service · element | Fields |
+|---|---|---|
+| 1 | `SalesPricePage` · `FORM.form` | `item_id`, `description`, `price_page_type_cd`, `company_id`, effective/expiration dates, `contract_number`, `pricing_method_cd`, `source_price_cd`, `price`, `totaling_method_cd` / `totaling_basis_cd`, `strategic_price_applies_to_cd` — in the [field order](#required-field-order-for-page-creation) above |
+| 1 | `SalesPricePage` · `COSTS.costs` | `other_cost` and `commission_cost` type / value / source / calculation method / calculation value |
+| 1 | `SalesPricePage` · `VALUES.values` | `calculation_method_cd`, `calculation_value1` |
+| 2 | `SalesPriceBook` · `FORM.form` keyed `price_book_id`, then `LIST.list_detail` keyed `price_page_uid` | adds the `price_page_x_book` row |
+
+- **Omit `calculator_type`.** Its raw database value is refused (*"Invalid calculator_type value: B"* under `UseCodeValues: false`); the default lands as that same value anyway.
+- **Link the page to its book immediately after the create.** An unlinked page is invisible to customer pricing, and order lines priced in the gap never pick the page up later. Do the create and the link back to back in one run.
+- **Link through `SalesPriceBook`, not through the page.** `SalesPriceBook` · `FORM.form` keyed `price_book_id`, plus a `LIST.list_detail` row keyed `price_page_uid`, creates the `price_page_x_book` row. The page's own `USED BY.price_book_x_page` element cannot do it: sending `price_book_price_book_id` there fails cleanly with `Column is disabled: price_book_price_book_id` — and with `IgnoreDisabled: true` it reports `Succeeded: 1`, drops the element from the response and writes **no** link row ([Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing)). Read `price_page_x_book` back after the link. The Interactive alternative is [Linking Price Page to Price Book](04-Interactive-API.md#example-linking-price-page-to-price-book).
+- **Unlink** with the same `SalesPriceBook` `LIST.list_detail` row and `row_status_flag` = `Delete`. That **physically deletes** the `price_page_x_book` row — it is not a soft delete.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — create plus book link verified on play, then production, July 2026; the create is not re-run here. The book-link behavior (both elements, with and without `IgnoreDisabled`) and the unlink: verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by Alex Westemeier.
+
 ---
 
 ## Calculation Method (VALUES Tab)
@@ -2496,7 +2514,21 @@ These carry no break fields — they exist to name a book or tie pages to it.
 
 `SalesPriceBook`'s `LIST.list_detail` exposes `calculation_value1`, `calculation_value2`, `break1`, and `other_cost_value` as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.
 
-> **The purchase-side write path is untested.** Everything above is read from the service definitions and confirmed by a live read. No write to a purchase pricing page has been verified, so treat creating or updating one as unproven until you have tested it in your own environment.
+> **The purchase-side write path is not re-verified here.** Everything above is read from the service definitions and confirmed by a live read in this repo. The one write that has been reported verified is below; treat the other two services as unproven until you have tested them in your own environment.
+
+### Editing a Supplier/Item Purchase Page (`PurchasePricingPageSupplierItem`)
+
+Creates and in-place edits on `PurchasePricingPageSupplierItem` have been verified at batch scale (a couple of hundred pages edited, no duplicates, no errors):
+
+- **`"Status": "Edit"` is not a valid status** — HTTP 400 enum error, like every status other than [`New`](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts). Edit in place with **`Status: "New"` and key values that exactly match the existing page**; the window loads it and applies your edits.
+- **A changed key creates a new page.** The dates are keys. Send a different `effective_date` or `expiration_date` and you silently create a second page instead of editing the first. To re-date a page, expire the old one and create a new one.
+- **Resend the full field set.** The window re-validates required fields on every save — leave out `totaling_basis` and the edit fails *"This column is required."* Read the current values, mirror them, and change only what you mean to change.
+- **Send window labels, not database codes.** The table stores `PRICE` / `ITEM` / `MULTIPLIER`; the API wants `Price` / `Item` / `Multiplier`. Map them before sending.
+- **A page is current only while `delete_flag = 'N'` and `expiration_date` is today or later.** Many stale pages are date-expired with `delete_flag` still `N`.
+- `location_id` can be stored while `all_locations_flag` stays `Y`; a location-specific page overrides an all-locations page for that location.
+- Quantity-break pages are `pricing_method` `None` + `calculation_type` `Fixed Price`, with tiers in `value{n}` / `break{n}`.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — create and in-place edit verified on play, July 2026; not re-run here.
 
 <!-- tabs -->
 

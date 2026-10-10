@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li><a href="recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -866,6 +872,18 @@
 <td><a href="03-Transaction-API.html#what-failed-actually-guarantees">03 § What <code>Failed</code> actually guarantees</a> — a Transaction is atomic; Transactions in one POST are not</td>
 </tr>
 <tr>
+<td><strong>A failed create still left an order behind</strong> / an order number was skipped</td>
+<td><a href="03-Transaction-API.html#a-failed-create-leaves-rows-behind">03 § A failed create leaves rows behind</a> — soft-deleted header and lines, number consumed; filter <code>delete_flag = 'N'</code></td>
+</tr>
+<tr>
+<td><strong>Append many lines</strong> to a saved order · <strong>cancel</strong> an order · <strong>release a Hold</strong> · <code>Ambiguous data detected</code> / <code>'X' has been deleted</code></td>
+<td><a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">03 § Order Service — Line Appends, Cancels, Holds, and Item Lookup</a></td>
+</tr>
+<tr>
+<td><strong>Order with hundreds of lines is slow</strong> — split it</td>
+<td><a href="09-Batch-Processing-Patterns.html#large-sales-orders-split-at-about-100-lines">09 § Large Sales Orders: Split at About 100 Lines</a></td>
+</tr>
+<tr>
 <td>Create a <strong>purchase order</strong></td>
 <td><a href="03-Transaction-API.html#purchaseorder-service-creating-a-po">03 § PurchaseOrder Service</a></td>
 </tr>
@@ -883,7 +901,7 @@
 </tr>
 <tr>
 <td>"may currently be edited by USER" — write refused</td>
-<td><a href="03-Transaction-API.html#oe_hdrcompleted--t-is-what-blocks-the-write">03 § <code>oe_hdr.completed = 'T'</code></a> — pre-screen <code>WHERE completed &lt;&gt; 'T'</code>; usually an abandoned lock</td>
+<td><a href="03-Transaction-API.html#oe_hdrcompleted-t-is-what-blocks-the-write">03 § <code>oe_hdr.completed = 'T'</code></a> — pre-screen <code>WHERE completed &lt;&gt; 'T'</code>; usually an abandoned lock</td>
 </tr>
 <tr>
 <td>Telling <strong>quotes</strong> from live orders</td>
@@ -895,7 +913,7 @@
 </tr>
 <tr>
 <td>Confirm a <strong>direct ship</strong> (<code>DirectShipConfirmation</code>)</td>
-<td><a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">04 § DirectShipConfirmation writes its ship date down</a> — overwrites <code>supplier_ship_date</code> on every line; checkboxes take <code>ON</code>/<code>OFF</code></td>
+<td><a href="04-Interactive-API.html#the-interactive-path-works">04 § The Interactive path works</a> · <a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">04 § DirectShipConfirmation writes its ship date down</a> — overwrites <code>supplier_ship_date</code> on every line; checkboxes take <code>ON</code>/<code>OFF</code></td>
 </tr>
 <tr>
 <td><strong>Receive</strong> a PO / receipt won't post (bin errors)</td>
@@ -1055,9 +1073,24 @@
 <td><a href="03-Transaction-API.html#editing-bin-quantities-on-an-existing-contract">03 § Editing Bin Quantities</a> (Interactive fallback: <a href="04-Interactive-API.html#tab-unlock-sequences">04 § Tab Unlock Sequences</a>)</td>
 </tr>
 <tr>
-<td><strong>Assembly / BOM</strong> definition</td>
+<td>Job contract: <strong>attach a ship-to</strong> (pricing follows the ship-to grid, not the header)</td>
 <td>—</td>
-<td><a href="03-Transaction-API.html#assembly-service">03 § Assembly Service</a></td>
+<td><a href="03-Transaction-API.html#attaching-a-ship-to-to-an-existing-contract">03 § Attaching a ship-to</a></td>
+</tr>
+<tr>
+<td>Job contract: <strong>edit an expired contract</strong> / <em>"You may not change the end date of this record"</em></td>
+<td><a href="recipes/update-contract-lines.html">update-contract-lines</a></td>
+<td><a href="03-Transaction-API.html#updating-an-existing-contract">03 § Updating an Existing Contract</a> — omit <code>end_date</code> unless you are changing it</td>
+</tr>
+<tr>
+<td>Job contract: <strong>how cost settings reach the order and invoice</strong> (binding at entry, commission <code>Value</code> vs <code>Order</code> vs <code>Source</code>, rebate prerequisites, duplicate <code>item_id</code> lines)</td>
+<td><a href="recipes/rebate-assembly-program.html">rebate-assembly-program</a></td>
+<td><a href="03-Transaction-API.html#how-contract-costs-reach-the-order-and-the-invoice">03 § How Contract Costs Reach the Order and the Invoice</a></td>
+</tr>
+<tr>
+<td><strong>Assembly / BOM</strong> definition — create (Transaction on a plain item, Interactive when the item is already a component) and edit</td>
+<td><a href="recipes/new-assembled-part.html">new-assembled-part</a></td>
+<td><a href="03-Transaction-API.html#part-assembly-creation-workflow">03 § Part + Assembly Creation Workflow</a> · <a href="03-Transaction-API.html#assembly-service">03 § Assembly Service</a></td>
 </tr>
 <tr>
 <td>Item: <strong>primary bin / primary supplier</strong> at a location</td>
@@ -1095,6 +1128,11 @@
 <td><a href="03-Transaction-API.html#binlocation-service-creating-bins">03 § BinLocation Service</a></td>
 </tr>
 <tr>
+<td><strong>Lock, unlock or delete bins</strong> (a skipped delete reports no error — verify in SQL)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#locking-unlocking-and-deleting-bins">03 § Locking, Unlocking, and Deleting Bins</a></td>
+</tr>
+<tr>
 <td><strong>Create a new warehouse/location</strong> — a specific <code>id</code> is refused, a blank one false-succeeds at <code>location_id=0</code></td>
 <td>—</td>
 <td><a href="03-Transaction-API.html#location-service-creating-a-warehouse">03 § Location Service</a> — the fix is <code>Keys: []</code> with no <code>id</code> at all; P21 assigns a real number</td>
@@ -1113,6 +1151,16 @@
 <td><strong>Purchase-side pricing pages</strong> (supplier / item / discount group)</td>
 <td>—</td>
 <td><a href="08-SalesPricePage-Codes.html#purchase-side-pricing-services">08 § Purchase-Side Pricing Services</a></td>
+</tr>
+<tr>
+<td><strong>Create a sales price page through the Transaction API</strong> + link it to a price book (<code>USED BY</code> cannot link)</td>
+<td>—</td>
+<td><a href="08-SalesPricePage-Codes.html#creating-a-page-through-the-transaction-api">08 § Creating a Page Through the Transaction API</a></td>
+</tr>
+<tr>
+<td><strong>Edit a supplier/item purchase page in place</strong> (exact keys, full field set, labels not codes)</td>
+<td>—</td>
+<td><a href="08-SalesPricePage-Codes.html#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">08 § Editing a Supplier/Item Purchase Page</a></td>
 </tr>
 <tr>
 <td>Break fields named differently per service (<code>calculation_value1</code> vs <code>value1</code>)</td>
@@ -1180,6 +1228,31 @@
 <td><a href="03-Transaction-API.html#gl-dimensions-in-the-api">03 § GL Dimensions in the API</a></td>
 </tr>
 <tr>
+<td><strong>Create a vendor</strong> (and its auto-created supplier; ID rule; rebate tracking)</td>
+<td><a href="recipes/rebate-assembly-program.html">rebate-assembly-program</a></td>
+<td><a href="03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">03 § Vendor Service</a></td>
+</tr>
+<tr>
+<td><strong>Change an item's average cost</strong> / write residual cost down (<code>InventoryCostEdit</code>)</td>
+<td><a href="recipes/inventory-cost-edit.html">inventory-cost-edit</a></td>
+<td><a href="03-Transaction-API.html#inventorycostedit-service-changing-an-items-average-cost">03 § InventoryCostEdit Service</a></td>
+</tr>
+<tr>
+<td><strong>Dispose of zero-value stock</strong> on a $0 order</td>
+<td><a href="recipes/dispose-zero-value-stock.html">dispose-zero-value-stock</a></td>
+<td><a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">03 § Order Service — Line Appends</a></td>
+</tr>
+<tr>
+<td><strong>Stock PO → receipt → voucher</strong>, and <strong>drop ship</strong> end to end</td>
+<td><a href="recipes/purchase-receive-vouch.html">purchase-receive-vouch</a></td>
+<td><a href="03-Transaction-API.html#purchaseorder-service-creating-a-po">03 § PurchaseOrder</a> · <a href="04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">04 § Driving an In-Window Wizard</a></td>
+</tr>
+<tr>
+<td><strong>Sales order → pick ticket → invoice</strong></td>
+<td><a href="recipes/sales-order-to-invoice.html">sales-order-to-invoice</a></td>
+<td><a href="03-Transaction-API.html#create-order">03 § Create Order</a> · <a href="12-Production-Labor-API.html#shipping-and-invoicing-the-linked-sales-order">12 § Shipping and Invoicing</a></td>
+</tr>
+<tr>
 <td>Customers / vendors / contacts / addresses (simple CRUD)</td>
 <td>—</td>
 <td><a href="05-Entity-API.html#crud-operations">05 § CRUD Operations</a></td>
@@ -1193,6 +1266,11 @@
 <td>Inventory items: read / create / update locations</td>
 <td>—</td>
 <td><a href="11-Inventory-REST-API.html#reading-items">11 § Reading Items</a> · <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a> · <a href="11-Inventory-REST-API.html#updating-existing-location-fields">11 § Updating Existing Location Fields</a></td>
+</tr>
+<tr>
+<td>Update a <strong>supplier's cost</strong> over REST (<code>Suppliers.list[].Cost</code>; restamps every <code>inv_loc</code>)</td>
+<td>—</td>
+<td><a href="11-Inventory-REST-API.html#updating-a-suppliers-cost-supplierslistcost">11 § Updating a Supplier's Cost</a></td>
 </tr>
 <tr>
 <td>Append locations <strong>at scale</strong> (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin)</td>
@@ -1266,6 +1344,18 @@
 <tr>
 <td>Answer a rule-callback dialog ("Item Issues Detected")</td>
 <td><a href="04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">04 § Worked Example</a> — but fix the data first: <a href="03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">03 § Root Cause and Data Fix</a></td>
+</tr>
+<tr>
+<td><strong>Enable, disable or re-scope a DynaChange business rule</strong> through the API</td>
+<td><a href="04-Interactive-API.html#managing-business-rules-through-the-dynachange-organizer">04 § Managing Business Rules Through the DynaChange Organizer</a> — the <code>dc.organizer.rule</code> tool on any open window</td>
+</tr>
+<tr>
+<td>Interactive order saved as a <strong>quote</strong> / <code>disposition</code> looks disabled / wizard made an RFQ</td>
+<td><a href="04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">04 § Set <code>quote</code> to <code>OFF</code> first</a></td>
+</tr>
+<tr>
+<td><strong>Create an item in the Item window</strong> (unit flags, one location per session)</td>
+<td><a href="04-Interactive-API.html#creating-an-item-in-the-item-window">04 § Creating an Item in the Item Window</a></td>
 </tr>
 <tr>
 <td>Answer a <code>w_message</code> dialog — it's fully controllable, not just auto-answered</td>
@@ -1358,6 +1448,14 @@
 <td>Why COGS doesn't match the receipt</td>
 <td><a href="12-Production-Labor-API.html#cost-model-know-this-before-trusting-cogs">12 § Cost Model</a></td>
 </tr>
+<tr>
+<td>Make vs parts location, UD fields hidden from the API role, cancel a pick ticket, <code>qty_to_complete</code> pre-fill, reprints, linking an existing order to a sales line</td>
+<td><a href="12-Production-Labor-API.html#production-order-gotchas-field-verified">12 § Production Order Gotchas (Field-Verified)</a></td>
+</tr>
+<tr>
+<td><strong>New assembled part</strong> end to end (item → BOM → contract line → first production order)</td>
+<td><a href="recipes/new-assembled-part.html">recipe: new-assembled-part</a></td>
+</tr>
 </tbody>
 </table></div>
 <h2 id="documents-reports-pdf">Documents &amp; reports (PDF)</h2>
@@ -1388,6 +1486,10 @@
 <tr>
 <td>PDFs from print flags on a normal transaction</td>
 <td><a href="03-Transaction-API.html#pdfs-from-the-transaction-endpoint-print-flags">03 § PDFs from the /transaction endpoint</a></td>
+</tr>
+<tr>
+<td><strong>Merge several report PDFs</strong> — barcodes print as text</td>
+<td><a href="03-Transaction-API.html#merging-several-report-pdfs-into-one-file">03 § Merging Several Report PDFs into One File</a> — rename the font-subset tags</td>
 </tr>
 </tbody>
 </table></div>
@@ -1531,6 +1633,10 @@
 <tr>
 <td>Intermittent interactive failures under load</td>
 <td><a href="07-Session-Pool-Troubleshooting.html">07 Session Pool Troubleshooting</a></td>
+</tr>
+<tr>
+<td><code>may currently be edited by &lt;your API user&gt;</code> · Transaction fails while an Interactive session is open · order stuck after a crash</td>
+<td><a href="06-Error-Handling.html#locks-and-orphaned-sessions">06 § Locks and orphaned sessions</a></td>
 </tr>
 <tr>
 <td>What changed in these docs recently</td>

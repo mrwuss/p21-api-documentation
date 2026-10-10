@@ -5390,6 +5390,33 @@ public class BatchSummary
 
 ---
 
+## Large Sales Orders: Split at About 100 Lines
+
+Order entry costs time **inside P21**, whichever API you use, and the cost per line grows with the number of lines already on the order. The Transaction API also re-reads the whole order after every Transaction, so appending to a large order slows down as it grows.
+
+Measured on a play tenant, appending lines in 100-row Transactions to one order:
+
+| Lines already on the order | Server time per line |
+|---|---|
+| 1–100 | about 0.8 s |
+| about 900 | about 3 s |
+
+A single order of about a thousand lines took about half an hour. The same list split into **ten orders of about 100 lines** ran at a flat **~0.9 s per line** — roughly half the total time — with zero failures, and it repeated at the same speed on production. Cancelling the thousand-line order was mostly re-read time: P21 reloads the order before it applies the cancel.
+
+**The pattern:**
+
+1. Slice the line list into chunks of about 100.
+2. Per chunk, create the order header plus the first line, then append the rest in **one** multi-row `TP_ITEMS.items` Transaction keyed on `order_no` (one Transaction per line collides — see [Order Service — Line Appends](03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup)).
+3. Give each order a recognizable suffix on `po_no` (`- 01`, `- 02`, …) so the warehouse can tell the slices apart.
+4. Read back per order with `delete_flag = 'N' AND cancel_flag = 'N'` — a failed append [leaves soft-deleted rows](03-Transaction-API.md#a-failed-create-leaves-rows-behind).
+5. If an order reports a lock held by your own API user, **wait** — a killed client's request is still running server-side ([Locks and orphaned sessions](06-Error-Handling.md#locks-and-orphaned-sessions)). Don't bisect or retry into the lock.
+
+The orders are independent, so they could run in parallel; that has not been tested. For contrast, the Interactive API costs about five HTTP calls per line, so it is slower per line than a multi-row Transaction even though the server-side cost is the same.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — measured on play and repeated on production, September 2026; not re-run here.
+
+---
+
 ## Performance Summary
 
 Measured from production use creating and managing 700+ price pages:

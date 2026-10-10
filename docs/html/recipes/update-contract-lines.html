@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group" open>
-            <summary>Recipes <span class="nav-count">17</span></summary>
+            <summary>Recipes <span class="nav-count">23</span></summary>
             <ul class="nav-pages">
             <li><a href="../recipes/README.html">Recipes Overview</a></li>
             <li><a href="../recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,13 +624,19 @@
             <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="../recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
             <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="../recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li><a href="../recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
             <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
             <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="../recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
             <li><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="../recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
             <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="../recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
             <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
             <li class="active"><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
             <li><a href="../recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
@@ -682,7 +688,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>The contract already exists — know its <code>contract_no</code> and its <code>job_no</code>. Renewals can leave the same <code>contract_no</code> on two header rows; <code>job_no</code> is unique, so include it whenever it's known.</li>
-<li>Look up the current header values (<code>company_id</code>, <code>job_no</code>, <code>end_date</code>) before writing — the header is re-validated on every save. Use <code>POST {ui_server}/api/v2/transaction/get</code>:</li>
+<li>Look up the current header values (<code>company_id</code>, <code>job_no</code>, <code>end_date</code>) before writing. Use <code>POST {ui_server}/api/v2/transaction/get</code>:</li>
 </ul>
 <p><code>json
   {
@@ -692,7 +698,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
       "Keys": [{"Name": "contract_no", "Value": "JOB-1001"}]
     }]
   }</code>
-- The contract's <code>end_date</code> must be <strong>&gt;= today</strong> (or you must move it forward in the same call — a real side effect). Expired contracts cannot have their lines edited this way; use the Interactive API for those.
+- <strong><code>end_date</code> is optional.</strong> Send it only when you are changing it. Sent — even unchanged — it re-saves the header and runs the <em>"must be equal to or greater than today"</em> and corporate-address checks; omitted, line <strong>updates</strong> work on an expired contract too. The examples below send the current value, which is fine on an active contract; drop it for an expired one. Whether line <strong>inserts</strong> go through without it has not been separately verified. See <a href="../03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>.
 - For <strong>commission costs only</strong>: the payload needs <code>IgnoreDisabled: true</code> at the top level — see <a href="../03-Transaction-API.html#ignoredisabled">IgnoreDisabled</a>.</p>
 <h2 id="payload">Payload</h2>
 <p><code>Status</code> is <code>"New"</code> for both create and update — the API distinguishes them by whether the FORM key fields (<code>company_id</code>, <code>contract_no</code>, <code>job_no</code>) land on an existing record. The keyed <code>JOBPRICELINE</code> row is an <strong>upsert</strong>: matching <code>item_id</code> updates that line; no match inserts a new line.</p>
@@ -713,7 +719,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
                         {&quot;Name&quot;: &quot;company_id&quot;,  &quot;Value&quot;: &quot;ACME&quot;},
                         {&quot;Name&quot;: &quot;contract_no&quot;, &quot;Value&quot;: &quot;JOB-1001&quot;},
                         {&quot;Name&quot;: &quot;job_no&quot;,      &quot;Value&quot;: &quot;31&quot;},        // unique across renewals
-                        {&quot;Name&quot;: &quot;end_date&quot;,    &quot;Value&quot;: &quot;2030-01-01&quot;} // required on EVERY submit, must be &gt;= today
+                        {&quot;Name&quot;: &quot;end_date&quot;,    &quot;Value&quot;: &quot;2030-01-01&quot;} // optional: send only to change it (see Prerequisites)
                     ],
                     &quot;RelativeDateEdits&quot;: []
                 }]
@@ -770,7 +776,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
 <span class="n">CONTRACT</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;company_id&quot;</span><span class="p">:</span> <span class="s2">&quot;ACME&quot;</span><span class="p">,</span> <span class="s2">&quot;contract_no&quot;</span><span class="p">:</span> <span class="s2">&quot;JOB-1001&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;job_no&quot;</span><span class="p">:</span> <span class="s2">&quot;31&quot;</span><span class="p">,</span> <span class="s2">&quot;end_date&quot;</span><span class="p">:</span> <span class="s2">&quot;2030-01-01&quot;</span><span class="p">}</span>   <span class="c1"># end_date must be &gt;= today</span>
+            <span class="s2">&quot;job_no&quot;</span><span class="p">:</span> <span class="s2">&quot;31&quot;</span><span class="p">,</span> <span class="s2">&quot;end_date&quot;</span><span class="p">:</span> <span class="s2">&quot;2030-01-01&quot;</span><span class="p">}</span>   <span class="c1"># end_date optional for updates</span>
 <span class="c1"># One POST per line: inserts re-save the shared header and collide when batched.</span>
 <span class="n">LINES</span> <span class="o">=</span> <span class="p">[</span>
     <span class="p">(</span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">,</span> <span class="s2">&quot;EA&quot;</span><span class="p">,</span> <span class="mf">36.58</span><span class="p">,</span> <span class="mf">17.19</span><span class="p">),</span>  <span class="c1"># already on contract -&gt; updated</span>
@@ -905,7 +911,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
 <span class="w">    </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="n">ContractNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;JOB-1001&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="n">JobNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;31&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="n">EndDate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2030-01-01&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1">// must be &gt;= today</span>
+<span class="w">    </span><span class="n">EndDate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2030-01-01&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1">// optional for updates -- drop it for an expired contract</span>
 <span class="p">};</span>
 <span class="c1">// One POST per line: inserts re-save the shared header and collide when batched.</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Uom</span><span class="p">,</span><span class="w"> </span><span class="kt">decimal</span><span class="w"> </span><span class="n">Price</span><span class="p">,</span><span class="w"> </span><span class="kt">decimal?</span><span class="w"> </span><span class="n">Commission</span><span class="p">)[]</span>
@@ -1116,7 +1122,7 @@ whole transaction is refused and the line does not land either.</strong> Full wr
 <li><strong><code>pricing_method</code> must precede <code>price</code> in the Edits.</strong> Changing <code>pricing_method</code> clears the typed price, exactly as in the UI — reversed order writes the line with <strong>price = $0</strong> and the transaction still reports <code>Succeeded</code>. Verified live. Order the Edits <code>item_id</code>, <code>pricing_method</code>, <code>price</code>.</li>
 <li><strong>One transaction per POST when inserting lines.</strong> Every transaction re-saves the shared FORM header; batched inserts collide — all but one fail with an optimistic-concurrency error, and the ones that land can get <strong>duplicate <code>line_no</code></strong> values. Edits to existing keyed rows batch fine.</li>
 <li><strong><code>Status: "Existing"</code> (or <code>"Update"</code>, <code>"Change"</code>) is rejected</strong> — <a href="../03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts">the enum has one member, <code>"New"</code></a>. HTTP 400 on 26.1.5940.0, HTTP 500 <code>NullReferenceException</code> on older builds. Use <code>"New"</code> for both create and update.</li>
-<li><strong><code>end_date</code> must be &gt;= today</strong> — the header is validated on every save, so you cannot edit lines on an expired contract without also moving its <code>end_date</code> forward. For expired contracts, use the Interactive API.</li>
+<li><strong>Send <code>end_date</code> only to change it.</strong> The today-or-later check and the corporate-address check (<em>"You may not change the end date of this record…"</em>) fire only when <code>end_date</code> is in the payload; line updates on an expired contract work without it — <a href="../03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>.</li>
 <li><strong>Include <code>job_no</code> to disambiguate renewals</strong> — the same <code>contract_no</code> can exist on two header rows; <code>job_no</code> is unique.</li>
 <li><strong><code>IgnoreDisabled: true</code> goes at the payload top level</strong> (alongside <code>Name</code>/<code>Transactions</code>). Inside a Transaction object it is silently ignored and commission-cost writes fail with <code>Column is disabled: commission_cost_value</code>.</li>
 <li><strong>Set <code>commission_cost_type_cd</code> before <code>commission_cost_value</code>.</strong> Accepted display labels (with <code>UseCodeValues: false</code>): <code>Order</code>, <code>Source</code>, <code>Value</code>, <code>None</code>. Setting only the commission cost leaves <code>other_cost</code> untouched.</li>

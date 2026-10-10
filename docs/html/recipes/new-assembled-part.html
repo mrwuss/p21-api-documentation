@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Assembled Part: Item → Job Contract → Production Order - P21 API Documentation</title>
+    <style>
+        /* ===== Reset & Base ===== */
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background: #f5f6fa;
+            display: flex;
+        }
+
+        /* ===== Sidebar ===== */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            background: #1a2332;
+            color: #c8d6e5;
+            overflow-y: auto;
+            padding: 0;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            font-size: 1.05rem;
+            color: #fff;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar-header a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Collapsible whole-nav fold (collapsed by JS on narrow screens) */
+        .sidebar-fold > .sidebar-fold-summary {
+            display: none;             /* invisible on desktop -- nav is just open */
+            padding: 10px 16px;
+            cursor: pointer;
+            color: #e8eef4;
+            font-weight: 600;
+            list-style: none;
+        }
+
+        .nav-group {
+            padding: 10px 0 2px;
+        }
+
+        .nav-group > summary {
+            padding: 0 16px 6px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7f95;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;          /* custom marker below */
+            user-select: none;
+        }
+
+        .nav-group > summary::-webkit-details-marker { display: none; }
+
+        .nav-group > summary::before {
+            content: "▸";
+            display: inline-block;
+            width: 1em;
+            transition: transform 0.15s;
+        }
+
+        .nav-group[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        .nav-group > summary:hover {
+            color: #a0b4c8;
+        }
+
+        .nav-count {
+            font-weight: 400;
+            color: #55697f;
+            margin-left: 4px;
+        }
+
+        .nav-pages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-pages li a {
+            display: block;
+            padding: 5px 16px;
+            color: #a0b4c8;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-pages li a:hover {
+            background: #232f3e;
+            color: #e8eef4;
+        }
+
+        .nav-pages li.active a {
+            color: #fff;
+            background: #232f3e;
+            border-left-color: #3498db;
+            font-weight: 600;
+        }
+
+        /* ===== On-this-page ToC (right rail + inline fallback) ===== */
+        .toc-rail {
+            width: 240px;
+            min-width: 240px;
+            flex-shrink: 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+            padding: 28px 16px 40px 8px;
+            font-size: 0.875rem;
+        }
+
+        .toc-rail-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #7a8a99;
+            font-weight: 600;
+            padding: 0 8px 8px;
+        }
+
+        .toc-inline {
+            display: none;             /* shown only when the rail is hidden */
+            margin: 0 0 24px;
+            border: 1px solid #d5dde5;
+            border-radius: 6px;
+            background: #f8f9fa;
+        }
+
+        .toc-inline > summary {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2874a6;
+            font-size: 0.9rem;
+        }
+
+        .toc-inline .page-toc {
+            padding: 0 8px 10px;
+        }
+
+        .page-toc {
+            padding: 0 8px;
+        }
+
+        .page-toc ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-toc li {
+            margin: 0;
+        }
+
+        .page-toc a {
+            display: block;
+            padding: 3px 8px;
+            color: #5f7183;
+            text-decoration: none;
+            font-size: 0.82rem;
+            border-left: 2px solid #dfe6ec;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .page-toc a:hover {
+            color: #1a5276;
+        }
+
+        .page-toc a.active {
+            color: #2874a6;
+            border-left-color: #2874a6;
+            font-weight: 600;
+        }
+
+        /* Indent h3 items */
+        .page-toc .toc-h3 {
+            padding-left: 20px;
+            font-size: 0.78rem;
+        }
+
+
+        /* ===== Main Content ===== */
+        .content {
+            /* Long unbreakable tokens appear in plain prose too, not just in
+               code spans (e.g. PurchaseDiscountGroup/SalesDiscountGroup). Let
+               any word break rather than push the page sideways; `break-word`
+               only acts when the word genuinely cannot fit. */
+            overflow-wrap: break-word;
+            flex: 1 1 0;
+            /* Without min-width: 0 a flex item refuses to shrink below its
+               content, so the sidebar + content overflow the viewport and the
+               whole PAGE scrolls sideways. */
+            min-width: 0;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 40px 48px;
+            background: #fff;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #1a5276;
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        h2 {
+            color: #2874a6;
+            border-bottom: 2px solid #aed6f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+
+        h3 {
+            color: #2e86c1;
+            margin-top: 25px;
+        }
+
+        h4 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f4f6f7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Inline code carries long identifiers (d_dw_price_page_x_location_maint).
+           Break them rather than let them widen the line -- `break-word` only
+           breaks when the token genuinely cannot fit. Code BLOCKS are exempt:
+           they scroll inside their own box, where wrapping would corrupt the
+           code's meaning. */
+        :not(pre) > code {
+            /* `anywhere`, not `break-word`: only `anywhere` reduces the
+               element's min-content width, which is what lets a narrow
+               container actually shrink instead of being forced wide by an
+               unbreakable identifier. Code BLOCKS are exempt -- they scroll in
+               their own box, where wrapping would corrupt the code. */
+            overflow-wrap: anywhere;
+        }
+
+        /* Tables size their columns by CONTENT. `break-word` (not `anywhere`)
+           is deliberate: `anywhere` lowers every cell's min-content width to
+           ~one character, so the browser stops distributing width by content
+           and identifier-heavy columns get squeezed to a sliver while plain
+           prose columns hoard the surplus. With `break-word` a column is never
+           narrower than its longest token (part numbers stay on one line), a
+           token still breaks if it alone exceeds the available width, and a
+           table whose token widths genuinely cannot fit scrolls INSIDE
+           .table-wrap instead of squishing its columns. */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 20px 0;
+            max-width: 100%;
+        }
+
+        table {
+            width: 100%;
+            max-width: 100%;
+            table-layout: auto;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 0.95em;
+        }
+
+        th, td {
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+
+        /* Inline code in a cell wraps between tokens but keeps whole tokens
+           intact (break-word, overriding the prose `anywhere` rule above) --
+           the token's width is what the column is sized by. */
+        td code, th code {
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+
+        th {
+            background: #2874a6;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        blockquote {
+            border-left: 4px solid #2874a6;
+            margin: 20px 0;
+            padding: 15px 20px;
+            background: #eaf2f8;
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 30px 0;
+        }
+
+        a {
+            color: #2874a6;
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            body {
+                display: block;
+                background: #fff;
+            }
+            .sidebar,
+            .toc-rail,
+            .toc-inline {
+                display: none;
+            }
+            .content {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            .copy-section-btn { display: none; }
+            h1 { page-break-after: avoid; margin-top: 0; }
+            h2 { page-break-after: avoid; margin-top: 20pt; }
+            h3 { page-break-after: avoid; margin-top: 15pt; }
+            pre, table, blockquote { page-break-inside: avoid; }
+            p { orphans: 3; widows: 3; }
+            .tab-buttons { display: none; }
+            .tab-panel { display: block !important; }
+            .tab-panel::before {
+                content: attr(data-lang);
+                display: block;
+                font-weight: bold;
+                color: #333;
+                font-size: 0.85em;
+                margin-bottom: 2px;
+                text-transform: uppercase;
+            }
+        }
+
+        /* ===== Responsive ===== */
+        /* Not enough room for the right rail: fold the ToC into the content. */
+        @media (max-width: 1380px) {
+            .toc-rail {
+                display: none;
+            }
+            .toc-inline {
+                display: block;
+            }
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 1100px) {
+            body {
+                display: block;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                height: auto;
+                position: relative;
+            }
+            /* The whole nav becomes one collapsible block (JS closes it on
+               load) so page content is one tap away, not two screens down. */
+            .sidebar-fold > .sidebar-fold-summary {
+                display: block;
+            }
+            .content {
+                padding: 20px;
+            }
+        }
+
+        /* Print button */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2874a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .print-btn:hover {
+            background: #1a5276;
+        }
+
+        /* On a narrow screen a floating button pinned to the right edge is both
+           the wrong pattern and a source of horizontal overflow -- it is sized
+           from the layout viewport, so it widens the very box it is measured
+           against. Let it flow with the content instead. */
+        @media (max-width: 600px) {
+            .print-btn {
+                position: static;
+                display: block;
+                width: 100%;
+                margin: 0 0 20px;
+                box-shadow: none;
+            }
+        }
+
+        /* ===== Copy-section button ===== */
+        .copy-section-btn {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            vertical-align: middle;
+            margin-left: 12px;
+            padding: 4px 9px;
+            color: #2874a6;
+            background: #eaf2f8;
+            border: 1px solid #aed6f1;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity .15s ease, background .15s ease;
+        }
+
+        h2:hover > .copy-section-btn,
+        h3:hover > .copy-section-btn,
+        h4:hover > .copy-section-btn,
+        .copy-section-btn:focus {
+            opacity: 1;
+        }
+
+        .copy-section-btn:hover {
+            background: #d4e6f1;
+        }
+
+        .copy-section-btn.copied {
+            opacity: 1;
+            color: #1e8449;
+            background: #eafaf1;
+            border-color: #a9dfbf;
+        }
+
+        .copy-section-btn.failed {
+            opacity: 1;
+            color: #a93226;
+            background: #fdedec;
+            border-color: #f5b7b1;
+        }
+
+        /* Touch devices never hover -- keep the buttons visible there. */
+        @media (hover: none) {
+            .copy-section-btn { opacity: 1; }
+        }
+
+        /* ===== Code Tabs ===== */
+        .code-tabs {
+            margin: 20px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: #1a2836;
+            color: #8a9bb5;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            border-radius: 5px 5px 0 0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .tab-btn:hover {
+            background: #243447;
+            color: #c8d6e5;
+        }
+
+        .tab-btn.active {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .code-tabs .tab-panel pre {
+            margin-top: 0;
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:first-of-type pre {
+            border-radius: 0 5px 5px 5px;
+        }
+
+        .code-tabs .tab-panel:last-of-type pre {
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../index.html"><strong>P21 API Docs</strong></a>
+        </div>
+        <details class="sidebar-fold" open id="sidebar-fold">
+        <summary class="sidebar-fold-summary">Documentation</summary>
+        <details class="nav-group" open>
+            <summary>Start Here</summary>
+            <ul class="nav-pages">
+            <li><a href="../task-index.html">Task Index</a></li>
+            <li><a href="../00-Authentication.html">Authentication</a></li>
+            <li><a href="../01-API-Selection-Guide.html">API Selection Guide</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>API Reference</summary>
+            <ul class="nav-pages">
+            <li><a href="../02-OData-API.html">OData API</a></li>
+            <li><a href="../03-Transaction-API.html">Transaction API</a></li>
+            <li><a href="../04-Interactive-API.html">Interactive API</a></li>
+            <li><a href="../05-Entity-API.html">Entity API</a></li>
+            <li><a href="../11-Inventory-REST-API.html">Inventory REST API</a></li>
+            <li><a href="../12-Production-Labor-API.html">Production & Labor</a></li>
+            <li><a href="../13-UDT-Service-API.html">UDT Service API</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Guides & Troubleshooting</summary>
+            <ul class="nav-pages">
+            <li><a href="../14-Breaking-Changes.html">Breaking Changes</a></li>
+            <li><a href="../06-Error-Handling.html">Error Handling</a></li>
+            <li><a href="../07-Session-Pool-Troubleshooting.html">Session Pool Issues</a></li>
+            <li><a href="../08-SalesPricePage-Codes.html">SalesPricePage Codes</a></li>
+            <li><a href="../09-Batch-Processing-Patterns.html">Batch Processing</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Project</summary>
+            <ul class="nav-pages">
+            <li><a href="../10-Changelog.html">Changelog</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>More</summary>
+            <ul class="nav-pages">
+            <li><a href="../15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            </ul>
+        </details>
+        <details class="nav-group" open>
+            <summary>Recipes <span class="nav-count">23</span></summary>
+            <ul class="nav-pages">
+            <li><a href="../recipes/README.html">Recipes Overview</a></li>
+            <li><a href="../recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
+            <li><a href="../recipes/create-bins.html">Create Bins (Bulk)</a></li>
+            <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
+            <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
+            <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="../recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
+            <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
+            <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
+            <li><a href="../recipes/inventory-adjustment.html">Adjust On-Hand Quantity (Write-Off)</a></li>
+            <li><a href="../recipes/inventory-cost-edit.html">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</a></li>
+            <li class="active"><a href="../recipes/new-assembled-part.html">New Assembled Part: Item → Job Contract → Production Order</a></li>
+            <li><a href="../recipes/order-with-assembly.html">Order with an Assembly Line</a></li>
+            <li><a href="../recipes/production-order-runbook.html">Production Order Runbook — Create to Invoice</a></li>
+            <li><a href="../recipes/purchase-receive-vouch.html">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</a></li>
+            <li><a href="../recipes/reassign-salesrep.html">Reassign a Customer and Ship-To Salesrep</a></li>
+            <li><a href="../recipes/rebate-assembly-program.html">Rebate-Tracked Assembly Program</a></li>
+            <li><a href="../recipes/record-labor-time.html">Record Labor Time on a Production Order</a></li>
+            <li><a href="../recipes/sales-order-to-invoice.html">Sales Order → Pick Ticket → Invoice</a></li>
+            <li><a href="../recipes/set-primary-bin-supplier.html">Set an Item's Primary Bin or Primary Supplier at a Location</a></li>
+            <li><a href="../recipes/update-contract-lines.html">Update Contract Lines</a></li>
+            <li><a href="../recipes/update-order-lines.html">Modify an Existing Sales Order</a></li>
+            <li><a href="../recipes/update-supplier-contact.html">Update Supplier Contact Info (Email / Central Phone)</a></li>
+            </ul>
+        </details>
+        </details>
+    </nav>
+
+    <main class="content">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+<details class="toc-inline">
+    <summary>On this page</summary>
+    <div class="page-toc">
+        <div class="toc">
+<ul>
+<li><a href="#inputs">Inputs</a></li>
+<li><a href="#runbook">Runbook</a><ul>
+<li><a href="#step-0-price-it-first-inferred-method-verified-use">Step 0 — Price it first (Inferred method, Verified use)</a></li>
+<li><a href="#step-1-item-and-its-first-location-interactive-item-verified">Step 1 — Item and its first location (Interactive Item) (Verified)</a></li>
+<li><a href="#step-2-the-other-locations-transaction-item-verified">Step 2 — The other locations (Transaction Item) (Verified)</a></li>
+<li><a href="#step-3-bom-and-assembly-flags-assembly-verified-here">Step 3 — BOM and assembly flags (Assembly) (Verified here)</a></li>
+<li><a href="#step-4-the-contract-line-transaction-jobcontractpricing-verified">Step 4 — The contract line (Transaction JobContractPricing) (Verified)</a></li>
+<li><a href="#step-5-first-production-order-productionorder-verified">Step 5 — First production order (ProductionOrder) (Verified)</a></li>
+</ul>
+</li>
+<li><a href="#checks-that-caught-real-mistakes">Checks that caught real mistakes</a></li>
+</ul>
+</div>
+
+    </div>
+</details>
+<h1 id="new-assembled-part-item-job-contract-production-order">New Assembled Part: Item → Job Contract → Production Order</h1>
+<p>Set up a brand-new assembled part end to end — the item and its locations, its bill of materials, its line on a customer's job contract, and its first build-to-stock production order — by copying a similar "template" part that already exists.</p>
+<p><strong>API:</strong> Interactive + Transaction · <strong>Services:</strong> <code>Item</code>, <code>Assembly</code>, <code>JobContractPricing</code>, <code>ProductionOrder</code> · <strong>Deep dive:</strong> <a href="../04-Interactive-API.html#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a> · <a href="../03-Transaction-API.html#assembly-service">Assembly Service</a> · <a href="../03-Transaction-API.html#jobcontractpricing-service">JobContractPricing Service</a> · <a href="../12-Production-Labor-API.html#production-order-lifecycle-end-to-end">Production Order Lifecycle</a></p>
+<p>This page is a <strong>checklist</strong>, not a script. Each step names the surface, the fields that matter and the read-back. If the part belongs to a supplier-rebate program, do this page and then the rebate steps in <a href="rebate-assembly-program.html">rebate-assembly-program</a>.</p>
+<p><strong>Status legend:</strong> <strong>Verified</strong> = run end to end with a read-back by the credited contributor on production (two parts, September 2026); <strong>Verified here</strong> = re-tested by the maintainer on 26.1.5950.0; <strong>Inferred</strong> = follows from verified behavior but was not run as its own step.</p>
+<h2 id="inputs">Inputs</h2>
+<ul>
+<li>The new part number (here <code>ASSY-002</code>) and a <strong>template part</strong> in the same family (here <code>ASSY-001</code>) with a known-good BOM, contract line and locations.</li>
+<li>The customer's job contract (<code>job_no</code> <code>JOB-001</code>, <code>contract_no</code> <code>CONTRACT-001</code>), and its pricing rule (price from cost and target margin — a business input, not something P21 derives).</li>
+<li>The locations the part needs: here sales location <code>10</code>, a parts location <code>20</code> and a make (WIP) location <code>30</code>.</li>
+</ul>
+<h2 id="runbook">Runbook</h2>
+<h3 id="step-0-price-it-first-inferred-method-verified-use">Step 0 — Price it first (Inferred method, Verified use)</h3>
+<p>Work out the component cost from the template's BOM and the new part's differences, then the price from your pricing rule. <strong>Check the method against a neighbor already on the contract</strong>: it must reproduce that line's commission cost to the cent. If it does not, stop — the BOM or the rule is wrong.</p>
+<h3 id="step-1-item-and-its-first-location-interactive-item-verified">Step 1 — Item and its first location (Interactive <code>Item</code>) (Verified)</h3>
+<p>The Transaction API cannot create an item; the Interactive window can (<a href="../04-Interactive-API.html#creating-an-item-in-the-item-window">steps</a>). Pass <code>item_desc</code> explicitly rather than copying the template's — a template's description can carry its own typo. Set all four unit flags on the Units of Measure row, answer <strong>Yes</strong> to the product-group GL prompt, fill the location's supplier row, save. <strong>Only one location per session.</strong> (The <a href="../11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a> is the alternative when you do not need the window's prompts.)</p>
+<h3 id="step-2-the-other-locations-transaction-item-verified">Step 2 — The other locations (Transaction <code>Item</code>) (Verified)</h3>
+<p>One POST per location, <code>Status: "New"</code>, <code>IgnoreDisabled: true</code> at the payload top level: <code>TABPAGE_1.tp_1_dw_1</code> (<code>item_id</code>) → <code>TABPAGE_17.invloclist</code> (<code>location_id</code>, <code>company_id</code>, <code>stockable</code>) → <code>TABPAGE_18.inv_loc_detail</code> (groups, tax group, <code>track_bins</code>) → <code>SUPPLIER_X_LOCATION.supplier_x_location</code> keyed on <strong>both</strong> <code>location_id</code> and <code>supplier_id</code> (<a href="../03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">why</a>). Make the make and parts locations stockable.</p>
+<p>Read back <code>inv_loc</code> per location (GL accounts and primary supplier included).</p>
+<h3 id="step-3-bom-and-assembly-flags-assembly-verified-here">Step 3 — BOM and assembly flags (<code>Assembly</code>) (Verified here)</h3>
+<p>A <strong>new</strong> part number is not yet a component of anything, so the Transaction API creates the assembly: header <code>TABPAGE_1.assemblyhdr</code> (<code>inv_mast_item_id</code>) plus one <code>TABPAGE_17.tp_17_dw_17</code> row per component (<code>item_id_service_labor_id</code>, <code>quantity</code>, <code>unit_of_measure</code>). If the item <strong>is</strong> already a component of another assembly, the Transaction create fails and you must use the Interactive window (<a href="../03-Transaction-API.html#part-assembly-creation-workflow">details</a>).</p>
+<ul>
+<li><strong>Copy only physical components</strong> from the template. Leave out charge lines (labor, burden, other charge items) if your costing replaces them.</li>
+<li><strong>Component UOM must match the component's base unit</strong> — a mismatch was the most common defect found in copied BOMs.</li>
+<li>Header flags for a build-to-stock part: <code>production_order_processing</code> <code>ON</code>, <code>print_incomplete_assemblies</code> <code>ON</code>, <code>ship_incomplete_assemblies</code> <code>ON</code>, <code>auto_create_prod_order</code> <code>OFF</code> (<a href="../12-Production-Labor-API.html#assembly-behavior-flags">what each does</a>).</li>
+</ul>
+<p>Read back <code>assembly_hdr</code> and <code>assembly_line</code> (<code>quantity</code>, unit, no charge lines).</p>
+<h3 id="step-4-the-contract-line-transaction-jobcontractpricing-verified">Step 4 — The contract line (Transaction <code>JobContractPricing</code>) (Verified)</h3>
+<p>One line per POST (inserts collide when batched). Header <code>FORM.d_dw_job_price_hdr</code> with <code>Keys: []</code> and <code>job_no</code> + <code>contract_no</code> in <code>Edits</code>; <code>JOBPRICELINE.jobpriceline</code> keyed on <code>item_id</code> with <strong><code>pricing_method</code> = <code>Price</code> before <code>price</code></strong> (the other order silently saves $0); <code>JOBPRICECOST.jobpricecost</code> with <code>commission_cost_type_cd</code> = <code>Value</code> and the commission cost, plus — for a rebate program — <code>other_cost_type_cd</code> = <code>Value</code> and the rebated cost. <code>IgnoreDisabled: true</code> at the top level for the cost fields. <a href="../03-Transaction-API.html#commission-costs">Manual</a>.</p>
+<p>Read back <code>job_price_line</code>. A line already <strong>bound</strong> to a sales order re-reads its cost from the contract at invoicing, so the other cost can be set later; an order line entered before this contract line existed <strong>never</strong> binds (<a href="../03-Transaction-API.html#binding-happens-once-at-line-entry">details</a>).</p>
+<h3 id="step-5-first-production-order-productionorder-verified">Step 5 — First production order (<code>ProductionOrder</code>) (Verified)</h3>
+<p>Interactive <code>ProductionOrder</code>: header <code>source_loc_id</code> (make) <strong>before</strong> <code>inventory_location_id</code> (parts), in separate calls, then any required header UD fields; the assembly line on <code>TABPAGE_17.tp_17_dw_17</code> (<code>assembly_item_id</code>, <code>qty_to_make</code>); save. Then print the form, run the pick ticket <strong>only when every component is fully allocated</strong>, confirm the pick promptly, and complete when built. Every trap on the way: <a href="../12-Production-Labor-API.html#production-order-gotchas-field-verified">12 § Production Order Gotchas</a> and the <a href="production-order-runbook.html">production-order-runbook</a>.</p>
+<h2 id="checks-that-caught-real-mistakes">Checks that caught real mistakes</h2>
+<ul>
+<li>A template whose own description disagreed with its own dimensions — always pass the new description explicitly.</li>
+<li>Component UOMs that did not match the component's base unit.</li>
+<li>A pick ticket run on a short order — the partial ticket had to be cancelled (<code>row_status_flag</code> = <code>"Canceled"</code>).</li>
+</ul>
+<blockquote>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — runbook done on production for two parts, September 2026; not re-run here except step 3's Transaction create, which was verified here by the maintainer on 26.1.5950.0 (October 2026).</p>
+</blockquote>
+    </main>
+
+    <aside class="toc-rail" id="toc-rail">
+        <div class="toc-rail-title">On this page</div>
+        <div class="page-toc" id="page-toc">
+            <div class="toc">
+<ul>
+<li><a href="#inputs">Inputs</a></li>
+<li><a href="#runbook">Runbook</a><ul>
+<li><a href="#step-0-price-it-first-inferred-method-verified-use">Step 0 — Price it first (Inferred method, Verified use)</a></li>
+<li><a href="#step-1-item-and-its-first-location-interactive-item-verified">Step 1 — Item and its first location (Interactive Item) (Verified)</a></li>
+<li><a href="#step-2-the-other-locations-transaction-item-verified">Step 2 — The other locations (Transaction Item) (Verified)</a></li>
+<li><a href="#step-3-bom-and-assembly-flags-assembly-verified-here">Step 3 — BOM and assembly flags (Assembly) (Verified here)</a></li>
+<li><a href="#step-4-the-contract-line-transaction-jobcontractpricing-verified">Step 4 — The contract line (Transaction JobContractPricing) (Verified)</a></li>
+<li><a href="#step-5-first-production-order-productionorder-verified">Step 5 — First production order (ProductionOrder) (Verified)</a></li>
+</ul>
+</li>
+<li><a href="#checks-that-caught-real-mistakes">Checks that caught real mistakes</a></li>
+</ul>
+</div>
+
+        </div>
+    </aside>
+
+    <script>
+        // Add IDs to headers for linking
+        document.querySelectorAll('h2, h3, h4').forEach(function(header) {
+            if (!header.id) {
+                header.id = header.textContent.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+            }
+        });
+
+        // Narrow screens: site nav starts collapsed so page content is one
+        // tap away. Wide screens: nav is forced open (its summary is hidden
+        // there, so a stuck-closed fold would be unrecoverable).
+        (function() {
+            var fold = document.getElementById('sidebar-fold');
+            if (!fold) return;
+            var mq = window.matchMedia('(max-width: 1100px)');
+            function apply() {
+                if (mq.matches) { fold.removeAttribute('open'); }
+                else { fold.setAttribute('open', ''); }
+            }
+            if (mq.addEventListener) { mq.addEventListener('change', apply); }
+            else if (mq.addListener) { mq.addListener(apply); }
+            apply();
+        })();
+
+        // Highlight current ToC item on scroll
+        (function() {
+            var tocLinks = document.querySelectorAll('.page-toc a');
+            if (!tocLinks.length) return;
+
+            var headers = [];
+            tocLinks.forEach(function(link) {
+                var id = link.getAttribute('href');
+                if (id && id.startsWith('#')) {
+                    var el = document.getElementById(id.slice(1));
+                    if (el) headers.push({ el: el, link: link });
+                }
+            });
+
+            function updateActive() {
+                var scrollY = window.scrollY + 80;
+                var active = null;
+                for (var i = 0; i < headers.length; i++) {
+                    if (headers[i].el.offsetTop <= scrollY) {
+                        active = headers[i];
+                    }
+                }
+                tocLinks.forEach(function(l) { l.classList.remove('active'); });
+                if (active) active.link.classList.add('active');
+            }
+
+            window.addEventListener('scroll', updateActive, { passive: true });
+            updateActive();
+        })();
+
+        // Code tab switching with global language sync + localStorage persistence
+        (function() {
+            var savedLang = localStorage.getItem('p21-docs-lang');
+
+            document.querySelectorAll('.code-tabs').forEach(function(container) {
+                var buttons = container.querySelectorAll('.tab-btn');
+                var panels = container.querySelectorAll('.tab-panel');
+
+                // Restore saved language preference
+                if (savedLang) {
+                    var target = container.querySelector('.tab-btn[data-lang="' + savedLang + '"]');
+                    if (target) {
+                        buttons.forEach(function(b) { b.classList.remove('active'); });
+                        panels.forEach(function(p) { p.classList.remove('active'); });
+                        target.classList.add('active');
+                        var panel = container.querySelector('.tab-panel[data-lang="' + savedLang + '"]');
+                        if (panel) panel.classList.add('active');
+                    }
+                }
+
+                // Click handlers
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var lang = this.getAttribute('data-lang');
+                        localStorage.setItem('p21-docs-lang', lang);
+
+                        // Switch ALL tab groups on the page to this language
+                        document.querySelectorAll('.code-tabs').forEach(function(c) {
+                            var cBtns = c.querySelectorAll('.tab-btn');
+                            var cPanels = c.querySelectorAll('.tab-panel');
+                            var hasLang = c.querySelector('.tab-btn[data-lang="' + lang + '"]');
+                            if (hasLang) {
+                                cBtns.forEach(function(b) { b.classList.remove('active'); });
+                                cPanels.forEach(function(p) { p.classList.remove('active'); });
+                                hasLang.classList.add('active');
+                                var p = c.querySelector('.tab-panel[data-lang="' + lang + '"]');
+                                if (p) p.classList.add('active');
+                            }
+                        });
+                    });
+                });
+            });
+        })();
+
+
+    </script>
+</body>
+</html>
