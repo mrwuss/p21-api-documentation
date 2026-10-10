@@ -1489,7 +1489,7 @@ HTTP 400
 <tr>
 <td><code>Shipping</code></td>
 <td>Shipping</td>
-<td>Confirm shipments and set the carrier tracking number — the only service that writes <code>oe_pick_ticket.tracking_no</code>, and it refuses an already-invoiced pick ticket. See <a href="#shipping-service-carrier-tracking-number">Shipping Service — Carrier Tracking Number</a> Its <code>delete_flag</code> cannot reach orphaned tickets on completed orders — see <a href="#shipping-service-deleting-a-pick-ticket">Deleting a Pick Ticket</a>.</td>
+<td>Confirm shipments and set the carrier tracking number — the only service that writes <code>oe_pick_ticket.tracking_no</code>, and it refuses an already-invoiced pick ticket. See <a href="#shipping-service-carrier-tracking-number">Shipping Service — Carrier Tracking Number</a>. Its <code>delete_flag</code> cannot reach orphaned tickets on completed orders — see <a href="#shipping-service-deleting-a-pick-ticket">Deleting a Pick Ticket</a>.</td>
 </tr>
 <tr>
 <td><code>InventoryMaster</code></td>
@@ -5060,7 +5060,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <li>Before the move, snapshot <code>inv_loc.gl_account_no</code>, <code>revenue_account_no</code>, and <code>cos_account_no</code> for every location you will touch.</li>
 <li>Compare the source and target groups' default accounts in <code>product_group</code>. If they differ, the move changes where revenue and COS post; get accounting sign-off first.</li>
 <li>Make the move.</li>
-<li>Read the three columns back. Where they changed and the change was not intended, write the snapshot values back by SQL, then read them back again to confirm.</li>
+<li>Read the three columns back. Where they changed and the change was not intended, write the snapshot values back by SQL, then read them back again to confirm. The SQL write is unsupported by Epicor and leaves no application-level audit record, so test it on a non-production tenant first and log the before-image yourself.</li>
 </ol>
 <p>Whether the <a href="11-Inventory-REST-API.html#updating-existing-location-fields">Inventory REST API's <code>ProductGroupId</code> update</a> re-syncs accounts the same way was not tested.</p>
 <blockquote>
@@ -5717,7 +5717,7 @@ General Exception: This pick ticket has already been invoiced.
 <li><code>Record specified was not found</code> is raised at <strong>record selection</strong>, the same gate as the <a href="#the-limitation-invoiced-pick-tickets-refuse-the-write">invoiced-ticket refusal</a> above. The window retrieves only tickets it still considers shippable, and a ticket on a completed order is outside that set.</li>
 <li>The parent-line error comes from assembly and kit validation when the ticket loads.</li>
 </ul>
-<p>The P21 client uses the same window logic, so it cannot delete these tickets either. The remaining route is a soft delete in SQL on the <code>oe_pick_ticket</code> header row (<code>delete_flag = 'Y'</code>). Guard it to tickets with <code>invoice_no IS NULL</code> whose order has <code>oe_hdr.completed = 'Y'</code>, and keep a before-image so you can roll it back. On tickets for completed orders, this had no allocation, inventory, or invoice effect.</p>
+<p>The P21 client uses the same window logic, so it cannot delete these tickets either. The remaining route is a soft delete in SQL on the <code>oe_pick_ticket</code> header row (<code>delete_flag = 'Y'</code>). A direct SQL write is unsupported by Epicor, bypasses P21's business logic, and leaves no application-level audit record — try it on a non-production tenant first. Guard it to tickets with <code>invoice_no IS NULL</code> whose order has <code>oe_hdr.completed = 'Y'</code>, and keep a before-image so you can roll it back. On tickets for completed orders, this had no allocation, inventory, or invoice effect.</p>
 <blockquote>
 <p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026, with a SQL read-back after each call; production held tickets in the same states (<a href="https://github.com/mrwuss/p21-api-documentation/issues/165">#165</a>).</p>
 </blockquote>

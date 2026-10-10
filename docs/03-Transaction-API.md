@@ -462,7 +462,7 @@ Other verified XML specifics:
 | `SalesPricePage` | Sales Price Page Maintenance | Price page management — also drivable through the Transaction API, see [08 § Transaction API Alternative](08-SalesPricePage-Codes.md#transaction-api-alternative) |
 | `PurchaseOrder` | Purchase Order Entry | Create POs (Regular). Pick a non-Regular PO type via a **type-specific service**, not by setting `po_hdr_po_type` — see [Purchase Order Types](#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
 | `RequisitionPurchaseOrder` | Purchase Order Entry (type preset to Requisition) | Create requisition (internal / not-for-resale) POs — `po_hdr.po_type = 'R'`. Same window as PO Entry; easy to miss in `/api/v2/services`. See [create-requisition-po](recipes/create-requisition-po.md) |
-| `Shipping` | Shipping | Confirm shipments and set the carrier tracking number — the only service that writes `oe_pick_ticket.tracking_no`, and it refuses an already-invoiced pick ticket. See [Shipping Service — Carrier Tracking Number](#shipping-service-carrier-tracking-number) Its `delete_flag` cannot reach orphaned tickets on completed orders — see [Deleting a Pick Ticket](#shipping-service-deleting-a-pick-ticket). |
+| `Shipping` | Shipping | Confirm shipments and set the carrier tracking number — the only service that writes `oe_pick_ticket.tracking_no`, and it refuses an already-invoiced pick ticket. See [Shipping Service — Carrier Tracking Number](#shipping-service-carrier-tracking-number). Its `delete_flag` cannot reach orphaned tickets on completed orders — see [Deleting a Pick Ticket](#shipping-service-deleting-a-pick-ticket). |
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
 | `m_storedprocedureexecutor` | Stored Procedure Executor | Load and execute stored procedure definitions (see [Stored Procedure Executor](#stored-procedure-executor)) (hidden from `/api/v2/services` — see the [PDF Report Generation](#pdf-report-generation) discovery note) |
@@ -3436,7 +3436,7 @@ To move product groups without losing location accounts:
 1. Before the move, snapshot `inv_loc.gl_account_no`, `revenue_account_no`, and `cos_account_no` for every location you will touch.
 2. Compare the source and target groups' default accounts in `product_group`. If they differ, the move changes where revenue and COS post; get accounting sign-off first.
 3. Make the move.
-4. Read the three columns back. Where they changed and the change was not intended, write the snapshot values back by SQL, then read them back again to confirm.
+4. Read the three columns back. Where they changed and the change was not intended, write the snapshot values back by SQL, then read them back again to confirm. The SQL write is unsupported by Epicor and leaves no application-level audit record, so test it on a non-production tenant first and log the before-image yourself.
 
 Whether the [Inventory REST API's `ProductGroupId` update](11-Inventory-REST-API.md#updating-existing-location-fields) re-syncs accounts the same way was not tested.
 
@@ -4025,7 +4025,7 @@ Each returns `Summary.Failed = 1` and changes nothing: no delete, no invoice. Bo
 - `Record specified was not found` is raised at **record selection**, the same gate as the [invoiced-ticket refusal](#the-limitation-invoiced-pick-tickets-refuse-the-write) above. The window retrieves only tickets it still considers shippable, and a ticket on a completed order is outside that set.
 - The parent-line error comes from assembly and kit validation when the ticket loads.
 
-The P21 client uses the same window logic, so it cannot delete these tickets either. The remaining route is a soft delete in SQL on the `oe_pick_ticket` header row (`delete_flag = 'Y'`). Guard it to tickets with `invoice_no IS NULL` whose order has `oe_hdr.completed = 'Y'`, and keep a before-image so you can roll it back. On tickets for completed orders, this had no allocation, inventory, or invoice effect.
+The P21 client uses the same window logic, so it cannot delete these tickets either. The remaining route is a soft delete in SQL on the `oe_pick_ticket` header row (`delete_flag = 'Y'`). A direct SQL write is unsupported by Epicor, bypasses P21's business logic, and leaves no application-level audit record — try it on a non-production tenant first. Guard it to tickets with `invoice_no IS NULL` whose order has `oe_hdr.completed = 'Y'`, and keep a before-image so you can roll it back. On tickets for completed orders, this had no allocation, inventory, or invoice effect.
 
 > **Credit:** *@mrwuss* — verified on play 26.1, September 2026, with a SQL read-back after each call; production held tickets in the same states ([#165](https://github.com/mrwuss/p21-api-documentation/issues/165)).
 
