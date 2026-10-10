@@ -1635,6 +1635,9 @@
 <h2 id="updating-existing-location-fields">Updating Existing Location Fields</h2>
 <p>The GET -&gt; Modify -&gt; PUT pattern also works for <strong>updating fields on existing <code>inv_loc</code> records</strong>, not just appending new ones.</p>
 <p><strong>Verified writable fields:</strong> <code>Sellable</code>, <code>ProductGroupId</code>, <code>PurchaseDiscountGroup</code>, <code>SalesDiscountGroup</code>, <code>ReplenishmentLocation</code>, <code>PrimaryBin</code> (see <a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas</a> — <code>PrimaryBin</code> verified across 276 rows; the bin must already exist at that location)</p>
+<blockquote>
+<p><strong><code>ProductGroupId</code> and the location's GL accounts.</strong> Through the Transaction API <code>Item</code> service, a location's product-group change rewrites its GL, revenue, and COS accounts to the target group's defaults — see <a href="03-Transaction-API.html#changing-a-locations-product-group-re-syncs-its-gl-accounts">03 § Changing a Location's Product Group Re-Syncs Its GL Accounts</a>. Whether this PUT does the same was not tested; snapshot the three account columns before a product-group change here too, and compare after.</p>
+</blockquote>
 <h3 id="updating-a-suppliers-cost-supplierslistcost">Updating a Supplier's Cost (<code>Suppliers.list[].Cost</code>)</h3>
 <p>The same GET → modify → PUT round trip updates <strong><code>inventory_supplier.cost</code></strong> on an existing supplier row. <code>GET /api/inventory/parts/{ItemId}?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure</code>, change <code>Suppliers.list[n].Cost</code>, and PUT the full payload back → HTTP 200.</p>
 <p>A full-row before/after diff showed exactly this:</p>

@@ -769,6 +769,10 @@
 <td><a href="02-OData-API.html#common-tables">02 § Common Tables</a> — columns keep the <code>mail_</code>/<code>phys_</code> prefix (<code>mail_address1</code>, not <code>address1</code>); 404 without it</td>
 </tr>
 <tr>
+<td>Read <strong>P21 user accounts</strong> (<code>users</code>) — 401, or 200 with an empty <code>value</code></td>
+<td><a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">02 § One table is withheld from every token: <code>users</code></a> — withheld from consumer keys <em>and</em> password grants by design; no OData workaround</td>
+</tr>
+<tr>
 <td><strong>Does an OData read immediately after a Transaction write ever return stale data?</strong></td>
 <td><a href="02-OData-API.html#read-after-write-consistency">02 § Read-after-write consistency</a> — 125/125 clean on the <code>table:</code> surface, light load; <code>view:</code> untested</td>
 </tr>
@@ -961,7 +965,7 @@
 </tr>
 <tr>
 <td>Consumer key 401s on a table you just granted it</td>
-<td><a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">00 § The OData allow-list is baked into the token</a> — scope is fixed at issue time and the tokens last ~20 years; mint a new one</td>
+<td><a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">00 § The OData allow-list is baked into the token</a> — scope is fixed at issue time and the tokens last ~20 years; mint a new one. <strong><code>users</code> never works</strong>, whatever the scope (<a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">02</a>)</td>
 </tr>
 <tr>
 <td>Which <strong>OData version / what's supported</strong></td>
@@ -1123,6 +1127,16 @@
 <td><a href="03-Transaction-API.html#enabling-bin-tracking-at-a-location-track_bins">03 § Enabling Bin Tracking</a></td>
 </tr>
 <tr>
+<td>Item: <strong>change a location's product group</strong> without losing its GL / revenue / COS accounts</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#changing-a-locations-product-group-re-syncs-its-gl-accounts">03 § Changing a Location's Product Group Re-Syncs Its GL Accounts</a> — the move resets the accounts to the target group's defaults; snapshot before, restore after</td>
+</tr>
+<tr>
+<td><strong>Merge two items or two customers</strong> (<code>m_itemmerge</code> / <code>m_customermerge</code>) — and what history moves, changes, or is lost</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#item-merge-and-customer-merge-m_itemmerge-m_customermerge">03 § Item Merge and Customer Merge</a> — customer merge reports <code>Failed: 1</code> when it succeeds; merged item IDs resolve through alternate codes</td>
+</tr>
+<tr>
 <td><strong>Create warehouse bins</strong></td>
 <td><a href="recipes/create-bins.html">create-bins</a></td>
 <td><a href="03-Transaction-API.html#binlocation-service-creating-bins">03 § BinLocation Service</a></td>
@@ -1171,6 +1185,11 @@
 <td><strong>Set a carrier tracking number</strong> on a pick ticket (and why not after invoicing)</td>
 <td>—</td>
 <td><a href="03-Transaction-API.html#shipping-service-carrier-tracking-number">03 § Shipping Service — Carrier Tracking Number</a></td>
+</tr>
+<tr>
+<td><strong>Delete a pick ticket</strong> — <code>Record specified was not found</code> on an orphaned ticket</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#shipping-service-deleting-a-pick-ticket">03 § Shipping Service — Deleting a Pick Ticket</a> — tickets left on completed orders cannot be reached by the API or the client</td>
 </tr>
 <tr>
 <td><strong>Reassign a salesrep</strong> (customer + ship-to)</td>
@@ -1470,6 +1489,10 @@
 <tr>
 <td>Generate any <code>m_*</code> report as PDF</td>
 <td><a href="recipes/generate-pick-ticket-pdf.html">recipe: generate-pick-ticket-pdf</a> · <a href="03-Transaction-API.html#pdf-report-generation">03 § PDF Report Generation</a></td>
+</tr>
+<tr>
+<td><strong>Print or reprint a PO PDF</strong> — empty 500 on every attempt</td>
+<td><a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted">03 § <code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a> — read <code>printed</code> over OData and send it; never hardcode <code>Y</code></td>
 </tr>
 <tr>
 <td>Discover callable report names (hidden from /services)</td>

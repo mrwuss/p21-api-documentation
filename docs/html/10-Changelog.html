@@ -654,6 +654,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>
 <li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>
 <li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
 <li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>
@@ -751,6 +752,15 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-10-v1271">2026-10-10 — v1.27.1</h2>
+<p>Closed the five open issues that already carried verified results. <a href="https://github.com/mrwuss/p21-api-documentation/issues/163">#163</a> stays open on purpose until Epicor responds.</p>
+<ul>
+<li><strong>fix:</strong> <strong><a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted"><code>m_reprintpurchaseorders</code>: <code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a></strong> — the examples hardcoded <code>"Y"</code>, which deterministically 500s on a PO that was never printed. The Python and C# examples now read <code>printed</code> first and send it; the empty-500 cause table has the new row. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/162">#162</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">The OData <code>users</code> table is withheld from every token</a></strong> — consumer keys get a 401 and password grants get an empty 200, including the caller's own row; adding it to a key's scope has no effect. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/164">#164</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#shipping-service-deleting-a-pick-ticket">The Shipping service can't delete orphaned pick tickets</a></strong> — tickets on a closed order or under a deleted assembly parent fail with the documented errors. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/165">#165</a> — <em>@mrwuss</em></li>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#changing-a-locations-product-group-re-syncs-its-gl-accounts">Changing a location's product group re-syncs its GL accounts</a></strong> — through the <code>Item</code> service, even when both groups carry identical defaults, overwriting branch-specific location accounts; the accounts tab is disabled, so snapshot before and restore after. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/166">#166</a> — <em>@mrwuss</em></li>
+<li><strong>feat:</strong> <strong><a href="03-Transaction-API.html#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge through the Transaction API</a></strong> — payloads, errors, what history moves, and the chained-merge trap where an already-merged source or target silently merges a different record. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/168">#168</a> — <em>@mrwuss</em></li>
+</ul>
 <h2 id="2026-10-10-v1270">2026-10-10 — v1.27.0</h2>
 <p>Brought in the verified findings from <a href="https://github.com/AWestemeier">Alex Westemeier</a>'s process work, generalized, and re-ran on play 26.1.5950.0 the four that contradicted or extended this repo. Closed three issues that already carried verified results, and documented a community answer to a fourth. All identifiers are placeholders.</p>
 <p><strong>Corrections from the live re-test (play, 26.1.5950.0, 2026-10-10)</strong></p>
@@ -1626,6 +1636,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>
 <li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>
 <li><a href="#2026-09-22-v1261">2026-09-22 — v1.26.1</a></li>
 <li><a href="#2026-09-21-v1260">2026-09-21 — v1.26.0</a></li>

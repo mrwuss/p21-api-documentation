@@ -744,6 +744,7 @@
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#shipping-service-deleting-a-pick-ticket">Shipping Service — Deleting a Pick Ticket</a></li>
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
@@ -753,6 +754,7 @@
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
+<li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>
@@ -1487,7 +1489,7 @@ HTTP 400
 <tr>
 <td><code>Shipping</code></td>
 <td>Shipping</td>
-<td>Confirm shipments and set the carrier tracking number — the only service that writes <code>oe_pick_ticket.tracking_no</code>, and it refuses an already-invoiced pick ticket. See <a href="#shipping-service-carrier-tracking-number">Shipping Service — Carrier Tracking Number</a></td>
+<td>Confirm shipments and set the carrier tracking number — the only service that writes <code>oe_pick_ticket.tracking_no</code>, and it refuses an already-invoiced pick ticket. See <a href="#shipping-service-carrier-tracking-number">Shipping Service — Carrier Tracking Number</a>. Its <code>delete_flag</code> cannot reach orphaned tickets on completed orders — see <a href="#shipping-service-deleting-a-pick-ticket">Deleting a Pick Ticket</a>.</td>
 </tr>
 <tr>
 <td><code>InventoryMaster</code></td>
@@ -1504,6 +1506,11 @@ HTTP 400
 <td>Stored Procedure Executor</td>
 <td>Load and execute stored procedure definitions (see <a href="#stored-procedure-executor">Stored Procedure Executor</a>) (hidden from <code>/api/v2/services</code> — see the <a href="#pdf-report-generation">PDF Report Generation</a> discovery note)</td>
 </tr>
+<tr>
+<td><code>m_itemmerge</code> / <code>m_customermerge</code></td>
+<td>Item Merge / Customer Merge</td>
+<td>Merge one item or customer into another (hidden from <code>/api/v2/services</code>). A successful customer merge reports <code>Failed: 1</code> — see <a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge</a></td>
+</tr>
 </tbody>
 </table></div>
 <h3 id="report-services">Report Services</h3>
@@ -1519,7 +1526,7 @@ HTTP 400
 <tr>
 <td><code>m_reprintpurchaseorders</code></td>
 <td>PO Reprint</td>
-<td>Purchase order PDF reprints (see <a href="#pdf-report-generation">PDF Report Generation</a>)</td>
+<td>Purchase order PDF prints and reprints; <code>reprint_flag</code> must equal <code>po_hdr.printed</code> (see <a href="#reprint_flag-must-match-the-pos-po_hdrprinted">PDF Report Generation</a>)</td>
 </tr>
 <tr>
 <td><code>m_reprintpicktickets</code></td>
@@ -5000,8 +5007,65 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <td>List</td>
 <td>that location's supplier rows — <code>supplier_id</code>, <code>primary_supplier</code></td>
 </tr>
+<tr>
+<td><code>TABPAGE_24.inv_loc_accounts</code></td>
+<td>List</td>
+<td>that location's <code>gl_account_no</code>, <code>revenue_account_no</code>, <code>cos_account_no</code> — <strong>disabled under the Transaction API</strong> (see below)</td>
+</tr>
 </tbody>
 </table></div>
+<h4 id="changing-a-locations-product-group-re-syncs-its-gl-accounts">Changing a Location's Product Group Re-Syncs Its GL Accounts</h4>
+<p>Editing <code>product_group_id</code> on <code>TABPAGE_18.inv_loc_detail</code> also rewrites that location's inventory (asset), revenue, and COS accounts to the <strong>target product group's defaults</strong> (<code>product_group.asset_account_no</code>, <code>revenue_account_no</code>, <code>cos_account_no</code>). Nothing in the payload asks for it, nothing in the response mentions it, and <code>Summary.Succeeded</code> is <code>1</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_18.inv_loc_detail&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;product_group_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PG-B&quot;</span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Step</th>
+<th><code>inv_loc.product_group_id</code></th>
+<th><code>gl_account_no</code> / <code>revenue_account_no</code> / <code>cos_account_no</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before</td>
+<td><code>PG-A</code></td>
+<td><code>11110-01</code> / <code>33300-01</code> / <code>44400-01</code> (the <code>PG-A</code> defaults)</td>
+</tr>
+<tr>
+<td>Move to <code>PG-B</code></td>
+<td><code>PG-B</code></td>
+<td><strong><code>11110-02</code> / <code>33300-02</code> / <code>44400-02</code></strong> (the <code>PG-B</code> defaults)</td>
+</tr>
+<tr>
+<td>Move back to <code>PG-A</code></td>
+<td><code>PG-A</code></td>
+<td><code>11110-01</code> / <code>33300-01</code> / <code>44400-01</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><code>audit_trail</code> records all four columns in the same second, with <code>created_by</code> set to the acting user.</p>
+<blockquote>
+<p>⚠️ <strong>The re-sync compares the target group's defaults with the location's <em>current</em> accounts, not with the source group's defaults.</strong> A location that carries its own accounts (for example, branch-specific accounts where the product group holds one default set) can be reset to the group defaults by a move between two groups whose defaults are <strong>identical</strong>. In that test the reset hit some of the items moved, not all; what decides which was not determined. When the location's accounts already equal the target defaults, only <code>product_group_id</code> changes.</p>
+</blockquote>
+<p>This is the Transaction API counterpart of the Item window's <em>"update GL accounts?"</em> prompt. The Transaction API answers it with its default (Yes), and there is no way to answer No. In the Interactive API the prompt is a <code>w_message</code> you can drive yourself with <code>ResponseWindowHandlingEnabled: true</code> — see <a href="04-Interactive-API.html#response-windows">04 § Response Windows</a>.</p>
+<p><strong>You cannot restore the accounts in the same transaction.</strong> The location accounts element <code>TABPAGE_24.inv_loc_accounts</code> (keys <code>location_id</code>; fields <code>gl_account_no</code>, <code>revenue_account_no</code>, <code>cos_account_no</code>) is in the <code>Item</code> definition, but any edit to it fails and aborts the whole transaction, product-group edit included:</p>
+<div class="highlight"><pre><span></span><code>General Exception: Column is disabled: gl_account_no
+</code></pre></div>
+
+<p>To move product groups without losing location accounts:</p>
+<ol>
+<li>Before the move, snapshot <code>inv_loc.gl_account_no</code>, <code>revenue_account_no</code>, and <code>cos_account_no</code> for every location you will touch.</li>
+<li>Compare the source and target groups' default accounts in <code>product_group</code>. If they differ, the move changes where revenue and COS post; get accounting sign-off first.</li>
+<li>Make the move.</li>
+<li>Read the three columns back. Where they changed and the change was not intended, write the snapshot values back by SQL, then read them back again to confirm. The SQL write is unsupported by Epicor and leaves no application-level audit record, so test it on a non-production tenant first and log the before-image yourself.</li>
+</ol>
+<p>Whether the <a href="11-Inventory-REST-API.html#updating-existing-location-fields">Inventory REST API's <code>ProductGroupId</code> update</a> re-syncs accounts the same way was not tested.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026, with a consumer-key token acting as a named user; the SQL restore in step 4 left no location differing from its snapshot (<a href="https://github.com/mrwuss/p21-api-documentation/issues/166">#166</a>).</p>
+</blockquote>
 <h4 id="item-service-gotchas">Item Service Gotchas</h4>
 <ul>
 <li><strong>Silent no-op — the big one.</strong> The target supplier must already have a <em>location-level</em> row (<code>inventory_supplier_x_loc</code>) at that location. If it doesn't, the transaction still returns <code>Succeeded = 1</code> but <strong>nothing flips</strong> — there is no row to promote. (P21 allows cutting a PO to a supplier without location setup, so a supplier can appear in PO history yet be absent from the location's supplier list.) <strong>Always verify <code>inv_loc.primary_supplier_id</code> after writing</strong> — do not trust <code>Succeeded</code>. Fix: <a href="#adding-a-location-supplier-row-the-prerequisite-insert">add the location supplier row first</a>, then set the flag.</li>
@@ -5021,6 +5085,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
   Transaction 1: TABPAGE_1.tp_1_dw_1, row 1: Blocked DataElement: tp_1_dw_1, Column: item_id, Value: &lt;item_id&gt;</code>
   The message's exact missing-column list varies by request (sometimes <code>'Purchase Group'</code>, sometimes <code>Location ID</code>), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on <em>every</em> subsequent save, and — like the create gotcha above — the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat <code>delete_flag=ON</code> as one-shot. Callers that need idempotent delete should read <code>inv_mast.delete_flag</code> over OData first and skip the <code>Item</code> POST entirely when it is already <code>Y</code>. Verified live, 26.1 (September 2026), against throwaway items created through <code>POST /api/inventory/parts</code>. <em>(Filed as <a href="https://github.com/mrwuss/p21-api-documentation/issues/160">#160</a>.)</em></li>
 <li><strong>A REST-created item can silently end up with no default unit of measure at all</strong>, not just the <a href="11-Inventory-REST-API.html#character-set-and-whitespace-verified">40-character description cap</a> and other quirks below — observed once in seven otherwise-identical <a href="11-Inventory-REST-API.html#minimum-create-payload">minimum-payload</a> creates (26.1, September 2026): <code>DefaultSellingUnit</code>/<code>DefaultPurchasingUnit</code> came back <code>null</code> and <code>UnitsOfMeasure</code> came back empty, where the other six got <code>EA</code> auto-assigned. An item in this state hits the exact same <code>A Default Sales Unit... Must Each Be Specified</code> block as the raw-create circular dependency above, on <em>any</em> later <code>Item</code>-service write, even though the item already exists. Check <code>DefaultSellingUnit</code> on the create response (or a follow-up <code>GET</code>) before assuming the item is usable; if it's <code>null</code>, set <code>UnitsOfMeasure</code> explicitly via a REST <code>PUT</code>.</li>
+<li><strong>A <code>product_group_id</code> edit on a location silently rewrites its GL, revenue, and COS accounts</strong> to the target group's defaults, including branch-specific accounts, and <code>TABPAGE_24.inv_loc_accounts</code> is disabled, so you cannot send the originals back in the same payload. Snapshot before, restore after — see <a href="#changing-a-locations-product-group-re-syncs-its-gl-accounts">Changing a Location's Product Group Re-Syncs Its GL Accounts</a>.</li>
 </ul>
 <h3 id="location-service-creating-a-warehouse">Location Service — Creating a Warehouse</h3>
 <p><code>Location</code> / <code>TABPAGE_1.tp_1_dw_1</code> (business object <code>location</code>, datawindow <code>d_location</code>) is <strong>Warehouse/Location Maintenance</strong>. Keys are <code>id</code> (→ <code>location.location_id</code>) + <code>company_id</code>; <code>id</code> also fans out to a shared-keyspace <code>address</code> row (same <a href="02-OData-API.html#common-tables"><code>mail_</code>-prefix convention</a> as everywhere else <code>address</code> is joined).</p>
@@ -5271,6 +5336,12 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <td>Char</td>
 <td>Confirm Shipment</td>
 <td><code>ValidValues</code>: <code>ON</code> / <code>OFF</code></td>
+</tr>
+<tr>
+<td><code>delete_flag</code></td>
+<td>Char</td>
+<td>Delete</td>
+<td><code>ValidValues</code>: <code>ON</code> / <code>OFF</code> — see <a href="#shipping-service-deleting-a-pick-ticket">Deleting a Pick Ticket</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -5597,6 +5668,59 @@ General Exception: This pick ticket has already been invoiced.
 </code></pre></div>
 </div>
 </div>
+<h3 id="shipping-service-deleting-a-pick-ticket">Shipping Service — Deleting a Pick Ticket</h3>
+<p>The same <code>Shipping</code> header element carries the window's <strong>Delete</strong> checkbox: <code>delete_flag</code> (<code>oe_pick_ticket.delete_flag</code>, <code>ValidValues</code> <code>ON</code>/<code>OFF</code>), beside <code>create_invoice</code> (Confirm Shipment). Send <code>delete_flag = ON</code> with <code>create_invoice = OFF</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Shipping&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">      </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;pick_ticket_no&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pick_ticket_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123456&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;create_invoice&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OFF&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;delete_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>This works only on a ticket the Shipping window can still retrieve. It cannot reach an <strong>orphaned</strong> pick ticket: one that was printed but never invoiced, left behind on an order that is now complete.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Orphaned ticket</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Order completed; the line closed (partially invoiced, the rest canceled)</td>
+<td><code>Record specified was not found. Try again.</code> on <code>tp_1_dw_1.pick_ticket_no</code></td>
+</tr>
+<tr>
+<td>Order completed; the line fully invoiced</td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Order completed; the ticket lists assembly components whose parent order line was deleted</td>
+<td><code>Parent line cannot be found for item ITEM-001; parent item &lt;line_no&gt; may not exist at location %s.</code> (the unformatted <code>%s</code> is in P21's own message)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Each returns <code>Summary.Failed = 1</code> and changes nothing: no delete, no invoice. Both refusals fire before any edit is applied, so no change to the payload gets past them:</p>
+<ul>
+<li><code>Record specified was not found</code> is raised at <strong>record selection</strong>, the same gate as the <a href="#the-limitation-invoiced-pick-tickets-refuse-the-write">invoiced-ticket refusal</a> above. The window retrieves only tickets it still considers shippable, and a ticket on a completed order is outside that set.</li>
+<li>The parent-line error comes from assembly and kit validation when the ticket loads.</li>
+</ul>
+<p>The P21 client uses the same window logic, so it cannot delete these tickets either. The remaining route is a soft delete in SQL on the <code>oe_pick_ticket</code> header row (<code>delete_flag = 'Y'</code>). A direct SQL write is unsupported by Epicor, bypasses P21's business logic, and leaves no application-level audit record — try it on a non-production tenant first. Guard it to tickets with <code>invoice_no IS NULL</code> whose order has <code>oe_hdr.completed = 'Y'</code>, and keep a before-image so you can roll it back. On tickets for completed orders, this had no allocation, inventory, or invoice effect.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026, with a SQL read-back after each call; production held tickets in the same states (<a href="https://github.com/mrwuss/p21-api-documentation/issues/165">#165</a>).</p>
+</blockquote>
 <hr />
 <h3 id="purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</h3>
 <p>The buy-side counterpart to <code>Order</code>, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO <strong>998302</strong>, confirmed in <code>po_hdr</code>/<code>po_line</code>.</p>
@@ -6088,6 +6212,175 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026; not re-run here.</p>
 </blockquote>
+<h3 id="item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (<code>m_itemmerge</code>, <code>m_customermerge</code>)</h3>
+<p>Item Merge and Customer Merge run through <code>POST /api/v2/transaction</code> as the hidden menu services <strong><code>m_itemmerge</code></strong> and <strong><code>m_customermerge</code></strong>. Neither appears in <code>GET /api/v2/services</code>, but both return a definition from <code>GET /api/v2/definition/{name}</code> and run end to end. A merge is one-way: the source record is soft-deleted and its history is moved, rewritten, or deleted as the lists below describe. Test on a non-production tenant first, and resolve both IDs yourself before every call.</p>
+<p>Discovery notes:</p>
+<ul>
+<li><code>window_x_menu</code> maps <code>m_inv_frame/m_system/m_itemmerge</code> to the window <code>w_item_merge_maint</code>. Customer merge has no menu row; <code>m_customermerge</code> answers <code>/definition</code> anyway.</li>
+<li><code>ItemMerge</code>, <code>CustomerMerge</code>, <code>m_customeridchange</code>, and <code>CustomerIDEdit</code> return the unavailable-window HTTP 500.</li>
+<li><code>ItemIDEdit</code> (menu alias <code>m_5</code>) is the separate <strong>Item ID Change</strong> window (<code>item_id</code>, <code>proposed_item_id</code>), and it is listed in <code>/services</code>.</li>
+</ul>
+<h4 id="item-merge-payload">Item merge payload</h4>
+<p><code>FORM.form</code>, keyed on <code>source_item_id</code> and <code>target_item_id</code>. The source is merged <strong>into</strong> the target, and the target survives:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_itemmerge&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">      </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;source_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;target_item_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;source_item_id&quot;</span><span class="p">,</span><span class="w">         </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ITEM-002&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;target_item_id&quot;</span><span class="p">,</span><span class="w">         </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ITEM-001&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;create_alt_code_flag&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;keep_restrictions_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OFF&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;schedule_merge_flag&quot;</span><span class="p">,</span><span class="w">    </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OFF&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>create_alt_code_flag = ON</code> makes the source item ID an alternate code on the target. Read <a href="#merged-item-ids-resolve-through-alternate-codes">Merged item IDs resolve through alternate codes</a> before you use it.</p>
+<h4 id="customer-merge-payload">Customer merge payload</h4>
+<p><code>FORM.form</code>, keyed on <code>source_customer_id</code> and <code>target_customer_id</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;m_customermerge&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">    </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">      </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;FORM.form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;source_customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;target_customer_id&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w">          </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;source_customer_id&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST-101&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;target_customer_id&quot;</span><span class="p">,</span><span class="w">  </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CUST-100&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;credit_limit_type&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Use Highest Credit Limit&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;keep_cust_as_shipto&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">]</span><span class="w"> </span><span class="p">}]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="w">  </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>credit_limit_type</code> takes <code>Use Highest Credit Limit</code> or <code>Keep the Target Customer Credit Limit</code> (stored as <code>H</code> / <code>K</code> in <code>temp_customer_merge</code>). For <code>keep_cust_as_shipto</code>, see <a href="#what-a-customer-merge-does-to-history">What a customer merge does to history</a>.</p>
+<h4 id="merge-responses-and-errors">Merge responses and errors</h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Item: source does not exist</td>
+<td><code>Failed</code>: <code>Invalid item ID. DataElement: form, Column: source_item_id</code></td>
+</tr>
+<tr>
+<td>Item: source and target are the same</td>
+<td><code>Failed</code>: <code>Source Item ID and Target Item ID cannot be the same.</code></td>
+</tr>
+<tr>
+<td>Item: <code>target_item_id</code> omitted</td>
+<td>⚠️ <strong><code>Succeeded: 1</code> and nothing happens</strong> — a silent no-op</td>
+</tr>
+<tr>
+<td>Item: either item has a bill of materials</td>
+<td><code>Failed</code>: <code>Unable to merge item X into Y. Reasons: Assembly items cannot be merged.</code></td>
+</tr>
+<tr>
+<td>Item: the two items carry different GL accounts at a shared location</td>
+<td>The same message, with <code>Asset / Revenue / COS Account is set differently for each item at location &lt;location_id&gt;</code>. Every reason is listed in one message</td>
+</tr>
+<tr>
+<td>Item: <code>schedule_merge_flag = ON</code></td>
+<td><code>Failed</code>: <code>To schedule an Item Merge, the Item Merge Schedule task must be active...</code> (the task was inactive on the test tenant)</td>
+</tr>
+<tr>
+<td>Item: <code>create_alt_code_flag = "Y"</code></td>
+<td>Accepted and treated as <code>ON</code></td>
+</tr>
+<tr>
+<td>Item: success</td>
+<td><code>Succeeded: 1</code>, no messages; 6–22 seconds per merge</td>
+</tr>
+<tr>
+<td>Customer: an ID that does not exist or was already merged</td>
+<td><code>Failed</code>: <code>Invalid customer ID.</code></td>
+</tr>
+<tr>
+<td>Customer: source and target are the same</td>
+<td><code>Failed</code>: <code>Target Customer and Source Customer cannot be the same.</code></td>
+</tr>
+<tr>
+<td>Customer: a <code>credit_limit_type</code> that is not one of the two labels</td>
+<td><code>Failed</code>: <code>Invalid credit_limit_type value: Highest</code></td>
+</tr>
+<tr>
+<td>Customer: <code>company_id</code> omitted</td>
+<td>The merge runs with the default company</td>
+</tr>
+<tr>
+<td>Customer: <strong>every successful merge</strong></td>
+<td>⚠️ <strong><code>Failed: 1</code></strong> with <code>History is not available for w_customer_merge_maint window</code> — <strong>but the merge is committed</strong></td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>⚠️ <strong>A customer merge reports failure when it succeeds.</strong> Every successful <code>m_customermerge</code> call returned <code>Failed: 1</code> with the <code>History is not available</code> message, and every one of them was committed: <code>customer_merge_audit</code> shows <code>Merge was Successful.</code> Decide success from <code>customer_merge_audit</code> and the source customer's <code>delete_flag</code>, never from <code>Summary</code>. Do not treat that message as a reason to retry: the source is already merged, so a retry fails with <code>Invalid customer ID.</code></p>
+</blockquote>
+<h4 id="merged-item-ids-resolve-through-alternate-codes">Merged item IDs resolve through alternate codes</h4>
+<p>With <code>create_alt_code_flag = ON</code>, the source item ID becomes an alternate code on the target, and <strong>both ID fields resolve alternate codes</strong>. A later request that names an already-merged item acts on whichever live item now holds that code, and still reports success:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Request</th>
+<th>What actually ran</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ITEM-003</code> into <code>ITEM-002</code>, where <code>ITEM-002</code> was already merged into <code>ITEM-001</code></td>
+<td><code>ITEM-003</code> into <code>ITEM-001</code></td>
+</tr>
+<tr>
+<td><code>ITEM-002</code> into <code>ITEM-004</code>, where <code>ITEM-002</code> was already merged into <code>ITEM-001</code></td>
+<td><strong><code>ITEM-001</code> into <code>ITEM-004</code></strong> — a different, live item and its whole history were merged away</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>item_merge_audit</code> records the resolved IDs, not the ones you sent. Before every call, resolve both IDs against <code>inv_mast.item_id</code> exactly, with <code>delete_flag = 'N'</code>, and do not post when either one is not a live item ID. This matters most in a batch, where an earlier merge can turn a later row's ID into an alternate code. Customer merge does not have this problem: a merged customer ID is rejected.</p>
+<h4 id="what-an-item-merge-does-to-history">What an item merge does to history</h4>
+<p>Measured by comparing row counts and sums before and after, across every table keyed on <code>inv_mast_uid</code> or <code>item_id</code>:</p>
+<ul>
+<li><strong>Source item.</strong> Kept as a soft delete: <code>delete_flag = 'Y'</code>, <code>item_desc</code> = <code>Item Merged.  See Extended Description.</code>, <code>extended_desc</code> = <code>Item X was successfully merged into Item Y.</code>, <code>last_maintained_by = 'P21_INV_MAST_MERGE'</code>. The original descriptions survive only in <code>audit_trail</code>.</li>
+<li><strong>Re-pointed intact</strong> (counts and sums reconcile exactly): <code>invoice_line</code>, <code>oe_line</code>, <code>po_line</code>, <code>apinv_line</code>, <code>vendor_invoice_line</code>, <code>inventory_receipts_line</code>, <code>inv_tran</code>, <code>inv_adj_line</code>, <code>prod_order_line_component</code>, production and order pick tickets, transfer lines, <code>average_inventory_value</code>, <code>inventory_value_items_history</code>, <code>item_lead_time</code>, <code>job_price_line</code>, <code>price_page</code> / <code>price_page_item</code>, <code>inv_sub</code>, <code>inv_xref</code>, <code>alternate_code</code>, <code>assembly_line</code> components, <code>item_id_change_history</code>.</li>
+<li><strong>Item ID text.</strong> <code>invoice_line.item_id</code> and <code>invoice_line_taxes.item_id</code> are <strong>rewritten</strong> to the target ID. <code>apinv_line.item_id</code> and <code>vendor_invoice_line.item_id</code> keep the old text.</li>
+<li><strong>New <code>inv_tran</code> rows.</strong> One <code>trans_type = 'IM'</code> row per location, quantity 0, with <code>document_no</code> set to the merge run.</li>
+<li><strong><code>inv_loc</code>.</strong> Shared locations are combined: quantity on hand is summed and moving-average cost is quantity-weighted. Source-only locations move with their product group and cost; a location with zero on hand has its moving-average cost reset to 0. The target can end up with different product groups at different locations.</li>
+<li><strong><code>inv_period_usage</code>.</strong> Total usage, hits, and orders are summed per location and period. <strong><code>inv_period_usage_this_location</code> is nulled on every source row</strong>, and <code>inv_loc.average_monthly_usage</code> is not carried over.</li>
+<li><strong>Deleted, not moved:</strong> source <code>inventory_supplier</code> rows for suppliers the target already has (the source's supplier part number is lost); <code>inv_bin</code> at shared locations; <strong><code>inv_tran_bin_detail</code> at shared locations</strong> (part of the bin history; net quantity unchanged); <code>item_uom</code>; <code>item_service</code>; <code>inv_mast_trade</code>; <code>inv_mast_strategic_pricing</code>; <code>inv_period_usage_temp</code>.</li>
+<li><strong>Restated, not added:</strong> <code>inventory_value_items_list_company_period</code> is restated for the combined item.</li>
+<li><strong>Customer part numbers can duplicate:</strong> one customer can end up with two <code>their_item_id</code> values for the same item.</li>
+</ul>
+<h4 id="what-a-customer-merge-does-to-history">What a customer merge does to history</h4>
+<ul>
+<li><strong>Source customer.</strong> Soft-deleted (<code>delete_flag = 'Y'</code>, maintained by <code>P21_CUSTOMER_MERGE</code>); the name is kept. The credit-limit option is honored and <code>credit_limit_used</code> is recomputed.</li>
+<li><strong>Re-pointed intact:</strong> <code>invoice_hdr</code> (open AR included), <code>ar_receipts_detail</code>, <code>oe_hdr</code> (orders and quotes), contacts, <code>oe_contacts_customer</code>, <code>customer_notepad</code>, <code>inv_xref</code>, <code>ship_to</code> (every ship-to other than the source's own address), <code>job_price_customer_shipto</code>, <code>customer_call</code>, <code>custom_column_data_customer</code>, <code>payment_account_x_contact</code>. <code>invoice_hdr.salesrep_id</code> is unchanged.</li>
+<li><strong>Combined per period, sums preserved:</strong> <code>customer_order_history</code> and its daily table.</li>
+<li><strong><code>customer_credit_history</code> (monthly) loses columns.</strong> Only <code>amount_paid</code> and <code>invoiced_cost</code> are summed; the source's <code>invoiced_commission_cost</code>, <code>invoiced_other_cost</code>, and <code>avg_fast_slow_days_amount_paid</code> are dropped. <code>customer_x_shipto_credit_history_daily</code> is only partly re-pointed.</li>
+<li><strong>Deleted, not moved:</strong> source <code>customer_salesrep</code> rows (a rep the target lacks is lost), <code>price_library_x_cust_x_cmpy</code> (<strong>the source's price library is dropped</strong>), <code>customer_edi_setting</code>, <code>customer_strategic_pricing</code>.</li>
+<li><strong><code>keep_cust_as_shipto</code>.</strong> With <code>ON</code>, the source's own address moves under the target as a ship-to and nothing is re-pointed. With <code>OFF</code>, the source's own ship-to is soft-deleted and <strong>every order and invoice that shipped to it is re-pointed to the target's own address ID</strong>: <code>oe_hdr.address_id</code>, <code>invoice_hdr.ship_to_id</code> and <code>corp_address_id</code>, <code>commission_run.ship_to_id</code>, and contract ship-to links. The <code>ship2_*</code> / <code>bill2_*</code> text on those headers is kept, and <code>audit_trail</code> logs each <code>oe_hdr.address_id</code> change.</li>
+<li><strong>Site-custom tables</strong> keyed on <code>customer_id</code> are not touched.</li>
+</ul>
+<h4 id="merge-audit-surfaces">Merge audit surfaces</h4>
+<p>Read these to confirm what a merge did: <code>item_merge_audit</code>, <code>temp_inv_mast_merge</code>, <code>scheduled_inv_mast_merge</code>, <code>customer_merge_audit</code>, <code>temp_customer_merge</code>, and <code>audit_trail</code> (<code>source_area_cd</code> 1314 and 1327 for item merges). The stored procedures behind both windows (<code>p21_merge_items*</code>, <code>p21_merge_inv_mast_records_mult_app</code>, <code>p21_merge_customers_app</code>, <code>p21_merge_mult_customers</code>) exist, but reading their source needs <code>VIEW DEFINITION</code>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026: successful item and customer merges plus every error case above, each with before-and-after row counts and sums (<a href="https://github.com/mrwuss/p21-api-documentation/issues/168">#168</a>). The alternate-code resolution was found through two merges that ran on items other than the ones named.</p>
+</blockquote>
 <h2 id="pdf-report-generation">PDF Report Generation</h2>
 <p>The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.</p>
 <p><strong>Endpoint:</strong> <code>POST {ui_server}/api/v2/process/pdfreport</code></p>
@@ -6149,7 +6442,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">},</span>
 <span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;beg_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">},</span>
 <span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;end_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">},</span>
-<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Y&quot;</span><span class="p">}</span>
+<span class="w">                    </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;po_hdr.printed: Y or N&gt;&quot;</span><span class="p">}</span>
 <span class="w">                </span><span class="p">]</span>
 <span class="w">            </span><span class="p">}],</span>
 <span class="w">            </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
@@ -6164,9 +6457,44 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <blockquote>
 <p><strong><code>UseCodeValues</code> requirements vary per report service.</strong> <code>m_reprintpurchaseorders</code> works with <code>UseCodeValues: false</code> (as above), but <code>m_picktickets</code> <strong>requires <code>UseCodeValues: true</code> with code values</strong> — e.g. <code>create_pick_ticket_type</code> must be the code <code>"P"</code>; the display label <code>"Production Order"</code> is rejected, and <code>UseCodeValues: false</code> returns HTTP 500. When a report errors on seemingly-correct criteria, retry with <code>UseCodeValues: true</code> and the code values from the service's definition (<code>ValidValues</code>).</p>
 </blockquote>
+<h4 id="reprint_flag-must-match-the-pos-po_hdrprinted"><code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></h4>
+<p><code>m_reprintpurchaseorders</code> is the <strong>Print Purchase Orders</strong> window in both of its modes. The <code>reprint_flag</code> criterion is not a "reprint please" switch. It selects which population of POs the run considers, and that population is fixed by each PO's own print history:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>reprint_flag</code></th>
+<th>Renders POs where</th>
+<th>A PO in the other state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>N</code></td>
+<td><code>po_hdr.printed = 'N'</code> (never printed)</td>
+<td>Empty HTTP 500</td>
+</tr>
+<tr>
+<td><code>Y</code></td>
+<td><code>po_hdr.printed = 'Y'</code> (printed at least once)</td>
+<td>Empty HTTP 500</td>
+</tr>
+</tbody>
+</table></div>
+<p>A mismatch fails <strong>deterministically</strong>: every attempt returns the same empty-bodied 500, which looks identical to the <a href="#an-empty-5xx-has-several-causes-and-is-usually-transient">transient report-engine fault</a> below. A payload that hardcodes <code>reprint_flag: "Y"</code> therefore fails on every PO that nobody has printed yet, and retrying does not help.</p>
+<p>To print any PO reliably:</p>
+<ol>
+<li>Read the header over OData: <code>GET /odataservice/odata/table/po_hdr?$filter=po_no eq 500100&amp;$select=po_no,printed</code> (<code>po_no</code> is numeric, so do not quote it).</li>
+<li>Send <code>reprint_flag</code> equal to that <code>printed</code> value.</li>
+<li>On an empty 500, re-read <code>printed</code> before you retry. Another user or process can print the PO between your read and your call, which flips the flag you need.</li>
+</ol>
+<p>A first print (<code>N</code>) on an approved PO marks it printed: <code>po_hdr.printed</code> changes to <code>'Y'</code>, so the next run for that PO needs <code>Y</code>. The report payload never requests <em>Transmit Document Links</em>, and no transmission was observed during verification.</p>
+<p>The definition lists <code>ValidValues</code> <code>ON</code>/<code>OFF</code> for <code>reprint_flag</code>; the verified calls sent <code>Y</code>/<code>N</code> with <code>UseCodeValues: false</code>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with <code>Y</code> on repeated attempts and succeeded with <code>N</code> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/162">#162</a>).</p>
+</blockquote>
 <h4 id="an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes — and is usually transient</h4>
 <p>This endpoint runs at production volume: one integration generates PO PDFs for supplier emails all day, logging <strong>154 successes against 3 empty 500s and 1 dropped connection in a single afternoon</strong> — and every affected PO succeeded moments later on retry.</p>
-<p>So an empty-bodied 5xx here is <strong>not</strong> a signal that your payload is wrong. It has at least three unrelated causes, and the response body cannot tell them apart:</p>
+<p>So an empty-bodied 5xx here is <strong>not</strong> a signal that your payload is wrong. It has at least four unrelated causes, and the response body cannot tell them apart:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -6182,6 +6510,10 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <tr>
 <td><strong>Bad criteria</strong> — e.g. a <code>company_id</code> that doesn't exist</td>
 <td>Deterministic: every attempt fails. Verified on Play 26.1 — a wrong <code>company_id</code> returns an empty 500, not a useful message.</td>
+</tr>
+<tr>
+<td><strong><code>reprint_flag</code> doesn't match the PO's print history</strong> (<code>m_reprintpurchaseorders</code>) — <code>Y</code> on a PO with <code>po_hdr.printed = 'N'</code>, or <code>N</code> on one with <code>'Y'</code></td>
+<td>Deterministic for that PO. Read <code>po_hdr.printed</code> and send it as <code>reprint_flag</code>; re-read it before each retry, because it can change between attempts — see <a href="#reprint_flag-must-match-the-pos-po_hdrprinted"><code>reprint_flag</code> must match the PO's <code>po_hdr.printed</code></a>.</td>
 </tr>
 <tr>
 <td><strong>The record isn't printable</strong>, or report generation isn't available in that environment</td>
@@ -6246,7 +6578,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
     <button class="tab-btn" data-lang="csharp">C#</button>
   </div>
   <div class="tab-panel active" data-lang="python">
-<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Generate a PO reprint PDF and save it to disk.&quot;&quot;&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Print (or reprint) a PO as a PDF and save it to disk.&quot;&quot;&quot;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
@@ -6296,6 +6628,20 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
         <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">get_printed_flag</span><span class="p">(</span><span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;reprint_flag must equal po_hdr.printed, or the report returns an empty 500.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/odataservice/odata/table/po_hdr&quot;</span><span class="p">,</span>
+        <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;$filter&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;po_no eq </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;$select&quot;</span><span class="p">:</span> <span class="s2">&quot;po_no,printed&quot;</span><span class="p">},</span>  <span class="c1"># numeric: no quotes</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Bearer </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PO </span><span class="si">{</span><span class="n">PO_NO</span><span class="si">}</span><span class="s2"> not found -- check it before calling the report&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;Y&quot;</span> <span class="k">if</span> <span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;printed&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Y&quot;</span> <span class="k">else</span> <span class="s2">&quot;N&quot;</span>
+
+
 <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="n">VERIFY_SSL</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
     <span class="n">token</span> <span class="o">=</span> <span class="n">get_token</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
     <span class="n">ui_server</span> <span class="o">=</span> <span class="n">get_ui_server</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
@@ -6305,7 +6651,11 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
         <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
     <span class="p">}</span>
 
-    <span class="c1"># Generate PO reprint PDF -- reports go to /process/pdfreport, never /transaction</span>
+    <span class="c1"># Read the PO&#39;s print history first; re-read it before any retry, because</span>
+    <span class="c1"># another user can print the PO between this read and the report call.</span>
+    <span class="n">reprint_flag</span> <span class="o">=</span> <span class="n">get_printed_flag</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+
+    <span class="c1"># Generate the PO PDF -- reports go to /process/pdfreport, never /transaction</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;m_reprintpurchaseorders&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
@@ -6317,7 +6667,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">COMPANY_ID</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;beg_po_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">PO_NO</span><span class="p">},</span>
                         <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;end_po_no&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">PO_NO</span><span class="p">},</span>
-                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="s2">&quot;Y&quot;</span><span class="p">},</span>
+                        <span class="p">{</span><span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;reprint_flag&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">:</span> <span class="n">reprint_flag</span><span class="p">},</span>
                     <span class="p">]</span>
                 <span class="p">}],</span>
                 <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
@@ -6379,7 +6729,11 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="kt">var</span><span class="w"> </span><span class="n">uiServer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetUiServerAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
 <span class="n">client</span><span class="p">.</span><span class="n">DefaultRequestHeaders</span><span class="p">.</span><span class="n">Authorization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">AuthenticationHeaderValue</span><span class="p">(</span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">token</span><span class="p">);</span>
 
-<span class="c1">// Generate PO reprint PDF -- reports go to /process/pdfreport, never /transaction</span>
+<span class="c1">// Read the PO&#39;s print history first; re-read it before any retry, because</span>
+<span class="c1">// another user can print the PO between this read and the report call.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">reprintFlag</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">GetPrintedFlagAsync</span><span class="p">(</span><span class="n">client</span><span class="p">);</span>
+
+<span class="c1">// Generate the PO PDF -- reports go to /process/pdfreport, never /transaction</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;m_reprintpurchaseorders&quot;</span><span class="p">,</span>
@@ -6402,7 +6756,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;beg_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PoNo</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;end_po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PoNo</span><span class="w"> </span><span class="p">},</span>
-<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">                                </span><span class="k">new</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;reprint_flag&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reprintFlag</span><span class="w"> </span><span class="p">},</span>
 <span class="w">                            </span><span class="p">}</span>
 <span class="w">                        </span><span class="p">}</span>
 <span class="w">                    </span><span class="p">},</span>
@@ -6472,6 +6826,20 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">SendAsync</span><span class="p">(</span><span class="n">request</span><span class="p">);</span>
 <span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">ReadField</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Url&quot;</span><span class="p">).</span><span class="n">TrimEnd</span><span class="p">(</span><span class="sc">&#39;/&#39;</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// reprint_flag must equal po_hdr.printed, or the report returns an empty 500.</span>
+<span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GetPrintedFlagAsync</span><span class="p">(</span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">filter</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Uri</span><span class="p">.</span><span class="n">EscapeDataString</span><span class="p">(</span><span class="s">$&quot;po_no eq {PoNo}&quot;</span><span class="p">);</span><span class="w">   </span><span class="c1">// numeric: no quotes</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">client</span><span class="p">.</span><span class="n">GetAsync</span><span class="p">(</span>
+<span class="w">        </span><span class="s">$&quot;{BaseUrl}/odataservice/odata/table/po_hdr?$filter={filter}&amp;$select=po_no,printed&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">response</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
+<span class="w">    </span><span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">response</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">body</span><span class="p">.</span><span class="n">RootElement</span><span class="p">.</span><span class="n">GetProperty</span><span class="p">(</span><span class="s">&quot;value&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rows</span><span class="p">.</span><span class="n">GetArrayLength</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;PO {PoNo} not found -- check it before calling the report&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">TryGetProperty</span><span class="p">(</span><span class="s">&quot;printed&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">out</span><span class="w"> </span><span class="kt">var</span><span class="w"> </span><span class="n">printed</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">printed</span><span class="p">.</span><span class="n">GetString</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;Y&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;N&quot;</span><span class="p">;</span>
 <span class="p">}</span>
 
 <span class="c1">// Some middleware answers these two endpoints in XML even when asked for JSON.</span>
@@ -7331,6 +7699,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#binlocation-service-creating-bins">BinLocation Service -- Creating Bins</a></li>
 <li><a href="#putawayzone-pickzone-services-creating-bin-zones">PutawayZone / PickZone Services — Creating Bin Zones</a></li>
 <li><a href="#shipping-service-carrier-tracking-number">Shipping Service -- Carrier Tracking Number</a></li>
+<li><a href="#shipping-service-deleting-a-pick-ticket">Shipping Service — Deleting a Pick Ticket</a></li>
 <li><a href="#purchaseorder-service-creating-a-po">PurchaseOrder Service — Creating a PO</a></li>
 <li><a href="#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt Service — Receiving a PO</a></li>
 <li><a href="#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher Service — Vouching a Receipt</a></li>
@@ -7340,6 +7709,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
+<li><a href="#item-merge-and-customer-merge-m_itemmerge-m_customermerge">Item Merge and Customer Merge (m_itemmerge, m_customermerge)</a></li>
 </ul>
 </li>
 <li><a href="#pdf-report-generation">PDF Report Generation</a><ul>

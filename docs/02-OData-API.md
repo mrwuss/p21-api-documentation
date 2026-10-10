@@ -177,6 +177,27 @@ The table itself is real — `bin.$Key` appears in `table/$metadata`, and its da
 
 **Read `bin` data through a join instead.** `inv_loc.primary_bin` and `inv_loc.location_id` cover the common case (an item's primary bin at a location); for other bin attributes, `bin_ud` (its user-defined-field extension table) is reachable normally and may carry what you need.
 
+### One table is withheld from every token: `users`
+
+The `users` table (P21 user accounts) cannot be read through OData by any token. The two authentication methods fail in different shapes, and one of them looks like success:
+
+| Token | `table/users?$top=1` | `table/users/$count` |
+|---|---|---|
+| Consumer key, with or without a username | **401** `You are not authorized to access API. Please contact administrator to get access.` | 401 |
+| Password grant | **200** with `{"value":[]}` | 404 `Value cannot be null` |
+
+What the tests ruled out:
+
+- **Scope.** The consumer key's decoded `aud` claim listed `users` as an exact entry in its [OData allow-list](00-Authentication.md#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire), and the token was minted immediately before the calls. Every other table in the same list returned 200 with the same token.
+- **Columns.** Under a consumer key, `$select=id,name` returns the same 401, so the block is on the table, not on sensitive columns.
+- **Filters.** Under a password grant, `$filter` on the caller's own `id` still returns an empty `value`. A control read of `table/customer?$top=1` with the same token returns a real row, and the table is not empty in SQL.
+
+A P21 system administrator confirmed that withholding `users` from consumer keys is intended behavior: adding `users` to a key's scope has no effect by design. The password-grant result shows the restriction covers that method too. Epicor has not published a list of tables withheld this way.
+
+**Treat an empty `value` on `users` as "withheld", not "no rows".** A client that checks only the status code reports a password-grant read as a success that found nothing. There is no supported OData workaround. Whether a custom view that selects from `users` is also withheld is untested.
+
+> **Credit:** *@mrwuss* — verified on production and play 26.1, September 2026, with both authentication methods; a second integrator reported the same consumer-key 401 on another play middleware host and on live ([#164](https://github.com/mrwuss/p21-api-documentation/issues/164)). An earlier reading that a password grant *could* read `users` came from a status-code-only check and is withdrawn.
+
 ---
 
 ### Read-after-write consistency

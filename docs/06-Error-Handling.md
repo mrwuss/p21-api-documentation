@@ -1418,10 +1418,14 @@ void CheckTokenExpiry(string token)
 | `Status: "Existing"` rejected — 400 on 5940.0 and later, 500 `NullReferenceException` on older builds | Transaction | `"New"` is the only value the enum accepts; use it + key fields (upsert) — [details](03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
 | `services?type=report` empty (other `type` values 400) | Transaction | Expected — report services are hidden; run via `/api/v2/process/pdfreport` |
 | m_* report returns Succeeded, no output | Transaction | Use `POST /api/v2/process/pdfreport`, not `/transaction` — [details](03-Transaction-API.md#pdf-report-generation) |
+| `m_reprintpurchaseorders` returns an empty 500 on every retry | Transaction | `reprint_flag` must equal the PO's `po_hdr.printed` — read it first — [details](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted) |
+| `Record specified was not found` deleting a pick ticket on a completed order | Transaction | Orphaned ticket — the Shipping window cannot retrieve it — [details](03-Transaction-API.md#shipping-service-deleting-a-pick-ticket) |
+| Customer merge returns `Failed: 1`, `History is not available for w_customer_merge_maint window` | Transaction | The merge committed — check `customer_merge_audit`, do not retry — [details](03-Transaction-API.md#item-merge-and-customer-merge-m_itemmerge-m_customermerge) |
 | Session expired | Interactive | Start new session |
 | "Blocked" status | Interactive | Handle response window |
 | 422 "Window ID not provided" | Interactive | Use `?id=` not `?windowId=` (except tools) |
 | 404 on table | OData | Verify table name |
+| `users` returns 401 (consumer key) or 200 with an empty `value` (password grant) | OData | Withheld from every token by design; no OData workaround — [details](02-OData-API.md#one-table-is-withheld-from-every-token-users) |
 | 404 `Edm.Decimal` / `Edm.String` operand types | OData | Numeric key column — drop the quotes: `customer_id eq 100198` — [details](#404-incompatible-operand-types-a-quoted-numeric-key) |
 | `Invalid column name: delete_flag` on a grid | Transaction | That grid may delete another way — check `ValidValues` for `row_status_flag` — [details](03-Transaction-API.md#customer-service-removing-a-salesrep-grid-row) |
 | `Invalid {field} value: 700` on an enum | Transaction | Send the label, not the `code_p21` integer — [details](03-Transaction-API.md#usecodevalues) |
