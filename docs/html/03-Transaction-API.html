@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -751,6 +752,7 @@
 <li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
+<li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>
@@ -1467,6 +1469,11 @@ HTTP 400
 <td>Customer records</td>
 </tr>
 <tr>
+<td><code>ShipTo</code></td>
+<td>Ship To Maintenance</td>
+<td>Ship-to records and their salesrep grid (see <a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a>)</td>
+</tr>
+<tr>
 <td><code>Supplier</code></td>
 <td>Supplier Maintenance</td>
 <td>Supplier records</td>
@@ -1610,60 +1617,71 @@ HTTP 400
 <p>See <a href="12-Production-Labor-API.html">Production &amp; Labor API</a> for detailed field definitions and examples.</p>
 <h3 id="purchase-order-types-and-the-disabled-po_hdr_po_type-column">Purchase Order Types and the disabled <code>po_hdr_po_type</code> column</h3>
 <p>You <strong>cannot</strong> choose a PO type by setting <code>po_hdr_po_type</code> on the <code>PurchaseOrder</code> service — it is a <strong>disabled column</strong> and sending it fails with <code>Column is disabled: po_hdr_po_type</code>. The PO type is selected by choosing the <strong>type-specific service</strong> instead (each maps to the same PO Entry window, <code>w_purchase_order_entry_sheet</code>, with the type preset). <code>RequisitionPurchaseOrder</code> is the verified example; see <a href="recipes/create-requisition-po.html">create-requisition-po</a>.</p>
-<p>The <code>po_hdr_po_type</code> <code>ValidValues</code> in the definition carry <strong>display names only, no code list</strong> — the stored <code>po_hdr.po_type</code> letters are undocumented. Verified/inferred mapping from the definition's display list plus live data:</p>
+<p>The <code>po_hdr_po_type</code> <code>ValidValues</code> in the definition carry <strong>display names only, no code list</strong> — the stored <code>po_hdr.po_type</code> letters are not in the definition. The mapping below comes from P21's own report views (which label each letter) and <code>po_hdr.source_type</code>, which records the program that created the PO:</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Letter</th>
 <th>Display name</th>
-<th>Notes</th>
+<th>Usual <code>source_type</code></th>
+<th>What it is</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>B</code></td>
 <td>Regular</td>
-<td>Backorder</td>
+<td>948 PO Entry</td>
+<td>A regular PO <strong>keyed by a buyer</strong> in PO Entry. Not "Backorder" — few <code>B</code> lines link to a sales order</td>
 </tr>
 <tr>
 <td><code>S</code></td>
 <td>Regular</td>
-<td>Stock replenishment (both <code>B</code> and <code>S</code> display "Regular")</td>
-</tr>
-<tr>
-<td><code>P</code></td>
-<td>Special</td>
-<td></td>
+<td>949 PO Generation</td>
+<td>A system-generated stock-replenishment PO. <code>B</code> and <code>S</code> both display "Regular"; the difference is manual vs generated</td>
 </tr>
 <tr>
 <td><code>D</code></td>
 <td>Direct Ship</td>
-<td></td>
+<td>951 Order Entry</td>
+<td>Ships from the supplier straight to the customer on a sales order</td>
 </tr>
 <tr>
-<td><code>N</code></td>
-<td>Non-Stock</td>
-<td></td>
-</tr>
-<tr>
-<td><code>R</code></td>
-<td><strong>Requisition</strong></td>
-<td><strong>verified</strong> via <code>RequisitionPurchaseOrder</code> create + DB read-back</td>
+<td><code>P</code></td>
+<td>Special</td>
+<td>951 Order Entry</td>
+<td>Bought for a specific sales order, received at your warehouse, then shipped</td>
 </tr>
 <tr>
 <td><code>X</code></td>
 <td>Process PO</td>
-<td></td>
+<td>950 Process Transactions</td>
+<td>Outside processing</td>
 </tr>
 <tr>
 <td><code>Q</code></td>
 <td>Vendor RFQ</td>
-<td></td>
+<td>951 Order Entry</td>
+<td>Request for quote; rarely used</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>Non-Stock</td>
+<td>—</td>
+<td>Exists in older data</td>
+</tr>
+<tr>
+<td><code>R</code></td>
+<td><strong>Requisition</strong></td>
+<td>—</td>
+<td><strong>verified</strong> via <code>RequisitionPurchaseOrder</code> create + DB read-back</td>
 </tr>
 </tbody>
 </table></div>
+<p><code>source_type</code> stores a <code>code_p21</code> number: <strong>948</strong> PO Entry, <strong>949</strong> PO Generation, <strong>950</strong> Process Transactions, <strong>951</strong> Order Entry. Don't confuse <code>po_type</code> with <code>oe_line.disposition</code>, the sales-line field where <code>B</code> really is Backorder and <code>S</code> is Special Order.</p>
+<p><strong>A deleted PO stays in the table.</strong> Deleting a PO sets <code>po_hdr.delete_flag = 'Y'</code> and <code>po_hdr.complete = 'Y'</code>, and sets <code>cancel_flag = 'Y'</code> and <code>complete = 'Y'</code> on each of its <code>po_line</code> rows. Filter on <code>delete_flag</code> when you count open or historical POs. The PO's links to sales-order lines are soft-deleted too — see <a href="02-OData-API.html#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag">02 § <code>oe_line_po</code></a>.</p>
 <blockquote>
-<p>Only <code>R</code> (Requisition) is verified end-to-end; the rest are inferred from the display-name order and live data — treat them as strong hints, not confirmed. Environment: 26.1.5894.1 (play), July 2026.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — <code>R</code> verified end to end on play 26.1.5894.1, July 2026. The other letters, <code>source_type</code> codes and the deleted-PO flags verified against production data 26.1, September 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/178">#178</a>).</p>
 </blockquote>
 <hr />
 <h2 id="response-format">Response Format</h2>
@@ -4517,6 +4535,16 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <blockquote>
 <p><strong>Credit:</strong> verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>.</p>
 </blockquote>
+<h4 id="defaults-and-disabled-fields-on-create">Defaults and Disabled Fields on Create</h4>
+<p><strong>Send <code>production_order_processing</code> explicitly.</strong> On a create that omits it, the new assembly came back with <code>production_order_processing</code> = <code>ON</code>, which makes it a production-order assembly rather than a kit (see <a href="12-Production-Labor-API.html#assembly-behavior-flags">12 § Assembly Behavior Flags</a>). The <code>ON</code> default may come from a system setting rather than the service, so it can differ on your tenant. The field is writable on create — send <code>ON</code> or <code>OFF</code> deliberately and read <code>assembly_hdr</code> back.</p>
+<p><strong><code>item_desc</code> and <code>prorate_cost_by</code> are disabled on create.</strong> Sending either aborts the transaction:</p>
+<div class="highlight"><pre><span></span><code>TABPAGE_1.assemblyhdr: Error processing data element: assemblyhdr : Column is disabled: item_desc
+</code></pre></div>
+
+<p><code>item_desc</code> comes from the item itself (<code>inv_mast.item_desc</code>); change it on the item. The service fails on the first disabled field it meets, so a payload copied from an existing assembly's read fails one field at a time. Create with the minimum — header <code>inv_mast_item_id</code> plus <code>production_order_processing</code>, and <code>item_id_service_labor_id</code> + <code>quantity</code> per component row — then set other header fields with a second keyed <code>Status: "New"</code> Transaction on <code>inv_mast_item_id</code>. A follow-up Transaction is also how you change <code>production_order_processing</code> on an assembly created with the wrong value.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on production 26.1, May 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/180">#180</a>).</p>
+</blockquote>
 <h4 id="known-limitations_1">Known Limitations</h4>
 <ul>
 <li><strong>Status "Existing" is rejected:</strong> Same as every other service — HTTP 400 on 26.1.5940.0, <code>NullReferenceException</code> HTTP 500 on earlier builds. Modify an existing assembly with keyed <code>Status: "New"</code> Transactions instead (see above).</li>
@@ -5086,6 +5114,7 @@ successfully. Do you want to continue to retrieve? [Response: No]
   The message's exact missing-column list varies by request (sometimes <code>'Purchase Group'</code>, sometimes <code>Location ID</code>), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on <em>every</em> subsequent save, and — like the create gotcha above — the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat <code>delete_flag=ON</code> as one-shot. Callers that need idempotent delete should read <code>inv_mast.delete_flag</code> over OData first and skip the <code>Item</code> POST entirely when it is already <code>Y</code>. Verified live, 26.1 (September 2026), against throwaway items created through <code>POST /api/inventory/parts</code>. <em>(Filed as <a href="https://github.com/mrwuss/p21-api-documentation/issues/160">#160</a>.)</em></li>
 <li><strong>A REST-created item can silently end up with no default unit of measure at all</strong>, not just the <a href="11-Inventory-REST-API.html#character-set-and-whitespace-verified">40-character description cap</a> and other quirks below — observed once in seven otherwise-identical <a href="11-Inventory-REST-API.html#minimum-create-payload">minimum-payload</a> creates (26.1, September 2026): <code>DefaultSellingUnit</code>/<code>DefaultPurchasingUnit</code> came back <code>null</code> and <code>UnitsOfMeasure</code> came back empty, where the other six got <code>EA</code> auto-assigned. An item in this state hits the exact same <code>A Default Sales Unit... Must Each Be Specified</code> block as the raw-create circular dependency above, on <em>any</em> later <code>Item</code>-service write, even though the item already exists. Check <code>DefaultSellingUnit</code> on the create response (or a follow-up <code>GET</code>) before assuming the item is usable; if it's <code>null</code>, set <code>UnitsOfMeasure</code> explicitly via a REST <code>PUT</code>.</li>
 <li><strong>A <code>product_group_id</code> edit on a location silently rewrites its GL, revenue, and COS accounts</strong> to the target group's defaults, including branch-specific accounts, and <code>TABPAGE_24.inv_loc_accounts</code> is disabled, so you cannot send the originals back in the same payload. Snapshot before, restore after — see <a href="#changing-a-locations-product-group-re-syncs-its-gl-accounts">Changing a Location's Product Group Re-Syncs Its GL Accounts</a>.</li>
+<li><strong>The item header's <code>default_product_group</code> cannot be written through any API.</strong> <code>TABPAGE_1.tp_1_dw_1</code> rejects both <code>default_product_group</code> and <code>product_group_id</code>; the service's only <code>product_group_id</code> belongs to the location (<code>TABPAGE_18.inv_loc_detail</code>). The Inventory REST API ignores the header product group on create and PUT as well (<a href="11-Inventory-REST-API.html#known-limitations">11 § Known Limitations</a>). The location product group is the one sales, GL and pricing read, and it is writable — see <a href="#changing-a-locations-product-group-re-syncs-its-gl-accounts">Changing a Location's Product Group</a>. Verified on production and play 26.1, May and August 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/177">#177</a>).</li>
 </ul>
 <h3 id="location-service-creating-a-warehouse">Location Service — Creating a Warehouse</h3>
 <p><code>Location</code> / <code>TABPAGE_1.tp_1_dw_1</code> (business object <code>location</code>, datawindow <code>d_location</code>) is <strong>Warehouse/Location Maintenance</strong>. Keys are <code>id</code> (→ <code>location.location_id</code>) + <code>company_id</code>; <code>id</code> also fans out to a shared-keyspace <code>address</code> row (same <a href="02-OData-API.html#common-tables"><code>mail_</code>-prefix convention</a> as everywhere else <code>address</code> is joined).</p>
@@ -6054,6 +6083,46 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 
 <p>The same <code>ValidValues</code> array is what tells you to send <code>Delete</code> rather than <code>700</code>, and <code>ON</code> rather than <code>Y</code>. It is the most under-read part of the definition response.</p>
 <p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/140">issue #140</a>, independently re-verified on 26.1 — the definition, every write case in the tables above, the primary guard, row ordering, the revive path, both read surfaces and the <code>code_p21</code> mapping, 2026-08-25.)</em></p>
+<h3 id="shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</h3>
+<p><code>ShipTo</code> with <code>Status: "New"</code>, <code>Keys: []</code> on <code>TABPAGE_1.shiptomain</code> and no <code>address_id</code> creates a new ship-to on an existing customer; P21 assigns the <code>address_id</code> and returns it in the result rows. The fields are spread across five elements, and two fields you would look for on the main form are not there — <code>salesrep_id</code> and <code>ship_to_name</code> both fail with <code>Invalid column name</code> on <code>TABPAGE_1.shiptomain</code>:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TABPAGE_1.shiptomain</code> (Form)</td>
+<td><code>company_id</code>, <code>customer_id</code>, <code>address_name</code>, <code>default_branch</code>, <code>terms_id</code>, <code>invoice_type</code>, <code>tax_group_id</code>, <code>phys_*</code> address</td>
+</tr>
+<tr>
+<td><code>TABPAGE_2.tp_2_dw_2</code> (Form)</td>
+<td><code>mail_*</code> address</td>
+</tr>
+<tr>
+<td><code>TABPAGE_5.tp_5_dw_5</code> (Form)</td>
+<td><code>central_phone_number</code></td>
+</tr>
+<tr>
+<td><code>TABPAGE_OEOPTIONS.tabpage_oeoptions</code> (Form)</td>
+<td><code>preferred_location_id</code>, <code>packing_basis</code>, <code>pick_ticket_type</code></td>
+</tr>
+<tr>
+<td><code>TABPAGE_SALESREP.tabpage_salesrep</code> (List, key <code>salesrep_id</code>)</td>
+<td><code>salesrep_id</code>, <code>primary_salesrep</code>, <code>commission_percentage</code>, <code>delete_flag</code></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Use <code>UseCodeValues: true</code> and send stored codes</strong> — under <code>false</code>, <code>terms_id</code> wants the terms description. Under <code>true</code>, flags are <code>Y</code>/<code>N</code>; <code>primary_salesrep: "ON"</code> fails with <code>Invalid primary_salesrep value: ON</code>.</li>
+<li><strong>The new ship-to inherits the customer's primary rep.</strong> To assign a different rep, add the new rep (<code>primary_salesrep</code> <code>Y</code>, <code>commission_percentage</code> <code>100</code>) <strong>and</strong> retire the inherited one (<code>delete_flag</code> <code>Y</code>) in the same call, new rep first. Otherwise the save fails: <em>"The total commission percentage for all outside salesreps must equal 100 percent."</em> This is the same add-then-retire shape as <a href="#the-sibling-grid-on-shipto-does-not-work-this-way">Removing a Salesrep Grid Row</a>.</li>
+</ul>
+<p>Full payload, Python and C#: <a href="recipes/create-ship-to.html">recipe: create-ship-to</a>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/182">#182</a>).</p>
+</blockquote>
 <h3 id="salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</h3>
 <p>The <code>Salesrep</code> service is the write surface for a salesrep's own contact record (the <code>contacts</code> row where <code>salesrep = 'Y'</code>). Verified against P21 26.1 in production (2026-08-11): a misspelled rep name and its email corrected in one transaction, <code>Status: "Passed"</code>, confirmed by read-after-write against <code>contacts</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -6112,7 +6181,7 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 <p><em>(From <a href="https://github.com/mrwuss/p21-api-documentation/issues/109">issue #109</a>, verified in production 2026-08-11.)</em></p>
 <h3 id="itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</h3>
 <p>The <code>ItemDefaults</code> service is the <strong>Item Defaults Maintenance</strong> window (Inventory &gt; Inventory Management &gt; System), business object <code>inventory_defaults</code>, keyed on <code>company_id</code> + <code>location_id</code>. <code>Status: "New"</code> creates the per-company/location defaults record that new <code>inv_loc</code> rows inherit — GL accounts, replenishment location/method, discount groups, tax group, units, stockable/buy/make flags. Verified in Play and production (2026-08-14).</p>
-<p><strong>Why you care:</strong> a location without an <code>inventory_defaults</code> row breaks downstream flows — Inventory REST location-appends demand explicit GL (<code>Required value missing for Revenue Account</code>, see <a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>), and new <code>inv_loc</code> rows land with <code>replenishment_location = NULL</code>. Create the defaults row first and both problems disappear.</p>
+<p><strong>Why you care:</strong> a location without an <code>inventory_defaults</code> row breaks downstream flows — Inventory REST location-appends demand explicit GL (<code>Required value missing for Revenue Account</code>, see <a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>), and new <code>inv_loc</code> rows land with <code>replenishment_location = NULL</code>. Creating a brand-new item at such a location fails the same way — see <a href="11-Inventory-REST-API.html#gl-accounts-when-the-location-has-no-defaults">11 § GL accounts when the location has no defaults</a>. Create the defaults row first and these problems disappear. The row's discount groups also matter: a location appended to an existing item takes its discount groups from these defaults, not from the item's other locations (<a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a>, item 7).</p>
 <p>Element map (from <code>GET /api/v2/definition/ItemDefaults</code>):</p>
 <div class="table-wrap"><table>
 <thead>
@@ -7706,6 +7775,7 @@ WHERE menu_name LIKE 'm[_]%';</code></p>
 <li><a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service — Creating a Vendor (and Its Supplier)</a></li>
 <li><a href="#rma-service-orders-the-order-service-refuses">RMA Service — Orders the Order Service Refuses</a></li>
 <li><a href="#customer-service-removing-a-salesrep-grid-row">Customer Service — Removing a Salesrep Grid Row</a></li>
+<li><a href="#shipto-service-creating-a-ship-to">ShipTo Service — Creating a Ship-To</a></li>
 <li><a href="#salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</a></li>
 <li><a href="#itemdefaults-service-per-location-item-defaults">ItemDefaults Service — Per-Location Item Defaults</a></li>
 <li><a href="#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service — Changing an Item's Average Cost</a></li>

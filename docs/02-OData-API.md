@@ -532,6 +532,93 @@ Join to `po_hdr.po_type` to tell which rows are affected — the line carries no
 
 The write itself is documented on the service that performs it: [Interactive API § Direct-ship confirmation](04-Interactive-API.md#directshipconfirmation-writes-its-ship-date-down-onto-every-line).
 
+#### `oe_line_po` holds stale links: join on both keys and filter `delete_flag`
+
+`po_line` has no sales-order column. The link from a PO line to the sales-order line it was bought for lives in **`oe_line_po`**: `order_number`, `line_number`, `po_no`, `po_line_number`, `quantity_on_po`, `connection_type`, `delete_flag`. (On a direct-ship PO, `po_hdr.sales_order_number` also names the order.)
+
+**The table keeps stale rows.** Some rows carry a `po_no` that matches a current PO but point at unrelated sales orders years older than it. Match on `po_no` alone and those old orders attach themselves to today's PO. To get only real links:
+
+1. Match **`(po_no, po_line_number)`** to `po_line.(po_no, line_no)`.
+2. Match **`(order_number, line_number)`** to `oe_line.(order_no, line_no)`.
+3. Drop rows with `delete_flag = 'Y'`. Treat a NULL `delete_flag` as not deleted.
+
+```http
+GET {base}/odataservice/odata/table/oe_line_po
+    ?$select=order_number,line_number,po_no,po_line_number,quantity_on_po,delete_flag
+    &$filter=po_no eq {po_no} and po_line_number eq {line_no}
+```
+
+Write each literal to match the column's type in `$metadata` — a quoted numeric key 404s ([details](06-Error-Handling.md#404-incompatible-operand-types-a-quoted-numeric-key)). Then keep the rows whose `order_number` + `line_number` pair exists in `oe_line` and whose `delete_flag` is not `Y`.
+
+**A deleted PO leaves its sales-order lines open with nothing on order.** Deleting the PO sets `delete_flag = 'Y'` on its `oe_line_po` rows, but the sales-order lines it was bought for stay open. A query that filters `delete_flag` correctly shows those lines with no PO, which is the true state: the demand is uncovered and needs a new PO. See [03 § Purchase Order Types](03-Transaction-API.md#purchase-order-types-and-the-disabled-po_hdr_po_type-column) for the flags on the deleted PO itself.
+
+`oe_line_po` also returns every historical link for a PO line, not the receipt layer that is on the shelf now. Tracing current stock to the order it was bought for needs lot or receipt matching on top of this join.
+
+> **Credit:** *@mrwuss* — verified against production 26.1 reads, October 2026 ([#184](https://github.com/mrwuss/p21-api-documentation/issues/184)).
+
+#### Kit and assembly lines: parent cost ignores rebates, and component lines carry COGS too
+
+Two traps make kit (assembly) margin wrong when you read `oe_line` or `invoice_line` naively.
+
+**1. The parent's `commission_cost` is the pre-rebate rollup.** A kit parent line rolls up its components' **`sales_cost`** (the pre-rebate average) into `commission_cost`. A rebate price page that lowers a component's cost does not reach the parent's `commission_cost`, so margin computed from it shows rebated kits as losses.
+
+| Parent `assembly` | `commission_cost` | `other_cost` / COGS |
+|---|---|---|
+| `B` (kit parent) | Pre-rebate rollup | Rebated rollup |
+| `P` (production-order line) | Pre-rebate rollup on the invoice | Pre-rebate rollup on the invoice — the invoice posts both at the pre-rebate value |
+
+For rebated kits, read the after-rebate cost from the parent's `other_cost` on `assembly = 'B'` lines, or from the components; do not use `commission_cost`. The contract-side fix is in [rebate-assembly-program](recipes/rebate-assembly-program.md).
+
+**2. Summing every invoice line double-counts kit cost.** Component lines carry their own COGS on the invoice, in addition to the parent's rolled-up cost. **`invoice_line.invoice_line_uid_parent` ≠ 0 marks a component line.** Count cost from the parent lines or from the components, never both:
+
+```http
+GET {base}/odataservice/odata/table/invoice_line
+    ?$select=invoice_no,line_no,invoice_line_uid_parent,commission_cost,other_cost,cogs_amount
+    &$filter=invoice_no eq {invoice_no} and invoice_line_uid_parent eq 0
+```
+
+As with `oe_line_po` above, write `{invoice_no}` to match the column's type in `$metadata`.
+
+> **Credit:** *@mrwuss* — verified against production data 26.1, June 2026, re-checked October 2026 ([#183](https://github.com/mrwuss/p21-api-documentation/issues/183)).
+
+#### `inv_adj_line.cost` is 0 on lines valued at moving average
+
+An inventory adjustment writes `inv_adj_hdr` / `inv_adj_line` and posts `inv_tran` rows with `trans_type = 'IA'`. On lines that P21 values at moving-average cost when the adjustment posts, **`inv_adj_line.cost` stays `0`**. The cost that reached the books is **`inv_tran.unit_cost_amt`** on the `IA` row. Value adjustments from `inv_tran`, not from the adjustment lines.
+
+Two more traps when you total adjustments:
+
+- **Net both directions per item.** A filter on negative quantity counts one half of every lost-then-found pair and overstates loss.
+- **Check the reason codes for automated transfers.** Some sites book automatic location-to-location replenishment as paired `IA` rows under an adjustment reason. Those pairs net to zero and are not losses; exclude that reason from a loss view. (Real transfers are `trans_type = 'TR'`.)
+
+The reason text is in `reason`, joined on `reason.id = inv_adj_hdr.reason_id` **and `reason.company_no = inv_adj_hdr.company_id`** — `company_no` on `reason`, not `company_id` (see [Company Scoping](#company-scoping-company_id-vs-company_no)).
+
+#### User-defined dropdown labels are in `extensibility_dropdown_value`, not on the row
+
+A user-defined dropdown column (on a `*_ud` table) stores the **data value**, not the label users see. The labels live in **`extensibility_dropdown_value`**, keyed by `table_name` and `field_name`, mapping `data_value` to `display_value`:
+
+```http
+GET {base}/odataservice/odata/table/extensibility_dropdown_value
+    ?$select=table_name,field_name,data_value,display_value
+    &$filter=table_name eq 'oe_hdr_ud' and field_name eq '{ud_column}'
+```
+
+They are not in `code_p21`, which holds P21's own enums.
+
+#### Column names that trip queries
+
+The obvious guess is wrong for these, and a wrong name in `$select` or `$filter` fails with a 404 (`Could not find a property named ...`) rather than returning an empty column:
+
+| Table | Use | Not |
+|---|---|---|
+| `prod_order_line_component` | `qty_used` (also `qty_needed`, `qty_requested`, `qty_allocated`) | `qty_completed`, `qty_required` |
+| `prod_order_line_component` | join on `prod_order_number` | `prod_order_id` |
+| `prod_order_hdr` | `source_location_id` · `complete` · `cancel` | `location_id`, `completed`, `complete_date` |
+| `prod_order_line` | `completed` | — |
+| `invoice_line` | `line_no` | `line_number` |
+| `prod_order_line_comp_labor` | `service_technician_uid` (the worker) | `created_by` (who keyed the entry) — see [12 § Reading Labor Actuals](12-Production-Labor-API.md#reading-labor-actuals-and-production-order-columns) |
+
+> **Credit:** *@mrwuss* — the adjustment, dropdown-label and column-name findings verified against production 26.1 reads, June to October 2026 ([#185](https://github.com/mrwuss/p21-api-documentation/issues/185)).
+
 ## Data Type Formatting
 
 | Type | Format | Example |

@@ -18,6 +18,24 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-10 — v1.28.0
+
+The first sweep of the maintainer's working notes against these docs: eleven gaps filed (#175–#185) and closed here. All verified against production or play 26.1 during real work; identifiers are placeholders.
+
+- **feat:** **[Cloning an existing item through the Inventory REST API](11-Inventory-REST-API.md#cloning-an-existing-item)**, and `ListPrice` and `Stockable` confirmed writable by PUT. Closes [#175](https://github.com/mrwuss/p21-api-documentation/issues/175)
+- **docs:** Inventory REST create needs explicit GL accounts when the location has no defaults; `DivisionId` usually mirrors the supplier ID; a location appended later takes its discount groups from location defaults, not the item's other locations. Closes [#176](https://github.com/mrwuss/p21-api-documentation/issues/176)
+- **docs:** The item header's default product group has no API write path. Closes [#177](https://github.com/mrwuss/p21-api-documentation/issues/177)
+- **fix:** `po_type` `B` is a buyer-keyed regular PO, not "Backorder"; `source_type` 948–951 and the deleted-PO flag state added. Closes [#178](https://github.com/mrwuss/p21-api-documentation/issues/178)
+- **fix:** **[Price page type `212` is Item](08-SalesPricePage-Codes.md)** — the old "212 Difference" row belonged to the commission-cost calculation method column; the page-type table is now complete and the two code families are labeled separately. Closes [#179](https://github.com/mrwuss/p21-api-documentation/issues/179)
+- **docs:** Assembly create defaults and the fields disabled on create. Closes [#180](https://github.com/mrwuss/p21-api-documentation/issues/180)
+- **docs:** **[Adding a price library in the Customer window](04-Interactive-API.md#customer-window-adding-a-price-library)**, and the sequence reset on save. Closes [#181](https://github.com/mrwuss/p21-api-documentation/issues/181)
+- **feat:** **[Recipe: create a ship-to](recipes/create-ship-to.md)**. Closes [#182](https://github.com/mrwuss/p21-api-documentation/issues/182)
+- **docs:** Reporting kit and assembly cost without double-counting component lines. Closes [#183](https://github.com/mrwuss/p21-api-documentation/issues/183)
+- **docs:** `oe_line_po` holds stale links; join on both PO and order line keys and filter `delete_flag`. Closes [#184](https://github.com/mrwuss/p21-api-documentation/issues/184)
+- **docs:** OData read gotchas: adjustment cost, dropdown labels, labor actuals and column names that trip queries. Closes [#185](https://github.com/mrwuss/p21-api-documentation/issues/185)
+
+All *@mrwuss*.
+
 ## 2026-10-10 — v1.27.1
 
 Closed the five open issues that already carried verified results. [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) stays open on purpose until Epicor responds.

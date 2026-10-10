@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group" open>
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="../recipes/README.html">Recipes Overview</a></li>
             <li><a href="../recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="../recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="../recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="../recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="../recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="../recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="../recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="../recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -665,6 +666,7 @@
 </ul>
 </li>
 <li><a href="#verify-the-acceptance-test-is-a-real-invoice">Verify — the acceptance test is a real invoice</a></li>
+<li><a href="#reporting-cost-and-margin-without-double-counting-verified">Reporting cost and margin without double-counting (Verified)</a></li>
 <li><a href="#maintenance">Maintenance</a></li>
 </ul>
 </div>
@@ -756,6 +758,16 @@
 <li>No charge lines on the exploded order.</li>
 </ul>
 <p>If COGS dropped but <strong>no</strong> <code>vendor_rebate</code> row appeared, the primary supplier at the ship-from location is not the Track Rebates vendor (step 4). The same mechanics apply to assemblies built on production orders, linked or build-to-stock.</p>
+<h2 id="reporting-cost-and-margin-without-double-counting-verified">Reporting cost and margin without double-counting (Verified)</h2>
+<p>Margin reports on a program like this go wrong in two ways, even when the setup above is correct:</p>
+<ul>
+<li><strong>Kit parent <code>commission_cost</code> ignores rebate pages.</strong> A kit parent line rolls up its components' pre-rebate <code>sales_cost</code> into <code>commission_cost</code>, even when rebate price pages lower the components' own cost. On <code>assembly = 'B'</code> parents, <code>other_cost</code> and COGS get the rebated rollup. On <code>assembly = 'P'</code> parents, the invoice posts both <code>commission_cost</code> and <code>other_cost</code> at the pre-rebate rollup. A report on <code>commission_cost</code> shows the program at a loss.</li>
+<li><strong>Component lines carry COGS too.</strong> Summing cost over every invoice line counts each kit twice. <code>invoice_line.invoice_line_uid_parent</code> ≠ 0 marks a component line; take cost from the parents or from the components, not both.</li>
+</ul>
+<p>Detail and an OData query: <a href="../02-OData-API.html#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too">02 § Kit and assembly lines</a>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — reporting traps verified against production data 26.1, June 2026, re-checked October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/183">#183</a>).</p>
+</blockquote>
 <h2 id="maintenance">Maintenance</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -809,6 +821,7 @@
 </ul>
 </li>
 <li><a href="#verify-the-acceptance-test-is-a-real-invoice">Verify — the acceptance test is a real invoice</a></li>
+<li><a href="#reporting-cost-and-margin-without-double-counting-verified">Reporting cost and margin without double-counting (Verified)</a></li>
 <li><a href="#maintenance">Maintenance</a></li>
 </ul>
 </div>

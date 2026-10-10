@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -691,6 +692,7 @@
 <li><a href="#cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</a></li>
 <li><a href="#production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</a></li>
 <li><a href="#key-tables">Key Tables</a></li>
+<li><a href="#reading-labor-actuals-and-production-order-columns">Reading Labor Actuals and Production Order Columns</a></li>
 </ul>
 </li>
 <li><a href="#labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</a><ul>
@@ -1794,6 +1796,27 @@
 </ul>
 <h3 id="key-tables">Key Tables</h3>
 <p><code>assembly_hdr</code> / <code>assembly_line</code> (BOM + behavior flags) · <code>oe_hdr</code> / <code>oe_line</code> (<code>assembly</code> B/N/P/S) · <code>prod_order_line_link</code> · <code>prod_order_hdr</code> / <code>prod_order_line</code> / <code>prod_order_line_component</code> · <code>prod_pick_ticket_hdr</code> / <code>prod_pick_ticket_detail</code> · <code>oe_pick_ticket</code> · <code>prod_order_line_comp_labor</code> · <code>invoice_hdr</code> / <code>invoice_line</code> · <code>inv_loc</code> (min/max, moving average, primary bin) · <code>inv_tran</code> (<code>PROP</code> receipt / <code>WO</code> ship).</p>
+<h3 id="reading-labor-actuals-and-production-order-columns">Reading Labor Actuals and Production Order Columns</h3>
+<p>Labor actually recorded against production orders is in <strong><code>prod_order_line_comp_labor</code></strong> — the table <a href="#recording-labor-hours-timeentry-service">TimeEntry</a> writes. <code>prod_line_component_labor</code> holds the <em>estimated</em> labor rate and cost per component, not actuals. On the tenant checked, the similarly named <code>prodorder_labor</code>, <code>prodorder_labor_proc_dtl</code> and <code>labor</code> tables were empty; check yours before you use them.</p>
+<p><strong>The worker is <code>service_technician_uid</code>, not <code>created_by</code>.</strong> <code>created_by</code> is whoever keyed the entry, often a supervisor or clerk entering time for a crew. Resolve the worker's name through the technician's contact:</p>
+<div class="highlight"><pre><span></span><code>prod_order_line_comp_labor.service_technician_uid
+  -&gt; service_technician.service_technician_uid  (.contacts_id)
+  -&gt; contacts.id                                 (first_name, last_name)
+</code></pre></div>
+
+<p><strong>There is no work-performed date column.</strong> A date filter on the table uses <code>date_created</code> or <code>date_last_modified</code>, so it answers "when was the labor entered", not "when was it worked". Say so when you report labor by period.</p>
+<p>Useful columns: <code>hours_worked</code>, <code>minutes_worked</code>, <code>total_cost</code>, <code>sales_cost</code>, <code>labor_type_cd</code>, <code>location_id</code>. The path from a labor row to its order and item:</p>
+<div class="highlight"><pre><span></span><code>prod_order_line_comp_labor.prod_order_line_component_uid
+  -&gt; prod_order_line_component  (prod_order_number, line_number, qty_used)
+  -&gt; prod_order_hdr             (source_location_id, complete, cancel)
+  -&gt; prod_order_line            (line_number, inv_mast_uid, qty_to_make, completed)
+  -&gt; inv_mast                   (item_id, item_desc)
+</code></pre></div>
+
+<p>The production column names are not the obvious guesses: <code>prod_order_line_component.qty_used</code> (no <code>qty_completed</code>); <code>prod_order_hdr.source_location_id</code>, <code>complete</code> and <code>cancel</code> (no <code>location_id</code> or <code>completed</code>); <code>completed</code> is on <code>prod_order_line</code>. The full list is in <a href="02-OData-API.html#column-names-that-trip-queries">02 § Column names that trip queries</a>.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified against production 26.1 reads, June to October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/185">#185</a>).</p>
+</blockquote>
 <hr />
 <h2 id="labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</h2>
 <p>The <code>Labor</code> service manages labor code definitions including rates, types, and cost structures.</p>
@@ -2613,6 +2636,7 @@
 <li><a href="#cost-model-know-this-before-trusting-cogs">Cost Model — Know This Before Trusting COGS</a></li>
 <li><a href="#production-order-gotchas-field-verified">Production Order Gotchas (Field-Verified)</a></li>
 <li><a href="#key-tables">Key Tables</a></li>
+<li><a href="#reading-labor-actuals-and-production-order-columns">Reading Labor Actuals and Production Order Columns</a></li>
 </ul>
 </li>
 <li><a href="#labor-service-labor-code-maintenance">Labor Service -- Labor Code Maintenance</a><ul>

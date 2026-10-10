@@ -666,13 +666,17 @@ Findings from a production run appending **138 items × 2 locations** (276 rows)
 
 6. **`PrimaryBin` is writable on `Locations` objects.** GET → modify → PUT of `Locations.list[].PrimaryBin` (a bin-id string) persists to `inv_loc.primary_bin` — verified across all 276 rows. This complements the Transaction API primary-bin path and handles both of an item's locations in one PUT. **The bin must already exist at that location** (create bins — and on a fresh location, their zones first — per [PutawayZone/PickZone](03-Transaction-API.md#putawayzone-pickzone-services-creating-bin-zones) + [create-bins](recipes/create-bins.md)).
 
+7. **An appended location's discount groups come from the location defaults, not from the item.** A location added to an existing item gets its `SalesDiscountGroup` and `PurchaseDiscountGroup` from the target location's defaults — often the literal string `DEFAULT` — instead of copying them from the item's existing locations. `ProductGroupId` does carry over. Nothing warns you. Send both discount groups explicitly on every appended `Locations` entry, and read them back. This was observed in production data across many items whose second location was added after the first (September 2026); the mechanism is inferred, not traced ([#176](https://github.com/mrwuss/p21-api-documentation/issues/176)). To repair existing rows, PUT the corrected groups back — see [Updating Existing Location Fields](#updating-existing-location-fields).
+
 Also confirmed on appended `Locations` entries: `Stockable`, `Sellable`, `ProductGroupId`, `SalesDiscountGroup`, `PurchaseDiscountGroup`, `TaxGroupId`, `TrackBins`, `ReplenishmentMethod`, and `ReplenishmentLocation` are all honored — and **re-PUT with an already-present location is a safe no-op**, so bulk runs are idempotent and re-runnable.
 
 ## Updating Existing Location Fields
 
 The GET -> Modify -> PUT pattern also works for **updating fields on existing `inv_loc` records**, not just appending new ones.
 
-**Verified writable fields:** `Sellable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`, `ReplenishmentLocation`, `PrimaryBin` (see [Location-Append & Update Gotchas](#location-append-update-gotchas-verified-at-scale) — `PrimaryBin` verified across 276 rows; the bin must already exist at that location)
+**Verified writable fields:** `Sellable`, `Stockable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`, `ReplenishmentLocation`, `PrimaryBin` (see [Location-Append & Update Gotchas](#location-append-update-gotchas-verified-at-scale) — `PrimaryBin` verified across 276 rows; the bin must already exist at that location)
+
+`Stockable` on an existing `inv_loc` row was verified on production 26.1 (October 2026) by SQL read-back of `inv_loc.stockable` ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)).
 
 > **`ProductGroupId` and the location's GL accounts.** Through the Transaction API `Item` service, a location's product-group change rewrites its GL, revenue, and COS accounts to the target group's defaults — see [03 § Changing a Location's Product Group Re-Syncs Its GL Accounts](03-Transaction-API.md#changing-a-locations-product-group-re-syncs-its-gl-accounts). Whether this PUT does the same was not tested; snapshot the three account columns before a product-group change here too, and compare after.
 
@@ -687,9 +691,13 @@ A full-row before/after diff showed exactly this:
 | `inventory_supplier` (the edited row) | `cost` to the new value; **`date_cost_last_modified` set by P21** (it was NULL); `date_last_modified` and `last_maintained_by` (the API user) updated. Nothing else |
 | `inv_loc` (every location on the item) | Only `date_last_modified` and `last_maintained_by` — **the PUT restamps every location's audit columns even when no location field changed** |
 
-If something downstream keys off `inv_loc.date_last_modified` (a sync job, a "recently changed" report), expect every location of the item to show up after a supplier-cost PUT. `ListPrice` is very likely writable the same way but was not exercised. Items whose ID contains `/` cannot take this path — [the GET itself 404s](#url-encoding-for-special-characters); use the Interactive `Item` window instead.
+If something downstream keys off `inv_loc.date_last_modified` (a sync job, a "recently changed" report), expect every location of the item to show up after a supplier-cost PUT. Items whose ID contains `/` cannot take this path — [the GET itself 404s](#url-encoding-for-special-characters); use the Interactive `Item` window instead.
 
 > **Credit:** *@mrwuss* — verified on production 26.1, October 2026 ([#170](https://github.com/mrwuss/p21-api-documentation/issues/170)).
+
+**`ListPrice` is writable the same way.** Change `Suppliers.list[n].ListPrice` in the same GET → modify → PUT round trip and P21 writes `inventory_supplier.list_price`. The SQL read-back matched the value sent exactly on every item tested.
+
+> **Credit:** *@mrwuss* — verified on production 26.1, October 2026, with SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)).
 
 This API is the recommended path for `inv_loc` modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) **read-only**, so they cannot be edited there either.
 
@@ -899,14 +907,14 @@ static string ReadField(string payload, string field)
 
 ## Minimum Create Payload
 
-`POST /api/inventory/parts` requires a minimal set of fields. P21 auto-derives GL accounts from `ProductGroupId` + `LocationId`, so you do not need to specify them explicitly.
+`POST /api/inventory/parts` requires a minimal set of fields. P21 derives the location's GL accounts from `ProductGroupId` + `LocationId` **when the location has an `inventory_defaults` row** — see [GL accounts when the location has no defaults](#gl-accounts-when-the-location-has-no-defaults).
 
 **Required fields:**
 
 - `ItemId` (string, unique across all companies)
 - `ItemDesc` (string, **max 40 characters** — see [Common Issues](#3-itemdesc-max-40-characters))
 - `Locations` with at least one entry: `LocationId` + `ProductGroupId` (P21 infers `CompanyId` from the location if omitted)
-- `Suppliers` with at least one entry: `SupplierId` + `DivisionId`
+- `Suppliers` with at least one entry: `SupplierId` + `DivisionId` (see [`DivisionId`](#divisionid-is-often-the-supplier-id) — the `1` in the examples is a placeholder)
 - `LocationSuppliers` linking the location and supplier: `LocationId` + `SupplierId` + `PrimarySupplier`
 
 <!-- tabs -->
@@ -1117,7 +1125,316 @@ static string ReadField(string payload, string field)
 
 <!-- /tabs -->
 
-> **Note:** `CompanyId` is optional on Location records — P21 infers the default company from the `LocationId`. GL accounts (`GlAccountNo`, `RevenueAccountNo`, `CosAccountNo`) are auto-derived from the `ProductGroupId` and location configuration.
+> **Note:** `CompanyId` is optional on Location records — P21 infers the default company from the `LocationId`. GL accounts (`GlAccountNo`, `RevenueAccountNo`, `CosAccountNo`) are derived from the `ProductGroupId` and the location's defaults, when it has them.
+
+### GL accounts when the location has no defaults
+
+The derivation needs an **`inventory_defaults` row for the target location**. When the location has none — typically a location created recently — a create fails, and so does a [location append](#location-append-update-gotchas-verified-at-scale):
+
+```text
+Required value missing for Revenue Account (for Inventory Location) on row N
+```
+
+Fix it one of two ways:
+
+1. Create the location's defaults row first with the [ItemDefaults Transaction service](03-Transaction-API.md#itemdefaults-service-per-location-item-defaults); after that, creates and appends derive GL as described above.
+2. Send `GlAccountNo`, `RevenueAccountNo` and `CosAccountNo` on every `Locations` entry for that location, copied from an existing item at a comparable location.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, August 2026 ([#176](https://github.com/mrwuss/p21-api-documentation/issues/176)).
+
+### `DivisionId` is often the supplier ID
+
+Every `Suppliers` entry needs a `DivisionId`. The examples on this page use `1` and `2` as placeholders. In real data, `inventory_supplier.division_id` commonly equals the supplier's own `supplier_id` (supplier `100`, division `100`). Don't assume either: GET an existing item that already uses that supplier and copy its `DivisionId`.
+
+> **Credit:** *@mrwuss* — observed in production data 26.1, May 2026 ([#176](https://github.com/mrwuss/p21-api-documentation/issues/176)).
+
+---
+
+## Cloning an Existing Item
+
+To create an item that is set up like one you already have — same locations, product and discount groups, suppliers and costs, units of measure — GET the source item with its child records, strip the identity and stock fields, change the ID, and POST the result as a new item.
+
+1. GET the source item with `extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure`.
+2. Drop the fields that belong to the source record, not to its setup:
+
+   | Where | Drop |
+   |---|---|
+   | Item | `InvMastUid` |
+   | `Locations.list[]` | `QtyOnHand`, `MovingAverageCost`, `PrimaryBin`, `PeriodFirstStocked`, `YearFirstStocked`, `PatternLikeInvMastUid`, `PatternLikeLocationId`, `UserDefinedFields` |
+   | `Suppliers.list[]` | `InventorySupplierUid`, `UserDefinedFields` |
+   | `LocationSuppliers.list[]` | `InventorySupplierXLocUid`, `UserDefinedFields` |
+   | `UnitsOfMeasure.list[]` | `ItemUomUid`, `UserDefinedFields` |
+
+3. Set the new `ItemId` on the item and on every child row, the new `ItemDesc` (40 characters or fewer — see [ItemDesc Max 40 Characters](#3-itemdesc-max-40-characters)), and the new `SupplierPartNo` on each supplier row.
+4. `POST /api/inventory/parts/` — with the trailing slash ([POST Returns 307 Redirect](#4-post-returns-307-redirect)).
+5. Read the new item back. Check its locations, suppliers and units against the source.
+
+Everything you don't drop is copied as-is, including supplier `Cost` and `ListPrice`, product and discount groups, GL accounts and replenishment settings. Edit them in the payload before the POST when the new item should differ. If the new `ItemId` already exists, the POST fails with `The proposed item ID already exists in the database.`
+
+<!-- tabs -->
+
+**Python**
+
+```python
+"""Clone an existing inventory item under a new ID (Inventory REST GET -> strip -> POST)."""
+import copy
+import json
+import re
+
+import httpx
+
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.p21server.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+SOURCE_ITEM_ID = "WIDGET-001"             # item to copy
+NEW_ITEM_ID = "WIDGET-003"                # must not already exist in inv_mast
+NEW_ITEM_DESC = "Widget Assembly, Large"  # 40 characters or fewer
+NEW_SUPPLIER_PART_NO = "WIDGET-003"       # written to every supplier row
+EXECUTE = False                           # False prints the payload; True POSTs it
+EXTENDED_PROPS = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure"
+# ---------------------------------------------------------------------------
+
+# Fields that identify the source record or describe its stock, per child list.
+DROP = {
+    "Locations": {"QtyOnHand", "MovingAverageCost", "PrimaryBin", "PeriodFirstStocked",
+                  "YearFirstStocked", "PatternLikeInvMastUid", "PatternLikeLocationId",
+                  "UserDefinedFields"},
+    "Suppliers": {"InventorySupplierUid", "UserDefinedFields"},
+    "LocationSuppliers": {"InventorySupplierXLocUid", "UserDefinedFields"},
+    "UnitsOfMeasure": {"ItemUomUid", "UserDefinedFields"},
+}
+
+
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def build_clone(source: dict) -> dict:
+    """Copy the source item, drop identity/stock fields, and re-key it to the new ID."""
+    # Top level: drop the uid and any null header fields.
+    payload = {k: v for k, v in copy.deepcopy(source).items()
+               if k != "InvMastUid" and not (v is None and k[0].isupper())}
+    payload["ItemId"] = NEW_ITEM_ID
+    payload["ItemDesc"] = NEW_ITEM_DESC
+    for key, drop in DROP.items():
+        rows = []
+        for row in (source.get(key) or {}).get("list") or []:
+            row = {k: v for k, v in row.items() if k not in drop}
+            row["ItemId"] = NEW_ITEM_ID
+            if key == "Suppliers":
+                row["SupplierPartNo"] = NEW_SUPPLIER_PART_NO
+            rows.append(row)
+        payload[key] = {"list": rows}
+    return payload
+
+
+if len(NEW_ITEM_DESC) > 40:
+    raise SystemExit("ItemDesc is over 40 characters")
+
+with httpx.Client(verify=VERIFY_SSL, timeout=180, follow_redirects=True) as client:
+    token = get_token(client)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # without this you get XML, not JSON
+        "Content-Type": "application/json",
+    }
+
+    # 1. GET the source item with its child records
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/{SOURCE_ITEM_ID}",
+        headers=headers,
+        params={"extendedproperties": EXTENDED_PROPS},
+    )
+    resp.raise_for_status()
+    payload = build_clone(resp.json())
+
+    if not EXECUTE:
+        print(json.dumps(payload, indent=2))
+        print("DRY RUN -- nothing written. Review the payload, then set EXECUTE = True.")
+        raise SystemExit(0)
+
+    # 2. POST the clone -- trailing slash, or the POST 307s
+    resp = client.post(f"{BASE_URL}/api/inventory/parts/", headers=headers, json=payload)
+    if resp.status_code not in (200, 201):
+        raise SystemExit(f"POST {resp.status_code}: {resp.text[:500]}")
+
+    # 3. Re-GET to prove what actually landed -- HTTP 200 alone does not confirm a write
+    resp = client.get(
+        f"{BASE_URL}/api/inventory/parts/{NEW_ITEM_ID}",
+        headers=headers,
+        params={"extendedproperties": EXTENDED_PROPS},
+    )
+    resp.raise_for_status()
+    new = resp.json()
+    print(f"Created {new['ItemId']}: {new['ItemDesc']}")
+    for loc in new["Locations"]["list"]:
+        print(f"  location {loc['LocationId']}: ProductGroupId={loc.get('ProductGroupId')} "
+              f"Stockable={loc.get('Stockable')} Sellable={loc.get('Sellable')}")
+    for sup in new["Suppliers"]["list"]:
+        print(f"  supplier {sup['SupplierId']}: Cost={sup.get('Cost')} "
+              f"ListPrice={sup.get('ListPrice')} SupplierPartNo={sup.get('SupplierPartNo')}")
+```
+
+**C#**
+
+```csharp
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string SourceItemId = "WIDGET-001";               // item to copy
+const string NewItemId = "WIDGET-003";                  // must not already exist in inv_mast
+const string NewItemDesc = "Widget Assembly, Large";    // 40 characters or fewer
+const string NewSupplierPartNo = "WIDGET-003";          // written to every supplier row
+var execute = false;                                    // false prints the payload; true POSTs it
+const string ExtendedProps = "Locations,Suppliers,LocationSuppliers,UnitsOfMeasure";
+// ---------------------------------------------------------------------------
+
+// Fields that identify the source record or describe its stock, per child list.
+var drop = new Dictionary<string, string[]>
+{
+    ["Locations"] = new[] { "QtyOnHand", "MovingAverageCost", "PrimaryBin", "PeriodFirstStocked",
+                            "YearFirstStocked", "PatternLikeInvMastUid", "PatternLikeLocationId",
+                            "UserDefinedFields" },
+    ["Suppliers"] = new[] { "InventorySupplierUid", "UserDefinedFields" },
+    ["LocationSuppliers"] = new[] { "InventorySupplierXLocUid", "UserDefinedFields" },
+    ["UnitsOfMeasure"] = new[] { "ItemUomUid", "UserDefinedFields" },
+};
+
+if (NewItemDesc.Length > 40) throw new InvalidOperationException("ItemDesc is over 40 characters");
+
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(3) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// 1. GET the source item with its child records
+var getResp = await client.GetAsync(
+    $"{BaseUrl}/api/inventory/parts/{SourceItemId}?extendedproperties={ExtendedProps}");
+getResp.EnsureSuccessStatusCode();
+var source = JsonNode.Parse(await getResp.Content.ReadAsStringAsync())!.AsObject();
+
+// Top level: drop the uid and any null header fields, then re-key.
+var payload = new JsonObject();
+foreach (var (key, value) in source)
+{
+    if (key == "InvMastUid" || drop.ContainsKey(key)) continue;
+    if (value is null && char.IsUpper(key[0])) continue;
+    payload[key] = value?.DeepClone();
+}
+payload["ItemId"] = NewItemId;
+payload["ItemDesc"] = NewItemDesc;
+
+foreach (var (key, fields) in drop)
+{
+    var rows = new JsonArray();
+    if (source[key]?["list"] is JsonArray list)
+    {
+        foreach (var src in list)
+        {
+            var row = src!.DeepClone().AsObject();
+            foreach (var f in fields) row.Remove(f);
+            row["ItemId"] = NewItemId;
+            if (key == "Suppliers") row["SupplierPartNo"] = NewSupplierPartNo;
+            rows.Add(row);
+        }
+    }
+    payload[key] = new JsonObject { ["list"] = rows };
+}
+
+if (!execute)
+{
+    Console.WriteLine(payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    Console.WriteLine("DRY RUN -- nothing written. Review the payload, then set execute = true.");
+    return;
+}
+
+// 2. POST the clone -- trailing slash, or the POST 307s
+var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+var postResp = await client.PostAsync($"{BaseUrl}/api/inventory/parts/", content);
+if (!postResp.IsSuccessStatusCode)
+{
+    var body = await postResp.Content.ReadAsStringAsync();
+    throw new InvalidOperationException(
+        $"POST {(int)postResp.StatusCode}: {body[..Math.Min(500, body.Length)]}");
+}
+
+// 3. Re-GET to prove what actually landed -- HTTP 200 alone does not confirm a write
+var afterResp = await client.GetAsync(
+    $"{BaseUrl}/api/inventory/parts/{NewItemId}?extendedproperties={ExtendedProps}");
+afterResp.EnsureSuccessStatusCode();
+var created = JsonNode.Parse(await afterResp.Content.ReadAsStringAsync())!;
+Console.WriteLine($"Created {created["ItemId"]}: {created["ItemDesc"]}");
+foreach (var loc in created["Locations"]!["list"]!.AsArray())
+    Console.WriteLine($"  location {loc!["LocationId"]}: ProductGroupId={loc["ProductGroupId"]} " +
+                      $"Stockable={loc["Stockable"]} Sellable={loc["Sellable"]}");
+foreach (var sup in created["Suppliers"]!["list"]!.AsArray())
+    Console.WriteLine($"  supplier {sup!["SupplierId"]}: Cost={sup["Cost"]} " +
+                      $"ListPrice={sup["ListPrice"]} SupplierPartNo={sup["SupplierPartNo"]}");
+
+// --- helpers ---------------------------------------------------------------
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Some middleware answers this endpoint in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
+}
+```
+
+<!-- /tabs -->
+
+Read the result back with SQL or OData as well (`inv_mast`, `inv_loc`, `inventory_supplier`, `item_uom` for the new `item_id`) — the re-GET shows what the API returns, not every column it wrote.
+
+> **Credit:** *@mrwuss* — a clone built this way was created on production 26.1, October 2026, and checked by SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)). The examples above mirror that run; they were not run separately.
 
 ---
 
@@ -2325,6 +2642,8 @@ Accept: application/xml
 3. **Item accessibility** — Some items that exist in `inv_mast` (visible via OData) return 404 from this API. This may be related to item status or configuration.
 
 4. **Forward slash in item IDs** — The `%2F` URL encoding for `/` is interpreted as a path separator by IIS, causing 404 errors on pricing and other endpoints that include the item ID in the URL path. This affects both pricing endpoint URL patterns.
+
+5. **The item header's default product group has no API write path.** `inv_mast.default_product_group` is ignored on create and on PUT — the payload has no field for it, and nothing errors. The Transaction API `Item` service rejects it on `TABPAGE_1.tp_1_dw_1` too (see [03 § Item Service Gotchas](03-Transaction-API.md#item-service-gotchas)). The **location** product group (`Locations.list[].ProductGroupId`, `inv_loc.product_group_id`) is writable through both APIs, and it is the one that sales, GL and pricing use. Verified on production and play 26.1, May and August 2026 ([#177](https://github.com/mrwuss/p21-api-documentation/issues/177)).
 
 ---
 

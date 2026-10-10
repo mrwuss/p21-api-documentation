@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -733,6 +734,10 @@
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
+<li><a href="#customer-window-adding-a-price-library">Customer Window: Adding a Price Library</a><ul>
+<li><a href="#p21-renumbers-sequence_number-on-save">P21 renumbers sequence_number on save</a></li>
+</ul>
+</li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>
@@ -4237,6 +4242,55 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'</cod
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production, September 2026 (two items created end to end); not re-run here.</p>
 </blockquote>
+<h2 id="customer-window-adding-a-price-library">Customer Window: Adding a Price Library</h2>
+<p>A customer's price libraries are a grid on the Customer window's Sales Pricing tab. The window's service name is <strong><code>Customer</code></strong> (not <code>CustomerMaintenance</code>); its tabs are named <code>TABPAGE_1</code>, <code>TABPAGE_2</code>, and so on, and the price-library grid is <strong><code>TABPAGE_7.tp_7_dw_price_library</code></strong>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>price_library_id</code></td>
+<td>The library's <strong>ID string</strong> as users see it, not the integer <code>price_library_uid</code></td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>Filled in by P21 when you set <code>price_library_id</code></td>
+</tr>
+<tr>
+<td><code>row_status_flag</code></td>
+<td>Active (<code>704</code>) for a live row</td>
+</tr>
+<tr>
+<td><code>sequence_number</code></td>
+<td>Precedence — <code>1</code> is checked first. <strong>Not kept as sent</strong> (see below)</td>
+</tr>
+</tbody>
+</table></div>
+<p>To add a library:</p>
+<ol>
+<li>Open <code>{"ServiceName": "Customer"}</code>.</li>
+<li>Load the customer: <code>TabName: "TABPAGE_1"</code>, <code>DatawindowName: "tp_1_dw_1"</code>, <code>FieldName: "customer_id"</code>, <code>Value: "CUST-100"</code> — sent as a string; use your customer's ID.</li>
+<li>Change to <code>TABPAGE_7</code> and <code>add_row</code> on <code>tp_7_dw_price_library</code>.</li>
+<li>Set <code>price_library_id</code> on the new row (<code>TabName: "TABPAGE_7"</code>, <code>DatawindowName: "tp_7_dw_price_library"</code>).</li>
+<li>Save, then read the rows back — see <a href="#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a>.</li>
+</ol>
+<h3 id="p21-renumbers-sequence_number-on-save">P21 renumbers <code>sequence_number</code> on save</h3>
+<p>Whatever <code>sequence_number</code> you set is discarded. On save, P21 renumbers the grid by insertion order, so a new row always lands last (<code>N+1</code>). Selecting an existing row and changing its sequence is overridden the same way. If the new library must be checked before the existing ones, add it through the window first — the window writes the row's audit and default columns — and then set the order <strong>after</strong> the save.</p>
+<p>The grid's backing table is <code>price_library_x_cust_x_cmpy</code> (<code>price_lib_x_cust_x_cmpy_uid</code>, <code>company_id</code>, <code>customer_id</code>, <code>price_library_uid</code>, <code>sequence_number</code>, <code>row_status_flag</code>, audit columns). No API path that was tried keeps the order, so the post-save fix is SQL. A unique constraint on <code>customer_id</code> + <code>sequence_number</code> means you swap in three steps:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Move the new row to sequence 1 and the old first row to 2.</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">price_library_x_cust_x_cmpy</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">sequence_number</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mi">1</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">price_lib_x_cust_x_cmpy_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span><span class="p">;</span><span class="w">  </span><span class="c1">-- old first row</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">price_library_x_cust_x_cmpy</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">sequence_number</span><span class="w"> </span><span class="o">=</span><span class="w">  </span><span class="mi">1</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">price_lib_x_cust_x_cmpy_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span><span class="p">;</span><span class="w">  </span><span class="c1">-- new row</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">price_library_x_cust_x_cmpy</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">sequence_number</span><span class="w"> </span><span class="o">=</span><span class="w">  </span><span class="mi">2</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">price_lib_x_cust_x_cmpy_uid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span><span class="p">;</span><span class="w">  </span><span class="c1">-- old first row</span>
+</code></pre></div>
+
+<p>Set <code>date_last_modified</code> and <code>last_maintained_by</code> in the same statements if you track them. A direct SQL write is unsupported by Epicor and leaves no application-level audit record: test it on a non-production tenant first, log the before-image yourself, and read the sequence back afterwards.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on production 26.1, May 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/181">#181</a>).</p>
+</blockquote>
 <h2 id="sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</h2>
 <p>Use the Interactive API to create a sales order when a line is an <strong>assembly</strong> that should explode into components and/or spawn a <strong>production order</strong>. The Transaction API cannot do this: entering an assembly item fires an <em>"add as assembly?"</em> prompt, and the stateless API auto-answers <strong>No</strong>, killing the explode (see <a href="03-Transaction-API.html#order-service-gotchas">Order Service Gotchas</a>). Verified end-to-end: interactive order entry created a sales order whose assembly line (<code>oe_line.assembly = 'P'</code>) auto-linked to a new production order.</p>
 <p>The flow (session started with <code>ResponseWindowHandlingEnabled: true</code>):</p>
@@ -5923,6 +5977,10 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
 <li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
+<li><a href="#customer-window-adding-a-price-library">Customer Window: Adding a Price Library</a><ul>
+<li><a href="#p21-renumbers-sequence_number-on-save">P21 renumbers sequence_number on save</a></li>
+</ul>
+</li>
 <li><a href="#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a></li>
 <li><a href="#data-structures-reference">Data Structures Reference</a><ul>
 <li><a href="#result-object">Result Object</a></li>

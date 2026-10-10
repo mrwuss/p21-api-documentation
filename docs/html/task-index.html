@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -808,6 +809,22 @@
 <td>Denormalized, search-friendly views (<code>p21_view_es_*</code>: customer, item, order, invoice, etc.)</td>
 <td><a href="02-OData-API.html#enterpriseglobal-search-views-p21_view_es_">02 § Enterprise/Global Search Views</a></td>
 </tr>
+<tr>
+<td>Value <strong>inventory adjustments</strong> — <code>inv_adj_line.cost</code> is 0</td>
+<td><a href="02-OData-API.html#inv_adj_linecost-is-0-on-lines-valued-at-moving-average">02 § <code>inv_adj_line.cost</code> is 0</a> — use <code>inv_tran.unit_cost_amt</code>; net both directions</td>
+</tr>
+<tr>
+<td>Show the <strong>label</strong> of a user-defined dropdown value</td>
+<td><a href="02-OData-API.html#user-defined-dropdown-labels-are-in-extensibility_dropdown_value-not-on-the-row">02 § User-defined dropdown labels</a> — <code>extensibility_dropdown_value</code>, not <code>code_p21</code></td>
+</tr>
+<tr>
+<td>A column you're sure exists 404s (<code>qty_completed</code>, <code>line_number</code>, <code>prod_order_hdr.location_id</code>)</td>
+<td><a href="02-OData-API.html#column-names-that-trip-queries">02 § Column names that trip queries</a></td>
+</tr>
+<tr>
+<td><strong>Kit / assembly margin</strong> looks negative, or kit cost is counted twice</td>
+<td><a href="02-OData-API.html#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too">02 § Kit and assembly lines</a> — parent <code>commission_cost</code> is pre-rebate; <code>invoice_line_uid_parent</code> ≠ 0 marks component lines</td>
+</tr>
 </tbody>
 </table></div>
 <h2 id="create-update-records-transaction-api">Create / update records (Transaction API)</h2>
@@ -912,8 +929,16 @@
 <td><a href="02-OData-API.html#quotes-are-oe_hdrprojected_order--y--quote_type-is-empty-and-there-is-no-quote_flag">02 § Quotes are <code>projected_order = 'Y'</code></a> — <code>quote_type</code> is NULL everywhere</td>
 </tr>
 <tr>
+<td>What a <strong>PO type</strong> letter means (<code>B</code> is buyer-keyed, not backorder) · where a PO came from (<code>source_type</code>) · how a <strong>deleted PO</strong> looks</td>
+<td><a href="03-Transaction-API.html#purchase-order-types-and-the-disabled-po_hdr_po_type-column">03 § Purchase Order Types</a></td>
+</tr>
+<tr>
 <td>"When did the supplier say this would ship?"</td>
 <td><a href="02-OData-API.html#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise">02 § <code>po_line.supplier_ship_date</code></a> — <strong>not a promise on direct-ship POs</strong>; use <code>date_due</code></td>
+</tr>
+<tr>
+<td><strong>Peg a PO line to the sales order it was bought for</strong> (<code>oe_line_po</code>)</td>
+<td><a href="02-OData-API.html#oe_line_po-holds-stale-links-join-on-both-keys-and-filter-delete_flag">02 § <code>oe_line_po</code> holds stale links</a> — join on both key pairs and filter <code>delete_flag</code>; a deleted PO leaves its sales lines open with nothing on order</td>
 </tr>
 <tr>
 <td>Confirm a <strong>direct ship</strong> (<code>DirectShipConfirmation</code>)</td>
@@ -1097,6 +1122,11 @@
 <td><a href="03-Transaction-API.html#part-assembly-creation-workflow">03 § Part + Assembly Creation Workflow</a> · <a href="03-Transaction-API.html#assembly-service">03 § Assembly Service</a></td>
 </tr>
 <tr>
+<td>Assembly create: <code>production_order_processing</code> came back <code>ON</code> / <code>Column is disabled: item_desc</code></td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#defaults-and-disabled-fields-on-create">03 § Defaults and Disabled Fields on Create</a></td>
+</tr>
+<tr>
 <td>Item: <strong>primary bin / primary supplier</strong> at a location</td>
 <td><a href="recipes/set-primary-bin-supplier.html">set-primary-bin-supplier</a></td>
 <td><a href="03-Transaction-API.html#item-service-nested-location-edits">03 § Item Service</a></td>
@@ -1130,6 +1160,11 @@
 <td>Item: <strong>change a location's product group</strong> without losing its GL / revenue / COS accounts</td>
 <td>—</td>
 <td><a href="03-Transaction-API.html#changing-a-locations-product-group-re-syncs-its-gl-accounts">03 § Changing a Location's Product Group Re-Syncs Its GL Accounts</a> — the move resets the accounts to the target group's defaults; snapshot before, restore after</td>
+</tr>
+<tr>
+<td>Item: set the <strong>header default product group</strong> (<code>inv_mast.default_product_group</code>)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#item-service-gotchas">03 § Item Service Gotchas</a> · <a href="11-Inventory-REST-API.html#known-limitations">11 § Known Limitations</a> — no API write path; the location product group is writable</td>
 </tr>
 <tr>
 <td><strong>Merge two items or two customers</strong> (<code>m_itemmerge</code> / <code>m_customermerge</code>) — and what history moves, changes, or is lost</td>
@@ -1180,6 +1215,11 @@
 <td>Break fields named differently per service (<code>calculation_value1</code> vs <code>value1</code>)</td>
 <td>—</td>
 <td><a href="08-SalesPricePage-Codes.html#cross-service-break-field-names">08 § Cross-Service Break-Field Names</a></td>
+</tr>
+<tr>
+<td>What a stored <strong><code>price_page_type_cd</code></strong> means (212 = Item) — and why a code from one column's table can't decode another</td>
+<td>—</td>
+<td><a href="08-SalesPricePage-Codes.html#price-page-type-form-tab">08 § Price Page Type</a></td>
 </tr>
 <tr>
 <td><strong>Set a carrier tracking number</strong> on a pick ticket (and why not after invoicing)</td>
@@ -1237,6 +1277,11 @@
 <td><a href="03-Transaction-API.html#common-services">03 § Common Services</a></td>
 </tr>
 <tr>
+<td><strong>Create a ship-to</strong> on an existing customer (element map, <code>UseCodeValues: true</code>, inherited rep)</td>
+<td><a href="recipes/create-ship-to.html">create-ship-to</a></td>
+<td><a href="03-Transaction-API.html#shipto-service-creating-a-ship-to">03 § ShipTo Service — Creating a Ship-To</a></td>
+</tr>
+<tr>
 <td><strong>Create a requisition PO</strong> (<code>po_type</code> 'R'; disabled <code>po_hdr_po_type</code>; vendor vs supplier)</td>
 <td><a href="recipes/create-requisition-po.html">create-requisition-po</a></td>
 <td><a href="03-Transaction-API.html#purchase-order-types-and-the-disabled-po_hdr_po_type-column">03 § Purchase Order Types</a></td>
@@ -1287,12 +1332,22 @@
 <td><a href="11-Inventory-REST-API.html#reading-items">11 § Reading Items</a> · <a href="11-Inventory-REST-API.html#minimum-create-payload">11 § Minimum Create Payload</a> · <a href="11-Inventory-REST-API.html#updating-existing-location-fields">11 § Updating Existing Location Fields</a></td>
 </tr>
 <tr>
-<td>Update a <strong>supplier's cost</strong> over REST (<code>Suppliers.list[].Cost</code>; restamps every <code>inv_loc</code>)</td>
+<td>Update a <strong>supplier's cost or list price</strong> over REST (<code>Suppliers.list[].Cost</code> / <code>ListPrice</code>; restamps every <code>inv_loc</code>)</td>
 <td>—</td>
 <td><a href="11-Inventory-REST-API.html#updating-a-suppliers-cost-supplierslistcost">11 § Updating a Supplier's Cost</a></td>
 </tr>
 <tr>
-<td>Append locations <strong>at scale</strong> (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin)</td>
+<td><strong>Clone an existing item</strong> under a new ID (REST GET → strip → POST)</td>
+<td>—</td>
+<td><a href="11-Inventory-REST-API.html#cloning-an-existing-item">11 § Cloning an Existing Item</a></td>
+</tr>
+<tr>
+<td>REST create or location append fails <code>Required value missing for Revenue Account</code> · which <code>DivisionId</code> to send</td>
+<td>—</td>
+<td><a href="11-Inventory-REST-API.html#gl-accounts-when-the-location-has-no-defaults">11 § GL accounts when the location has no defaults</a> · <a href="11-Inventory-REST-API.html#divisionid-is-often-the-supplier-id">11 § <code>DivisionId</code> is often the supplier ID</a></td>
+</tr>
+<tr>
+<td>Append locations <strong>at scale</strong> (supplier-x-loc primary, GL requireds, kit Buy, OP/OQ, retries, PrimaryBin, discount groups from location defaults)</td>
 <td>—</td>
 <td><a href="11-Inventory-REST-API.html#location-append-update-gotchas-verified-at-scale">11 § Location-Append &amp; Update Gotchas</a></td>
 </tr>
@@ -1375,6 +1430,10 @@
 <tr>
 <td><strong>Create an item in the Item window</strong> (unit flags, one location per session)</td>
 <td><a href="04-Interactive-API.html#creating-an-item-in-the-item-window">04 § Creating an Item in the Item Window</a></td>
+</tr>
+<tr>
+<td><strong>Add a price library to a customer</strong> · library order (<code>sequence_number</code>) not kept</td>
+<td><a href="04-Interactive-API.html#customer-window-adding-a-price-library">04 § Customer Window: Adding a Price Library</a></td>
 </tr>
 <tr>
 <td>Answer a <code>w_message</code> dialog — it's fully controllable, not just auto-answered</td>
@@ -1466,6 +1525,10 @@
 <tr>
 <td>Why COGS doesn't match the receipt</td>
 <td><a href="12-Production-Labor-API.html#cost-model-know-this-before-trusting-cogs">12 § Cost Model</a></td>
+</tr>
+<tr>
+<td><strong>Report labor actuals</strong> — who did the work (<code>service_technician_uid</code>, not <code>created_by</code>), no work-performed date</td>
+<td><a href="12-Production-Labor-API.html#reading-labor-actuals-and-production-order-columns">12 § Reading Labor Actuals</a></td>
 </tr>
 <tr>
 <td>Make vs parts location, UD fields hidden from the API role, cancel a pick ticket, <code>qty_to_complete</code> pre-fill, reprints, linking an existing order to a sales line</td>

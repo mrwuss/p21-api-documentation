@@ -616,7 +616,7 @@
             </ul>
         </details>
         <details class="nav-group">
-            <summary>Recipes <span class="nav-count">23</span></summary>
+            <summary>Recipes <span class="nav-count">24</span></summary>
             <ul class="nav-pages">
             <li><a href="recipes/README.html">Recipes Overview</a></li>
             <li><a href="recipes/ar-aging.html">Age Open AR on Each Invoice's Own Terms</a></li>
@@ -624,6 +624,7 @@
             <li><a href="recipes/create-customer.html">Create a Customer</a></li>
             <li><a href="recipes/create-requisition-po.html">Create a Requisition Purchase Order</a></li>
             <li><a href="recipes/create-sales-order.html">Create a Sales Order</a></li>
+            <li><a href="recipes/create-ship-to.html">Create a Ship-To</a></li>
             <li><a href="recipes/dispose-zero-value-stock.html">Dispose of Zero-Value Stock with a $0 Order</a></li>
             <li><a href="recipes/edit-contract-bins.html">Edit Contract Bin Quantities</a></li>
             <li><a href="recipes/generate-pick-ticket-pdf.html">Generate Pick Ticket and PO PDFs</a></li>
@@ -697,7 +698,7 @@
 <li><a href="#costs-tab-configuration">COSTS Tab Configuration</a><ul>
 <li><a href="#accessing-the-costs-tab">Accessing the COSTS Tab</a></li>
 <li><a href="#common-pattern-pass-through-costing">Common Pattern: Pass-Through Costing</a></li>
-<li><a href="#commission-cost-codes-different-from-values-tab">Commission Cost Codes (Different from VALUES Tab)</a></li>
+<li><a href="#commission-cost-codes-vs-values-tab-codes">Commission Cost Codes vs VALUES Tab Codes</a></li>
 </ul>
 </li>
 <li><a href="#purchase-side-pricing-services">Purchase-Side Pricing Services</a><ul>
@@ -1264,45 +1265,58 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 </div>
 <hr />
 <h2 id="price-page-type-form-tab">Price Page Type (FORM Tab)</h2>
-<p>The <code>price_page_type_cd</code> field determines the page type.</p>
+<p>The <code>price_page_type_cd</code> field determines the page type. The column stores the <code>code_p21</code> <code>code_no</code>; you send the display value.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Code</th>
-<th>Display Value</th>
+<th><code>price_page_type_cd</code></th>
+<th>Display Value (<code>code_p21</code>)</th>
 <th>Key Field</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>210</td>
-<td>Customer</td>
-<td><code>customer_id</code></td>
-</tr>
-<tr>
-<td>211</td>
-<td>Customer / Item</td>
-<td><code>customer_id</code> + <code>item_id</code></td>
+<td>212</td>
+<td>Item</td>
+<td><code>item_id</code> (<code>price_page.inv_mast_uid</code> is set)</td>
 </tr>
 <tr>
 <td>213</td>
 <td>Supplier / Discount Group</td>
-<td><code>discount_group_id</code></td>
+<td><code>supplier_id</code> + <code>discount_group_id</code></td>
 </tr>
 <tr>
 <td>214</td>
 <td>Supplier / Product Group</td>
+<td><code>supplier_id</code> + <code>product_group_id</code></td>
+</tr>
+<tr>
+<td>216</td>
+<td>Supplier</td>
+<td><code>supplier_id</code> only (no item, product group or discount group set)</td>
+</tr>
+<tr>
+<td>217</td>
+<td>Discount Group</td>
+<td><code>discount_group_id</code></td>
+</tr>
+<tr>
+<td>218</td>
+<td>Product Group</td>
 <td><code>product_group_id</code></td>
 </tr>
 <tr>
-<td>215</td>
-<td>Supplier / Discount Group (alt)</td>
-<td><code>discount_group_id</code></td>
+<td>219</td>
+<td>Customer Part Number</td>
+<td>customer part (<code>price_page.inv_mast_uid</code> is set)</td>
 </tr>
 </tbody>
 </table></div>
+<p>Key fields for every row were read from stored production pages joined to <code>code_p21</code> (26.1, 2026-10-10); only 212–214 were also created through the API here. The service definition also accepts <em>Supplier / Manufacturing Class</em>, <em>Price Family</em> and <em>Supplier/Price Family</em> (see <a href="#discovery-method">Discovery Method</a>); their codes are not confirmed here. <em>Customer</em> and <em>Customer / Item</em> are not page types — neither is in the definition's <code>ValidValues</code>, and an earlier version of this table that listed them as 210 and 211 (plus a 215 "alt" discount-group type) was not backed by a <code>code_p21</code> read.</p>
 <blockquote>
+<p><strong>The same number means different things in different columns.</strong> <code>code_p21</code> is one code space, and a column stores whichever <code>code_no</code> its dropdown points at. <code>212</code> is <em>Item</em> as a page type, and <code>totaling_method_cd = 212</code> on a page is also <em>Item</em>, but <code>212</code> is not a calculation method. Map every code through <code>code_p21</code>, not through a table for another column — see <a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">03 § Labels vs What the Database Stores</a>.</p>
 <p><strong>Note:</strong> Type 213 ("Supplier / Discount Group") uses <code>discount_group_id</code> instead of <code>product_group_id</code>. The field order changes slightly for this type - see <a href="#discount-group-pages-type-213">Discount Group Pages</a> below.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — <code>price_page.price_page_type_cd</code> values read from production 26.1 and joined to <code>code_p21</code>, October 2026; every <code>212</code> page has <code>inv_mast_uid</code> set (<a href="https://github.com/mrwuss/p21-api-documentation/issues/179">#179</a>).</p>
 </blockquote>
 <hr />
 <h2 id="pricing-method-form-tab">Pricing Method (FORM Tab)</h2>
@@ -1420,34 +1434,41 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <p><strong>Note:</strong> Corrected against live <code>code_p21</code> reads (July 2026); earlier published values were misassigned.</p>
 <hr />
 <h2 id="commission-cost-calculation-method-costs-tab">Commission Cost Calculation Method (COSTS Tab)</h2>
-<p>The <code>commission_cost_calc_method_cd</code> on the COSTS tab (different from VALUES tab).</p>
+<p>The <code>commission_cost_calc_method_cd</code> field on the COSTS tab. Its accepted display values are <code>Difference</code>, <code>Mark up</code>, <code>Multiplier</code> and <code>Percentage</code> (no <code>Fixed Price</code>).</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Code</th>
+<th><code>commission_cost_calc_method_cd</code></th>
 <th>Display Value</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>211</td>
 <td>Multiplier</td>
+<td>Confirmed — stored on production pages, and <code>code_p21</code> 211 is <em>Multiplier</em></td>
 </tr>
 <tr>
 <td>212</td>
 <td>Difference</td>
+<td><strong>Not confirmed</strong> — conflicts with <code>code_p21</code>, where 212 is <em>Item</em></td>
 </tr>
 <tr>
 <td>213</td>
 <td>Mark Up</td>
+<td><strong>Not confirmed</strong> — conflicts with <code>code_p21</code>, where 213 is <em>Supplier / Discount Group</em></td>
 </tr>
 <tr>
 <td>214</td>
 <td>Percentage</td>
+<td><strong>Not confirmed</strong> — conflicts with <code>code_p21</code>, where 214 is <em>Supplier / Product Group</em></td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>Note:</strong> These codes differ from the VALUES tab <code>calculation_method_cd</code> codes.</p>
+<blockquote>
+<p>⚠️ <strong>The 212–214 rows are unverified and probably wrong.</strong> They are not page types (see <a href="#price-page-type-form-tab">Price Page Type</a>), but they reuse page-type numbers, and <code>code_p21</code> gives each <code>code_no</code> one description. The verified calc-method codes elsewhere are <code>Difference</code>=228, <code>Mark up</code>=229 and <code>Percentage</code>=230 (<a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">03 § Labels vs What the Database Stores</a>). Before you interpret a stored <code>commission_cost_calc_method_cd</code> other than 211, join it to <code>code_p21</code>. Writes are unaffected: you send the display value.</p>
+</blockquote>
 <hr />
 <h2 id="discovery-method">Discovery Method</h2>
 <blockquote>
@@ -3435,61 +3456,56 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 </code></pre></div>
 </div>
 </div>
-<h3 id="commission-cost-codes-different-from-values-tab">Commission Cost Codes (Different from VALUES Tab)</h3>
-<p>The COSTS tab uses <strong>different code numbers</strong> than the VALUES tab for calculation methods:</p>
+<h3 id="commission-cost-codes-vs-values-tab-codes">Commission Cost Codes vs VALUES Tab Codes</h3>
+<p>The COSTS tab's <code>commission_cost_calc_method_cd</code> accepts four of the VALUES tab's five display values — there is no <code>Fixed Price</code>. You send the display value on both tabs, so the stored code does not change what you write.</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>Tab</th>
+<th>Tab · column</th>
 <th>Code</th>
 <th>Display Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>VALUES</td>
+<td>VALUES · <code>calculation_method_cd</code></td>
 <td>211</td>
 <td>Multiplier</td>
 </tr>
 <tr>
-<td>VALUES</td>
+<td>VALUES · <code>calculation_method_cd</code></td>
 <td>228</td>
 <td>Difference</td>
 </tr>
 <tr>
-<td>VALUES</td>
+<td>VALUES · <code>calculation_method_cd</code></td>
 <td>229</td>
 <td>Mark Up</td>
 </tr>
 <tr>
-<td>VALUES</td>
+<td>VALUES · <code>calculation_method_cd</code></td>
 <td>230</td>
 <td>Percentage</td>
 </tr>
 <tr>
-<td>COSTS</td>
+<td>VALUES · <code>calculation_method_cd</code></td>
+<td>1292</td>
+<td>Fixed Price</td>
+</tr>
+<tr>
+<td>COSTS · <code>commission_cost_calc_method_cd</code></td>
 <td>211</td>
 <td>Multiplier</td>
 </tr>
 <tr>
-<td>COSTS</td>
-<td>212</td>
-<td>Difference</td>
-</tr>
-<tr>
-<td>COSTS</td>
-<td>213</td>
-<td>Mark Up</td>
-</tr>
-<tr>
-<td>COSTS</td>
-<td>214</td>
-<td>Percentage</td>
+<td>COSTS · <code>commission_cost_calc_method_cd</code></td>
+<td>212–214 (published earlier, not confirmed)</td>
+<td>Difference · Mark Up · Percentage</td>
 </tr>
 </tbody>
 </table></div>
 <blockquote>
-<p><strong>Warning:</strong> Do not assume codes are the same across tabs. "Difference" is 228 on VALUES but 212 on COSTS.</p>
+<p><strong>Warning:</strong> An earlier version of this table said "Difference is 228 on VALUES but 212 on COSTS." <code>code_p21</code> gives 212 to the page type <em>Item</em>, so treat the COSTS-tab 212–214 codes as unverified — see <a href="#commission-cost-calculation-method-costs-tab">Commission Cost Calculation Method</a>.</p>
 </blockquote>
 <hr />
 <h2 id="purchase-side-pricing-services">Purchase-Side Pricing Services</h2>
@@ -3965,7 +3981,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <li><a href="#costs-tab-configuration">COSTS Tab Configuration</a><ul>
 <li><a href="#accessing-the-costs-tab">Accessing the COSTS Tab</a></li>
 <li><a href="#common-pattern-pass-through-costing">Common Pattern: Pass-Through Costing</a></li>
-<li><a href="#commission-cost-codes-different-from-values-tab">Commission Cost Codes (Different from VALUES Tab)</a></li>
+<li><a href="#commission-cost-codes-vs-values-tab-codes">Commission Cost Codes vs VALUES Tab Codes</a></li>
 </ul>
 </li>
 <li><a href="#purchase-side-pricing-services">Purchase-Side Pricing Services</a><ul>
