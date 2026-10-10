@@ -1058,6 +1058,7 @@ HTTP 500
 <p>— where the same request under a username/password token returns 200. That 401 is a genuine permissions signal, and worth contrasting with the <strong>empty-bodied 404</strong> that OData returns for a wrong object, a wrong column, or the <a href="02-OData-API.html#the-tableview-split-and-the-404-it-produces">wrong collection path</a>.</p>
 <blockquote>
 <p><strong>Re-mint the token after any scope change.</strong> The allow-list is fixed at issue time, and consumer key tokens are effectively permanent — <code>ExpiresIn: 630720000</code> (~20 years) with <code>exp: 2147483647</code>. A client holding a cached token keeps enforcing the <strong>old</strong> allow-list indefinitely, so a scope change made in SOA Admin looks like it did nothing. Password-grant tokens expire in 86400s and pick the change up on their own within a day; consumer-key clients will not. If a newly granted table still 401s, get a fresh token before looking anywhere else.</p>
+<p><strong>A third cause: a table withheld regardless of scope.</strong> <code>users</code> returns the same generic 401 to a consumer key even when the <code>aud</code> allow-list names it exactly and the token is fresh. This is intended behavior, and adding the table to the scope has no effect. A password-grant token does not read it either: it gets HTTP 200 with an empty <code>value</code> array. See <a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">02 § One table is withheld from every token: <code>users</code></a>.</p>
 </blockquote>
 <h3 id="api-specific-behavior-verified">API-Specific Behavior (Verified)</h3>
 <div class="table-wrap"><table>
@@ -1335,6 +1336,7 @@ HTTP 500
 <li>Verify <strong>Allow OData API Service</strong> = Yes in User Maintenance → Application Security</li>
 <li>Verify the target table/view is set to <strong>Allow</strong> in Role Maintenance → Dataservice Permission</li>
 <li>Ensure you're checking the correct <strong>role</strong> (the one actually assigned to the user)</li>
+<li>If the table is <code>users</code>, stop: no permission or scope setting exposes it, and a password grant gets HTTP 200 with an empty <code>value</code> instead of an error — see <a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">02 § <code>users</code></a></li>
 </ol>
 <hr />
 <h2 id="application-security-settings-that-affect-api-access">Application Security settings that affect API access</h2>

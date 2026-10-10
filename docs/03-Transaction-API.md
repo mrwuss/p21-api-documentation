@@ -462,16 +462,17 @@ Other verified XML specifics:
 | `SalesPricePage` | Sales Price Page Maintenance | Price page management — also drivable through the Transaction API, see [08 § Transaction API Alternative](08-SalesPricePage-Codes.md#transaction-api-alternative) |
 | `PurchaseOrder` | Purchase Order Entry | Create POs (Regular). Pick a non-Regular PO type via a **type-specific service**, not by setting `po_hdr_po_type` — see [Purchase Order Types](#purchase-order-types-and-the-disabled-po_hdr_po_type-column) |
 | `RequisitionPurchaseOrder` | Purchase Order Entry (type preset to Requisition) | Create requisition (internal / not-for-resale) POs — `po_hdr.po_type = 'R'`. Same window as PO Entry; easy to miss in `/api/v2/services`. See [create-requisition-po](recipes/create-requisition-po.md) |
-| `Shipping` | Shipping | Confirm shipments and set the carrier tracking number — the only service that writes `oe_pick_ticket.tracking_no`, and it refuses an already-invoiced pick ticket. See [Shipping Service — Carrier Tracking Number](#shipping-service-carrier-tracking-number) |
+| `Shipping` | Shipping | Confirm shipments and set the carrier tracking number — the only service that writes `oe_pick_ticket.tracking_no`, and it refuses an already-invoiced pick ticket. See [Shipping Service — Carrier Tracking Number](#shipping-service-carrier-tracking-number) Its `delete_flag` cannot reach orphaned tickets on completed orders — see [Deleting a Pick Ticket](#shipping-service-deleting-a-pick-ticket). |
 | `InventoryMaster` | Inventory Maintenance | Item records |
 | `Task` | Task Entry | Create tasks/activities |
 | `m_storedprocedureexecutor` | Stored Procedure Executor | Load and execute stored procedure definitions (see [Stored Procedure Executor](#stored-procedure-executor)) (hidden from `/api/v2/services` — see the [PDF Report Generation](#pdf-report-generation) discovery note) |
+| `m_itemmerge` / `m_customermerge` | Item Merge / Customer Merge | Merge one item or customer into another (hidden from `/api/v2/services`). A successful customer merge reports `Failed: 1` — see [Item Merge and Customer Merge](#item-merge-and-customer-merge-m_itemmerge-m_customermerge) |
 
 ### Report Services
 
 | Service | P21 Window | Purpose |
 |---------|------------|---------|
-| `m_reprintpurchaseorders` | PO Reprint | Purchase order PDF reprints (see [PDF Report Generation](#pdf-report-generation)) |
+| `m_reprintpurchaseorders` | PO Reprint | Purchase order PDF prints and reprints; `reprint_flag` must equal `po_hdr.printed` (see [PDF Report Generation](#reprint_flag-must-match-the-pos-po_hdrprinted)) |
 | `m_reprintpicktickets` | Pick Ticket Reprint | Pick ticket PDF reprints |
 | `m_picktickets` | Pick Ticket generation | Creates the pick ticket and returns its PDF (see [PDF Report Generation](#pdf-report-generation)) |
 
@@ -3401,6 +3402,45 @@ The location-side elements chain Form → List → Form/List, and the tab number
 | `TABPAGE_18.inv_loc_detail` | Form | that location's detail — `bin`, `track_bins`, … |
 | `TABPAGE_23.tp_23_dw_23` | Form | that location's `purchase_class_id` (ABC class) |
 | `SUPPLIER_X_LOCATION.supplier_x_location` | List | that location's supplier rows — `supplier_id`, `primary_supplier` |
+| `TABPAGE_24.inv_loc_accounts` | List | that location's `gl_account_no`, `revenue_account_no`, `cos_account_no` — **disabled under the Transaction API** (see below) |
+
+#### Changing a Location's Product Group Re-Syncs Its GL Accounts
+
+Editing `product_group_id` on `TABPAGE_18.inv_loc_detail` also rewrites that location's inventory (asset), revenue, and COS accounts to the **target product group's defaults** (`product_group.asset_account_no`, `revenue_account_no`, `cos_account_no`). Nothing in the payload asks for it, nothing in the response mentions it, and `Summary.Succeeded` is `1`.
+
+```json
+{ "Name": "TABPAGE_18.inv_loc_detail", "Type": "Form", "Keys": ["location_id"],
+  "Rows": [{ "Edits": [ {"Name": "product_group_id", "Value": "PG-B"} ] }] }
+```
+
+| Step | `inv_loc.product_group_id` | `gl_account_no` / `revenue_account_no` / `cos_account_no` |
+|---|---|---|
+| Before | `PG-A` | `11110-01` / `33300-01` / `44400-01` (the `PG-A` defaults) |
+| Move to `PG-B` | `PG-B` | **`11110-02` / `33300-02` / `44400-02`** (the `PG-B` defaults) |
+| Move back to `PG-A` | `PG-A` | `11110-01` / `33300-01` / `44400-01` |
+
+`audit_trail` records all four columns in the same second, with `created_by` set to the acting user.
+
+> ⚠️ **The re-sync compares the target group's defaults with the location's *current* accounts, not with the source group's defaults.** A location that carries its own accounts (for example, branch-specific accounts where the product group holds one default set) can be reset to the group defaults by a move between two groups whose defaults are **identical**. In that test the reset hit some of the items moved, not all; what decides which was not determined. When the location's accounts already equal the target defaults, only `product_group_id` changes.
+
+This is the Transaction API counterpart of the Item window's *"update GL accounts?"* prompt. The Transaction API answers it with its default (Yes), and there is no way to answer No. In the Interactive API the prompt is a `w_message` you can drive yourself with `ResponseWindowHandlingEnabled: true` — see [04 § Response Windows](04-Interactive-API.md#response-windows).
+
+**You cannot restore the accounts in the same transaction.** The location accounts element `TABPAGE_24.inv_loc_accounts` (keys `location_id`; fields `gl_account_no`, `revenue_account_no`, `cos_account_no`) is in the `Item` definition, but any edit to it fails and aborts the whole transaction, product-group edit included:
+
+```text
+General Exception: Column is disabled: gl_account_no
+```
+
+To move product groups without losing location accounts:
+
+1. Before the move, snapshot `inv_loc.gl_account_no`, `revenue_account_no`, and `cos_account_no` for every location you will touch.
+2. Compare the source and target groups' default accounts in `product_group`. If they differ, the move changes where revenue and COS post; get accounting sign-off first.
+3. Make the move.
+4. Read the three columns back. Where they changed and the change was not intended, write the snapshot values back by SQL, then read them back again to confirm.
+
+Whether the [Inventory REST API's `ProductGroupId` update](11-Inventory-REST-API.md#updating-existing-location-fields) re-syncs accounts the same way was not tested.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, with a consumer-key token acting as a named user; the SQL restore in step 4 left no location differing from its snapshot ([#166](https://github.com/mrwuss/p21-api-documentation/issues/166)).
 
 #### Item Service Gotchas
 
@@ -3421,6 +3461,7 @@ The location-side elements chain Form → List → Form/List, and the tab number
   ```
   The message's exact missing-column list varies by request (sometimes `'Purchase Group'`, sometimes `Location ID`), which is itself the tell: deleting the item invalidates the location/discount-group context the form revalidates on *every* subsequent save, and — like the create gotcha above — the Transaction API has no wizard session to re-sequence it. There is no undelete or repair path through this service; treat `delete_flag=ON` as one-shot. Callers that need idempotent delete should read `inv_mast.delete_flag` over OData first and skip the `Item` POST entirely when it is already `Y`. Verified live, 26.1 (September 2026), against throwaway items created through `POST /api/inventory/parts`. *(Filed as [#160](https://github.com/mrwuss/p21-api-documentation/issues/160).)*
 - **A REST-created item can silently end up with no default unit of measure at all**, not just the [40-character description cap](11-Inventory-REST-API.md#character-set-and-whitespace-verified) and other quirks below — observed once in seven otherwise-identical [minimum-payload](11-Inventory-REST-API.md#minimum-create-payload) creates (26.1, September 2026): `DefaultSellingUnit`/`DefaultPurchasingUnit` came back `null` and `UnitsOfMeasure` came back empty, where the other six got `EA` auto-assigned. An item in this state hits the exact same `A Default Sales Unit... Must Each Be Specified` block as the raw-create circular dependency above, on *any* later `Item`-service write, even though the item already exists. Check `DefaultSellingUnit` on the create response (or a follow-up `GET`) before assuming the item is usable; if it's `null`, set `UnitsOfMeasure` explicitly via a REST `PUT`.
+- **A `product_group_id` edit on a location silently rewrites its GL, revenue, and COS accounts** to the target group's defaults, including branch-specific accounts, and `TABPAGE_24.inv_loc_accounts` is disabled, so you cannot send the originals back in the same payload. Snapshot before, restore after — see [Changing a Location's Product Group Re-Syncs Its GL Accounts](#changing-a-locations-product-group-re-syncs-its-gl-accounts).
 
 ### Location Service — Creating a Warehouse
 
@@ -3616,6 +3657,7 @@ Both are single-form services — business object `bin_zone`, element `FORM.form
 | `tracking_no` | Char | Carrier Tracking Number | Writes `oe_pick_ticket.tracking_no` |
 | `carrier_id` | Decimal | Carrier | Carries `ValidValues` — with `UseCodeValues: false` you send the carrier's **display name**, not the id |
 | `create_invoice` | Char | Confirm Shipment | `ValidValues`: `ON` / `OFF` |
+| `delete_flag` | Char | Delete | `ValidValues`: `ON` / `OFF` — see [Deleting a Pick Ticket](#shipping-service-deleting-a-pick-ticket) |
 
 #### The limitation: invoiced pick tickets refuse the write
 
@@ -3945,6 +3987,47 @@ static string ReadField(string payload, string field)
 }
 ```
 <!-- /tabs -->
+
+### Shipping Service — Deleting a Pick Ticket
+
+The same `Shipping` header element carries the window's **Delete** checkbox: `delete_flag` (`oe_pick_ticket.delete_flag`, `ValidValues` `ON`/`OFF`), beside `create_invoice` (Confirm Shipment). Send `delete_flag = ON` with `create_invoice = OFF`:
+
+```json
+{
+  "Name": "Shipping",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [{
+      "Name": "TABPAGE_1.tp_1_dw_1",
+      "Type": "Form",
+      "Keys": ["pick_ticket_no"],
+      "Rows": [{ "Edits": [
+        {"Name": "pick_ticket_no", "Value": "123456"},
+        {"Name": "create_invoice", "Value": "OFF"},
+        {"Name": "delete_flag", "Value": "ON"}
+      ] }]
+    }]
+  }]
+}
+```
+
+This works only on a ticket the Shipping window can still retrieve. It cannot reach an **orphaned** pick ticket: one that was printed but never invoiced, left behind on an order that is now complete.
+
+| Orphaned ticket | Response |
+|---|---|
+| Order completed; the line closed (partially invoiced, the rest canceled) | `Record specified was not found. Try again.` on `tp_1_dw_1.pick_ticket_no` |
+| Order completed; the line fully invoiced | Same |
+| Order completed; the ticket lists assembly components whose parent order line was deleted | `Parent line cannot be found for item ITEM-001; parent item <line_no> may not exist at location %s.` (the unformatted `%s` is in P21's own message) |
+
+Each returns `Summary.Failed = 1` and changes nothing: no delete, no invoice. Both refusals fire before any edit is applied, so no change to the payload gets past them:
+
+- `Record specified was not found` is raised at **record selection**, the same gate as the [invoiced-ticket refusal](#the-limitation-invoiced-pick-tickets-refuse-the-write) above. The window retrieves only tickets it still considers shippable, and a ticket on a completed order is outside that set.
+- The parent-line error comes from assembly and kit validation when the ticket loads.
+
+The P21 client uses the same window logic, so it cannot delete these tickets either. The remaining route is a soft delete in SQL on the `oe_pick_ticket` header row (`delete_flag = 'Y'`). Guard it to tickets with `invoice_no IS NULL` whose order has `oe_hdr.completed = 'Y'`, and keep a before-image so you can roll it back. On tickets for completed orders, this had no allocation, inventory, or invoice effect.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, with a SQL read-back after each call; production held tickets in the same states ([#165](https://github.com/mrwuss/p21-api-documentation/issues/165)).
 
 ---
 
@@ -4306,6 +4389,131 @@ The `InventoryCostEdit` service is the **Edit Inventory Cost** window. It sets `
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026; not re-run here.
 
+### Item Merge and Customer Merge (`m_itemmerge`, `m_customermerge`)
+
+Item Merge and Customer Merge run through `POST /api/v2/transaction` as the hidden menu services **`m_itemmerge`** and **`m_customermerge`**. Neither appears in `GET /api/v2/services`, but both return a definition from `GET /api/v2/definition/{name}` and run end to end. A merge is one-way: the source record is soft-deleted and its history is moved, rewritten, or deleted as the lists below describe. Test on a non-production tenant first, and resolve both IDs yourself before every call.
+
+Discovery notes:
+
+- `window_x_menu` maps `m_inv_frame/m_system/m_itemmerge` to the window `w_item_merge_maint`. Customer merge has no menu row; `m_customermerge` answers `/definition` anyway.
+- `ItemMerge`, `CustomerMerge`, `m_customeridchange`, and `CustomerIDEdit` return the unavailable-window HTTP 500.
+- `ItemIDEdit` (menu alias `m_5`) is the separate **Item ID Change** window (`item_id`, `proposed_item_id`), and it is listed in `/services`.
+
+#### Item merge payload
+
+`FORM.form`, keyed on `source_item_id` and `target_item_id`. The source is merged **into** the target, and the target survives:
+
+```json
+{
+  "Name": "m_itemmerge",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [{
+      "Name": "FORM.form", "Type": "Form",
+      "Keys": ["source_item_id", "target_item_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "source_item_id",         "Value": "ITEM-002"},
+        {"Name": "target_item_id",         "Value": "ITEM-001"},
+        {"Name": "create_alt_code_flag",   "Value": "ON"},
+        {"Name": "keep_restrictions_flag", "Value": "OFF"},
+        {"Name": "schedule_merge_flag",    "Value": "OFF"}
+      ] }]
+    }]
+  }]
+}
+```
+
+`create_alt_code_flag = ON` makes the source item ID an alternate code on the target. Read [Merged item IDs resolve through alternate codes](#merged-item-ids-resolve-through-alternate-codes) before you use it.
+
+#### Customer merge payload
+
+`FORM.form`, keyed on `source_customer_id` and `target_customer_id`:
+
+```json
+{
+  "Name": "m_customermerge",
+  "UseCodeValues": false,
+  "Transactions": [{
+    "Status": "New",
+    "DataElements": [{
+      "Name": "FORM.form", "Type": "Form",
+      "Keys": ["source_customer_id", "target_customer_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "company_id",          "Value": "ACME"},
+        {"Name": "source_customer_id",  "Value": "CUST-101"},
+        {"Name": "target_customer_id",  "Value": "CUST-100"},
+        {"Name": "credit_limit_type",   "Value": "Use Highest Credit Limit"},
+        {"Name": "keep_cust_as_shipto", "Value": "ON"}
+      ] }]
+    }]
+  }]
+}
+```
+
+`credit_limit_type` takes `Use Highest Credit Limit` or `Keep the Target Customer Credit Limit` (stored as `H` / `K` in `temp_customer_merge`). For `keep_cust_as_shipto`, see [What a customer merge does to history](#what-a-customer-merge-does-to-history).
+
+#### Merge responses and errors
+
+| Case | Result |
+|---|---|
+| Item: source does not exist | `Failed`: `Invalid item ID. DataElement: form, Column: source_item_id` |
+| Item: source and target are the same | `Failed`: `Source Item ID and Target Item ID cannot be the same.` |
+| Item: `target_item_id` omitted | ⚠️ **`Succeeded: 1` and nothing happens** — a silent no-op |
+| Item: either item has a bill of materials | `Failed`: `Unable to merge item X into Y. Reasons: Assembly items cannot be merged.` |
+| Item: the two items carry different GL accounts at a shared location | The same message, with `Asset / Revenue / COS Account is set differently for each item at location <location_id>`. Every reason is listed in one message |
+| Item: `schedule_merge_flag = ON` | `Failed`: `To schedule an Item Merge, the Item Merge Schedule task must be active...` (the task was inactive on the test tenant) |
+| Item: `create_alt_code_flag = "Y"` | Accepted and treated as `ON` |
+| Item: success | `Succeeded: 1`, no messages; 6–22 seconds per merge |
+| Customer: an ID that does not exist or was already merged | `Failed`: `Invalid customer ID.` |
+| Customer: source and target are the same | `Failed`: `Target Customer and Source Customer cannot be the same.` |
+| Customer: a `credit_limit_type` that is not one of the two labels | `Failed`: `Invalid credit_limit_type value: Highest` |
+| Customer: `company_id` omitted | The merge runs with the default company |
+| Customer: **every successful merge** | ⚠️ **`Failed: 1`** with `History is not available for w_customer_merge_maint window` — **but the merge is committed** |
+
+> ⚠️ **A customer merge reports failure when it succeeds.** Every successful `m_customermerge` call returned `Failed: 1` with the `History is not available` message, and every one of them was committed: `customer_merge_audit` shows `Merge was Successful.` Decide success from `customer_merge_audit` and the source customer's `delete_flag`, never from `Summary`. Do not treat that message as a reason to retry: the source is already merged, so a retry fails with `Invalid customer ID.`
+
+#### Merged item IDs resolve through alternate codes
+
+With `create_alt_code_flag = ON`, the source item ID becomes an alternate code on the target, and **both ID fields resolve alternate codes**. A later request that names an already-merged item acts on whichever live item now holds that code, and still reports success:
+
+| Request | What actually ran |
+|---|---|
+| `ITEM-003` into `ITEM-002`, where `ITEM-002` was already merged into `ITEM-001` | `ITEM-003` into `ITEM-001` |
+| `ITEM-002` into `ITEM-004`, where `ITEM-002` was already merged into `ITEM-001` | **`ITEM-001` into `ITEM-004`** — a different, live item and its whole history were merged away |
+
+`item_merge_audit` records the resolved IDs, not the ones you sent. Before every call, resolve both IDs against `inv_mast.item_id` exactly, with `delete_flag = 'N'`, and do not post when either one is not a live item ID. This matters most in a batch, where an earlier merge can turn a later row's ID into an alternate code. Customer merge does not have this problem: a merged customer ID is rejected.
+
+#### What an item merge does to history
+
+Measured by comparing row counts and sums before and after, across every table keyed on `inv_mast_uid` or `item_id`:
+
+- **Source item.** Kept as a soft delete: `delete_flag = 'Y'`, `item_desc` = `Item Merged.  See Extended Description.`, `extended_desc` = `Item X was successfully merged into Item Y.`, `last_maintained_by = 'P21_INV_MAST_MERGE'`. The original descriptions survive only in `audit_trail`.
+- **Re-pointed intact** (counts and sums reconcile exactly): `invoice_line`, `oe_line`, `po_line`, `apinv_line`, `vendor_invoice_line`, `inventory_receipts_line`, `inv_tran`, `inv_adj_line`, `prod_order_line_component`, production and order pick tickets, transfer lines, `average_inventory_value`, `inventory_value_items_history`, `item_lead_time`, `job_price_line`, `price_page` / `price_page_item`, `inv_sub`, `inv_xref`, `alternate_code`, `assembly_line` components, `item_id_change_history`.
+- **Item ID text.** `invoice_line.item_id` and `invoice_line_taxes.item_id` are **rewritten** to the target ID. `apinv_line.item_id` and `vendor_invoice_line.item_id` keep the old text.
+- **New `inv_tran` rows.** One `trans_type = 'IM'` row per location, quantity 0, with `document_no` set to the merge run.
+- **`inv_loc`.** Shared locations are combined: quantity on hand is summed and moving-average cost is quantity-weighted. Source-only locations move with their product group and cost; a location with zero on hand has its moving-average cost reset to 0. The target can end up with different product groups at different locations.
+- **`inv_period_usage`.** Total usage, hits, and orders are summed per location and period. **`inv_period_usage_this_location` is nulled on every source row**, and `inv_loc.average_monthly_usage` is not carried over.
+- **Deleted, not moved:** source `inventory_supplier` rows for suppliers the target already has (the source's supplier part number is lost); `inv_bin` at shared locations; **`inv_tran_bin_detail` at shared locations** (part of the bin history; net quantity unchanged); `item_uom`; `item_service`; `inv_mast_trade`; `inv_mast_strategic_pricing`; `inv_period_usage_temp`.
+- **Restated, not added:** `inventory_value_items_list_company_period` is restated for the combined item.
+- **Customer part numbers can duplicate:** one customer can end up with two `their_item_id` values for the same item.
+
+#### What a customer merge does to history
+
+- **Source customer.** Soft-deleted (`delete_flag = 'Y'`, maintained by `P21_CUSTOMER_MERGE`); the name is kept. The credit-limit option is honored and `credit_limit_used` is recomputed.
+- **Re-pointed intact:** `invoice_hdr` (open AR included), `ar_receipts_detail`, `oe_hdr` (orders and quotes), contacts, `oe_contacts_customer`, `customer_notepad`, `inv_xref`, `ship_to` (every ship-to other than the source's own address), `job_price_customer_shipto`, `customer_call`, `custom_column_data_customer`, `payment_account_x_contact`. `invoice_hdr.salesrep_id` is unchanged.
+- **Combined per period, sums preserved:** `customer_order_history` and its daily table.
+- **`customer_credit_history` (monthly) loses columns.** Only `amount_paid` and `invoiced_cost` are summed; the source's `invoiced_commission_cost`, `invoiced_other_cost`, and `avg_fast_slow_days_amount_paid` are dropped. `customer_x_shipto_credit_history_daily` is only partly re-pointed.
+- **Deleted, not moved:** source `customer_salesrep` rows (a rep the target lacks is lost), `price_library_x_cust_x_cmpy` (**the source's price library is dropped**), `customer_edi_setting`, `customer_strategic_pricing`.
+- **`keep_cust_as_shipto`.** With `ON`, the source's own address moves under the target as a ship-to and nothing is re-pointed. With `OFF`, the source's own ship-to is soft-deleted and **every order and invoice that shipped to it is re-pointed to the target's own address ID**: `oe_hdr.address_id`, `invoice_hdr.ship_to_id` and `corp_address_id`, `commission_run.ship_to_id`, and contract ship-to links. The `ship2_*` / `bill2_*` text on those headers is kept, and `audit_trail` logs each `oe_hdr.address_id` change.
+- **Site-custom tables** keyed on `customer_id` are not touched.
+
+#### Merge audit surfaces
+
+Read these to confirm what a merge did: `item_merge_audit`, `temp_inv_mast_merge`, `scheduled_inv_mast_merge`, `customer_merge_audit`, `temp_customer_merge`, and `audit_trail` (`source_area_cd` 1314 and 1327 for item merges). The stored procedures behind both windows (`p21_merge_items*`, `p21_merge_inv_mast_records_mult_app`, `p21_merge_customers_app`, `p21_merge_mult_customers`) exist, but reading their source needs `VIEW DEFINITION`.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026: successful item and customer merges plus every error case above, each with before-and-after row counts and sums ([#168](https://github.com/mrwuss/p21-api-documentation/issues/168)). The alternate-code resolution was found through two merges that ran on items other than the ones named.
+
 ## PDF Report Generation
 
 The Transaction API includes a dedicated endpoint for generating PDF documents -- purchase orders, pick tickets, and other printable reports. The endpoint returns the rendered PDF as a base64-encoded string in the response body.
@@ -4360,7 +4568,7 @@ The payload follows the standard TransactionSet format. Report-specific criteria
                     {"Name": "company_id", "Value": "ACME"},
                     {"Name": "beg_po_no", "Value": "500100"},
                     {"Name": "end_po_no", "Value": "500100"},
-                    {"Name": "reprint_flag", "Value": "Y"}
+                    {"Name": "reprint_flag", "Value": "<po_hdr.printed: Y or N>"}
                 ]
             }],
             "Type": 0
@@ -4375,16 +4583,40 @@ Constants that apply to every report payload: `Status` and `Type` are **numeric 
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
+#### `reprint_flag` must match the PO's `po_hdr.printed`
+
+`m_reprintpurchaseorders` is the **Print Purchase Orders** window in both of its modes. The `reprint_flag` criterion is not a "reprint please" switch. It selects which population of POs the run considers, and that population is fixed by each PO's own print history:
+
+| `reprint_flag` | Renders POs where | A PO in the other state |
+|---|---|---|
+| `N` | `po_hdr.printed = 'N'` (never printed) | Empty HTTP 500 |
+| `Y` | `po_hdr.printed = 'Y'` (printed at least once) | Empty HTTP 500 |
+
+A mismatch fails **deterministically**: every attempt returns the same empty-bodied 500, which looks identical to the [transient report-engine fault](#an-empty-5xx-has-several-causes-and-is-usually-transient) below. A payload that hardcodes `reprint_flag: "Y"` therefore fails on every PO that nobody has printed yet, and retrying does not help.
+
+To print any PO reliably:
+
+1. Read the header over OData: `GET /odataservice/odata/table/po_hdr?$filter=po_no eq 500100&$select=po_no,printed` (`po_no` is numeric, so do not quote it).
+2. Send `reprint_flag` equal to that `printed` value.
+3. On an empty 500, re-read `printed` before you retry. Another user or process can print the PO between your read and your call, which flips the flag you need.
+
+A first print (`N`) on an approved PO marks it printed: `po_hdr.printed` changes to `'Y'`, so the next run for that PO needs `Y`. The report payload never requests *Transmit Document Links*, and no transmission was observed during verification.
+
+The definition lists `ValidValues` `ON`/`OFF` for `reprint_flag`; the verified calls sent `Y`/`N` with `UseCodeValues: false`.
+
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with `Y` on repeated attempts and succeeded with `N` ([#162](https://github.com/mrwuss/p21-api-documentation/issues/162)).
+
 #### An empty 5xx has several causes — and is usually transient
 
 This endpoint runs at production volume: one integration generates PO PDFs for supplier emails all day, logging **154 successes against 3 empty 500s and 1 dropped connection in a single afternoon** — and every affected PO succeeded moments later on retry.
 
-So an empty-bodied 5xx here is **not** a signal that your payload is wrong. It has at least three unrelated causes, and the response body cannot tell them apart:
+So an empty-bodied 5xx here is **not** a signal that your payload is wrong. It has at least four unrelated causes, and the response body cannot tell them apart:
 
 | Cause | How to tell |
 |---|---|
 | **Transient report-engine fault** (most common) | The identical request succeeds seconds later. Retry before investigating anything else. |
 | **Bad criteria** — e.g. a `company_id` that doesn't exist | Deterministic: every attempt fails. Verified on Play 26.1 — a wrong `company_id` returns an empty 500, not a useful message. |
+| **`reprint_flag` doesn't match the PO's print history** (`m_reprintpurchaseorders`) — `Y` on a PO with `po_hdr.printed = 'N'`, or `N` on one with `'Y'` | Deterministic for that PO. Read `po_hdr.printed` and send it as `reprint_flag`; re-read it before each retry, because it can change between attempts — see [`reprint_flag` must match the PO's `po_hdr.printed`](#reprint_flag-must-match-the-pos-po_hdrprinted). |
 | **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, so treat a blanket failure like that as an environment property, not a payload bug. |
 
 **Retry idempotent report calls.** Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses **3 attempts with a 0.5 s × attempt backoff**, which covers the observed fault rate without masking a real outage.
@@ -4449,7 +4681,7 @@ The response is a **JSON array** (even for a single document). Each element cont
 
 <!-- tabs -->
 ```python
-"""Generate a PO reprint PDF and save it to disk."""
+"""Print (or reprint) a PO as a PDF and save it to disk."""
 import base64
 import os
 import re
@@ -4499,6 +4731,20 @@ def get_ui_server(client: httpx.Client, token: str) -> str:
         return match.group(1).rstrip("/")
 
 
+def get_printed_flag(client: httpx.Client, token: str) -> str:
+    """reprint_flag must equal po_hdr.printed, or the report returns an empty 500."""
+    r = client.get(
+        f"{BASE_URL}/odataservice/odata/table/po_hdr",
+        params={"$filter": f"po_no eq {PO_NO}", "$select": "po_no,printed"},  # numeric: no quotes
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    rows = r.json().get("value", [])
+    if not rows:
+        raise SystemExit(f"PO {PO_NO} not found -- check it before calling the report")
+    return "Y" if rows[0].get("printed") == "Y" else "N"
+
+
 with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
     token = get_token(client)
     ui_server = get_ui_server(client, token)
@@ -4508,7 +4754,11 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         "Content-Type": "application/json",
     }
 
-    # Generate PO reprint PDF -- reports go to /process/pdfreport, never /transaction
+    # Read the PO's print history first; re-read it before any retry, because
+    # another user can print the PO between this read and the report call.
+    reprint_flag = get_printed_flag(client, token)
+
+    # Generate the PO PDF -- reports go to /process/pdfreport, never /transaction
     payload = {
         "Name": "m_reprintpurchaseorders",
         "Transactions": [{
@@ -4520,7 +4770,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                         {"Name": "company_id", "Value": COMPANY_ID},
                         {"Name": "beg_po_no", "Value": PO_NO},
                         {"Name": "end_po_no", "Value": PO_NO},
-                        {"Name": "reprint_flag", "Value": "Y"},
+                        {"Name": "reprint_flag", "Value": reprint_flag},
                     ]
                 }],
                 "Type": 0,
@@ -4582,7 +4832,11 @@ var token = await GetTokenAsync(client);
 var uiServer = await GetUiServerAsync(client, token);
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-// Generate PO reprint PDF -- reports go to /process/pdfreport, never /transaction
+// Read the PO's print history first; re-read it before any retry, because
+// another user can print the PO between this read and the report call.
+var reprintFlag = await GetPrintedFlagAsync(client);
+
+// Generate the PO PDF -- reports go to /process/pdfreport, never /transaction
 var payload = new
 {
     Name = "m_reprintpurchaseorders",
@@ -4605,7 +4859,7 @@ var payload = new
                                 new { Name = "company_id", Value = CompanyId },
                                 new { Name = "beg_po_no", Value = PoNo },
                                 new { Name = "end_po_no", Value = PoNo },
-                                new { Name = "reprint_flag", Value = "Y" },
+                                new { Name = "reprint_flag", Value = reprintFlag },
                             }
                         }
                     },
@@ -4675,6 +4929,20 @@ static async Task<string> GetUiServerAsync(HttpClient client, string token)
     var response = await client.SendAsync(request);
     response.EnsureSuccessStatusCode();
     return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// reprint_flag must equal po_hdr.printed, or the report returns an empty 500.
+static async Task<string> GetPrintedFlagAsync(HttpClient client)
+{
+    var filter = Uri.EscapeDataString($"po_no eq {PoNo}");   // numeric: no quotes
+    var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/po_hdr?$filter={filter}&$select=po_no,printed");
+    response.EnsureSuccessStatusCode();
+    using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    var rows = body.RootElement.GetProperty("value");
+    if (rows.GetArrayLength() == 0)
+        throw new InvalidOperationException($"PO {PoNo} not found -- check it before calling the report");
+    return rows[0].TryGetProperty("printed", out var printed) && printed.GetString() == "Y" ? "Y" : "N";
 }
 
 // Some middleware answers these two endpoints in XML even when asked for JSON.

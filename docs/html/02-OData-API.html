@@ -664,6 +664,7 @@
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 <li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
+<li><a href="#one-table-is-withheld-from-every-token-users">One table is withheld from every token: users</a></li>
 <li><a href="#read-after-write-consistency">Read-after-write consistency</a></li>
 </ul>
 </li>
@@ -982,6 +983,40 @@
 <p><code>GET /odataservice/odata/table/bin</code> and <code>GET /odataservice/odata/view/bin</code> <strong>both 404</strong> — with a raw IIS "404 - File or directory not found" HTML page, not the normal OData JSON 404 body every other missing-object case in this section produces. Verified live on 26.1.5950.0, every casing tried (<code>bin</code>, <code>Bin</code>), both surfaces, with and without a <code>$select</code>/<code>$filter</code>.</p>
 <p>The table itself is real — <code>bin.$Key</code> appears in <code>table/$metadata</code>, and its data is reachable indirectly through <code>inv_loc.primary_bin</code> and the <code>bin_ud</code> extension table (which resolves fine; only the bare name <code>bin</code> fails). The most likely explanation is a routing collision: <code>bin</code> is also IIS's own reserved name for a website's compiled-assemblies folder, and something in the URL rewrite chain in front of the OData service appears to intercept a path segment named exactly <code>bin</code> before it reaches the OData handler — which would explain why the failure looks like a static-file 404 rather than an application-level one. Not confirmed against IIS configuration directly; recorded as an observed, reproducible symptom.</p>
 <p><strong>Read <code>bin</code> data through a join instead.</strong> <code>inv_loc.primary_bin</code> and <code>inv_loc.location_id</code> cover the common case (an item's primary bin at a location); for other bin attributes, <code>bin_ud</code> (its user-defined-field extension table) is reachable normally and may carry what you need.</p>
+<h3 id="one-table-is-withheld-from-every-token-users">One table is withheld from every token: <code>users</code></h3>
+<p>The <code>users</code> table (P21 user accounts) cannot be read through OData by any token. The two authentication methods fail in different shapes, and one of them looks like success:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Token</th>
+<th><code>table/users?$top=1</code></th>
+<th><code>table/users/$count</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Consumer key, with or without a username</td>
+<td><strong>401</strong> <code>You are not authorized to access API. Please contact administrator to get access.</code></td>
+<td>401</td>
+</tr>
+<tr>
+<td>Password grant</td>
+<td><strong>200</strong> with <code>{"value":[]}</code></td>
+<td>404 <code>Value cannot be null</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>What the tests ruled out:</p>
+<ul>
+<li><strong>Scope.</strong> The consumer key's decoded <code>aud</code> claim listed <code>users</code> as an exact entry in its <a href="00-Authentication.html#the-odata-allow-list-is-baked-into-the-token-and-these-tokens-never-expire">OData allow-list</a>, and the token was minted immediately before the calls. Every other table in the same list returned 200 with the same token.</li>
+<li><strong>Columns.</strong> Under a consumer key, <code>$select=id,name</code> returns the same 401, so the block is on the table, not on sensitive columns.</li>
+<li><strong>Filters.</strong> Under a password grant, <code>$filter</code> on the caller's own <code>id</code> still returns an empty <code>value</code>. A control read of <code>table/customer?$top=1</code> with the same token returns a real row, and the table is not empty in SQL.</li>
+</ul>
+<p>A P21 system administrator confirmed that withholding <code>users</code> from consumer keys is intended behavior: adding <code>users</code> to a key's scope has no effect by design. The password-grant result shows the restriction covers that method too. Epicor has not published a list of tables withheld this way.</p>
+<p><strong>Treat an empty <code>value</code> on <code>users</code> as "withheld", not "no rows".</strong> A client that checks only the status code reports a password-grant read as a success that found nothing. There is no supported OData workaround. Whether a custom view that selects from <code>users</code> is also withheld is untested.</p>
+<blockquote>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on production and play 26.1, September 2026, with both authentication methods; a second integrator reported the same consumer-key 401 on another play middleware host and on live (<a href="https://github.com/mrwuss/p21-api-documentation/issues/164">#164</a>). An earlier reading that a password grant <em>could</em> read <code>users</code> came from a status-code-only check and is withdrawn.</p>
+</blockquote>
 <hr />
 <h3 id="read-after-write-consistency">Read-after-write consistency</h3>
 <p>Every write recipe in this repo verifies a <a href="03-Transaction-API.html">Transaction API</a> write by reading it back over OData (or <code>/transaction/get</code>) <strong>immediately</strong> afterward — no delay, no retry. That pattern is now a tested fact, not just an accident of every example happening to work: <strong>125 back-to-back single-field writes (<code>inv_mast.item_desc</code> via the <code>Item</code> service), each followed instantly by an OData <code>table:</code> read-back of the same field, returned zero stale reads</strong> — 75 sequential plus 50 more across 5 concurrently-writing items (26.1, September 2026). The OData <code>table:</code> surface reflects a Transaction API write with no observable lag, at least at this scale.</p>
@@ -2964,6 +2999,7 @@ inv_mast         $filter=inv_mast_uid eq {im_uid}          → item_id
 <li><a href="#discovering-whats-exposed-metadata">Discovering What's Exposed ($metadata)</a></li>
 <li><a href="#the-tableview-split-and-the-404-it-produces">The table/view split, and the 404 it produces</a></li>
 <li><a href="#one-object-name-is-unreachable-regardless-of-surface-bin">One object name is unreachable regardless of surface: bin</a></li>
+<li><a href="#one-table-is-withheld-from-every-token-users">One table is withheld from every token: users</a></li>
 <li><a href="#read-after-write-consistency">Read-after-write consistency</a></li>
 </ul>
 </li>

@@ -674,6 +674,8 @@ The GET -> Modify -> PUT pattern also works for **updating fields on existing `i
 
 **Verified writable fields:** `Sellable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`, `ReplenishmentLocation`, `PrimaryBin` (see [Location-Append & Update Gotchas](#location-append-update-gotchas-verified-at-scale) — `PrimaryBin` verified across 276 rows; the bin must already exist at that location)
 
+> **`ProductGroupId` and the location's GL accounts.** Through the Transaction API `Item` service, a location's product-group change rewrites its GL, revenue, and COS accounts to the target group's defaults — see [03 § Changing a Location's Product Group Re-Syncs Its GL Accounts](03-Transaction-API.md#changing-a-locations-product-group-re-syncs-its-gl-accounts). Whether this PUT does the same was not tested; snapshot the three account columns before a product-group change here too, and compare after.
+
 ### Updating a Supplier's Cost (`Suppliers.list[].Cost`)
 
 The same GET → modify → PUT round trip updates **`inventory_supplier.cost`** on an existing supplier row. `GET /api/inventory/parts/{ItemId}?extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure`, change `Suppliers.list[n].Cost`, and PUT the full payload back → HTTP 200.

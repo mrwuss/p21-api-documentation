@@ -18,6 +18,16 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-10 — v1.27.1
+
+Closed the five open issues that already carried verified results. [#163](https://github.com/mrwuss/p21-api-documentation/issues/163) stays open on purpose until Epicor responds.
+
+- **fix:** **[`m_reprintpurchaseorders`: `reprint_flag` must match the PO's `po_hdr.printed`](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted)** — the examples hardcoded `"Y"`, which deterministically 500s on a PO that was never printed. The Python and C# examples now read `printed` first and send it; the empty-500 cause table has the new row. Closes [#162](https://github.com/mrwuss/p21-api-documentation/issues/162) — *@mrwuss*
+- **docs:** **[The OData `users` table is withheld from every token](02-OData-API.md#one-table-is-withheld-from-every-token-users)** — consumer keys get a 401 and password grants get an empty 200, including the caller's own row; adding it to a key's scope has no effect. Closes [#164](https://github.com/mrwuss/p21-api-documentation/issues/164) — *@mrwuss*
+- **docs:** **[The Shipping service can't delete orphaned pick tickets](03-Transaction-API.md#shipping-service-deleting-a-pick-ticket)** — tickets on a closed order or under a deleted assembly parent fail with the documented errors. Closes [#165](https://github.com/mrwuss/p21-api-documentation/issues/165) — *@mrwuss*
+- **docs:** **[Changing a location's product group re-syncs its GL accounts](03-Transaction-API.md#changing-a-locations-product-group-re-syncs-its-gl-accounts)** — through the `Item` service, even when both groups carry identical defaults, overwriting branch-specific location accounts; the accounts tab is disabled, so snapshot before and restore after. Closes [#166](https://github.com/mrwuss/p21-api-documentation/issues/166) — *@mrwuss*
+- **feat:** **[Item Merge and Customer Merge through the Transaction API](03-Transaction-API.md#item-merge-and-customer-merge-m_itemmerge-m_customermerge)** — payloads, errors, what history moves, and the chained-merge trap where an already-merged source or target silently merges a different record. Closes [#168](https://github.com/mrwuss/p21-api-documentation/issues/168) — *@mrwuss*
+
 ## 2026-10-10 — v1.27.0
 
 Brought in the verified findings from [Alex Westemeier](https://github.com/AWestemeier)'s process work, generalized, and re-ran on play 26.1.5950.0 the four that contradicted or extended this repo. Closed three issues that already carried verified results, and documented a community answer to a fourth. All identifiers are placeholders.

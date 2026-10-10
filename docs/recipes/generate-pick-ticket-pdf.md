@@ -41,14 +41,16 @@ POST {ui_server}/api/v2/process/pdfreport
 }
 ```
 
-**`m_reprintpurchaseorders`** — PO reprint (verified with `UseCodeValues: false`). DataElement name is `TABPAGE_1.poreportcriteriadw`:
+**`m_reprintpurchaseorders`** — PO print or reprint (verified with `UseCodeValues: false`). DataElement name is `TABPAGE_1.poreportcriteriadw`:
 
 ```json
 { "Name": "company_id", "Value": "ACME" },
 { "Name": "beg_po_no",  "Value": "500100" },
 { "Name": "end_po_no",  "Value": "500100" },
-{ "Name": "reprint_flag", "Value": "Y" }
+{ "Name": "reprint_flag", "Value": "<po_hdr.printed: Y or N>" }
 ```
+
+> **`reprint_flag` is not a constant.** It must equal the PO's own `po_hdr.printed`: `N` for a PO that was never printed, `Y` for one that was. A mismatch returns an empty HTTP 500 on every attempt, which looks like the transient fault a retry clears but is not. Read `printed` over OData first (`po_hdr?$filter=po_no eq 500100&$select=po_no,printed`), and re-read it before each retry. A first print with `N` marks the PO printed. Detail: [`reprint_flag` must match the PO's `po_hdr.printed`](../03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted).
 
 **`m_reprintpicktickets`** — pick-ticket reprint. DataElement name is `TABPAGE_1.tp_1_dw_1` (datawindow `d_reprint_pick_ticket_criteria`); the [definition](../../definitions/m_reprintpicktickets.json) marks `company_id`, `location_id`, and `print_qty` required, with ranges `beg_pick_ticket_no`/`end_pick_ticket_no` (sales-order tickets) and `beg_prod_pick_ticket_no`/`end_prod_pick_ticket_no` (production tickets). Its `pick_ticket_type` takes the display values `Sales Order`, `Production Order` or `Both`, and `print_dea_pick_tickets` takes `Yes`, `No` or `Only` (from the live definition, 2026-08-11).
 
@@ -503,10 +505,11 @@ static string ReadField(string payload, string field)
 All verified live — details in [PDF Report Generation](../03-Transaction-API.md#pdf-report-generation):
 
 - **Wrong-endpoint trap** — `POST /api/v2/transaction` *accepts* an `m_*` payload and returns `Succeeded`, but **emits nothing**. Reports must go to `POST /api/v2/process/pdfreport`. ("This was the single biggest gotcha.")
-- **Retry an empty 5xx before believing it.** The report engine faults intermittently — a production integration generating PO PDFs all day logged **3 empty 500s and one dropped connection against 154 successes in a single afternoon**, and every affected PO succeeded moments later. Generating a document is an idempotent read, so retry (3 attempts, 0.5 s × attempt) as the examples above do. A *deterministic* empty 5xx is a different animal: criteria that match nothing (a wrong `company_id`), a record that isn't printable, or an environment where report generation isn't available. See [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient).
+- **Retry an empty 5xx before believing it.** The report engine faults intermittently — a production integration generating PO PDFs all day logged **3 empty 500s and one dropped connection against 154 successes in a single afternoon**, and every affected PO succeeded moments later. Generating a document is an idempotent read, so retry (3 attempts, 0.5 s × attempt) as the examples above do. A *deterministic* empty 5xx is a different animal: criteria that match nothing (a wrong `company_id`), a PO `reprint_flag` that doesn't match `po_hdr.printed`, a record that isn't printable, or an environment where report generation isn't available. See [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient).
 - **Read the error envelope before the status code.** This endpoint returns P21's `ErrorType`/`ErrorMessage` envelope, and it can arrive on a **200** as well as a 4xx/5xx. Checking `response.status_code` first discards the one message that explains the failure — the examples above parse the body first for that reason.
 - **Check the record exists first.** A missing record and a transient engine fault both surface as an unhelpful 5xx. A cheap OData read before the report call turns "not found" into your own clear error and leaves the 5xx meaning only "the engine faulted".
 - **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false`, but `m_picktickets` **requires `UseCodeValues: true` with code values** — `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the definition's `ValidValues`.
+- **`m_reprintpurchaseorders`: `reprint_flag` must equal `po_hdr.printed`.** `N` renders only never-printed POs and `Y` only printed ones; the wrong one is a deterministic empty 500 that a retry never clears. Read `printed` over OData before each call, including before a retry, because another user can print the PO in between. A first print marks the PO printed.
 - **`Status` and `Type` are numeric `0`** with `Keys: []` — not the `"New"` record-edit shape.
 - **`m_picktickets` prerequisite**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first. No date range is needed; `location_id` is the location the components pick from.
 - **`m_picktickets` has a side effect**: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.

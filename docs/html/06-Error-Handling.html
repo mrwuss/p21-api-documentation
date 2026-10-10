@@ -2177,6 +2177,21 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>Use <code>POST /api/v2/process/pdfreport</code>, not <code>/transaction</code> — <a href="03-Transaction-API.html#pdf-report-generation">details</a></td>
 </tr>
 <tr>
+<td><code>m_reprintpurchaseorders</code> returns an empty 500 on every retry</td>
+<td>Transaction</td>
+<td><code>reprint_flag</code> must equal the PO's <code>po_hdr.printed</code> — read it first — <a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted">details</a></td>
+</tr>
+<tr>
+<td><code>Record specified was not found</code> deleting a pick ticket on a completed order</td>
+<td>Transaction</td>
+<td>Orphaned ticket — the Shipping window cannot retrieve it — <a href="03-Transaction-API.html#shipping-service-deleting-a-pick-ticket">details</a></td>
+</tr>
+<tr>
+<td>Customer merge returns <code>Failed: 1</code>, <code>History is not available for w_customer_merge_maint window</code></td>
+<td>Transaction</td>
+<td>The merge committed — check <code>customer_merge_audit</code>, do not retry — <a href="03-Transaction-API.html#item-merge-and-customer-merge-m_itemmerge-m_customermerge">details</a></td>
+</tr>
+<tr>
 <td>Session expired</td>
 <td>Interactive</td>
 <td>Start new session</td>
@@ -2195,6 +2210,11 @@ Sessions expire after the configured <code>SessionTimeout</code> of inactivity (
 <td>404 on table</td>
 <td>OData</td>
 <td>Verify table name</td>
+</tr>
+<tr>
+<td><code>users</code> returns 401 (consumer key) or 200 with an empty <code>value</code> (password grant)</td>
+<td>OData</td>
+<td>Withheld from every token by design; no OData workaround — <a href="02-OData-API.html#one-table-is-withheld-from-every-token-users">details</a></td>
 </tr>
 <tr>
 <td>404 <code>Edm.Decimal</code> / <code>Edm.String</code> operand types</td>

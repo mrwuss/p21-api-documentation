@@ -323,6 +323,8 @@ You are not authorized to access API. Please contact administrator to get access
 
 > **Re-mint the token after any scope change.** The allow-list is fixed at issue time, and consumer key tokens are effectively permanent — `ExpiresIn: 630720000` (~20 years) with `exp: 2147483647`. A client holding a cached token keeps enforcing the **old** allow-list indefinitely, so a scope change made in SOA Admin looks like it did nothing. Password-grant tokens expire in 86400s and pick the change up on their own within a day; consumer-key clients will not. If a newly granted table still 401s, get a fresh token before looking anywhere else.
 
+> **A third cause: a table withheld regardless of scope.** `users` returns the same generic 401 to a consumer key even when the `aud` allow-list names it exactly and the token is fresh. This is intended behavior, and adding the table to the scope has no effect. A password-grant token does not read it either: it gets HTTP 200 with an empty `value` array. See [02 § One table is withheld from every token: `users`](02-OData-API.md#one-table-is-withheld-from-every-token-users).
+
 ### API-Specific Behavior (Verified)
 
 | API | Without Username | With Username |
@@ -541,6 +543,7 @@ If you receive a `401` or `403` "not authorized" error with a valid token:
 1. Verify **Allow OData API Service** = Yes in User Maintenance → Application Security
 2. Verify the target table/view is set to **Allow** in Role Maintenance → Dataservice Permission
 3. Ensure you're checking the correct **role** (the one actually assigned to the user)
+4. If the table is `users`, stop: no permission or scope setting exposes it, and a password grant gets HTTP 200 with an empty `value` instead of an error — see [02 § `users`](02-OData-API.md#one-table-is-withheld-from-every-token-users)
 
 ---
 
