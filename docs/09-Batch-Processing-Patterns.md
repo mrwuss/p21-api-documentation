@@ -5417,7 +5417,9 @@ A single order of about a thousand lines took about half an hour. The same list 
 
 The orders are independent, so they could run in parallel; that has not been tested. For contrast, the Interactive API costs about five HTTP calls per line, so it is slower per line than a multi-row Transaction even though the server-side cost is the same.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — measured on play and repeated on production, September 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — measured on play and repeated on production, September 2026.
+>
+> **Re-measured here, small orders only** (play 26.1.5950.0, 2026-10-10, client wall-clock time per `Order` POST): one new order of 10 lines took 0.73 s per line and one of 60 lines 0.68 s per line; appending 10-line batches to one order as it grew from 1 to 41 lines took 0.77–0.89 s per line. That matches the 1–100 row of the table above and shows no growth below 100 lines. The growth toward 900 lines, the thousand-line timing and the production repeat were not re-measured. Cancelling took 5.0 s for the 10-line order and 8.7 s for the 60-line order. Two multi-row appends in this run failed with *"Item ID … has been saved; therefore, the Item ID cannot be edited"* although every item in the batch was new to the order; the cause was not isolated, so read the live lines back after every append.
 
 ---
 

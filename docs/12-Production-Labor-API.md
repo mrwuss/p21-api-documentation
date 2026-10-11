@@ -551,7 +551,7 @@ The `InventoryAdjustment` service posts on-hand adjustments with no invoice: hea
 
 ### Production Order Gotchas (Field-Verified)
 
-Learned running production orders at volume through the API. Credit [Alex Westemeier](https://github.com/AWestemeier) — verified on production and play, September 2026. The location-order and pick-ticket-cancel bullets were **re-run here** on play 26.1.5950.0, 2026-10-10 (scratch tests on a throwaway assembly, noted in each bullet); the rest rest on the original report.
+Learned running production orders at volume through the API. Credit [Alex Westemeier](https://github.com/AWestemeier) — verified on production and play, September 2026. The location-order and pick-ticket-cancel bullets were **re-run here** on play 26.1.5950.0, 2026-10-10 (scratch tests on a throwaway assembly, noted in each bullet); the other bullets are from the original report.
 
 **Creating**
 
