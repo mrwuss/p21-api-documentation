@@ -2877,9 +2877,27 @@ For a full confirmation this is reasonable: the supplier really did ship on that
 
 **If you are confirming partials through the API, capture `supplier_ship_date` before the first confirmation** and keep it in your own store. There is no P21-side way to recover it afterwards.
 
-##### The write path is not reproduced here
+##### The Transaction API path works on 26.1.5950.0
 
-The confirmation is documented elsewhere as *"one TAPI POST keyed by `po_no`"*, and **we could not reproduce that**. On a 26.1.5940.0 tenant every `POST /api/v2/transaction` against `DirectShipConfirmation` returned a clean but empty result — no rejection, no message, nothing done:
+The confirmation is documented elsewhere as *"one TAPI POST keyed by `po_no`"*. On play **26.1.5950.0** (2026-10-10) that worked: one POST confirmed a direct ship in full.
+
+```json
+{ "Name": "DirectShipConfirmation", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "TABPAGE_1.tp_1_dw_po", "Type": "Form", "Keys": ["po_no"],
+      "Rows": [{ "Edits": [
+        {"Name": "po_no",         "Value": "500100"},
+        {"Name": "receive_all",   "Value": "ON"},
+        {"Name": "print_invoice", "Value": "OFF"},
+        {"Name": "fax_invoice",   "Value": "OFF"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+The response was `Summary` `Succeeded: 1`, with the new receipt number echoed as `receipt_number` on `TABPAGE_1.tp_1_dw_po`. `shipment_date`, `period` and `year_for_period` were not sent; they defaulted to today and the current fiscal period. Each run was against a fresh `po_type = 'D'` PO, built with [`order_entry_quote_off.py`](#set-quote-to-off-first-the-window-can-open-in-quote-mode) in direct-ship mode and linked through `oe_line_po`. The read-back matched the [Interactive path](#the-interactive-path-works): `po_line.complete` `Y` with `qty_received` = `qty_ordered`, `po_line.supplier_ship_date` set to the confirmation date, `oe_line.qty_invoiced` = `qty_ordered` with `complete` `Y`, and one new `invoice_hdr` row for the order. The two runs sent the checkboxes as `Y`/`N` and as `ON`/`OFF`; both were accepted with identical results. The definition publishes `ValidValues: ["ON", "OFF"]` for `receive_all`, `complete`, `print_invoice` and `fax_invoice`, so send `ON`/`OFF`. The token was a password user **without** a Buyer ID.
+
+On an earlier build, 26.1.5940.0, every `POST /api/v2/transaction` against `DirectShipConfirmation` returned a clean but empty result — no rejection, no message, nothing done:
 
 ```jsonc
 HTTP 200
@@ -2887,14 +2905,12 @@ HTTP 200
  "Summary": {"Failed": 0, "Succeeded": 0, "Other": 0}}
 ```
 
-Tried across `Status` variants, `receive_all` as both `Y`/`N` and `ON`/`OFF`, with and without `period` / `year_for_period`, and with a payload built from the tenant's own `/defaults` output. Target was an approved `po_type='D'` PO with one open line, linked to a sales order via `oe_line_po`.
+That run tried `Status` variants, `receive_all` as both `Y`/`N` and `ON`/`OFF`, with and without `period` / `year_for_period`, and a payload built from the tenant's own `/defaults` output, against an approved `po_type='D'` PO with one open line. Whether the 5950.0 result reflects the build or a difference in that payload is not established. If you get the empty result, check `Summary.Succeeded` and read the PO back; do not assume a confirmation happened.
 
-Two notes for whoever picks this up:
+- **Never send `c_email_invoice`.** It is disabled, and a transaction that tripped on it reported `Failed` **after** writing the receipt, the PO completion and the customer invoice (reported by Alex Westemeier; not re-run here, because the failure leaves those documents behind).
+- **Only a full confirmation (`receive_all` on) was run.** Nothing here drives a **partial** one, which is the case that matters for the date overwrite. `TABPAGE_17.tp_17_dw_17` exposes `unit_quantity` and a `complete` bound to `po_line.complete`, so a partial looks expressible in principle.
 
-- **The checkbox fields take `ON`/`OFF`, not `Y`/`N`.** `receive_all`, `complete`, `print_invoice` and `fax_invoice` all publish `ValidValues: ["ON", "OFF"]` and default to `"OFF"`. Getting this wrong is easy and was *not* the cause of the no-op, but fix it anyway.
-- The path described elsewhere is `receive_all` on — a **full** confirmation. Nothing documents driving a **partial** one, which is the case that matters for the date overwrite. `TABPAGE_17.tp_17_dw_17` exposes `unit_quantity` and a `complete` bound to `po_line.complete`, so a partial looks expressible in principle.
-
-The date-overwrite behavior above rests on the field binding and on the receipt data. A live **full** confirmation through the Interactive window below then wrote the `shipment_date` into `po_line.supplier_ship_date`, as predicted; a **partial** confirmation is still not exercised here.
+The date-overwrite behavior above rests on the field binding and on the receipt data. A live **full** confirmation, through the Interactive window below and through the Transaction API above, then wrote the `shipment_date` into `po_line.supplier_ship_date`, as predicted; a **partial** confirmation is still not exercised here.
 
 ##### The Interactive path works
 
@@ -2913,7 +2929,7 @@ Driving the window instead of posting a transaction confirmed a direct ship on p
 - **`po_line.supplier_ship_date` went from NULL to the confirmation's `shipment_date`** (today's date, pre-filled) — the live write behind [the ship-date overwrite above](#directshipconfirmation-writes-its-ship-date-down-onto-every-line), observed on a full confirmation.
 - The confirmation ran as a user **without** a Buyer ID; only the PO creation needed one.
 
-> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path that returned an empty result on 26.1.5940.0 above is the same one [Alex Westemeier](https://github.com/AWestemeier) reports working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`, which is disabled and fails the transaction *after* the documents are written). The difference is not explained.
+> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path [above](#the-transaction-api-path-works-on-2615950) is the one [Alex Westemeier](https://github.com/AWestemeier) reported working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`). It returned an empty result on 26.1.5940.0 and confirmed in full on 26.1.5950.0, 2026-10-10 (scratch test, read back as above).
 
 ### Setting `disposition` — only at line entry
 
