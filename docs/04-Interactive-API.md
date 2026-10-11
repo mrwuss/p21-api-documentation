@@ -2929,7 +2929,7 @@ Driving the window instead of posting a transaction confirmed a direct ship on p
 - **`po_line.supplier_ship_date` went from NULL to the confirmation's `shipment_date`** (today's date, pre-filled) — the live write behind [the ship-date overwrite above](#directshipconfirmation-writes-its-ship-date-down-onto-every-line), observed on a full confirmation.
 - The confirmation ran as a user **without** a Buyer ID; only the PO creation needed one.
 
-> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path [above](#the-transaction-api-path-works-on-2615950) is the one [Alex Westemeier](https://github.com/AWestemeier) reported working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`). It returned an empty result on 26.1.5940.0 and confirmed in full on 26.1.5950.0, 2026-10-10 (scratch test, read back as above).
+> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path [above](#the-transaction-api-path-works-on-26159500) is the one [Alex Westemeier](https://github.com/AWestemeier) reported working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`). It returned an empty result on 26.1.5940.0 and confirmed in full on 26.1.5950.0, 2026-10-10 (scratch test, read back as above).
 
 ### Setting `disposition` — only at line entry
 
