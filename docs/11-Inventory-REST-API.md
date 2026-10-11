@@ -1159,7 +1159,7 @@ To create an item that is set up like one you already have — same locations, p
 
    | Where | Drop |
    |---|---|
-   | Item | `InvMastUid` |
+   | Item | `InvMastUid`, `UserDefinedFields` (it carries the source's own `InvMastUdUid` and `InvMastUid`) |
    | `Locations.list[]` | `QtyOnHand`, `MovingAverageCost`, `PrimaryBin`, `PeriodFirstStocked`, `YearFirstStocked`, `PatternLikeInvMastUid`, `PatternLikeLocationId`, `UserDefinedFields` |
    | `Suppliers.list[]` | `InventorySupplierUid`, `UserDefinedFields` |
    | `LocationSuppliers.list[]` | `InventorySupplierXLocUid`, `UserDefinedFields` |
@@ -1170,6 +1170,10 @@ To create an item that is set up like one you already have — same locations, p
 5. Read the new item back. Check its locations, suppliers and units against the source.
 
 Everything you don't drop is copied as-is, including supplier `Cost` and `ListPrice`, product and discount groups, GL accounts and replenishment settings. Edit them in the payload before the POST when the new item should differ. If the new `ItemId` already exists, the POST fails with `The proposed item ID already exists in the database.`
+
+The create does not copy the source's item user-defined fields. With the header `UserDefinedFields` block sent unchanged, the clone got no `inv_mast_ud` row at all and the source's row was left untouched, so the examples drop the block. Set any UD values on the new item after it exists.
+
+> **End-to-end files** (runnable from the repo with a `.env`; the source GET runs on a dry run, the POST needs `--execute` / typing `EXECUTE`, and both re-GET the new item and compare its locations, suppliers, location-suppliers and units with the source): [`examples/python/recipes/clone_item.py`](../examples/python/recipes/clone_item.py) · [`examples/csharp/Recipes/CloneItem.cs`](../examples/csharp/Recipes/CloneItem.cs).
 
 <!-- tabs -->
 
@@ -1226,9 +1230,10 @@ def get_token(client: httpx.Client) -> str:
 
 def build_clone(source: dict) -> dict:
     """Copy the source item, drop identity/stock fields, and re-key it to the new ID."""
-    # Top level: drop the uid and any null header fields.
+    # Top level: drop the source record's uid and UD block, and any null header fields.
     payload = {k: v for k, v in copy.deepcopy(source).items()
-               if k != "InvMastUid" and not (v is None and k[0].isupper())}
+               if k not in ("InvMastUid", "UserDefinedFields")
+               and not (v is None and k[0].isupper())}
     payload["ItemId"] = NEW_ITEM_ID
     payload["ItemDesc"] = NEW_ITEM_DESC
     for key, drop in DROP.items():
@@ -1341,11 +1346,11 @@ var getResp = await client.GetAsync(
 getResp.EnsureSuccessStatusCode();
 var source = JsonNode.Parse(await getResp.Content.ReadAsStringAsync())!.AsObject();
 
-// Top level: drop the uid and any null header fields, then re-key.
+// Top level: drop the source record's uid and UD block, and any null header fields, then re-key.
 var payload = new JsonObject();
 foreach (var (key, value) in source)
 {
-    if (key == "InvMastUid" || drop.ContainsKey(key)) continue;
+    if (key is "InvMastUid" or "UserDefinedFields" || drop.ContainsKey(key)) continue;
     if (value is null && char.IsUpper(key[0])) continue;
     payload[key] = value?.DeepClone();
 }
@@ -1434,7 +1439,7 @@ static string ReadField(string payload, string field)
 
 Read the result back with SQL or OData as well (`inv_mast`, `inv_loc`, `inventory_supplier`, `item_uom` for the new `item_id`) — the re-GET shows what the API returns, not every column it wrote.
 
-> **Credit:** *@mrwuss* — a clone built this way was created on production 26.1, October 2026, and checked by SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)). The examples above mirror that run; they were not run separately.
+> **Credit:** *@mrwuss* — a clone built this way was created on production 26.1, October 2026, and checked by SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)). Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each cloning a throwaway two-location, one-supplier, two-unit item under a new ID, with `inv_loc`, `inventory_supplier`, `inventory_supplier_x_loc` and `item_uom` checked against the source by SQL read-back. The source had no stock on hand, so the run shows the copied setup, not the stripping of a non-zero `QtyOnHand`.
 
 ---
 

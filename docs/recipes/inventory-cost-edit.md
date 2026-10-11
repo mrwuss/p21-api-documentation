@@ -24,6 +24,8 @@ A count turns up stock that will never sell. Rather than adjusting it out item b
 | `FORM.form` | Form | `location_id`, `item_id` | the same two plus **`new_cost`** |
 | `FORM.account` | Form | `account_no` | **`account_no`**, then **`year_for_period`**, then **`period`** — all three required, in this order |
 
+> **Payload file** (validator-clean): [JSON](../../examples/payloads/json/inventory-cost-edit.json).
+
 ## Complete example
 
 Reads the current cost over OData, skips the item if it is already at the target, posts the cost edit, and reads the cost back.
@@ -349,6 +351,8 @@ record struct CostRow(decimal Cost, decimal OnHand, string MaintainedBy);
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/inventory_cost_edit.py`](../../examples/python/recipes/inventory_cost_edit.py) · [`examples/csharp/Recipes/InventoryCostEdit.cs`](../../examples/csharp/Recipes/InventoryCostEdit.cs). The programs above are self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers.
+
 ## Running it for many items
 
 - **Build the item list from live `inv_loc` at run time**, not from a count spreadsheet. Quantities drift, items get merged, and keyed sheets carry typos.
@@ -368,5 +372,6 @@ record struct CostRow(decimal Cost, decimal OnHand, string MaintainedBy);
 - `inv_loc.moving_average_cost` = the new cost at the location (the example's read-back), `last_maintained_by` = your API user.
 - One `audit_trail` row with `column_changed = 'moving_average_cost'`.
 - A GL pair under journal `IC`, description `Cost Edit - <old> TO <new>`: inventory account against your offset account, amount `qty_on_hand × (old − new)`; sub-cent rounding posts to a separate rounding account. Reconcile the batch total against the sum of the per-item amounts.
+- **With nothing on hand there is no GL pair.** An edit at a location with `qty_on_hand = 0` changes `inv_loc` and writes its `audit_trail` row, and posts nothing to `gl`. That makes a zero-stock location the low-impact place to try the service.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — service shape, ordering rule and GL behavior verified on play (about a thousand items in one run) and on production, September 2026; not re-run here. The runnable program on this page is assembled from that verified payload and has not itself been run against a tenant.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — service shape, ordering rule and GL behavior verified on play (about a thousand items in one run) and on production, September 2026. Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each editing a throwaway item's cost at a location with nothing on hand, in an open fiscal period. Each run was confirmed by the `inv_loc.moving_average_cost` read-back and one `audit_trail` row (`table_changed = 'inv_loc'`, old and new value), with no `inv_tran` row. Because nothing was on hand, these runs posted no GL; the GL pair described under Verify is from the September runs, not re-checked here. The `account_no` dash, period-order and period-zero failures in Gotchas are also from those runs.

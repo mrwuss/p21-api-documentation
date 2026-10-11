@@ -19,6 +19,10 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | `create_requisition_po.py` | [create-requisition-po.md](../../../docs/recipes/create-requisition-po.md) |
 | `reassign_salesrep.py` | [reassign-salesrep.md](../../../docs/recipes/reassign-salesrep.md) |
 | `update_supplier_contact.py` | [update-supplier-contact.md](../../../docs/recipes/update-supplier-contact.md) |
+| `create_ship_to.py` | [create-ship-to.md](../../../docs/recipes/create-ship-to.md) |
+| `inventory_cost_edit.py` | [inventory-cost-edit.md](../../../docs/recipes/inventory-cost-edit.md) |
+| `reprint_purchase_order.py` | [03 § Example: Generate and Save a PO Reprint](../../../docs/03-Transaction-API.md#example-generate-and-save-a-po-reprint) (also [generate-pick-ticket-pdf.md](../../../docs/recipes/generate-pick-ticket-pdf.md)) |
+| `clone_item.py` | [11 § Cloning an Existing Item](../../../docs/11-Inventory-REST-API.md#cloning-an-existing-item) — its dry run GETs the source item, so it needs credentials |
 
 ## Setup
 
@@ -29,7 +33,7 @@ python examples/python/recipes/create_sales_order.py           # dry run
 python examples/python/recipes/create_sales_order.py --execute # write + verify
 ```
 
-Configuration constants at the top of each script use generic placeholders (`ACME`, `WIDGET-001`, customer `100198`) — substitute your own values before running.
+Configuration constants at the top of each script use generic placeholders (`ACME`, `WIDGET-001`, customer `100198`) — substitute your own values before running. Some scripts also take them as command-line options (`--help` lists them).
 
 ## Dry run by default
 

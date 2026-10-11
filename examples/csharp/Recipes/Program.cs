@@ -43,6 +43,10 @@ while (true)
     Console.WriteLine("  13. Update Order Lines         - Edit/add lines on an existing order");
     Console.WriteLine("  14. Reassign Salesrep          - Customer + ShipTo grids, two delete mechanisms");
     Console.WriteLine("  15. Update Supplier Contact    - Email/central phone via the Address service");
+    Console.WriteLine("  16. Clone Item                 - Inventory REST GET -> strip -> POST");
+    Console.WriteLine("  17. Create Ship-To             - ShipTo service + inherited-rep swap");
+    Console.WriteLine("  18. Inventory Cost Edit        - InventoryCostEdit moving average cost");
+    Console.WriteLine("  19. Reprint Purchase Order PDF - m_reprintpurchaseorders, flag = po_hdr.printed");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -113,6 +117,22 @@ while (true)
 
             case "14":
                 await ReassignSalesrep.RunAsync();
+                break;
+
+            case "16":
+                await CloneItem.RunAsync();
+                break;
+
+            case "17":
+                await CreateShipTo.RunAsync();
+                break;
+
+            case "18":
+                await InventoryCostEdit.RunAsync();
+                break;
+
+            case "19":
+                await ReprintPurchaseOrder.RunAsync();
                 break;
 
             case "Q":

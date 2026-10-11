@@ -132,6 +132,8 @@ POST {ui_server}/api/v2/transaction
 
 Here `200` is the rep you want and `100` is the customer's primary rep that the ship-to would otherwise inherit. For every other field the service accepts, load [`definitions/ShipTo.json`](../../definitions/ShipTo.json).
 
+> **Payload file** (validator-verified): [JSON](../../examples/payloads/json/create-ship-to.json).
+
 ## Complete example
 
 The example reads the customer's primary rep over OData, so it adds the retire row only when that rep differs from the one you want.
@@ -563,13 +565,15 @@ static string ReadField(string payload, string field)
 ```
 <!-- /tabs -->
 
-The element placement, the code conventions and the add-then-retire rep rows are what was verified. The complete examples build the same payload; they were not run separately.
+Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each creating a ship-to on a test customer whose primary rep differed from the wanted one. The read-back showed the ship-to on the right customer, branch, terms, invoice type, tax group and preferred location; the physical and mailing address and phone on its `address` row; and exactly one live rep, the wanted one, primary at `100`, with the inherited rep retired (`delete_flag = 'Y'`). The Python file was also run with the inherited rep as the wanted rep: the salesrep grid was left out and the ship-to kept that rep, primary at `100`.
+
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/create_ship_to.py`](../../examples/python/recipes/create_ship_to.py) · [`examples/csharp/Recipes/CreateShipTo.cs`](../../examples/csharp/Recipes/CreateShipTo.cs). The programs above are self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers and also read the new ship-to's `address` row back.
 
 ## Gotchas (verified live on play 26.1, September 2026)
 
 - **Send `UseCodeValues: true` with stored codes.** Under `false`, `terms_id` demands the terms *description* rather than the code. With `true`, send the codes the database stores: `terms_id` as its code, `invoice_type` as `IN`, `tax_group_id` as the group's ID.
 - **Flags are `Y`/`N` under `UseCodeValues: true`.** The definition and the defaults template show `ON`/`OFF` — that is the `false`-mode form. Sending `primary_salesrep: "ON"` with `UseCodeValues: true` fails with `Invalid primary_salesrep value: ON`.
-- **The inherited rep must be retired in the same call** when you want a different rep, or the commission total fails — see [The ship-to inherits the customer's primary rep](#the-ship-to-inherits-the-customers-primary-rep). The retire is soft: the inherited rep's row stays in `ship_to_salesrep` with `delete_flag = 'Y'`.
+- **The inherited rep must be retired in the same call** when you want a different rep, or the commission total fails — see [The ship-to inherits the customer's primary rep](#the-ship-to-inherits-the-customers-primary-rep). The retire is soft: the inherited rep's row stays in `ship_to_salesrep` with `delete_flag = 'Y'`, `primary_salesrep = 'N'`, and its `commission_percentage` still `100`. Filter on `delete_flag` before summing commission.
 - **`salesrep_id` and `ship_to_name` are not on `TABPAGE_1.shiptomain`.** Both fail with `Invalid column name`. The rep goes on `TABPAGE_SALESREP.tabpage_salesrep`; the ship-to's name is `address_name`.
 - **Read back with OData.** `POST /api/v2/transaction/get` against `ShipTo` has returned an empty-body HTTP 500 ([reassign-salesrep](reassign-salesrep.md)). The OData keys `customer_id` and `ship_to_id` are numeric — don't quote them.
 - **HTTP 200 ≠ success.** Check `Summary.Succeeded` and `Results.Transactions[].Status == "Passed"`.

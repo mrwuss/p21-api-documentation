@@ -4643,7 +4643,7 @@ A first print (`N`) on an approved PO marks it printed: `po_hdr.printed` changes
 
 The definition lists `ValidValues` `ON`/`OFF` for `reprint_flag`; the verified calls sent `Y`/`N` with `UseCodeValues: false`.
 
-> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with `Y` on repeated attempts and succeeded with `N` ([#162](https://github.com/mrwuss/p21-api-documentation/issues/162)).
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with `Y` on repeated attempts and succeeded with `N` ([#162](https://github.com/mrwuss/p21-api-documentation/issues/162)). Re-run on play 26.1.5950.0, 2026-10-10, with the [examples below](#example-generate-and-save-a-po-reprint) and their repo files: each language printed a never-printed PO (`N`), the read-back showed `printed` flipped to `Y`, and a second run on the same PO (`Y`) returned the reprint. Sending `N` for a printed PO returned the empty-bodied 500 on both attempts.
 
 #### An empty 5xx has several causes — and is usually transient
 
@@ -4656,7 +4656,7 @@ So an empty-bodied 5xx here is **not** a signal that your payload is wrong. It h
 | **Transient report-engine fault** (most common) | The identical request succeeds seconds later. Retry before investigating anything else. |
 | **Bad criteria** — e.g. a `company_id` that doesn't exist | Deterministic: every attempt fails. Verified on Play 26.1 — a wrong `company_id` returns an empty 500, not a useful message. |
 | **`reprint_flag` doesn't match the PO's print history** (`m_reprintpurchaseorders`) — `Y` on a PO with `po_hdr.printed = 'N'`, or `N` on one with `'Y'` | Deterministic for that PO. Read `po_hdr.printed` and send it as `reprint_flag`; re-read it before each retry, because it can change between attempts — see [`reprint_flag` must match the PO's `po_hdr.printed`](#reprint_flag-must-match-the-pos-po_hdrprinted). |
-| **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, so treat a blanket failure like that as an environment property, not a payload bug. |
+| **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, and on that same Play tenant at 26.1.5950.0 `m_reprintpurchaseorders` prints normally, so treat a blanket failure like that as an environment property, not a payload bug. |
 
 **Retry idempotent report calls.** Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses **3 attempts with a 0.5 s × attempt backoff**, which covers the observed fault rate without masking a real outage.
 
@@ -4698,6 +4698,7 @@ The response is a **JSON array** (even for a single document). Each element cont
 - Response is a **JSON array**, not a single object -- even when generating one document
 - `DocumentData` contains the base64-encoded PDF bytes (~150KB for a typical PO)
 - `FileName` includes the `.pdf` extension (e.g., `"PO500100 PURCHASE_ORDER.pdf"`)
+- **Don't parse the PO number out of `DocumentId`/`FileName`.** On play 26.1.5950.0 the number in them was a document sequence that went up by one on every call (`PO<nnnnnnn> PURCHASE_ORDER`), not the PO number, while the PDF itself was the requested PO. Name saved files from your own `po_no` when you need to find them again.
 - `DocumentFormat` value `5` corresponds to PDF format
 - `DocumentContentType` is `"application/pdf"`
 - **Success is per document, and HTTP 200 does not imply it.** Each element carries its own `ResponseStatus.StatusCode` — a **string** (`"Success"` / `"Failure"`), not an HTTP code. Treat a document as good only when `StatusCode == "Success"` **and** `DocumentData` is non-empty; otherwise read `ResponseStatus.Message` for the reason. A 200 can carry a failed document, and a multi-document request can mix both, so check every element rather than the first.
@@ -5002,6 +5003,10 @@ static string ReadField(string payload, string field)
 }
 ```
 <!-- /tabs -->
+
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default; they add the retry with a `printed` re-read before each attempt, check every document, and read `printed` back after the print): [`examples/python/recipes/reprint_purchase_order.py`](../examples/python/recipes/reprint_purchase_order.py) · [`examples/csharp/Recipes/ReprintPurchaseOrder.cs`](../examples/csharp/Recipes/ReprintPurchaseOrder.cs). Payload file: [`reprint-purchase-order-pdf.json`](../examples/payloads/json/reprint-purchase-order-pdf.json).
+>
+> Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each against one never-printed PO and then the same PO once printed. All eight runs saved a one-page PDF of the requested PO.
 
 > **Credit:** Jeff Poss discovered the `/api/v2/process/pdfreport` endpoint and payload structure.
 

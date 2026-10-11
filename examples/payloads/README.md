@@ -28,6 +28,8 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Inventory adjustment (write-off) | [json](json/inventory-adjustment.json) | [xml](xml/inventory-adjustment.xml) | `POST /api/v2/transaction` |
 | Reassign a customer's salesrep (promote new, delete old) | [json](json/reassign-salesrep.json) | [xml](xml/reassign-salesrep.xml) | `POST /api/v2/transaction` |
 | Update a supplier's email / central phone | [json](json/update-supplier-contact.json) | [xml](xml/update-supplier-contact.xml) | `POST /api/v2/transaction` |
+| Create a ship-to (add the wanted rep, retire the inherited one) | [json](json/create-ship-to.json) | — | `POST /api/v2/transaction` |
+| Edit an item's moving average cost at one location (posts to the GL) | [json](json/inventory-cost-edit.json) | — | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |

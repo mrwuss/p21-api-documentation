@@ -1,0 +1,47 @@
+{
+    "Name": "InventoryCostEdit",
+    "UseCodeValues": false,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {
+                "Name": "QUERY.query",
+                "Type": "List",
+                "Keys": ["location_id", "item_id"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "location_id", "Value": "10"},
+                        {"Name": "item_id",     "Value": "ITEM-001"}
+                    ],
+                    "RelativeDateEdits": []
+                }]
+            },
+            {
+                "Name": "FORM.form",
+                "Type": "Form",
+                "Keys": ["location_id", "item_id"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "location_id", "Value": "10"},
+                        {"Name": "item_id",     "Value": "ITEM-001"},
+                        {"Name": "new_cost",    "Value": "0.02"}
+                    ],
+                    "RelativeDateEdits": []
+                }]
+            },
+            {
+                "Name": "FORM.account",
+                "Type": "Form",
+                "Keys": ["account_no"],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "account_no",      "Value": "1111100"},
+                        {"Name": "year_for_period", "Value": "2026"},
+                        {"Name": "period",          "Value": "12"}
+                    ],
+                    "RelativeDateEdits": []
+                }]
+            }
+        ]
+    }]
+}
