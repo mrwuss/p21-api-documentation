@@ -32,7 +32,7 @@ python examples/python/recipes/dispose_zero_value_stock.py --location 10 --token
 
 Read `inv_loc` at the location for items whose `moving_average_cost` equals your token cost and `qty_on_hand > 0`, and check `qty_allocated = 0`. Write `item_id, qty` from that — **never** from the count spreadsheet. Between a count and the disposal run, items move, quantities get keyed wrong, and [merged items](../06-Error-Handling.md#transaction-api-errors) fail with *"'X' has been deleted"*.
 
-The token cost is what `inv_loc.moving_average_cost` actually holds, not the number you typed: on the verification tenant stock received at `0.02` carried `0.0204`, because the receipt added a landed-cost percentage. Read one row before choosing the filter value.
+The token cost is what `inv_loc.moving_average_cost` actually holds, not the number you typed: on the verification tenant, stock received on a PO at `0.02` carried a moving average of `0.0204`. Read one row before choosing the filter value.
 
 ### Step 2 — Create the header and line 1 (Interactive) (Verified; run on play 26.1.5950.0, 2026-10-10)
 

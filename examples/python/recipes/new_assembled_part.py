@@ -34,7 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import httpx
-from runbook_common import (TIMEOUT, P21Runbook, check, edit, element, payload, result_value,
+from runbook_common import (TIMEOUT, P21Runbook, check, edit, element, payload,
                             show)
 
 import warnings
