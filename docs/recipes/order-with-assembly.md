@@ -8,7 +8,7 @@ Enter a sales order interactively when a line is an assembly that must explode i
 
 - P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - The item is configured as an assembly (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save.
-- **Why not the Transaction API?** Entering an assembly item there fires an *"add as assembly?"* prompt which the stateless API auto-answers **No**, killing the explode ([Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas)). The Interactive API lets you answer it. For plain (non-assembly) orders, use the simpler [create-sales-order](create-sales-order.md) recipe instead.
+- **Why not the Transaction API?** On 26.1.5950.0 it explodes an assembly line too, but always as *Yes* — you cannot see the *"add as assembly?"* prompt or choose *No* ([Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas)). The Interactive API lets you answer it. For plain (non-assembly) orders, use the simpler [create-sales-order](create-sales-order.md) recipe instead.
 - The session must be started with **`ResponseWindowHandlingEnabled: true`** so you can inspect and answer the prompts yourself.
 
 ## Flow
@@ -610,7 +610,7 @@ All verified end-to-end — details in [Sales Order Entry with Assembly Lines](.
 - **`taker` defaults to the API user** — override it with the real salesperson or the order is attributed to the service account.
 - **The date-cascade prompt fires even on a brand-new order** (`w_response_common`, `cb_ok`/`cb_cancel`). Answer `cb_ok` via the **popup's** window ID, not the Order window's.
 - **Set the first line on the existing `items` row** — do not `POST /v2/row` a new row for it.
-- **Assembly prompt buttons are `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel** — `cb_1` explodes the assembly / links the production order. This is exactly the prompt the Transaction API auto-answers No, which is why that API can't do this job.
+- **Assembly prompt buttons are `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel** — `cb_1` explodes the assembly / links the production order. The Transaction API never shows this prompt; on 26.1.5950.0 it saves every assembly line as *Yes*.
 - **Save body shape**: `PUT /v2/data` takes the bare window-ID string as the JSON body — wrapping it in an object is a common source of 422 errors.
 - **The window clears after the save** — `GET /v2/data` afterward returns a blank `order` row, so read the new `order_no` from the save's `savesucceeded` event (`__order_no`). Where you do read window data, `ActiveRow` is **1-based**: a one-row datawindow reports `ActiveRow: 1`, so index `Data[ActiveRow - 1]`.
 - **`?id=` vs `?windowId=`**: `/v2/window` and `/v2/data` take `?id=`, but `/v2/tools` takes `?windowId=` — the wrong one errors, there is no fallback.

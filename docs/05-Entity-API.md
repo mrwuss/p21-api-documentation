@@ -2277,7 +2277,7 @@ Both create orders. Pick by what you need:
 | Verified by | Contributor, 25.2 ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) | This repo, against a live tenant |
 | Error reporting | Undocumented (see above) | `Summary.Succeeded` / `Failed` envelope, [documented traps](06-Error-Handling.md) |
 | Bulk | One order per call | Many orders per call |
-| Assembly lines | Untested | Auto-answers the explode prompt **No** — use the [order-with-assembly](recipes/order-with-assembly.md) recipe instead |
+| Assembly lines | Untested | Explodes the assembly with no prompt to answer on 26.1.5950.0 ([03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)) — use the [order-with-assembly](recipes/order-with-assembly.md) recipe to choose the answer |
 
 For a walk-through of the Transaction path, see the [create-sales-order recipe](recipes/create-sales-order.md).
 
@@ -4588,7 +4588,7 @@ Both create orders. Pick by what you need:
 | Verified by | Contributor, 25.2 ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) | This repo, against a live tenant |
 | Error reporting | Undocumented (see above) | `Summary.Succeeded` / `Failed` envelope, [documented traps](06-Error-Handling.md) |
 | Bulk | One order per call | Many orders per call |
-| Assembly lines | Untested | Auto-answers the explode prompt **No** — use the [order-with-assembly](recipes/order-with-assembly.md) recipe instead |
+| Assembly lines | Untested | Explodes the assembly with no prompt to answer on 26.1.5950.0 ([03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)) — use the [order-with-assembly](recipes/order-with-assembly.md) recipe to choose the answer |
 
 For a walk-through of the Transaction path, see the [create-sales-order recipe](recipes/create-sales-order.md).
 

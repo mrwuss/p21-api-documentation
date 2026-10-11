@@ -3120,7 +3120,7 @@ A new customer created through the Transaction `Customer` service came with one 
 
 ## Sales Order Entry with Assembly Lines
 
-Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. The Transaction API cannot do this: entering an assembly item fires an *"add as assembly?"* prompt, and the stateless API auto-answers **No**, killing the explode (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
+Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. On 26.1.5950.0 the Transaction API also explodes an assembly line, but it gives you no choice: it always saves the assembly the way *Yes* does (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). The Interactive API is the path when you need to see the *"add as assembly?"* prompt and pick the answer — including *No*, a plain stock line. Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
 
 The flow (session started with `ResponseWindowHandlingEnabled: true`):
 

@@ -2,10 +2,10 @@
 // Docs:   docs/recipes/order-with-assembly.md
 //
 // Enter a sales order interactively when a line is an assembly that must
-// explode into components and/or spawn a production order. The Transaction
-// API auto-answers the "add as assembly?" prompt No (killing the explode),
-// so this flow uses the Interactive API with response-window handling ON
-// and answers the prompts itself.
+// explode into components and/or spawn a production order, answering the
+// "add as assembly?" prompt yourself. The Transaction API never shows the
+// prompt (on 26.1.5950.0 it saves every assembly line as Yes), so this flow
+// uses the Interactive API with response-window handling ON.
 //
 // Key rules (all verified end-to-end — see the recipe page):
 //   - Session must start with ResponseWindowHandlingEnabled: true.

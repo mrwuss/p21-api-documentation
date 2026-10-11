@@ -2,9 +2,9 @@
 Order with an Assembly Line (Interactive API)
 
 Enter a sales order interactively when a line is an assembly that must
-explode into components and/or spawn a production order. The Transaction API
-auto-answers the "add as assembly?" prompt No, killing the explode -- the
-Interactive API lets you answer it (cb_1 = Yes). The session is started with
+explode into components and/or spawn a production order, choosing the answer
+to the "add as assembly?" prompt yourself (cb_1 = Yes). The Transaction API
+never shows the prompt; on 26.1.5950.0 it saves every assembly line as Yes. The session is started with
 ResponseWindowHandlingEnabled: true so prompts come back as windowopened
 events that this script answers via GET/POST /v2/tools.
 
