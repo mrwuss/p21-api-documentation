@@ -140,6 +140,7 @@ The main request body for create/update operations:
 | `FieldMap` | No | Optional field name mappings |
 | `TransactionSplitMethod` | No | `"Standard"` (default) or `"NoSplit"` |
 | `Parameters` | No | Additional service-specific parameters |
+| `OnBehalfOf` | No | Present in the service-definition template on 26.1.5950.0 (absent from definitions fetched on earlier 26.1 builds). **No observed effect:** a real username, a nonexistent username and an empty string were all accepted with `Succeeded: 1` and no message, and the record's `last_maintained_by` stayed the token's own user every time. Whether it changes permission checks (Buyer ID, user-gated columns) is untested. Don't rely on it to act as another user — use that user's token. *(play, 26.1.5950.0, 2026-10-11 — @mrwuss)* |
 
 ### Transaction Fields
 
@@ -4394,6 +4395,8 @@ The same `ValidValues` array is what tells you to send `Delete` rather than `700
 Full payload, Python and C#: [recipe: create-ship-to](recipes/create-ship-to.md).
 
 > **Credit:** *@mrwuss* — verified on play 26.1, September 2026 ([#182](https://github.com/mrwuss/p21-api-documentation/issues/182)).
+
+> **Schema change on 26.1.5950.0:** the `ShipTo` definition gained `TABPAGE_OEOPTIONS.tabpage_oeoptions.service_location_id` (and its `_desc`), absent from the definition fetched on an earlier 26.1 build. Not exercised here. *(definition refresh, 2026-10-11)*
 
 ### Salesrep Service — Editing a Rep's Name and Email
 
