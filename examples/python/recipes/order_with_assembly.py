@@ -58,7 +58,8 @@ Planned Interactive API call sequence (nothing has been sent):
   6. PUT  {iapi}/v2/change  unit_quantity={qty}
   7. PUT  {iapi}/v2/data    (body = bare window-ID string) -- SAVE
         (follow-on prompts answered with their proceed button)
-  8. PUT  {iapi}/v2/tab back to TABPAGE_1, GET {iapi}/v2/data?id=... -> order_no
+  8. order_no from the save's savesucceeded event (__order_no); the window
+        clears after a save, so GET {iapi}/v2/data no longer holds the order
   9. DELETE {iapi}/v2/window?id=...; DELETE {iapi}/sessions
  10. Verify: OData oe_line assembly codes for the new order
         (B kit parent, N component, P production-order line, S build-to-stock)
@@ -86,6 +87,29 @@ def popup_ids(result: dict) -> list[str]:
                 if kv.get("Key") == "windowid":
                     ids.append(kv["Value"])
     return ids
+
+
+def saved_order_no(events: list[dict]) -> str | None:
+    """The new order number, read from the save's events.
+
+    The Order window clears after a save, so GET /v2/data no longer holds the
+    order. The save's savesucceeded event carries it as __order_no; when the
+    number is generated at save time a keygenerated event (column order_no)
+    carries it too.
+
+    Args:
+        events: Events collected from the save and its follow-on prompts.
+
+    Returns:
+        str | None: The order number, or None when neither event carries it.
+    """
+    for event in events:
+        data = {kv.get("Key"): kv.get("Value") for kv in event.get("Data", [])}
+        if event.get("Name") == "savesucceeded" and data.get("__order_no"):
+            return data["__order_no"]
+        if event.get("Name") == "keygenerated" and data.get("column") == "order_no":
+            return data.get("value")
+    return None
 
 
 class InteractiveOrderSession:
@@ -193,10 +217,13 @@ class InteractiveOrderSession:
             json={"WindowId": window_id, "PageName": page_name},
         ).raise_for_status()
 
-    def save(self, window_id: str) -> dict:
+    def save(self, window_id: str) -> list[dict]:
         """Save the window; v2 body is the bare window-ID string, not an object.
 
         Follow-on prompts are answered with their proceed button.
+
+        Returns:
+            list[dict]: Every event from the save and the prompts it opened.
 
         Raises:
             RuntimeError: When the save comes back as a Failure.
@@ -205,20 +232,13 @@ class InteractiveOrderSession:
                          verify=self.verify, json=window_id)
         resp.raise_for_status()
         result = resp.json()
+        events = list(result.get("Events") or [])
         while is_blocked(result):  # follow-on prompts: answer with proceed button
             result = self.answer_response_windows(result)
+            events.extend(result.get("Events") or [])
         if result.get("Status") in (2, "Failure"):
             raise RuntimeError(f"Save failed: {result.get('Messages')}")
-        return result
-
-    def get_data(self, window_id: str) -> list[dict]:
-        """Return the datawindows on the window's ACTIVE surface."""
-        data = httpx.get(
-            f"{self.iapi}/v2/data", params={"id": window_id},
-            headers=self.headers, verify=self.verify,
-        )
-        data.raise_for_status()
-        return data.json()
+        return events
 
     def cleanup(self, window_id: str | None) -> None:
         """Close the window and end the session (window uses ?id=)."""
@@ -266,16 +286,12 @@ def run_flow(session: InteractiveOrderSession) -> str | None:
         session.change(window_id, "TP_ITEMS", "items", "unit_quantity", QUANTITY)
 
         # Save -- v2 body is the bare window-ID string (an object => 422)
-        session.save(window_id)
+        events = session.save(window_id)
 
-        # Read order_no back. GET /v2/data returns the ACTIVE surface --
-        # switch back to the header tab first.
-        session.tab(window_id, "TABPAGE_1")
-        for dw in session.get_data(window_id):
-            if dw.get("Name") == "order":
-                row = dw["Data"][dw.get("ActiveRow", 0)]
-                order_no = row[dw["Columns"].index("order_no")]
-                print(f"Created order_no: {order_no}")
+        # The window clears after the save, so the new order_no comes from
+        # the save's events, not from GET /v2/data.
+        order_no = saved_order_no(events)
+        print(f"Created order_no: {order_no}")
     finally:
         session.cleanup(window_id)
     return order_no
@@ -339,7 +355,7 @@ def main() -> None:
     if order_no:
         verify_order(config, headers, order_no)
     else:
-        print("Could not read order_no back from the window data")
+        print("Could not read order_no from the save events")
 
 
 if __name__ == "__main__":

@@ -3131,7 +3131,7 @@ The flow (session started with `ResponseWindowHandlingEnabled: true`):
    - Setting `oe_order_item_id` on an assembly item fires the **assembly prompt** (buttons `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel). Answer **`cb_1`** to explode the assembly / link a production order.
    - Then set `unit_quantity`.
    - **Do NOT use the quickmode datawindow** (`d_dw_quickmode_*`) to enter lines — it **bypasses the assembly prompt entirely**, and the line lands without the explode.
-3. **Save**, answering any follow-on prompts with their proceed button. Read the generated `order_no` from the window data (`GET /v2/data`).
+3. **Save**, answering any follow-on prompts with their proceed button. Read the generated `order_no` from the save's events: the `savesucceeded` event carries it as `__order_no`. The Order window clears after a successful save, so `GET /v2/data` afterward returns a blank `order` row. *(Python and C# examples run on play 26.1.5950.0, 2026-10-10.)*
 
 Assembly behavior is item-level (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save. On the saved order, `oe_line.assembly` codes: `B` = kit parent, `N` = component, `P` = production-order line, `S` = build-to-stock allocation. The production-order link is `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`). See the [Production & Labor API guide](12-Production-Labor-API.md) for the full production lifecycle.
 
@@ -3225,7 +3225,7 @@ Each **field definition** contains:
 |----------|-------------|
 | `Name` | Datawindow name |
 | `FullName` | Fully qualified name |
-| `ActiveRow` | Currently selected row index |
+| `ActiveRow` | Currently selected row, **1-based** — a one-row datawindow reports `1`, so the row is `Data[ActiveRow - 1]` |
 | `TotalRows` | Number of rows |
 | `Columns` | Array of column names |
 | `Data` | Array of arrays — each inner array is a row of values |

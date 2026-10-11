@@ -1725,7 +1725,7 @@ def read_field(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if dw.get("Name") == datawindow and field in columns and rows:
-            return rows[dw.get("ActiveRow", 0)][columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
     return None
 
 
@@ -1994,7 +1994,8 @@ static async Task<string?> ReadFieldAsync(
         }
         if (index < 0) continue;
 
-        int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+        // ActiveRow is 1-based
+        int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
         return rows[activeRow][index].ToString();
     }
     return null;
@@ -2271,7 +2272,7 @@ def read_field(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if dw.get("Name") == datawindow and field in columns and rows:
-            return rows[dw.get("ActiveRow", 0)][columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
     return None
 
 
@@ -2624,7 +2625,8 @@ static async Task<string?> ReadFieldAsync(
         }
         if (index < 0) continue;
 
-        int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+        // ActiveRow is 1-based
+        int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
         return rows[activeRow][index].ToString();
     }
     return null;
@@ -3726,7 +3728,7 @@ async def main() -> None:
                 if dw.get("Name") != "form" or not dw.get("Data"):
                     continue
                 columns = dw["Columns"]
-                row = dw["Data"][dw.get("ActiveRow", 0)]
+                row = dw["Data"][max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based
                 for column in ("price_page_uid", "description", "expiration_date"):
                     if column in columns:
                         print(f"  {column} = {row[columns.index(column)]!r}")
@@ -3778,7 +3780,8 @@ try
                 !dw.TryGetProperty("Data", out var rows) || rows.GetArrayLength() == 0)
                 continue;
 
-            int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+            // ActiveRow is 1-based
+            int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
             var columnNames = columns.EnumerateArray()
                 .Select(c => c.GetString() ?? "").ToList();
 
@@ -4539,7 +4542,7 @@ def read_field_anywhere(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if field in columns and rows:
-            return rows[dw.get("ActiveRow", 0)][columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
     return None
 
 
@@ -5247,7 +5250,8 @@ static async Task<string?> ReadFieldAnywhereAsync(
         }
         if (index < 0) continue;
 
-        int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+        // ActiveRow is 1-based
+        int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
         return rows[activeRow][index].ToString();
     }
     return null;
