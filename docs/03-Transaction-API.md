@@ -1949,7 +1949,7 @@ A sales order line picks up the contract when it is **entered**: P21 fills the c
 - **An unbound line never binds later.** A line entered before its item was on the contract (`job_price_hdr_uid` NULL) kept average cost on the invoice even after the contract line was added. Delete the order line and re-enter it.
 - Contract pricing at entry needs the customer **and ship-to** on the contract ([Attaching a ship-to](#attaching-a-ship-to-to-an-existing-contract)), an approved contract, and an order date inside its window. Leave `unit_price` unset on the order line so P21 can fill it.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — binding rules verified on play, September 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — binding rules verified on play, September 2026. **Partly re-run here:** the Python and C# [rebate runbook](recipes/rebate-assembly-program.md) (play 26.1.5950.0, 2026-10-10) entered a Transaction API order line with `unit_price` unset, for a customer and ship-to already on an approved contract. The line read back with `oe_line.job_price_hdr_uid` = the contract, and its invoice line carried the contract price and, as `cogs_amount`, the contract's other cost. Not re-run: changing the contract cost after entry (the re-read at invoicing) and the unbound line that never binds.
 
 ##### Order-entry effect of each commission cost setting
 
@@ -1984,7 +1984,7 @@ For a contract-priced line to write a supplier rebate at invoice, both of these 
 
 Then at invoice, `invoice_line.cogs_amount` = the contract value, a `vendor_rebate` row is written for the difference, and GL posts the sale at MAC plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable. Setting only the other cost lowers COGS but writes no rebate. The same holds for assemblies built on production orders. Creating the vendor: [Vendor Service](#vendor-service-creating-a-vendor-and-its-supplier). The end-to-end setup: [recipe: rebate-assembly-program](recipes/rebate-assembly-program.md).
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — rebate trigger proven end to end on play, September 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — rebate trigger proven end to end on play, September 2026. **Re-run here** with the Python and C# [rebate runbook](recipes/rebate-assembly-program.md) (play 26.1.5950.0, 2026-10-10): with other cost type `Value` on the contract line and the Track Rebates vendor's supplier primary at the ship-from location, the invoice line's `cogs_amount` equalled the contract value and a `vendor_rebate` row was written for that vendor with `after_rebate_cost` = the contract value. In those runs the ship-from and sales locations were the same location, so the ship-from-not-sales rule rests on the original report, as do the other-cost-only case (no rebate), the Rebate Journal GL entry (read by a person, not the runbooks) and assemblies built on production orders.
 
 #### Updating an Existing Contract
 
@@ -3708,7 +3708,7 @@ Same service, same element, same three-field key — the keyed `Status: "New"` u
 
 > **Verified here:** Python and C# examples run on play 26.1.5950.0, 2026-10-10 — lock, unlock, delete and restore on throwaway bins, each confirmed by the `p21_view_bin` read-back, none with `IgnoreDisabled`.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — lock and delete verified on play and production, July 2026 (thousands of bins, zero silent skips after SQL verification); not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — lock and delete verified on play and production, July 2026 (thousands of bins, zero silent skips after SQL verification). The examples above re-ran lock, unlock, delete and restore on single throwaway bins; the bulk run, the production result and the silent-skip count rest on that report.
 
 ### PutawayZone / PickZone Services — Creating Bin Zones
 
@@ -4504,11 +4504,11 @@ The `InventoryCostEdit` service is the **Edit Inventory Cost** window. It sets `
 **What it writes — and what it doesn't:**
 
 - `inv_loc.moving_average_cost` changes (`last_maintained_by` = the API user) and one `audit_trail` row is written (`column_changed = 'moving_average_cost'`).
-- A GL pair under journal **`IC`**, description `Cost Edit - <old> TO <new>`: the inventory account and the offset account you sent, for `qty_on_hand × (old − new)`. Sub-cent rounding posts to a separate rounding account.
+- A GL pair under journal **`IC`**, description `Cost Edit - <old> TO <new>`: `qty_on_hand × (new − old)` to the inventory account and the same amount with the opposite sign to the offset account you sent. Sub-cent rounding posts to a separate rounding account.
 - **No `inv_tran` row and no `inv_adj` row.** The cost edit is invisible to the inventory transaction tables; `audit_trail` and the GL are its only history. The `inv_cost_edit` table stays empty.
 - The GL shape is identical to the same edit made by hand in the window.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026. **Re-run here** with stock on hand on play 26.1.5950.0, 2026-10-10: a throwaway item was given 10 units at one location with an `InventoryAdjustment`, then the Python repo file moved its cost from 0.00 to 1.00 and the C# repo file from 1.00 to 0.50. Each run posted one `IC` GL pair in the period sent, described `Cost Edit - <old> TO <new>`: +10.00 to the inventory account and −10.00 to the offset account, then −5.00 and +5.00. Each wrote one `audit_trail` row with the old and new cost and no `inv_tran` row (the item's only `inv_tran` row is the adjustment's `IA`), and `inv_cost_edit` stayed empty. The amounts were whole cents, so the rounding account was not exercised. The `account_no`, period-order and period-zero failures, the rounding account and the equivalence with a hand edit in the window rest on the original report. Runnable: [recipe: inventory-cost-edit](recipes/inventory-cost-edit.md).
 
 ### Item Merge and Customer Merge (`m_itemmerge`, `m_customermerge`)
 
@@ -4740,7 +4740,7 @@ So an empty-bodied 5xx here is **not** a signal that your payload is wrong. It h
 | **Transient report-engine fault** (most common) | The identical request succeeds seconds later. Retry before investigating anything else. |
 | **Bad criteria** — e.g. a `company_id` that doesn't exist | Deterministic: every attempt fails. Verified on Play 26.1 — a wrong `company_id` returns an empty 500, not a useful message. |
 | **`reprint_flag` doesn't match the PO's print history** (`m_reprintpurchaseorders`) — `Y` on a PO with `po_hdr.printed = 'N'`, or `N` on one with `'Y'` | Deterministic for that PO. Read `po_hdr.printed` and send it as `reprint_flag`; re-read it before each retry, because it can change between attempts — see [`reprint_flag` must match the PO's `po_hdr.printed`](#reprint_flag-must-match-the-pos-po_hdrprinted). |
-| **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, and on that same Play tenant at 26.1.5950.0 `m_reprintpurchaseorders` prints normally, so treat a blanket failure like that as an environment property, not a payload bug. |
+| **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, and on that same Play tenant at 26.1.5950.0 `m_reprintpurchaseorders` and `m_reprintpicktickets` both print normally, so treat a blanket failure like that as an environment property, not a payload bug. |
 
 **Retry idempotent report calls.** Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses **3 attempts with a 0.5 s × attempt backoff**, which covers the observed fault rate without masking a real outage.
 
@@ -5130,7 +5130,7 @@ POST /api/v2/process/pdfreport
 Every one of these is required to make it fire:
 
 - Endpoint **`/api/v2/process/pdfreport`** (not `/api/v2/transaction` — see the wrong-endpoint trap above).
-- `Status: "New"`, `Type: "Form"`, `Keys: []`. This example was verified with the integers `0`/`0`, which bind to the same enum members; the switch to the strings was verified on `m_reprintpurchaseorders` (see [the `pdfreport` note under Status](#status-new-is-the-only-value-the-enum-accepts)) and not re-run here, because each run creates a pick ticket.
+- `Status: "New"`, `Type: "Form"`, `Keys: []`. This example was first verified with the integers `0`/`0`, which bind to the same enum members. The strings were then run with `m_picktickets` itself: the Python and C# examples of [the recipe](recipes/generate-pick-ticket-pdf.md#verify) send `"New"`/`"Form"` and ran on play 26.1.5950.0, 2026-10-10, each creating one ticket on its own throwaway production order.
 - `create_pick_ticket_type` = the **code** `"P"` (Production Order) with **`UseCodeValues: true`** — the label is rejected, and `UseCodeValues: false` returns HTTP 500.
 - `location_id` = the location whose inventory the components pick from. No date range needed.
 - **Prerequisite:** the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.

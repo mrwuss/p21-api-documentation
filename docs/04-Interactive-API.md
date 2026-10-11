@@ -2827,7 +2827,7 @@ On a 26.1 play tenant the `Order` window opened through the Interactive API defa
 
 - `quote` was `Y` on every open, for both the password user and a consumer-key user, and `N` after the change; every order saved as `projected_order = 'N'`.
 - The save raised `w_message` prompts that the examples answer **Yes** (`cb_1`): *"The order line does not have a PO Cost specified. Proceed?"* on a line with no cost, and *"profit percentage … is greater than the acceptable limit"* on a line whose `po_cost` left a high margin. The prompt text is not in `GET /v2/data` for a `w_message`; it appears in the 400 error of any call the open prompt blocks.
-- **Direct ship in one save.** With `quote = OFF`, `disposition = D` and `po_cost` set at line entry and `c_create_po = ON` on the header of the **new** order, the first save opened the wizard directly (`quote_item = N`), and `cb_next` / `cb_finish` built a `po_type = 'D'` PO linked with `connection_type = 'P'`. That contradicts step 1 of [The flow](#the-flow) below for this build; the two-phase sequence was not re-tested with an outside supplier.
+- **Direct ship in one save.** With `quote = OFF`, `disposition = D` and `po_cost` set at line entry and `c_create_po = ON` on the header of the **new** order, the first save opened the wizard directly (`quote_item = N`), and `cb_next` / `cb_finish` built a `po_type = 'D'` PO linked with `connection_type = 'P'`. That contradicts step 1 of [The flow](#the-flow) below for this build. The two-phase sequence works too: the Python and C# [purchase-receive-vouch](recipes/purchase-receive-vouch.md) runbooks save the order first, re-open it, set `c_create_po` and drive the wizard (B2), and built `po_type = 'D'` POs for an outside supplier on play 26.1.5950.0, 2026-10-10.
 - **The wizard did not open for an internal supplier.** When the item's primary supplier at the location was the company's own intercompany supplier, the save succeeded with **no** wizard and **no** PO, whether `c_create_po` was set on the new order or on the re-opened one. Changing the primary supplier to an outside supplier, with everything else the same, made the wizard open.
 - `c_create_po` needs a user with a Buyer ID. The password user without one got `Status: 2`, *"To create a PO, you must have a valid Buyer ID."*; the examples take a consumer-key option (`P21_CONSUMER_KEY` + `P21_CONSUMER_USERNAME`) to run as a user who has one.
 
@@ -2877,9 +2877,27 @@ For a full confirmation this is reasonable: the supplier really did ship on that
 
 **If you are confirming partials through the API, capture `supplier_ship_date` before the first confirmation** and keep it in your own store. There is no P21-side way to recover it afterwards.
 
-##### The write path is not reproduced here
+##### The Transaction API path works on 26.1.5950.0
 
-The confirmation is documented elsewhere as *"one TAPI POST keyed by `po_no`"*, and **we could not reproduce that**. On a 26.1.5940.0 tenant every `POST /api/v2/transaction` against `DirectShipConfirmation` returned a clean but empty result — no rejection, no message, nothing done:
+The confirmation is documented elsewhere as *"one TAPI POST keyed by `po_no`"*. On play **26.1.5950.0** (2026-10-10) that worked: one POST confirmed a direct ship in full.
+
+```json
+{ "Name": "DirectShipConfirmation", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "TABPAGE_1.tp_1_dw_po", "Type": "Form", "Keys": ["po_no"],
+      "Rows": [{ "Edits": [
+        {"Name": "po_no",         "Value": "500100"},
+        {"Name": "receive_all",   "Value": "ON"},
+        {"Name": "print_invoice", "Value": "OFF"},
+        {"Name": "fax_invoice",   "Value": "OFF"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+Payload file (validator-clean): [`direct-ship-confirmation.json`](../examples/payloads/json/direct-ship-confirmation.json). This was a scratch test; there is no Python or C# example for this path. The response was `Summary` `Succeeded: 1`, with the new receipt number echoed as `receipt_number` on `TABPAGE_1.tp_1_dw_po`. `shipment_date`, `period` and `year_for_period` were not sent; they defaulted to today and the current fiscal period. Each run was against a fresh `po_type = 'D'` PO, built with [`order_entry_quote_off.py`](#set-quote-to-off-first-the-window-can-open-in-quote-mode) in direct-ship mode and linked through `oe_line_po`. The read-back matched the [Interactive path](#the-interactive-path-works): `po_line.complete` `Y` with `qty_received` = `qty_ordered`, `po_line.supplier_ship_date` set to the confirmation date, `oe_line.qty_invoiced` = `qty_ordered` with `complete` `Y`, and one new `invoice_hdr` row for the order. The two runs sent the checkboxes as `Y`/`N` and as `ON`/`OFF`; both were accepted with identical results. The definition publishes `ValidValues: ["ON", "OFF"]` for `receive_all`, `complete`, `print_invoice` and `fax_invoice`, so send `ON`/`OFF`. The token was a password user **without** a Buyer ID.
+
+On an earlier build, 26.1.5940.0, every `POST /api/v2/transaction` against `DirectShipConfirmation` returned a clean but empty result — no rejection, no message, nothing done:
 
 ```jsonc
 HTTP 200
@@ -2887,14 +2905,12 @@ HTTP 200
  "Summary": {"Failed": 0, "Succeeded": 0, "Other": 0}}
 ```
 
-Tried across `Status` variants, `receive_all` as both `Y`/`N` and `ON`/`OFF`, with and without `period` / `year_for_period`, and with a payload built from the tenant's own `/defaults` output. Target was an approved `po_type='D'` PO with one open line, linked to a sales order via `oe_line_po`.
+That run tried `Status` variants, `receive_all` as both `Y`/`N` and `ON`/`OFF`, with and without `period` / `year_for_period`, and a payload built from the tenant's own `/defaults` output, against an approved `po_type='D'` PO with one open line. Whether the 5950.0 result reflects the build or a difference in that payload is not established. If you get the empty result, check `Summary.Succeeded` and read the PO back; do not assume a confirmation happened.
 
-Two notes for whoever picks this up:
+- **Never send `c_email_invoice`.** It is disabled, and a transaction that tripped on it reported `Failed` **after** writing the receipt, the PO completion and the customer invoice (reported by Alex Westemeier; not re-run here, because the failure leaves those documents behind).
+- **Only a full confirmation (`receive_all` on) was run.** Nothing here drives a **partial** one, which is the case that matters for the date overwrite. `TABPAGE_17.tp_17_dw_17` exposes `unit_quantity` and a `complete` bound to `po_line.complete`, so a partial looks expressible in principle.
 
-- **The checkbox fields take `ON`/`OFF`, not `Y`/`N`.** `receive_all`, `complete`, `print_invoice` and `fax_invoice` all publish `ValidValues: ["ON", "OFF"]` and default to `"OFF"`. Getting this wrong is easy and was *not* the cause of the no-op, but fix it anyway.
-- The path described elsewhere is `receive_all` on — a **full** confirmation. Nothing documents driving a **partial** one, which is the case that matters for the date overwrite. `TABPAGE_17.tp_17_dw_17` exposes `unit_quantity` and a `complete` bound to `po_line.complete`, so a partial looks expressible in principle.
-
-The date-overwrite behavior above rests on the field binding and on the receipt data. A live **full** confirmation through the Interactive window below then wrote the `shipment_date` into `po_line.supplier_ship_date`, as predicted; a **partial** confirmation is still not exercised here.
+The date-overwrite behavior above rests on the field binding and on the receipt data. A live **full** confirmation, through the Interactive window below and through the Transaction API above, then wrote the `shipment_date` into `po_line.supplier_ship_date`, as predicted; a **partial** confirmation is still not exercised here.
 
 ##### The Interactive path works
 
@@ -2913,7 +2929,7 @@ Driving the window instead of posting a transaction confirmed a direct ship on p
 - **`po_line.supplier_ship_date` went from NULL to the confirmation's `shipment_date`** (today's date, pre-filled) — the live write behind [the ship-date overwrite above](#directshipconfirmation-writes-its-ship-date-down-onto-every-line), observed on a full confirmation.
 - The confirmation ran as a user **without** a Buyer ID; only the PO creation needed one.
 
-> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path that returned an empty result on 26.1.5940.0 above is the same one [Alex Westemeier](https://github.com/AWestemeier) reports working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`, which is disabled and fails the transaction *after* the documents are written). The difference is not explained.
+> **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path [above](#the-transaction-api-path-works-on-26159500) is the one [Alex Westemeier](https://github.com/AWestemeier) reported working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`). It returned an empty result on 26.1.5940.0 and confirmed in full on 26.1.5950.0, 2026-10-10 (scratch test, read back as above).
 
 ### Setting `disposition` — only at line entry
 
@@ -3034,7 +3050,17 @@ Verified end-to-end on `ItemNotepad` (26.1, August 2026; note confirmed in the `
 3. Select the areas tab (`PageName: "TABPAGE_17"`) and run **`cb_selectall`** (`POST /v2/tools`) — this selects **every** area the note can display in. To pick a single area, select its row in the Available Areas grid (`tp_17_dw_dragdrop`) first and run `cb_select` (not separately verified).
 4. Save (`PUT /v2/data`, bare window-GUID body) — `savesucceeded`.
 
-`CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` publish the identical element shape (header form + `TABPAGE_17` area pair) and the same tools; only the header key field differs (`customer_id` / `supplier_id` / `vendor_id`). They have not been separately exercised here.
+`CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` publish the identical element shape (header form + `TABPAGE_17` area pair) and the same tools; only the header key field differs (`customer_id` / `supplier_id` / `vendor_id`; `CustomerNotepad` also takes `company_id`). The save's `savesucceeded` event carries the new note's ID as `__note_id`.
+
+Where the note lands, read back on play 26.1.5950.0:
+
+| Service | Table | Key back to the record |
+|---|---|---|
+| `ItemNotepad` | `note` (`note_uid` = the note ID, `note_type_cd` = `1807`) | `document_uid` = `inv_mast_uid` |
+| `CustomerNotepad` | `customer_notepad` | `company_id`, `customer_id` |
+| `SupplierNotepad` | `supplier_notepad` | `supplier_id` |
+
+The selected areas are rows in `note_area` (`note_id`, `area`, `delete_flag`) for all three.
 
 Field-level notes from the item, supplier and customer notepads:
 
@@ -3044,7 +3070,7 @@ Field-level notes from the item, supplier and customer notepads:
 - Header fields of an existing note (`topic`, `note`, `mandatory`, dates) are editable through the Transaction API keyed on `note_id`; the areas are not.
 - **A note displays only while `row_status_flag` is Active and `expiration_date` is today or later.** Match both when you look for "the note P21 shows" — superseded notes are often end-dated rather than deleted.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026. **Re-run here** on play 26.1.5950.0, 2026-10-10 (scratch test, throwaway item, customer and supplier): for each of `ItemNotepad`, `CustomerNotepad` and `SupplierNotepad`, an Interactive add with `cb_selectall` saved, and a Transaction API edit keyed on `note_id` (`topic`, `note`, `mandatory` = `ON`) returned `Succeeded: 1` and read back changed (`mandatory` stored `Y`), with the `note_area` rows unchanged. Not re-run: single-area `cb_select`, `notepad_class`, the `TIMESTAMP` tab refusal, and `VendorNotepad`.
 
 ## Creating an Item in the Item Window
 
@@ -3111,8 +3137,10 @@ A re-run on play (October 2026, a throwaway customer, the steps above) did **not
 | `price_library_id`, then `sequence_number = 1` | **1** — every existing row moved down one |
 | `price_library_id`, then `sequence_number = 2` (of 3) | **2** — the rows from 2 on moved down one |
 | `sequence_number = 1`, then `price_library_id` | 2, not 1 |
+| **Existing** row selected with `PUT /v2/row`, `sequence_number` changed from 3 to 1 | **1** — the rows above it moved down one |
+| **Existing** row selected with `PUT /v2/row`, `sequence_number` changed from 1 to 3 | **3** — the rows below it moved up one |
 
-Removing a row (select it with `PUT /v2/row`, then `row_status_flag` = `Delete`, save) **physically deleted** the `price_library_x_cust_x_cmpy` row and renumbered the remaining rows from 1. Changing an existing row's sequence was not re-tested. The production result above may differ by build or by edit order; if your run gives the order you need, the SQL fix is unnecessary. Read the sequence back either way.
+Removing a row (select it with `PUT /v2/row`, then `row_status_flag` = `Delete`, save) **physically deleted** the `price_library_x_cust_x_cmpy` row and renumbered the remaining rows from 1. The two existing-row rows of the table are a scratch test on play 26.1.5950.0, 2026-10-10, on a throwaway customer with three libraries: the window renumbered the grid as soon as the change landed, and the save kept that order. Both contradict *"Selecting an existing row and changing its sequence is overridden the same way"* above for this build. The production result above may differ by build or by edit order; if your run gives the order you need, the SQL fix is unnecessary. Read the sequence back either way.
 
 A new customer created through the Transaction `Customer` service came with one library row already on it (a tenant default), so check the grid before you add.
 

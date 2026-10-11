@@ -1,0 +1,41 @@
+{
+  "Name": "DirectShipConfirmation",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_po",
+          "Type": "Form",
+          "Keys": [
+            "po_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "po_no",
+                  "Value": "500100"
+                },
+                {
+                  "Name": "receive_all",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "print_invoice",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "fax_invoice",
+                  "Value": "OFF"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

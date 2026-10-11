@@ -655,6 +655,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-11-v1291">2026-10-11 — v1.29.1</a></li>
 <li><a href="#2026-10-11-v1290">2026-10-11 — v1.29.0</a></li>
 <li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>
 <li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>
@@ -755,6 +756,20 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-11-v1291">2026-10-11 — v1.29.1</h2>
+<p>Closed the remaining "not re-run here" notes that a play tenant can answer. All re-run on play 26.1.5950.0; the notes now say exactly what was re-run and what still rests on the original report.</p>
+<ul>
+<li><strong>fix:</strong> <strong><code>DirectShipConfirmation</code> works through the Transaction API</strong> on 26.1.5950.0 — one POST keyed by <code>po_no</code> with <code>receive_all</code> confirms the drop-ship PO in full and invoices the sales line. The earlier empty no-op (26.1.5940.0) no longer reproduces. New payload file <code>direct-ship-confirmation.json</code></li>
+<li><strong>fix:</strong> changing an existing customer price library row's <code>sequence_number</code> is kept on this build, not overridden</li>
+<li><strong>docs:</strong> <code>m_reprintpicktickets</code> returns the PDF with <code>UseCodeValues: false</code> and labels, or <code>true</code> and codes; a label under <code>true</code> is an empty 500; a direct-ship ticket returns <code>[]</code></li>
+<li><strong>docs:</strong> notepad edits for item, customer and supplier notes verified end to end, with the table each note lands in</li>
+<li><strong>fix:</strong> <code>InventoryCostEdit</code> with stock on hand posts one <code>IC</code> GL pair (new − old, to the inventory account), one <code>audit_trail</code> row and no <code>inv_tran</code> row — Python and C# examples both run</li>
+<li><strong>docs:</strong> production orders: setting <code>source_loc_id</code> resets <code>inventory_location_id</code>; the cancel value is <code>"Canceled"</code> (<code>"Cancelled"</code> is a 400) and returns stock to allocated</li>
+<li><strong>docs:</strong> large-order per-line time re-measured flat (about 0.7–0.9 s from 10 to 60 lines); growth toward hundreds of lines not re-measured</li>
+<li><strong>docs:</strong> stale provenance notes (contract binding, rebate trigger, bins, notepads, cost edit, production and batch credits) rewritten to what this repo re-ran</li>
+<li><strong>fix:</strong> a raw docstring for the file-handler example's sample path</li>
+</ul>
+<p>All <em>@mrwuss</em>.</p>
 <h2 id="2026-10-11-v1290">2026-10-11 — v1.29.0</h2>
 <p>Every example added in v1.27.0–v1.28.0 now runs. Each new write path has a Python and a C# example in <code>examples/</code>, run with <code>--execute</code> / <code>EXECUTE</code> against play 26.1.5950.0 and confirmed by read-back, and the five checklist runbooks are now end-to-end programs. Running them corrected several published claims.</p>
 <p><strong>Published code, now run (Python and C#)</strong></p>
@@ -1686,6 +1701,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-11-v1291">2026-10-11 — v1.29.1</a></li>
 <li><a href="#2026-10-11-v1290">2026-10-11 — v1.29.0</a></li>
 <li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>
 <li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>

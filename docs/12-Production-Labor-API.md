@@ -551,18 +551,18 @@ The `InventoryAdjustment` service posts on-hand adjustments with no invoice: hea
 
 ### Production Order Gotchas (Field-Verified)
 
-Learned running production orders at volume through the API. Credit [Alex Westemeier](https://github.com/AWestemeier) — verified on production and play, September 2026; not re-run here.
+Learned running production orders at volume through the API. Credit [Alex Westemeier](https://github.com/AWestemeier) — verified on production and play, September 2026. The location-order and pick-ticket-cancel bullets were **re-run here** on play 26.1.5950.0, 2026-10-10 (scratch tests on a throwaway assembly, noted in each bullet); the other bullets are from the original report.
 
 **Creating**
 
-- **Set `source_loc_id` before `inventory_location_id`, in separate calls.** On `TABPAGE_1.tp_1_dw_1`, `source_loc_id` is the make (WIP) location and `inventory_location_id` is where the parts are pulled. On one tenant, setting the make location **reset** the parts location — a cascade the test copy did not have. Set the make location first, then the parts location, and read both back after the save.
+- **Set `source_loc_id` before `inventory_location_id`, in separate calls.** On `TABPAGE_1.tp_1_dw_1`, `source_loc_id` is the make (WIP) location and `inventory_location_id` is where the parts are pulled. Setting the make location **resets** the parts location to the same value. On play 26.1.5950.0 (Interactive `ProductionOrder`, no save): `inventory_location_id` set first, then `source_loc_id` to a different location, left both at the make location; make first, then parts, kept both as sent. The original report saw the cascade on one tenant but not on its test copy, so do not rely on its absence. Set the make location first, then the parts location, and read both back after the save. [`new_assembled_part.py`](../examples/python/recipes/new_assembled_part.py) creates its production order in this order.
 - A component's pull location is `TABPAGE_19.componentdetail.source_location_id`. It is locked while the component is allocated; zero the allocation first.
 - **Header user-defined fields can be invisible to the API role.** UD columns on the header (`ufc_prod_order_hdr_ud_*`) appear only for a role that has the DynaChange **screen version** carrying them assigned. If a UD column is "disabled" or missing for the API user and present for people, assign that screen version to the API user's role. Free-text UD columns that the role already sees are plain Transaction edits keyed on `prod_order_number`.
 
 **Pick tickets and allocation states**
 
 - **Only run the pick ticket when every component is fully allocated.** On a short order it creates a partial ticket that then has to be cancelled.
-- **Cancel a pick ticket** in `ProductionOrderPicking` with `row_status_flag` = the literal **`"Canceled"`** (one L) and answer the two Yes prompts. The ticket goes to status `976` and the parts return to allocated.
+- **Cancel a pick ticket** in `ProductionOrderPicking` with `row_status_flag` = the literal **`"Canceled"`** (one L) and answer the two Yes prompts. The ticket goes to status `976` and the parts return to allocated. Re-run on play 26.1.5950.0: the ticket was loaded on `TP_PRODPICKTICKETCONF.tp_prodpickticketconf` by `prod_pick_ticket_number`; the change raised one `w_message` and the save a second, each answered `cb_1`. The ticket read back `976`, and the component's `qty_on_pick_tickets` went from 1 to 0 with `qty_allocated` from 0 to 1. `"Cancelled"` (two L) was refused with HTTP 400 *"Invalid row_status_flag value: Cancelled"*.
 - **Component quantity moves through three states**: `qty_allocated` at the parts location when the order is created → `qty_on_pick_tickets` when the ticket prints (stock still physically at the parts location, and still inside `inv_loc.qty_allocated`) → `qty_confirmed` at the make location when the pick is confirmed (the transfer into WIP). An allocation report has to add all three; `inv_loc.qty_allocated` alone mixes them. Confirm promptly after printing so the parts location's count is real.
 
 **Completing**

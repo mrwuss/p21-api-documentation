@@ -14,8 +14,9 @@ Key rules (verified on play 26.1.5950.0, October 2026):
       on every line the confirmation touches -- capture it first if you
       confirm partials.
     - No popups on the verified run; any popup stops the script.
-    - The Transaction API path for this service returned an empty result on
-      26.1.5940.0 (see the doc); this window path is the one that works here.
+    - A one-POST Transaction API confirmation keyed by po_no also works on
+      26.1.5950.0 (it returned an empty result on 26.1.5940.0); see the doc.
+      This script shows the window path.
 
 Mirrors: docs/04-Interactive-API.md#the-interactive-path-works
 

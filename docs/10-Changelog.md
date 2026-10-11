@@ -18,6 +18,22 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-11 — v1.29.1
+
+Closed the remaining "not re-run here" notes that a play tenant can answer. All re-run on play 26.1.5950.0; the notes now say exactly what was re-run and what still rests on the original report.
+
+- **fix:** **`DirectShipConfirmation` works through the Transaction API** on 26.1.5950.0 — one POST keyed by `po_no` with `receive_all` confirms the drop-ship PO in full and invoices the sales line. The earlier empty no-op (26.1.5940.0) no longer reproduces. New payload file `direct-ship-confirmation.json`
+- **fix:** changing an existing customer price library row's `sequence_number` is kept on this build, not overridden
+- **docs:** `m_reprintpicktickets` returns the PDF with `UseCodeValues: false` and labels, or `true` and codes; a label under `true` is an empty 500; a direct-ship ticket returns `[]`
+- **docs:** notepad edits for item, customer and supplier notes verified end to end, with the table each note lands in
+- **fix:** `InventoryCostEdit` with stock on hand posts one `IC` GL pair (new − old, to the inventory account), one `audit_trail` row and no `inv_tran` row — Python and C# examples both run
+- **docs:** production orders: setting `source_loc_id` resets `inventory_location_id`; the cancel value is `"Canceled"` (`"Cancelled"` is a 400) and returns stock to allocated
+- **docs:** large-order per-line time re-measured flat (about 0.7–0.9 s from 10 to 60 lines); growth toward hundreds of lines not re-measured
+- **docs:** stale provenance notes (contract binding, rebate trigger, bins, notepads, cost edit, production and batch credits) rewritten to what this repo re-ran
+- **fix:** a raw docstring for the file-handler example's sample path
+
+All *@mrwuss*.
+
 ## 2026-10-11 — v1.29.0
 
 Every example added in v1.27.0–v1.28.0 now runs. Each new write path has a Python and a C# example in `examples/`, run with `--execute` / `EXECUTE` against play 26.1.5950.0 and confirmed by read-back, and the five checklist runbooks are now end-to-end programs. Running them corrected several published claims.
