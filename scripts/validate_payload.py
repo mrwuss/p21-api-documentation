@@ -275,19 +275,17 @@ def check_transaction(txn, path: str, service: str, elements: dict[str, dict],
     if status is None:
         rpt.warn(path, 'Transaction has no "Status" -- record edits use "New"')
     elif isinstance(status, str):
-        if status in ("Existing", "Update", "Change"):
+        if status.lower() != "new":
             rpt.error(f"{path}.Status",
-                      f'"{status}" is broken platform-wide (HTTP 500 '
-                      f'NullReferenceException). Use "New" for BOTH create and '
-                      f"update -- keyed rows upsert")
-        elif status != "New" and service and not service.startswith("m_"):
-            rpt.warn(f"{path}.Status", f'unusual Status "{status}" -- record '
-                                       f'edits use "New"')
+                      f'"{status}" is not a TransactionStatus member -- HTTP 400 '
+                      f"on 26.1.5940.0 and later, HTTP 500 before. \"New\" is "
+                      f"the only value, for create AND update (keyed rows "
+                      f"upsert) and for report payloads alike")
     elif isinstance(status, int):
-        rpt.note(f"{path}.Status",
-                 "numeric Status is the report-process shape -- report (m_*) "
-                 "payloads go to POST /api/v2/process/pdfreport, NOT "
-                 "/api/v2/transaction (which accepts them and emits nothing)")
+        rpt.warn(f"{path}.Status",
+                 'integer Status binds silently (any integer is accepted, '
+                 'never range-checked) -- send the string "New", on '
+                 "/api/v2/transaction and /api/v2/process/pdfreport alike")
     data_elements = txn.get("DataElements")
     if data_elements is None:
         rpt.error(path, 'Transaction has no "DataElements"')

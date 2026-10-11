@@ -14,7 +14,7 @@ Generate or reprint pick tickets and purchase orders as base64-encoded PDFs via 
 
 ## Payload
 
-Constants for **every** report payload: `Status` and `Type` are **numeric `0`** (not the `"New"` record-edit shape) and the DataElement carries `Keys: []`. Only `Name`, the DataElement name, and the criteria `Edits` change per service.
+Constants for **every** report payload: `Status` is `"New"`, the same and only value the [Transaction API enum accepts](../03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts); `Type` is `"Form"`; and the DataElement carries `Keys: []`. Only `Name`, the DataElement name, and the criteria `Edits` change per service.
 
 **`m_picktickets`** — *creates* the pick-ticket record at `location_id` **and** returns its PDF in one call (verified worked example). Requires `UseCodeValues: true` with the code `"P"` (Production Order):
 
@@ -25,10 +25,10 @@ POST {ui_server}/api/v2/process/pdfreport
   "Name": "m_picktickets",
   "UseCodeValues": true,
   "Transactions": [{
-    "Status": 0,
+    "Status": "New",
     "DataElements": [{
       "Keys": [],
-      "Type": 0,
+      "Type": "Form",
       "Name": "TABPAGE_1.tp_1_dw_1",
       "Rows": [{ "Edits": [
         { "Name": "create_pick_ticket_type", "Value": "P" },
@@ -199,10 +199,10 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         "Name": "m_picktickets",
         "UseCodeValues": True,   # required here -- False returns HTTP 500
         "Transactions": [{
-            "Status": 0,         # numeric 0 for report payloads
+            "Status": "New",
             "DataElements": [{
                 "Keys": [],      # always empty for reports
-                "Type": 0,       # numeric 0 for report payloads
+                "Type": "Form",
                 "Name": "TABPAGE_1.tp_1_dw_1",
                 "Rows": [{"Edits": [
                     # code "P" = Production Order (the display label is rejected)
@@ -230,10 +230,10 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             # if this errors on correct criteria, retry with True + code values
             "UseCodeValues": False,
             "Transactions": [{
-                "Status": 0,
+                "Status": "New",
                 "DataElements": [{
                     "Keys": [],
-                    "Type": 0,
+                    "Type": "Form",
                     "Name": "TABPAGE_1.tp_1_dw_1",
                     "Rows": [{"Edits": [
                         {"Name": "company_id", "Value": "ACME"},
@@ -286,13 +286,13 @@ var payload = new
     {
         new
         {
-            Status = 0,     // numeric 0 for report payloads
+            Status = "New",
             DataElements = new object[]
             {
                 new
                 {
                     Keys = Array.Empty<string>(),   // always empty for reports
-                    Type = 0,                       // numeric 0 for report payloads
+                    Type = "Form",
                     Name = "TABPAGE_1.tp_1_dw_1",
                     Rows = new object[]
                     {
@@ -333,13 +333,13 @@ foreach (var filename in saved)
         {
             new
             {
-                Status = 0,
+                Status = "New",
                 DataElements = new object[]
                 {
                     new
                     {
                         Keys = Array.Empty<string>(),
-                        Type = 0,
+                        Type = "Form",
                         Name = "TABPAGE_1.tp_1_dw_1",
                         Rows = new object[]
                         {
@@ -510,7 +510,7 @@ All verified live — details in [PDF Report Generation](../03-Transaction-API.m
 - **Check the record exists first.** A missing record and a transient engine fault both surface as an unhelpful 5xx. A cheap OData read before the report call turns "not found" into your own clear error and leaves the 5xx meaning only "the engine faulted".
 - **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false`, but `m_picktickets` **requires `UseCodeValues: true` with code values** — `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the definition's `ValidValues`.
 - **`m_reprintpurchaseorders`: `reprint_flag` must equal `po_hdr.printed`.** `N` renders only never-printed POs and `Y` only printed ones; the wrong one is a deterministic empty 500 that a retry never clears. Read `printed` over OData before each call, including before a retry, because another user can print the PO in between. A first print marks the PO printed.
-- **`Status` and `Type` are numeric `0`** with `Keys: []` — not the `"New"` record-edit shape.
+- **`Status` is `"New"`, `Type` is `"Form"`**, with `Keys: []`. Older copies of these payloads sent the integers `0`/`0`; integer `0` binds to the same enum member, so they rendered the same PDF, but integers are never range-checked. Send the strings.
 - **`m_picktickets` prerequisite**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first. No date range is needed; `location_id` is the location the components pick from.
 - **`m_picktickets` has a side effect**: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
 - **Print flags on `/transaction` have limits.** A service's print flags (e.g. `ProductionOrder` `print_pick_ticket`/`print_form` on `TABPAGE_1.tp_1_dw_1`) return PDFs at `Results.Transactions[].Documents[].DocumentData`, but only on a **savable** transaction (a bare reprint errors with *"Save is not enabled"*), and `print_pick_ticket` emits only at the order's **make location** — if components stock elsewhere, generate with `m_picktickets` at the stock `location_id` instead.

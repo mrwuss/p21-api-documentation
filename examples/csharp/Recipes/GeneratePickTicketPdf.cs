@@ -12,7 +12,7 @@
 //     /api/v2/process/pdfreport.
 //   - m_picktickets REQUIRES UseCodeValues: true and the code "P"
 //     (Production Order); UseCodeValues: false returns HTTP 500.
-//   - Status and Type are numeric 0 with Keys: [] — not the "New" shape.
+//   - Status "New" (the same enum as /transaction), Type "Form", Keys: [].
 //   - Prerequisite: prod_order_hdr.printed = 'Y' (run a ProductionOrder
 //     transaction with print_form = ON first).
 //   - Success is a JSON ARRAY; errors use the P21 error envelope
@@ -46,13 +46,13 @@ public static class GeneratePickTicketPdf
             {
                 new JObject
                 {
-                    ["Status"] = 0,     // numeric 0 for report payloads
+                    ["Status"] = "New",
                     ["DataElements"] = new JArray
                     {
                         new JObject
                         {
                             ["Keys"] = new JArray(),  // always empty for reports
-                            ["Type"] = 0,             // numeric 0 for report payloads
+                            ["Type"] = "Form",
                             ["Name"] = "TABPAGE_1.tp_1_dw_1",
                             ["Rows"] = new JArray
                             {

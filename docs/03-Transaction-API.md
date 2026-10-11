@@ -178,6 +178,8 @@ HTTP 400
 
 > **Do not send `Status` as an integer.** The binder accepts any integer because that is how .NET binds enums — it does not range-check, so out-of-range values bind silently to an undefined member rather than erroring. Every integer we probed returned HTTP 200. **Send the string `"New"`**, which is the only value with defined behavior, and let a wrong value fail loudly at the binder instead of undefined-behaving inside the transaction.
 
+> **The rule holds on `/api/v2/process/pdfreport` too.** Report payloads bind to the same `TransactionStatus` enum, and the report services' own definition templates carry `"Status": "New"` and `"Type": "Form"`. Verified on play 26.1.5950.0, 2026-10-10, with `m_reprintpurchaseorders`: `"New"`, `"new"`, `0`, `1` and an omitted `Status` all returned the same PDF, `"Type": "Form"` and `"Type": 0` returned byte-identical documents, and `"Existing"` returned the same HTTP 400 shown above. Earlier versions of this repo sent integer `0` on report payloads; it worked because `0` binds to `New`, but it is the unchecked integer path. Every report payload here now sends `"New"`; the Python and C# PO reprint examples ([`reprint_purchase_order.py`](../examples/python/recipes/reprint_purchase_order.py), `ReprintPurchaseOrder.cs`) were re-run with it on the same build and date.
+
 ### DataElement Fields
 
 | Field | Description |
@@ -4691,15 +4693,15 @@ The payload follows the standard TransactionSet format. Report-specific criteria
                     {"Name": "reprint_flag", "Value": "<po_hdr.printed: Y or N>"}
                 ]
             }],
-            "Type": 0
+            "Type": "Form"
         }],
-        "Status": 0
+        "Status": "New"
     }],
     "UseCodeValues": false
 }
 ```
 
-Constants that apply to every report payload: `Status` and `Type` are **numeric `0`** (not the `"New"` record-edit shape) and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
+Constants that apply to every report payload: `Status` is `"New"` — the [same rule as every Transaction API payload](#status-new-is-the-only-value-the-enum-accepts) — `Type` is `"Form"`, and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
@@ -4894,9 +4896,9 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                         {"Name": "reprint_flag", "Value": reprint_flag},
                     ]
                 }],
-                "Type": 0,
+                "Type": "Form",
             }],
-            "Status": 0,
+            "Status": "New",
         }],
         "UseCodeValues": False,
     }
@@ -4984,10 +4986,10 @@ var payload = new
                             }
                         }
                     },
-                    Type = 0
+                    Type = "Form"
                 }
             },
-            Status = 0
+            Status = "New"
         }
     },
     UseCodeValues = false
@@ -5105,11 +5107,11 @@ POST /api/v2/process/pdfreport
   "UseCodeValues": true,
   "Transactions": [
     {
-      "Status": 0,
+      "Status": "New",
       "DataElements": [
         {
           "Keys": [],
-          "Type": 0,
+          "Type": "Form",
           "Name": "TABPAGE_1.tp_1_dw_1",
           "Rows": [{ "Edits": [
             { "Name": "create_pick_ticket_type", "Value": "P" },
@@ -5127,14 +5129,14 @@ POST /api/v2/process/pdfreport
 Every one of these is required to make it fire:
 
 - Endpoint **`/api/v2/process/pdfreport`** (not `/api/v2/transaction` — see the wrong-endpoint trap above).
-- `Status` and `Type` numeric **`0`**, `Keys: []`.
+- `Status: "New"`, `Type: "Form"`, `Keys: []`. This example was verified with the integers `0`/`0`, which bind to the same enum members; the switch to the strings was verified on `m_reprintpurchaseorders` (see [the `pdfreport` note under Status](#status-new-is-the-only-value-the-enum-accepts)) and not re-run here, because each run creates a pick ticket.
 - `create_pick_ticket_type` = the **code** `"P"` (Production Order) with **`UseCodeValues: true`** — the label is rejected, and `UseCodeValues: false` returns HTTP 500.
 - `location_id` = the location whose inventory the components pick from. No date range needed.
 - **Prerequisite:** the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
 
 The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
 
-For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
+For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status: "New"`, `Type: "Form"`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified end-to-end (report run → pick ticket row created → PDF returned → ticket confirmed and completed).
 

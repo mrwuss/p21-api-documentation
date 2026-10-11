@@ -94,16 +94,16 @@ def build_report_payload() -> dict:
     """Build the Stage 3 m_picktickets payload for PROD_ORDER at STOCK_LOCATION.
 
     Returns:
-        dict: Complete pdfreport payload (numeric Status/Type 0, Keys []).
+        dict: Complete pdfreport payload (Status "New", Type "Form", Keys []).
     """
     return {
         "Name": "m_picktickets",
         "UseCodeValues": True,  # m_picktickets REQUIRES code values; False returns HTTP 500
         "Transactions": [{
-            "Status": 0,        # reports use numeric 0, not "New"
+            "Status": "New",
             "DataElements": [{
                 "Keys": [],
-                "Type": 0,
+                "Type": "Form",
                 "Name": "TABPAGE_1.tp_1_dw_1",
                 "Rows": [{"Edits": [
                     {"Name": "create_pick_ticket_type", "Value": "P"},  # code "P" = Production Order

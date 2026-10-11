@@ -3,11 +3,11 @@
   "UseCodeValues": false,
   "Transactions": [
     {
-      "Status": 0,
+      "Status": "New",
       "DataElements": [
         {
           "Keys": [],
-          "Type": 0,
+          "Type": "Form",
           "Name": "TABPAGE_1.poreportcriteriadw",
           "Rows": [
             {

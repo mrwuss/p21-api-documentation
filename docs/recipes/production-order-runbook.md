@@ -154,10 +154,10 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         # m_picktickets REQUIRES code values; False returns HTTP 500
         "UseCodeValues": True,
         "Transactions": [{
-            "Status": 0,        # reports use numeric 0, not "New"
+            "Status": "New",
             "DataElements": [{
                 "Keys": [],
-                "Type": 0,
+                "Type": "Form",
                 "Name": "TABPAGE_1.tp_1_dw_1",
                 "Rows": [{"Edits": [
                     # code "P" = Production Order
@@ -253,13 +253,13 @@ var report = new
     {
         new
         {
-            Status = 0,    // reports use numeric 0, not "New"
+            Status = "New",
             DataElements = new object[]
             {
                 new
                 {
                     Keys = Array.Empty<string>(),
-                    Type = 0,
+                    Type = "Form",
                     Name = "TABPAGE_1.tp_1_dw_1",
                     Rows = new object[]
                     {
@@ -407,7 +407,7 @@ static string ReadField(string payload, string field)
 - **Labor must be on a pick ticket before completion.** Labor added after printing, without a reprint, sits at `qty_on_pick_tickets = 0` and completion fails with *"components have a quantity used of 0"* (Stage 2).
 - **`bin_cd` and `unit_quantity` are two separate change calls** at completion — one combined call drops the quantity → *"sum of bin quantity ... does not equal quantity made"* (Stage 5).
 - **`print_pick_ticket` emits only at the make location** — components stocked elsewhere need `m_picktickets` at the stock `location_id` (Stage 3).
-- **`m_picktickets` needs `UseCodeValues: true`** and the code `"P"`; the display label is rejected, `UseCodeValues: false` returns HTTP 500. `Status`/`Type` numeric `0`, `Keys: []`.
+- **`m_picktickets` needs `UseCodeValues: true`** and the code `"P"`; the display label is rejected, `UseCodeValues: false` returns HTTP 500. `Status: "New"`, `Type: "Form"`, `Keys: []`.
 - **Reports go to `/api/v2/process/pdfreport`.** `/api/v2/transaction` accepts the payload, returns `Succeeded`, and emits nothing.
 - **Status codes:** `702` Open, `1962` Confirmed, `1268` Completed — a `1962` alone does not prove stock moved (see shell confirm).
 - **Auto-create nets against stock** — stock on hand means no production order spawns; salesrep must be valid at the sales location; order date must differ from required date (Stage 1).

@@ -42,8 +42,8 @@ LOCATION_ID = "10"      # location whose inventory the components pick from
 def build_report_payload() -> dict:
     """Build the m_picktickets report payload.
 
-    Reports use numeric Status/Type 0 and Keys: [] -- not the "New"
-    record-edit shape. m_picktickets requires UseCodeValues: true with the
+    Reports use the same Status "New" as every Transaction API payload,
+    Type "Form" and Keys: []. m_picktickets requires UseCodeValues: true with the
     code "P" (Production Order); False returns HTTP 500.
 
     Returns:
@@ -53,10 +53,10 @@ def build_report_payload() -> dict:
         "Name": "m_picktickets",
         "UseCodeValues": True,   # required here -- False returns HTTP 500
         "Transactions": [{
-            "Status": 0,         # numeric 0 for report payloads
+            "Status": "New",
             "DataElements": [{
                 "Keys": [],      # always empty for reports
-                "Type": 0,       # numeric 0 for report payloads
+                "Type": "Form",
                 "Name": "TABPAGE_1.tp_1_dw_1",
                 "Rows": [{"Edits": [
                     # code "P" = Production Order (the display label is rejected)
