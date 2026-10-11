@@ -1,0 +1,3743 @@
+{
+ "Name": "Vendor",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "Vendor",
+   "OnBehalfOf": null,
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "company_id",
+        "id"
+       ],
+       "Name": "TABPAGE_1.tp_1_dw_1",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "corp_address_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_address1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_address2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_city",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_state",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_postal_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mail_country",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "central_phone_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "central_fax_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "central_watts_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "email_address",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "url",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "currency_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "ap_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_terms_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_invoice_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "group_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "always_take_terms",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "incorporated",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "job_id_required",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "track_rebates",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "fee_based_vendor_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "contracted_sale_fee_pct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "non_contracted_sale_fee_pct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_type_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "corp_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "group_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "count_company_id",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_2.tp_2_dw_wildcard",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "wildcard_acct_in_voucher_entry",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "count_company_id",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "purchase_account_no"
+       ],
+       "Name": "TABPAGE_2.tp_2_dw_2",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_account_no_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_3.tp_3_dw_3",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_address1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_address2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_city",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_state",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_postal_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "phys_country",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_4.tp_4_dw_4",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_class_1id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_class_2id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_class_3id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_class_4id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_class_5id",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_5.dw_1099",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_1099_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "address_alternative_1099_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "address_name_control",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_federal_id_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "attorney_fee_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "irs_1099_state_1",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_irs_1099_state_1_id_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "irs_1099_state_2",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_irs_1099_state_2_id_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "taxpayer_id_no_type",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_5.tp_5_dw_isr_tax",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "isr_tax_withheld_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "isr_tax_pct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "isr_tax_acct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "isr_tax_acct_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "supplier_id"
+       ],
+       "Name": "TABPAGE_6.tp_6_dw_6",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "delete_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "primary_vendor",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TABPAGE_8.tp_8_dw_8",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "default_pay_freight_to",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "intrastat_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "consignment_country",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "eu_member_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "EXPIRATION_DATES.expiration_dates",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "workers_comp_expiration_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "general_liab_expiration_date",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "EDI.edi",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "interchg_receiver_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "intl_san",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "trading_partner_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "edi_interchange_id_qualifier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "edi_interchange_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "application_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "element_separator",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "sub_element_separator",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "segment_terminator",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "repetition_separator",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "append_line_feed_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "functional_ack_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "testing_mode_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "eighty_column_line_break_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "validate_x12_document_flag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "EDI.editransactions",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "code_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rowind",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "EDI.editransdetail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "accept_invoice_without_po",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "expense_account",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "purchase_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vouch_unreconciled_invoices",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "approve_unreconciled_vouchers",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "prepaid_invoice_acct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "auto_convert_vi_direct_po",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "validate_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "validate_unit_size",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "transaction_map_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "override_trading_partner_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "edi_interchange_id_qualifier",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "edi_interchange_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "application_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "override_your_edi_id_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "your_edi_interchange_id_qual",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "your_edi_interchange_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "your_application_code",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "transaction_map_name_t",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "CUSTOM_COLUMN_DATA.custom_column_data",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "no_custom_columns",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "value_integer_dddw",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "dddw_display_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "value_date",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "value_string",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "value_integer",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "value_decimal_display",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "decimal_entry",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "value_display",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "REBATE_ACCOUNTS.d_vendor_rebate_accounts",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rebate_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rebate_allowance_account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "allow_rebate_pay_imp_variance",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rebate_pay_imp_variance_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "calc_rebates_on_rma_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "invoice_line_variance_amt",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "invoice_line_variance_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rebate_account_no_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rebate_allowance_account_no_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "WARRANTY_ACCOUNTS.warranty_accounts",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warranty_receivable_acct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warranty_revenue_acct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warranty_allowance_acct",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warranty_allowance_acct_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warranty_receivable_acct_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warranty_revenue_acct_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "document_link_uid"
+       ],
+       "Name": "DOCUMENT_LINK.document_link",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "link_path",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "mandatory_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "user_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "outside_use_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_print_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "document_link_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_email_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "send_outside_use_fax_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_area_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_keylist",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "display_area",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_firstind",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowno",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "VENDOR_VMI.d_dw_vendor_vmi",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_type",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_location",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_location",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "beg_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "end_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vmi_status_full",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vmi_status_exclude",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vmi_status_partial",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vmi_status_remove",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "export_source",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "xml_document_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "export_path",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "full_listing",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "status_since_last_send_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "location_id"
+       ],
+       "Name": "VMI_X_LOCATION.d_dw_vendor_vmi_x_location",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_indicator",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_VENDORCONTRACT.vendor_contract",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "allow_multiple_gpos_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "shop_gpos_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "debit_on_rebate_creation_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "auto_assign_base_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "calc_rebates_on_rma_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "freight_factor",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tracing_frequency_cd",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_VENDORCONTRACT.vendor_contract_hierarchy",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "vendor_contract_type_uid",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "hierarchy",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "tie_break_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "gpo_primary_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "gpo_secondary_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "compute_1",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "VENDOR_ACH.vendor_ach",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "routing_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "check_digit",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "account_number",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "account_type_cd",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "contact_method_cd",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "VENDOR_ACH.vendor_ach_dw_2",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "contact_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "row_status_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "first_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "fax_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "email_address",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "VENDORFORMTAB.vendorformtab",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "warranty_claim_filename",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.timestamp",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TIMESTAMP.audit_trail",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "column_description",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "old_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_display_key",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_sub_line_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_line_no_visible",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_item_id_visible",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "supplier_id"
+       ],
+       "Name": "._dw_ven_update_supplier",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "supplier_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "control_value",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lead_time_source",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "create_po_from_oe",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_vendor",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.vendor_id",
+      "Label": "Vendor ID",
+      "Name": "id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.name",
+      "Label": "",
+      "Name": "name",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "address_a.corp_address_id",
+      "Label": "Corporate ID",
+      "Name": "corp_address_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.mail_address1",
+      "Label": "Mail Address",
+      "Name": "mail_address1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.mail_address2",
+      "Label": "",
+      "Name": "mail_address2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.mail_city",
+      "Label": "City/State/Zip",
+      "Name": "mail_city",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.mail_state",
+      "Label": "",
+      "Name": "mail_state",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.mail_postal_code",
+      "Label": "",
+      "Name": "mail_postal_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.mail_country",
+      "Label": "Country",
+      "Name": "mail_country",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.central_phone_number",
+      "Label": "Phone Number",
+      "Name": "central_phone_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.central_fax_number",
+      "Label": "Fax Number",
+      "Name": "central_fax_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.central_watts_number",
+      "Label": "Toll Free Number",
+      "Name": "central_watts_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.email_address",
+      "Label": "E-mail Address",
+      "Name": "email_address",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.url",
+      "Label": "URL",
+      "Name": "url",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.currency_id",
+      "Label": "Currency ID",
+      "Name": "currency_id",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.ap_account_no",
+      "Label": "AP Account",
+      "Name": "ap_account_no",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.default_terms_id",
+      "Label": "Default Terms ID",
+      "Name": "default_terms_id",
+      "Required": true,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.default_invoice_desc",
+      "Label": "Default Invoice Description",
+      "Name": "default_invoice_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "purchase_acct_group_hdr.group_id",
+      "Label": "Purchase Account Group ID",
+      "Name": "group_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.always_take_terms",
+      "Label": "Always take terms",
+      "Name": "always_take_terms",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.vendor",
+      "Label": "Vendor",
+      "Name": "vendor",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.incorporated",
+      "Label": "Incorporated",
+      "Name": "incorporated",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.job_id_required",
+      "Label": "Job ID Required",
+      "Name": "job_id_required",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.track_rebates",
+      "Label": "Track Rebates",
+      "Name": "track_rebates",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract.fee_based_vendor_flag",
+      "Label": "Fee Based Vendor (GPO, GOV)",
+      "Name": "fee_based_vendor_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_contract.contracted_sale_fee_pct",
+      "Label": "Contracted Sales",
+      "Name": "contracted_sale_fee_pct",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_contract.non_contracted_sale_fee_pct",
+      "Label": "Non Contracted Sales",
+      "Name": "non_contracted_sale_fee_pct",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor.vendor_type_cd",
+      "Label": "Vendor Type",
+      "Name": "vendor_type_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.name",
+      "Label": "",
+      "Name": "corp_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "purchase_acct_group_hdr.group_desc",
+      "Label": "",
+      "Name": "group_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "count_company_id",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "company_id",
+     "id"
+    ],
+    "Name": "TABPAGE_1.tp_1_dw_1",
+    "ParentText": "Vendor",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_dw_vendor_wildcard_acct",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.wildcard_acct_in_voucher_entry",
+      "Label": "Wildcard Account in Voucher Entry",
+      "Name": "wildcard_acct_in_voucher_entry",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "count_company_id",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_2.tp_2_dw_wildcard",
+    "ParentText": "Purchase Accounts",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor_purchase_acct",
+    "DatawindowName": "d_ven_pur_acct",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_purchase_acct.purchase_account_no",
+      "Label": "Purchase Account",
+      "Name": "purchase_account_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_purchase_acct.delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "chart_of_accts.account_desc",
+      "Label": "Purchase Account Description",
+      "Name": "purchase_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "purchase_account_no"
+    ],
+    "Name": "TABPAGE_2.tp_2_dw_2",
+    "ParentText": "Purchase Accounts",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_phys_add",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.phys_address1",
+      "Label": "Physical Address 1",
+      "Name": "phys_address1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.phys_address2",
+      "Label": "Physical Address 2",
+      "Name": "phys_address2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.phys_city",
+      "Label": "Physical City/State/Zip",
+      "Name": "phys_city",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.phys_state",
+      "Label": "",
+      "Name": "phys_state",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.phys_postal_code",
+      "Label": "",
+      "Name": "phys_postal_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.phys_country",
+      "Label": "Physical Country",
+      "Name": "phys_country",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_3.tp_3_dw_3",
+    "ParentText": "Physical Address",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_vendor_class",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.class_1id",
+      "Label": "Class 1",
+      "Name": "vendor_class_1id",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.class_2id",
+      "Label": "Class 2",
+      "Name": "vendor_class_2id",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.class_3id",
+      "Label": "Class 3",
+      "Name": "vendor_class_3id",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.class_4id",
+      "Label": "Class 4",
+      "Name": "vendor_class_4id",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.class_5id",
+      "Label": "Class 5",
+      "Name": "vendor_class_5id",
+      "Required": false,
+      "ValidValues": [
+       ""
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_4.tp_4_dw_4",
+    "ParentText": "Classes",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_vendor_1099",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.default_1099_type",
+      "Label": "Default 1099 Type",
+      "Name": "default_1099_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.alternative_1099_name",
+      "Label": "Alternative 1099 Name",
+      "Name": "address_alternative_1099_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address_a.name_control",
+      "Label": "Name Control",
+      "Name": "address_name_control",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.federal_id_number",
+      "Label": "Taxpayer Identification Number",
+      "Name": "compute_federal_id_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.attorney_fee_flag",
+      "Label": "Incorporated 1099 Exception",
+      "Name": "attorney_fee_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.irs_1099_state_1",
+      "Label": "State 1",
+      "Name": "irs_1099_state_1",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.irs_1099_state_1_id_no",
+      "Label": "State 1 Identification Number",
+      "Name": "compute_irs_1099_state_1_id_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.irs_1099_state_2",
+      "Label": "State 2",
+      "Name": "irs_1099_state_2",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.irs_1099_state_2_id_no",
+      "Label": "State 2 Identification Number",
+      "Name": "compute_irs_1099_state_2_id_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor.taxpayer_id_no_type",
+      "Label": "TIN Type",
+      "Name": "taxpayer_id_no_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_5.dw_1099",
+    "ParentText": "1099",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_vendor_isr",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.isr_tax_withheld_flag",
+      "Label": "Enable",
+      "Name": "isr_tax_withheld_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.isr_tax_pct",
+      "Label": "Tax Percentage",
+      "Name": "isr_tax_pct",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.isr_tax_acct",
+      "Label": "ISR Tax Account",
+      "Name": "isr_tax_acct",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "isr_tax_acct_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_5.tp_5_dw_isr_tax",
+    "ParentText": "1099",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor_supplier",
+    "DatawindowName": "d_vendor_suppliers",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_supplier.supplier_id",
+      "Label": "Supplier ID",
+      "Name": "supplier_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_supplier.delete_flag",
+      "Label": "Delete",
+      "Name": "delete_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "address.name",
+      "Label": "Supplier Name",
+      "Name": "supplier_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_supplier.primary_vendor",
+      "Label": "Primary Vendor",
+      "Name": "primary_vendor",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [
+     "supplier_id"
+    ],
+    "Name": "TABPAGE_6.tp_6_dw_6",
+    "ParentText": "Suppliers",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_vendor_po",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.default_pay_freight_to",
+      "Label": "Pay Freight To",
+      "Name": "default_pay_freight_to",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "compute_0051",
+      "Label": "Supplier",
+      "Name": "supplier",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_po_options.intrastat_flag",
+      "Label": "Intrastat Vendor",
+      "Name": "intrastat_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_po_options.consignment_country",
+      "Label": "Intrastat Country From",
+      "Name": "consignment_country",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_po_options.eu_member_flag",
+      "Label": "EU Member",
+      "Name": "eu_member_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TABPAGE_8.tp_8_dw_8",
+    "ParentText": "Purchase Order Options",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_expir_date",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "vendor.workers_comp_expiration_date",
+      "Label": "Workers' Compensation Expiration Date",
+      "Name": "workers_comp_expiration_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "vendor.general_liab_expiration_date",
+      "Label": "General Liability Expiration Date",
+      "Name": "general_liab_expiration_date",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "EXPIRATION_DATES.expiration_dates",
+    "ParentText": "Expiration Dates",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor_edi_setting",
+    "DatawindowName": "d_dw_vendor_edi_setting",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.interchg_receiver_id",
+      "Label": "Interchg Receiver ID (SAN)",
+      "Name": "interchg_receiver_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.intl_san",
+      "Label": "Int'l SAN",
+      "Name": "intl_san",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.trading_partner_name",
+      "Label": "Trading Partner Name",
+      "Name": "trading_partner_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.edi_interchange_id_qualifier",
+      "Label": "EDI Interchange ID Qualifier",
+      "Name": "edi_interchange_id_qualifier",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.edi_interchange_id",
+      "Label": "EDI Interchange ID",
+      "Name": "edi_interchange_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.application_code",
+      "Label": "Application Code",
+      "Name": "application_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.element_separator",
+      "Label": "Element Separator",
+      "Name": "element_separator",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.sub_element_separator",
+      "Label": "Sub Element Separator",
+      "Name": "sub_element_separator",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.segment_terminator",
+      "Label": "Segment Terminator",
+      "Name": "segment_terminator",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.repetition_separator",
+      "Label": "Repetition Separator",
+      "Name": "repetition_separator",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.append_line_feed_flag",
+      "Label": "Append Line Feed",
+      "Name": "append_line_feed_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.functional_ack_flag",
+      "Label": "Request Functional Acknowledgment",
+      "Name": "functional_ack_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.testing_mode_flag",
+      "Label": "Testing Mode",
+      "Name": "testing_mode_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.eighty_column_line_break_flag",
+      "Label": "80 Column Line Break",
+      "Name": "eighty_column_line_break_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_edi_setting.validate_x12_document_flag",
+      "Label": "Validate X12 Document",
+      "Name": "validate_x12_document_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     }
+    ],
+    "KeyFields": [],
+    "Name": "EDI.edi",
+    "ParentText": "Electronic Data Interchange",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor_edi_transaction",
+    "DatawindowName": "d_dw_vendor_edi_transaction",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_edi_transaction.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "EDI",
+       "EDI Mapper for P21",
+       "Inactive",
+       "TPCx"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "code_p21.code_description",
+      "Label": "eBusiness Transaction",
+      "Name": "code_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "rowind",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "EDI.editransactions",
+    "ParentText": "Electronic Data Interchange",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_vendor_edi_trans_detail_810s",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Accept Invoice Without Purchase Order",
+      "Name": "accept_invoice_without_po",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Expense Account",
+      "Name": "expense_account",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Purchase Description",
+      "Name": "purchase_description",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Vouch Unreconciled Invoices",
+      "Name": "vouch_unreconciled_invoices",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Approve Unreconciled Vouchers",
+      "Name": "approve_unreconciled_vouchers",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Prepaid Invoice Account",
+      "Name": "prepaid_invoice_acct",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Automate Direct Ship Confirmation",
+      "Name": "auto_convert_vi_direct_po",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Validate Item ID",
+      "Name": "validate_item_id",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Validate Unit Size",
+      "Name": "validate_unit_size",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": null,
+      "Name": "transaction_map_name",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Override Trading Partner's EDI ID",
+      "Name": "override_trading_partner_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "EDI Interchange ID Qualifier",
+      "Name": "edi_interchange_id_qualifier",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "EDI Interchange ID",
+      "Name": "edi_interchange_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Application Code",
+      "Name": "application_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Override Your EDI ID",
+      "Name": "override_your_edi_id_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "EDI Interchange ID Qualifier",
+      "Name": "your_edi_interchange_id_qual",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "EDI Interchange ID",
+      "Name": "your_edi_interchange_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Application Code",
+      "Name": "your_application_code",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "transaction_map_name_t",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "EDI.editransdetail",
+    "ParentText": "Electronic Data Interchange",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "custom_column_data_vendor",
+    "DatawindowName": "d_dw_custom_column_data_vendor_de",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "no_custom_columns",
+      "Label": null,
+      "Name": "no_custom_columns",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "custom_column_data_vendor.value_integer",
+      "Label": null,
+      "Name": "value_integer_dddw",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "dddw_display_value",
+      "Label": null,
+      "Name": "dddw_display_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "custom_column_data_vendor.value_date",
+      "Label": null,
+      "Name": "value_date",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "custom_column_data_vendor.value_string",
+      "Label": null,
+      "Name": "value_string",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "custom_column_data_vendor.value_integer",
+      "Label": null,
+      "Name": "value_integer",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "value_decimal_display",
+      "Label": null,
+      "Name": "value_decimal_display",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "decimal_entry",
+      "Label": null,
+      "Name": "decimal_entry",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "value_display",
+      "Label": null,
+      "Name": "value_display",
+      "Required": false,
+      "ValidValues": []
+     }
+    ],
+    "KeyFields": [],
+    "Name": "CUSTOM_COLUMN_DATA.custom_column_data",
+    "ParentText": "Custom Column Data",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_vendor_rebate_accounts",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.rebate_account_no",
+      "Label": "Rebate Account",
+      "Name": "rebate_account_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.rebate_allowance_account_no",
+      "Label": "Rebate Allowance Account",
+      "Name": "rebate_allowance_account_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.allow_rebate_pay_imp_variance",
+      "Label": "Allow import of rebate payments with a variance",
+      "Name": "allow_rebate_pay_imp_variance",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor.rebate_pay_imp_variance_type",
+      "Label": "Variance application",
+      "Name": "rebate_pay_imp_variance_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract.calc_rebates_on_rma_flag",
+      "Label": "Calculate Rebates on RMA's",
+      "Name": "calc_rebates_on_rma_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor.invoice_line_variance_amt",
+      "Label": "849 Import Invoice Line Variance",
+      "Name": "invoice_line_variance_amt",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.invoice_line_variance_type",
+      "Label": "",
+      "Name": "invoice_line_variance_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "rebate_account_no_desc",
+      "Label": "",
+      "Name": "rebate_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "rebate_allowance_account_no_desc",
+      "Label": "",
+      "Name": "rebate_allowance_account_no_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "REBATE_ACCOUNTS.d_vendor_rebate_accounts",
+    "ParentText": "Rebate Options",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor",
+    "DatawindowName": "d_dw_vendor_warranty_accounts",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.warranty_receivable_acct",
+      "Label": "Warranty Receivable Account",
+      "Name": "warranty_receivable_acct",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.warranty_revenue_acct",
+      "Label": "Warranty Revenue Account",
+      "Name": "warranty_revenue_acct",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor.warranty_allowance_acct",
+      "Label": "Warranty Allowance Account",
+      "Name": "warranty_allowance_acct",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "warranty_allowance_acct_desc",
+      "Label": "",
+      "Name": "warranty_allowance_acct_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "warranty_receivable_acct_desc",
+      "Label": "",
+      "Name": "warranty_receivable_acct_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "warranty_revenue_acct_desc",
+      "Label": "",
+      "Name": "warranty_revenue_acct_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "WARRANTY_ACCOUNTS.warranty_accounts",
+    "ParentText": "Warranty Accounts",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "document_link",
+    "DatawindowName": "d_dw_document_link_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_name",
+      "Label": "Link Name",
+      "Name": "link_name",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.link_path",
+      "Label": "Link Path",
+      "Name": "link_path",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.row_status_flag",
+      "Label": "Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Delete",
+       "Active",
+       "Inactive"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.mandatory_flag",
+      "Label": "Mandatory",
+      "Name": "mandatory_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_print_flag",
+      "Label": "Print",
+      "Name": "user_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_fax_flag",
+      "Label": "Fax",
+      "Name": "user_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "user_email_flag",
+      "Label": "E-mail",
+      "Name": "user_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link.outside_use_flag",
+      "Label": "Outside Use",
+      "Name": "outside_use_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_print_flag",
+      "Label": "OU-Print",
+      "Name": "send_outside_use_print_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.document_link_uid",
+      "Label": null,
+      "Name": "document_link_uid",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_email_flag",
+      "Label": "OU-Email",
+      "Name": "send_outside_use_email_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "document_link_entity_req.send_outside_use_fax_flag",
+      "Label": "OU-Fax",
+      "Name": "send_outside_use_fax_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "document_link.source_area_cd",
+      "Label": "Source Area",
+      "Name": "source_area_cd",
+      "Required": true,
+      "ValidValues": [
+       "AP Credit/Debit Memo",
+       "AR Credit/Debit Memo",
+       "Cash Collections",
+       "Cash Receipts",
+       "Contact Maintenance",
+       "Container Receipts Entry",
+       "Convert IR to Voucher",
+       "Convert PO to Voucher",
+       "Customer Maintenance",
+       "Customer Part Number Maintenance",
+       "Direct Ship Confirmation",
+       "Inventory Adjustments",
+       "Inventory Return Shipping",
+       "Inventory Returns",
+       "Invoice Entry",
+       "Item Maintenance",
+       "Job Control Maintenance",
+       "Job Pricing Maintenance",
+       "Journal Entries",
+       "Loan Maintenance",
+       "Lot",
+       "Opportunity Maintenance",
+       "Order Entry/RMA",
+       "Physical Count",
+       "PO Requirements/Generation",
+       "Process Transactions",
+       "Production Order Entry/Processing",
+       "Purchase Order Receipts",
+       "Purchase Orders",
+       "Service Item Maintenance",
+       "Service Order Entry",
+       "Ship To Maintenance",
+       "Supplier Maintenance",
+       "Task Maintenance",
+       "Transfers",
+       "Vendor Maintenance",
+       "Vessel Receipts Entry",
+       "Voucher Entry"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_keylist",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "display_area",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_firstind",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowno",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "document_link_uid"
+    ],
+    "Name": "DOCUMENT_LINK.document_link",
+    "ParentText": "Document Links",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor_vmi",
+    "DatawindowName": "d_dw_vendor_vmi",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.location_type",
+      "Label": "Select Locations By",
+      "Name": "location_type",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_vmi.beg_location",
+      "Label": "Location ID",
+      "Name": "beg_location",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_vmi.end_location",
+      "Label": "To",
+      "Name": "end_location",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.beg_item_id",
+      "Label": "Item ID",
+      "Name": "beg_item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.end_item_id",
+      "Label": "To",
+      "Name": "end_item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.vmi_status_full",
+      "Label": "Full",
+      "Name": "vmi_status_full",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.vmi_status_exclude",
+      "Label": "Exclude",
+      "Name": "vmi_status_exclude",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.vmi_status_partial",
+      "Label": "Partial",
+      "Name": "vmi_status_partial",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.vmi_status_remove",
+      "Label": "Remove",
+      "Name": "vmi_status_remove",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.export_source",
+      "Label": "Export Source",
+      "Name": "export_source",
+      "Required": true,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.xml_document_definition",
+      "Label": "XML Document Definition",
+      "Name": "xml_document_uid",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.export_path",
+      "Label": "Export Directory",
+      "Name": "export_path",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.full_listing",
+      "Label": "Item Refresh",
+      "Name": "full_listing",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.status_since_last_send_flag",
+      "Label": "Only Send Status Since Last Send",
+      "Name": "status_since_last_send_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_vmi.last_maintained_by",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "VENDOR_VMI.d_dw_vendor_vmi",
+    "ParentText": "VMI",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor_vmi_x_location",
+    "DatawindowName": "d_dw_vendor_vmi_x_location",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_vmi_x_location.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "Location Name",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "row_indicator",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "location_id"
+    ],
+    "Name": "VMI_X_LOCATION.d_dw_vendor_vmi_x_location",
+    "ParentText": "VMI Locations",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor_contract",
+    "DatawindowName": "d_dw_vendor_contract_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract.allow_multiple_gpos_flag",
+      "Label": "Allow Multiple GPOs",
+      "Name": "allow_multiple_gpos_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract.shop_gpos_flag",
+      "Label": "Shop GPOs",
+      "Name": "shop_gpos_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract.debit_on_rebate_creation_flag",
+      "Label": "Take Debit Upon RebateCreation",
+      "Name": "debit_on_rebate_creation_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract.auto_assign_base_flag",
+      "Label": "Auto Assign Base Contracts",
+      "Name": "auto_assign_base_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract.calc_rebates_on_rma_flag",
+      "Label": "Calculate Rebates on Linked RMAs",
+      "Name": "calc_rebates_on_rma_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_contract.freight_factor",
+      "Label": "Freight Factor",
+      "Name": "freight_factor",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_contract.tracing_frequency_cd",
+      "Label": "Tracing",
+      "Name": "tracing_frequency_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_VENDORCONTRACT.vendor_contract",
+    "ParentText": "Contract",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor_contract_hierarchy",
+    "DatawindowName": "d_dw_vendor_contract_hierarchy_dataentry",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_contract_hierarchy.vendor_contract_type_uid",
+      "Label": "Contract Type",
+      "Name": "vendor_contract_type_uid",
+      "Required": false,
+      "ValidValues": []
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "vendor_contract_hierarchy.hierarchy",
+      "Label": "Hierarchy",
+      "Name": "hierarchy",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_contract_hierarchy.tie_break_cd",
+      "Label": "Tie Break",
+      "Name": "tie_break_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract_hierarchy.gpo_primary_flag",
+      "Label": "Primary GPO",
+      "Name": "gpo_primary_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_contract_hierarchy.gpo_secondary_flag",
+      "Label": "Secondary GPO",
+      "Name": "gpo_secondary_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_contract_hierarchy.row_status_flag",
+      "Label": "Delete",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "compute_1",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_VENDORCONTRACT.vendor_contract_hierarchy",
+    "ParentText": "Contract",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor_ach",
+    "DatawindowName": "d_dw_vendor_ach",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_ach.routing_number",
+      "Label": "Routing Number",
+      "Name": "routing_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_ach.check_digit",
+      "Label": "Check Digit",
+      "Name": "check_digit",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_ach.account_number",
+      "Label": "Account Number",
+      "Name": "account_number",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_ach.account_type_cd",
+      "Label": "Account Type",
+      "Name": "account_type_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_ach.contact_method_cd",
+      "Label": "Contact Method",
+      "Name": "contact_method_cd",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     }
+    ],
+    "KeyFields": [],
+    "Name": "VENDOR_ACH.vendor_ach",
+    "ParentText": "ACH",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "vendor_ach_contacts",
+    "DatawindowName": "d_dw_vendor_ach_contacts",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_ach_contacts.contact_id",
+      "Label": "Contact Id",
+      "Name": "contact_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "vendor_ach_contacts.row_status_flag",
+      "Label": "Row Status",
+      "Name": "row_status_flag",
+      "Required": false,
+      "ValidValues": [
+       "Active",
+       "Delete"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "contacts.first_name",
+      "Label": "First Name",
+      "Name": "first_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "contacts.last_name",
+      "Label": "Last Name",
+      "Name": "last_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "contacts.direct_fax",
+      "Label": "Fax No",
+      "Name": "fax_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "contacts.email_address",
+      "Label": "Email Address",
+      "Name": "email_address",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "VENDOR_ACH.vendor_ach_dw_2",
+    "ParentText": "ACH",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "vendor_form_template",
+    "DatawindowName": "d_dw_vendor_form_template",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "vendor_form_template.warranty_claim_filename",
+      "Label": "",
+      "Name": "warranty_claim_filename",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "VENDORFORMTAB.vendorformtab",
+    "ParentText": "Forms",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_external_timestamp",
+    "FieldDefinitions": [
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.timestamp",
+    "ParentText": "Audit Trail",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "p21_view_audit_trail_vendor_1337",
+    "DatawindowName": "d_dw_audit_trail_display",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "column_description",
+      "Label": "Column Changed",
+      "Name": "column_description",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "old_value",
+      "Label": "Old Value",
+      "Name": "old_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "new_value",
+      "Label": "New Value",
+      "Name": "new_value",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "created_by",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_display_key",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_sub_line_no",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_line_no_visible",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_item_id_visible",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TIMESTAMP.audit_trail",
+    "ParentText": "Audit Trail",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "supplier",
+    "DatawindowName": "d_ven_update_supplier",
+    "FieldDefinitions": [
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "supplier.supplier_id",
+      "Label": "Supplier ID",
+      "Name": "supplier_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "supplier.date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "supplier.date_last_modified",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "supplier.last_maintained_by",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "supplier.control_value",
+      "Label": "Control Value",
+      "Name": "control_value",
+      "Required": false,
+      "ValidValues": [
+       "Weight",
+       "Volume",
+       "Dollars",
+       "Units"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "supplier.lead_time_source",
+      "Label": "Lead Time Source",
+      "Name": "lead_time_source",
+      "Required": false,
+      "ValidValues": [
+       "Item",
+       "Supplier"
+      ]
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "supplier.create_po_from_oe",
+      "Label": "Create Po From Oe",
+      "Name": "create_po_from_oe",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "supplier_id"
+    ],
+    "Name": "._dw_ven_update_supplier",
+    "ParentText": null,
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "tp_1_dw_1",
+    "Name": "company_id"
+   },
+   {
+    "Location": "tp_1_dw_1",
+    "Name": "id"
+   }
+  ]
+ }
+}

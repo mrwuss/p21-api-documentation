@@ -59,6 +59,8 @@ p21-api-documentation/
 │   ├── 13-UDT-Service-API.md
 │   ├── 14-Breaking-Changes.md
 │   ├── 15-Other-REST-Families.md
+│   ├── img/                     # Screenshots used by the docs (00-Authentication)
+│   ├── index.html               # GitHub Pages landing page (redirects into html/)
 │   └── html/                    # Generated HTML versions
 │
 ├── definitions/                 # Sanitized full-field service definition JSONs (schema library)
@@ -67,11 +69,13 @@ p21-api-documentation/
 │   ├── python/                  # Python examples
 │   │   ├── common/              # Shared auth/config (used by every script)
 │   │   ├── odata/ transaction/ interactive/ entity/ production/
-│   │   └── recipes/             # End-to-end recipe scripts (dry-run by default)
+│   │   ├── recipes/             # End-to-end recipe scripts (dry-run by default)
+│   │   └── rest/                # Other REST families (doc 15) read/write scripts
 │   ├── csharp/                  # C# console app examples (P21Examples.sln)
 │   │   ├── Common/              # Shared library (auth, config, client)
 │   │   ├── OData/ Transaction/ Interactive/ Entity/ Production/
-│   │   └── Recipes/             # End-to-end recipe classes (EXECUTE-gated)
+│   │   ├── Recipes/             # End-to-end recipe classes (EXECUTE-gated)
+│   │   └── Rest/                # Other REST families (doc 15), menu-driven
 │   └── payloads/                # Standalone request payloads, validator-verified
 │       ├── json/                # One .json per documented task
 │       └── xml/                 # DataContract-correct XML counterparts
@@ -79,6 +83,7 @@ p21-api-documentation/
 ├── postman/                     # Postman collection (auth, OData, Transaction, Interactive, Entity, other REST families)
 │
 └── scripts/                     # Repo tooling (NOT API examples)
+    ├── README.md                # What each tool does and when to run it
     ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
     ├── validate_payload.py      # Offline payload validator (JSON/XML shape + schema checks)
     ├── check_anchors.py         # Validate internal doc links against the generated HTML
@@ -197,4 +202,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-09-22*
+*Last updated: 2026-10-10*

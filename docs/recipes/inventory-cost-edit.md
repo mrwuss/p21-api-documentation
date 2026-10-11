@@ -2,7 +2,7 @@
 
 Set an item's moving average cost at one location to a token value — the usual first half of disposing of stock nobody wants — through the `InventoryCostEdit` service, then read the new cost back.
 
-**API:** Transaction · **Service:** `InventoryCostEdit` · **Deep dive:** [InventoryCostEdit Service](../03-Transaction-API.md#inventorycostedit-service-changing-an-items-average-cost) · **Next step:** [dispose-zero-value-stock](dispose-zero-value-stock.md)
+**API:** Transaction · **Service:** `InventoryCostEdit` · **Deep dive:** [InventoryCostEdit Service](../03-Transaction-API.md#inventorycostedit-service-changing-an-items-average-cost) · **Full schema:** [InventoryCostEdit.json](../../definitions/InventoryCostEdit.json) · **Next step:** [dispose-zero-value-stock](dispose-zero-value-stock.md)
 
 ## Prerequisites
 

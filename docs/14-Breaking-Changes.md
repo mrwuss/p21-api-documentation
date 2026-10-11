@@ -12,7 +12,7 @@ A version-indexed registry of P21 middleware changes that **break or silently co
 
 | Version | Still live on the latest build we have | Resolved | Severity |
 |---------|---------|----------|----------|
-| [2026.1](#p21-20261) | `SessionId` → `Id` · `TabName` no longer accepted on `/v2/tab` · **silent-false-success on nonexistent-record loads** · **batched changes are sequential and fail-fast** · **UDT update/delete can't target rows (delete silently no-ops)** · **`IgnoreDisabled` reports success on writes that write nothing** · **a bad `DatawindowName` eats the next request on that window** | [Empty 500 without `Accept: application/json`](#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) and the [ghost sessions](#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409) it caused — both fixed in **26.1.5940.0** | High — four data-integrity hazards |
+| [2026.1](#p21-20261) | `SessionId` → `Id` · `/v2/tab` binds only `PageName` (`TabName` ignored) · **silent-false-success on nonexistent-record loads** · **batched changes are sequential and fail-fast** · **UDT update/delete can't target rows (delete silently no-ops)** · **`IgnoreDisabled` reports success on writes that write nothing** · **a bad `DatawindowName` eats the next request on that window** | [Empty 500 without `Accept: application/json`](#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) and the [ghost sessions](#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409) it caused — both fixed in **26.1.5940.0** | High — four data-integrity hazards |
 | [25.2](#p21-252) | `DatawindowName` required in change requests | — | High — hard break for 3-param change calls |
 
 > **Resolved entries stay on this page.** A fix in a later 2026.1 build does not help you if you are upgrading *from* an affected one, and the symptom is what you will search for when it bites. Resolved entries are marked at the top and moved to the end of their version's section.
@@ -39,9 +39,9 @@ The empty-500 defect was reported to Epicor and is fixed as of 5940.0; the contr
 
 Still `Id` on 26.1.5950.0, with no `SessionId` key present at all — the rename was permanent, not a transitional build.
 
-### 4. `PUT /v2/tab` no longer accepts `TabName`
+### 4. `PUT /v2/tab` binds only `PageName`; `TabName` is ignored
 
-2026.1 binds **`PageName`** (PagePath structure) only; 2025.2 also tolerated `TabName` in the body. Requests still sending `TabName` stop working.
+2026.1 binds **`PageName`** (PagePath structure) only; 2025.2 also tolerated `TabName` in the body. A request that sends `TabName` alone stops working (HTTP 400, below); `TabName` sent alongside `PageName` is ignored.
 
 ```json
 PUT /api/ui/interactive/v2/tab

@@ -1,0 +1,382 @@
+{
+ "Name": "m_itemmerge",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "m_itemmerge",
+   "OnBehalfOf": null,
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "source_item_id"
+       ],
+       "Name": "QUERY.query",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_last_modified",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "last_maintained_by",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "source_item_id",
+        "target_item_id"
+       ],
+       "Name": "FORM.form",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "target_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "create_alt_code_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "keep_restrictions_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "schedule_merge_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "target_item_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [],
+       "Name": "TP_RESULTS.tp_results",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_merge_run",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "source_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "target_item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "processed_flag",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "message",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "date_created",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "created_by",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "rowind",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_item_merge_grid",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "From Item ID",
+      "Name": "source_item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_desc",
+      "Label": "From Item Description",
+      "Name": "source_item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.date_last_modified",
+      "Label": "Date Last Modified",
+      "Name": "date_last_modified",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.last_maintained_by",
+      "Label": "Last Maintained By",
+      "Name": "last_maintained_by",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "source_item_id"
+    ],
+    "Name": "QUERY.query",
+    "ParentText": "Query",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "",
+    "DatawindowName": "d_dw_item_merge_form",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "From Item ID",
+      "Name": "source_item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "To Item ID",
+      "Name": "target_item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Keep As Alternate Item",
+      "Name": "create_alt_code_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Keep Restrictions",
+      "Name": "keep_restrictions_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "Schedule Merge",
+      "Name": "schedule_merge_flag",
+      "Required": false,
+      "ValidValues": [
+       "ON",
+       "OFF"
+      ]
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "source_item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "",
+      "Label": "",
+      "Name": "target_item_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "source_item_id",
+     "target_item_id"
+    ],
+    "Name": "FORM.form",
+    "ParentText": "Item Merge",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "item_merge_audit",
+    "DatawindowName": "d_dw_item_merge_audit",
+    "FieldDefinitions": [
+     {
+      "DataType": "Long",
+      "DbColumnName": "item_merge_audit.item_merge_run",
+      "Label": "Item Merge Run",
+      "Name": "item_merge_run",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_merge_audit.source_item_id",
+      "Label": "From Item Id",
+      "Name": "source_item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_merge_audit.target_item_id",
+      "Label": "To Item Id",
+      "Name": "target_item_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_merge_audit.processed_flag",
+      "Label": "Processed Flag",
+      "Name": "processed_flag",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_merge_audit.message",
+      "Label": "Message",
+      "Name": "message",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Datetime",
+      "DbColumnName": "item_merge_audit.date_created",
+      "Label": "Date Created",
+      "Name": "date_created",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "item_merge_audit.created_by",
+      "Label": "Created By",
+      "Name": "created_by",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "rowind",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [],
+    "Name": "TP_RESULTS.tp_results",
+    "ParentText": "Item Merge Results",
+    "Type": "List"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "query",
+    "Name": "source_item_id"
+   }
+  ]
+ }
+}
