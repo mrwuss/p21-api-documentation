@@ -1,0 +1,115 @@
+{
+  "Name": "SalesPricePage",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "price_page_type_cd",
+                  "Value": "Item"
+                },
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "item_id",
+                  "Value": "ITEM-001"
+                },
+                {
+                  "Name": "description",
+                  "Value": "ITEM-001 contract price"
+                },
+                {
+                  "Name": "effective_date",
+                  "Value": "2030-01-01"
+                },
+                {
+                  "Name": "expiration_date",
+                  "Value": "2030-12-31"
+                },
+                {
+                  "Name": "contract_number",
+                  "Value": "CONTRACT-1"
+                },
+                {
+                  "Name": "pricing_method_cd",
+                  "Value": "Price"
+                },
+                {
+                  "Name": "price",
+                  "Value": "12.34"
+                },
+                {
+                  "Name": "totaling_method_cd",
+                  "Value": "Item"
+                },
+                {
+                  "Name": "totaling_basis_cd",
+                  "Value": "Sales Unit"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "COSTS.costs",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "other_cost_type_cd",
+                  "Value": "Value"
+                },
+                {
+                  "Name": "other_cost_value",
+                  "Value": "5.67"
+                },
+                {
+                  "Name": "commission_cost_type_cd",
+                  "Value": "Value"
+                },
+                {
+                  "Name": "commission_cost_value",
+                  "Value": "5.67"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "VALUES.values",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "calculation_method_cd",
+                  "Value": "Multiplier"
+                },
+                {
+                  "Name": "calculation_value1",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

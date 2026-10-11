@@ -43,6 +43,13 @@ while (true)
     Console.WriteLine("  13. Update Order Lines         - Edit/add lines on an existing order");
     Console.WriteLine("  14. Reassign Salesrep          - Customer + ShipTo grids, two delete mechanisms");
     Console.WriteLine("  15. Update Supplier Contact    - Email/central phone via the Address service");
+    Console.WriteLine("  16. Sales Price Page + Book    - SalesPricePage create, SalesPriceBook link/unlink");
+    Console.WriteLine("  17. Purchase Pricing Page Edit - PurchasePricingPageSupplierItem in-place edit");
+    Console.WriteLine("  18. Inventory ListPrice/Stock  - Inventory REST PUT of ListPrice + Stockable");
+    Console.WriteLine("  19. Order Entry, quote OFF     - Order window quote check (+ direct-ship wizard)");
+    Console.WriteLine("  20. Direct Ship Confirmation   - DirectShipConfirmation window, receive_all");
+    Console.WriteLine("  21. Customer Price Library     - Customer window TABPAGE_7 add/remove + sequence");
+    Console.WriteLine("  22. DynaChange Rule Toggle     - dc.organizer.rule disable/re-enable");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -113,6 +120,34 @@ while (true)
 
             case "14":
                 await ReassignSalesrep.RunAsync();
+                break;
+
+            case "16":
+                await SalesPricePageCreateLink.RunAsync();
+                break;
+
+            case "17":
+                await PurchasePricingPageEdit.RunAsync();
+                break;
+
+            case "18":
+                await InventoryUpdateListPriceStockable.RunAsync();
+                break;
+
+            case "19":
+                await OrderEntryQuoteOff.RunAsync();
+                break;
+
+            case "20":
+                await DirectShipConfirmation.RunAsync();
+                break;
+
+            case "21":
+                await CustomerPriceLibrary.RunAsync();
+                break;
+
+            case "22":
+                await DynaChangeRuleToggle.RunAsync();
                 break;
 
             case "Q":

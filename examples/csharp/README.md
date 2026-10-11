@@ -50,7 +50,7 @@ Entity/                     # Entity API examples (net8.0)
 Production/                 # Production & Labor examples (net8.0)
 Rest/                       # Other REST families (net8.0) -- docs/15-Other-REST-Families.md
                             #   (menu-driven; task create gated behind typing EXECUTE)
-Recipes/                    # End-to-end recipe programs (net8.0), one class per docs/recipes page
+Recipes/                    # End-to-end recipe programs (net8.0), one class per docs/recipes page, plus menu 16-22 for reference-doc write paths
                             #   (menu-driven; writes gated behind typing EXECUTE)
 ```
 

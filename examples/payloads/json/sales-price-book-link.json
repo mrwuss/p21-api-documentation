@@ -1,0 +1,47 @@
+{
+  "Name": "SalesPriceBook",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [
+            "price_book_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "price_book_id",
+                  "Value": "BOOK-001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "LIST.list_detail",
+          "Type": "List",
+          "Keys": [
+            "price_page_uid"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "price_page_uid",
+                  "Value": "1001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
