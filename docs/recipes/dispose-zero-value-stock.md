@@ -4,7 +4,7 @@ Ship unwanted stock out of a location on a sales order priced at $0, to an inter
 
 **API:** Interactive + Transaction · **Services:** `Order`, `Shipping` · **Before this:** [inventory-cost-edit](inventory-cost-edit.md) · **Deep dive:** [Order Service — Line Appends, Cancels, Holds](../03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup) · [Large Sales Orders](../09-Batch-Processing-Patterns.md#large-sales-orders-split-at-about-100-lines)
 
-Steps 1–5 are one runnable program, in Python and C#, that runs each step and reads it back before the next: [`examples/python/recipes/dispose_zero_value_stock.py`](../../examples/python/recipes/dispose_zero_value_stock.py) · [`examples/csharp/Recipes/DisposeZeroValueStock.cs`](../../examples/csharp/Recipes/DisposeZeroValueStock.cs) (menu item 18). Both are dry runs until you pass `--execute` or type `EXECUTE`. They split the list into orders of 100 lines.
+Steps 1–5 are one runnable program, in Python and C#, that runs each step and reads it back before the next: [`examples/python/recipes/dispose_zero_value_stock.py`](../../examples/python/recipes/dispose_zero_value_stock.py) · [`examples/csharp/Recipes/DisposeZeroValueStock.cs`](../../examples/csharp/Recipes/DisposeZeroValueStock.cs) (menu item 35). Both are dry runs until you pass `--execute` or type `EXECUTE`. They split the list into orders of 100 lines.
 
 **Status legend:** **Run on play 26.1.5950.0, 2026-10-10** = the step ran in both the Python and the C# runbook against a play tenant on that build and date, with a read-back. **Verified** = run end to end with a read-back by the credited contributor (play and production, September 2026); **Inferred** = follows from verified behavior but was not run as its own step.
 

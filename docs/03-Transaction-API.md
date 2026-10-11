@@ -1615,7 +1615,7 @@ The append, keyed on the saved order, with every new line a row of one element:
 
 The Hold release swaps the second element for `TP_SHIPINFO.shipinfo` (`Form`, `Keys: []`, edit `packing_basis` = `Partial`); the cancel drops it and adds `cancel_flag` = `ON` to the header row.
 
-**Runnable:** [`order_append_hold_cancel.py`](../examples/python/recipes/order_append_hold_cancel.py) · [`OrderAppendHoldCancel.cs`](../examples/csharp/Recipes/OrderAppendHoldCancel.cs) (Recipes menu 20) · payloads [`order-append-lines.json`](../examples/payloads/json/order-append-lines.json), [`order-release-hold.json`](../examples/payloads/json/order-release-hold.json), [`order-cancel.json`](../examples/payloads/json/order-cancel.json). Modes `append`, `release-hold`, `cancel`. Before writing they refuse an order that is deleted, canceled or held open (`completed = 'T'`), and an append item that is not an exact live item ID or is already on the order; afterwards they read `oe_hdr` and the live (`delete_flag = 'N'`) `oe_line` rows back over OData. Python and C# examples run on play 26.1.5950.0, 2026-10-10, each on its own throwaway order (created on Hold): append two lines, release the Hold, cancel.
+**Runnable:** [`order_append_hold_cancel.py`](../examples/python/recipes/order_append_hold_cancel.py) · [`OrderAppendHoldCancel.cs`](../examples/csharp/Recipes/OrderAppendHoldCancel.cs) (Recipes menu 24) · payloads [`order-append-lines.json`](../examples/payloads/json/order-append-lines.json), [`order-release-hold.json`](../examples/payloads/json/order-release-hold.json), [`order-cancel.json`](../examples/payloads/json/order-cancel.json). Modes `append`, `release-hold`, `cancel`. Before writing they refuse an order that is deleted, canceled or held open (`completed = 'T'`), and an append item that is not an exact live item ID or is already on the order; afterwards they read `oe_hdr` and the live (`delete_flag = 'N'`) `oe_line` rows back over OData. Python and C# examples run on play 26.1.5950.0, 2026-10-10, each on its own throwaway order (created on Hold): append two lines, release the Hold, cancel.
 
 #### Order Service — Reassigning the Salesrep
 
@@ -1730,7 +1730,7 @@ GET /api/v2/definition/JobContractPricing
 
 To add one, load the header by `job_no` + `contract_no` (header `Keys: []`, both in `Edits`, no `end_date`) and send a `CUSTOMER_SHIP_TO.customer_ship_to` row keyed on `customer_id` + `ship_to_id`:
 
-> Runnable: [`contract_shipto_line_no.py attach-ship-to`](../examples/python/recipes/contract_shipto_line_no.py) · [`ContractShipToLineNo.cs`](../examples/csharp/Recipes/ContractShipToLineNo.cs) (Recipes menu 19) · payload [`contract-attach-ship-to.json`](../examples/payloads/json/contract-attach-ship-to.json). Both read the grid and the header back over OData before and after.
+> Runnable: [`contract_shipto_line_no.py attach-ship-to`](../examples/python/recipes/contract_shipto_line_no.py) · [`ContractShipToLineNo.cs`](../examples/csharp/Recipes/ContractShipToLineNo.cs) (Recipes menu 23) · payload [`contract-attach-ship-to.json`](../examples/payloads/json/contract-attach-ship-to.json). Both read the grid and the header back over OData before and after.
 
 ```json
 {
@@ -3003,7 +3003,7 @@ For the second case use the **Interactive** `Assembly` window: set `TABPAGE_1.as
 - A deleted component stays in `assembly_line` with `delete_flag = 'Y'`.
 - **`allow_disassembly` is disabled while `production_order_processing` is `OFF`** (*"Column is disabled: allow_disassembly"*). With `production_order_processing` = `ON` it is writable, and setting `production_order_processing` back to `OFF` resets `allow_disassembly` to `N`.
 
-**Runnable:** [`assembly_create_edit.py`](../examples/python/recipes/assembly_create_edit.py) · [`AssemblyCreateEdit.cs`](../examples/csharp/Recipes/AssemblyCreateEdit.cs) (Recipes menu 18) · payloads [`assembly-create.json`](../examples/payloads/json/assembly-create.json), [`assembly-edit-component.json`](../examples/payloads/json/assembly-edit-component.json), [`assembly-delete-component.json`](../examples/payloads/json/assembly-delete-component.json). Modes `create`, `set-flag`, `set-qty`, `delete-component`; `create` checks `assembly_hdr` and `assembly_line` first and stops on an item that already has an assembly or is already a component. Every mode reads `assembly_hdr` and `assembly_line` back over OData.
+**Runnable:** [`assembly_create_edit.py`](../examples/python/recipes/assembly_create_edit.py) · [`AssemblyCreateEdit.cs`](../examples/csharp/Recipes/AssemblyCreateEdit.cs) (Recipes menu 22) · payloads [`assembly-create.json`](../examples/payloads/json/assembly-create.json), [`assembly-edit-component.json`](../examples/payloads/json/assembly-edit-component.json), [`assembly-delete-component.json`](../examples/payloads/json/assembly-delete-component.json). Modes `create`, `set-flag`, `set-qty`, `delete-component`; `create` checks `assembly_hdr` and `assembly_line` first and stops on an item that already has an assembly or is already a component. Every mode reads `assembly_hdr` and `assembly_line` back over OData.
 
 > **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier). **Python and C# examples run on play 26.1.5950.0, 2026-10-10:** each created an assembly (two components, `production_order_processing` `OFF`) on a throwaway item made with the Inventory REST API, set `production_order_processing` to `ON`, changed one component's quantity from 2 to 5, and deleted the other component — every step confirmed by the OData read-back. The component-of-another-assembly refusals above were re-run on the same build.
 
@@ -3701,7 +3701,7 @@ Same service, same element, same three-field key — the keyed `Status: "New"` u
 - **Only lock or delete a bin that is not in use**: no `inv_bin` row with `quantity > 0`, and no `inv_loc.primary_bin` pointing at it. Locking or deleting a bin in active use strands stock and putaways. Clear primary-bin claims first ([set-primary-bin-supplier](recipes/set-primary-bin-supplier.md)).
 - Many Transactions per POST is fine, as with creation. Take a backup of the current flag values before a bulk run.
 
-**Runnable:** [`bin_lock_delete.py`](../examples/python/recipes/bin_lock_delete.py) · [`BinLockDelete.cs`](../examples/csharp/Recipes/BinLockDelete.cs) (Recipes menu 16) · payloads [`bin-lock.json`](../examples/payloads/json/bin-lock.json), [`bin-delete.json`](../examples/payloads/json/bin-delete.json). Modes `lock`, `unlock`, `delete`, `restore`; the scripts print the current flags first, refuse to lock or delete a bin that holds stock or is a primary bin, and read every bin back through `p21_view_bin`.
+**Runnable:** [`bin_lock_delete.py`](../examples/python/recipes/bin_lock_delete.py) · [`BinLockDelete.cs`](../examples/csharp/Recipes/BinLockDelete.cs) (Recipes menu 20) · payloads [`bin-lock.json`](../examples/payloads/json/bin-lock.json), [`bin-delete.json`](../examples/payloads/json/bin-delete.json). Modes `lock`, `unlock`, `delete`, `restore`; the scripts print the current flags first, refuse to lock or delete a bin that holds stock or is a primary bin, and read every bin back through `p21_view_bin`.
 
 > **Verified here:** Python and C# examples run on play 26.1.5950.0, 2026-10-10 — lock, unlock, delete and restore on throwaway bins, each confirmed by the `p21_view_bin` read-back, none with `IgnoreDisabled`.
 
@@ -4217,7 +4217,7 @@ Step three of **build → receive → vouch**, and another clean one-POST. Verif
 
 Create the **vendor** first. Saving it creates the same-ID **supplier**, its division, and the `vendor_supplier` link for you; creating the supplier first is a dead end.
 
-> Runnable: [`vendor_create.py`](../examples/python/recipes/vendor_create.py) · [`VendorCreate.cs`](../examples/csharp/Recipes/VendorCreate.cs) (Recipes menu 17) · payload [`vendor-create.json`](../examples/payloads/json/vendor-create.json). Both read back `address`, `vendor`, `supplier` and `vendor_supplier` over OData.
+> Runnable: [`vendor_create.py`](../examples/python/recipes/vendor_create.py) · [`VendorCreate.cs`](../examples/csharp/Recipes/VendorCreate.cs) (Recipes menu 21) · payload [`vendor-create.json`](../examples/payloads/json/vendor-create.json). Both read back `address`, `vendor`, `supplier` and `vendor_supplier` over OData.
 
 ```json
 {
@@ -4511,7 +4511,7 @@ The `InventoryCostEdit` service is the **Edit Inventory Cost** window. It sets `
 
 Item Merge and Customer Merge run through `POST /api/v2/transaction` as the hidden menu services **`m_itemmerge`** and **`m_customermerge`**. Neither appears in `GET /api/v2/services`, but both return a definition from `GET /api/v2/definition/{name}` and run end to end. A merge is one-way: the source record is soft-deleted and its history is moved, rewritten, or deleted as the lists below describe. Test on a non-production tenant first, and resolve both IDs yourself before every call.
 
-> Runnable: [`item_customer_merge.py`](../examples/python/recipes/item_customer_merge.py) · [`ItemCustomerMerge.cs`](../examples/csharp/Recipes/ItemCustomerMerge.cs) (Recipes menu 21) · payloads [`item-merge.json`](../examples/payloads/json/item-merge.json), [`customer-merge.json`](../examples/payloads/json/customer-merge.json). Before posting, both resolve each ID **exactly** against a live record (`delete_flag = 'N'`) and refuse a merged-away or alternate-code ID; afterwards they decide success from the read-back — the source's `delete_flag`, `item_merge_audit` / `customer_merge_audit`, and for items the new `alternate_code` row — never from the customer merge's `Summary`.
+> Runnable: [`item_customer_merge.py`](../examples/python/recipes/item_customer_merge.py) · [`ItemCustomerMerge.cs`](../examples/csharp/Recipes/ItemCustomerMerge.cs) (Recipes menu 25) · payloads [`item-merge.json`](../examples/payloads/json/item-merge.json), [`customer-merge.json`](../examples/payloads/json/customer-merge.json). Before posting, both resolve each ID **exactly** against a live record (`delete_flag = 'N'`) and refuse a merged-away or alternate-code ID; afterwards they decide success from the read-back — the source's `delete_flag`, `item_merge_audit` / `customer_merge_audit`, and for items the new `alternate_code` row — never from the customer merge's `Summary`.
 
 Discovery notes:
 
