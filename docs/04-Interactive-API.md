@@ -3137,8 +3137,10 @@ A re-run on play (October 2026, a throwaway customer, the steps above) did **not
 | `price_library_id`, then `sequence_number = 1` | **1** — every existing row moved down one |
 | `price_library_id`, then `sequence_number = 2` (of 3) | **2** — the rows from 2 on moved down one |
 | `sequence_number = 1`, then `price_library_id` | 2, not 1 |
+| **Existing** row selected with `PUT /v2/row`, `sequence_number` changed from 3 to 1 | **1** — the rows above it moved down one |
+| **Existing** row selected with `PUT /v2/row`, `sequence_number` changed from 1 to 3 | **3** — the rows below it moved up one |
 
-Removing a row (select it with `PUT /v2/row`, then `row_status_flag` = `Delete`, save) **physically deleted** the `price_library_x_cust_x_cmpy` row and renumbered the remaining rows from 1. Changing an existing row's sequence was not re-tested. The production result above may differ by build or by edit order; if your run gives the order you need, the SQL fix is unnecessary. Read the sequence back either way.
+Removing a row (select it with `PUT /v2/row`, then `row_status_flag` = `Delete`, save) **physically deleted** the `price_library_x_cust_x_cmpy` row and renumbered the remaining rows from 1. The two existing-row rows of the table are a scratch test on play 26.1.5950.0, 2026-10-10, on a throwaway customer with three libraries: the window renumbered the grid as soon as the change landed, and the save kept that order. Both contradict *"Selecting an existing row and changing its sequence is overridden the same way"* above for this build. The production result above may differ by build or by edit order; if your run gives the order you need, the SQL fix is unnecessary. Read the sequence back either way.
 
 A new customer created through the Transaction `Customer` service came with one library row already on it (a tenant default), so check the grid before you add.
 
