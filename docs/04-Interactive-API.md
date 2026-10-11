@@ -3050,7 +3050,17 @@ Verified end-to-end on `ItemNotepad` (26.1, August 2026; note confirmed in the `
 3. Select the areas tab (`PageName: "TABPAGE_17"`) and run **`cb_selectall`** (`POST /v2/tools`) — this selects **every** area the note can display in. To pick a single area, select its row in the Available Areas grid (`tp_17_dw_dragdrop`) first and run `cb_select` (not separately verified).
 4. Save (`PUT /v2/data`, bare window-GUID body) — `savesucceeded`.
 
-`CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` publish the identical element shape (header form + `TABPAGE_17` area pair) and the same tools; only the header key field differs (`customer_id` / `supplier_id` / `vendor_id`). They have not been separately exercised here.
+`CustomerNotepad` / `SupplierNotepad` / `VendorNotepad` publish the identical element shape (header form + `TABPAGE_17` area pair) and the same tools; only the header key field differs (`customer_id` / `supplier_id` / `vendor_id`; `CustomerNotepad` also takes `company_id`). The save's `savesucceeded` event carries the new note's ID as `__note_id`.
+
+Where the note lands, read back on play 26.1.5950.0:
+
+| Service | Table | Key back to the record |
+|---|---|---|
+| `ItemNotepad` | `note` (`note_uid` = the note ID, `note_type_cd` = `1807`) | `document_uid` = `inv_mast_uid` |
+| `CustomerNotepad` | `customer_notepad` | `company_id`, `customer_id` |
+| `SupplierNotepad` | `supplier_notepad` | `supplier_id` |
+
+The selected areas are rows in `note_area` (`note_id`, `area`, `delete_flag`) for all three.
 
 Field-level notes from the item, supplier and customer notepads:
 
@@ -3060,7 +3070,7 @@ Field-level notes from the item, supplier and customer notepads:
 - Header fields of an existing note (`topic`, `note`, `mandatory`, dates) are editable through the Transaction API keyed on `note_id`; the areas are not.
 - **A note displays only while `row_status_flag` is Active and `expiration_date` is today or later.** Match both when you look for "the note P21 shows" — superseded notes are often end-dated rather than deleted.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026. **Re-run here** on play 26.1.5950.0, 2026-10-10 (scratch test, throwaway item, customer and supplier): for each of `ItemNotepad`, `CustomerNotepad` and `SupplierNotepad`, an Interactive add with `cb_selectall` saved, and a Transaction API edit keyed on `note_id` (`topic`, `note`, `mandatory` = `ON`) returned `Succeeded: 1` and read back changed (`mandatory` stored `Y`), with the `note_area` rows unchanged. Not re-run: single-area `cb_select`, `notepad_class`, the `TIMESTAMP` tab refusal, and `VendorNotepad`.
 
 ## Creating an Item in the Item Window
 
