@@ -1,0 +1,86 @@
+{
+  "Name": "Vendor",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "company_id",
+            "id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "vendor",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "name",
+                  "Value": "Example Vendor"
+                },
+                {
+                  "Name": "mail_address1",
+                  "Value": "100 Main St"
+                },
+                {
+                  "Name": "mail_city",
+                  "Value": "Springfield"
+                },
+                {
+                  "Name": "mail_state",
+                  "Value": "IL"
+                },
+                {
+                  "Name": "mail_postal_code",
+                  "Value": "62701"
+                },
+                {
+                  "Name": "ap_account_no",
+                  "Value": "2222200"
+                },
+                {
+                  "Name": "default_terms_id",
+                  "Value": "Net 30 Days"
+                },
+                {
+                  "Name": "track_rebates",
+                  "Value": "ON"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "REBATE_ACCOUNTS.d_vendor_rebate_accounts",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "rebate_account_no",
+                  "Value": "1111100"
+                },
+                {
+                  "Name": "rebate_allowance_account_no",
+                  "Value": "3333300"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -20,6 +20,26 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | `reassign_salesrep.py` | [reassign-salesrep.md](../../../docs/recipes/reassign-salesrep.md) |
 | `update_supplier_contact.py` | [update-supplier-contact.md](../../../docs/recipes/update-supplier-contact.md) |
 
+## Scripts for Transaction API write paths
+
+These have no recipe page: each is the runnable version of a section of the [Transaction API guide](../../../docs/03-Transaction-API.md). Each has a C# twin in [`examples/csharp/Recipes`](../../csharp/Recipes/) (menu items 16-21), a payload in [`examples/payloads/json`](../../payloads/json/), and reads its result back over OData only. Record IDs are command-line arguments (C#: prompts), so nothing tenant-specific lives in the source.
+
+| Script | C# class | Modes | Doc section |
+|--------|----------|-------|-------------|
+| `bin_lock_delete.py` | `BinLockDelete` | lock, unlock, delete, restore | [Locking, Unlocking, and Deleting Bins](../../../docs/03-Transaction-API.md#locking-unlocking-and-deleting-bins) |
+| `vendor_create.py` | `VendorCreate` | create (vendor + its supplier) | [Vendor Service](../../../docs/03-Transaction-API.md#vendor-service-creating-a-vendor-and-its-supplier) |
+| `assembly_create_edit.py` | `AssemblyCreateEdit` | create, set-flag, set-qty, delete-component | [Assembly Service](../../../docs/03-Transaction-API.md#assembly-service) |
+| `contract_shipto_line_no.py` | `ContractShipToLineNo` | attach-ship-to, update-line (by `line_no`) | [Attaching a ship-to](../../../docs/03-Transaction-API.md#attaching-a-ship-to-to-an-existing-contract) · [Updating an Existing Contract](../../../docs/03-Transaction-API.md#updating-an-existing-contract) |
+| `order_append_hold_cancel.py` | `OrderAppendHoldCancel` | append, release-hold, cancel | [Order Service — Line Appends, Cancels, Holds](../../../docs/03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup) |
+| `item_customer_merge.py` | `ItemCustomerMerge` | item, customer (one-way) | [Item Merge and Customer Merge](../../../docs/03-Transaction-API.md#item-merge-and-customer-merge-m_itemmerge-m_customermerge) |
+
+They share the small helpers in [`common/tapi.py`](../common/tapi.py) (connect, POST with Summary check, OData read-back). Run each with no `--execute` first to see the payload:
+
+```bash
+python examples/python/recipes/bin_lock_delete.py lock A01-02-03 --location 10
+python examples/python/recipes/order_append_hold_cancel.py append 1001234 --line ITEM-001:2 --line ITEM-002:3
+```
+
 ## Setup
 
 ```bash

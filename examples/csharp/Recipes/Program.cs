@@ -43,6 +43,12 @@ while (true)
     Console.WriteLine("  13. Update Order Lines         - Edit/add lines on an existing order");
     Console.WriteLine("  14. Reassign Salesrep          - Customer + ShipTo grids, two delete mechanisms");
     Console.WriteLine("  15. Update Supplier Contact    - Email/central phone via the Address service");
+    Console.WriteLine("  16. Bin Lock/Delete            - BinLocation lock, unlock, delete, restore");
+    Console.WriteLine("  17. Vendor Create              - Vendor + its auto-created supplier");
+    Console.WriteLine("  18. Assembly Create/Edit       - Create on a plain item; flag, qty, delete");
+    Console.WriteLine("  19. Contract Ship-To/line_no   - Attach ship-to; update a line by line_no");
+    Console.WriteLine("  20. Order Append/Hold/Cancel   - Multi-line append, release Hold, cancel");
+    Console.WriteLine("  21. Item/Customer Merge        - m_itemmerge / m_customermerge (one-way)");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -113,6 +119,30 @@ while (true)
 
             case "14":
                 await ReassignSalesrep.RunAsync();
+                break;
+
+            case "16":
+                await BinLockDelete.RunAsync();
+                break;
+
+            case "17":
+                await VendorCreate.RunAsync();
+                break;
+
+            case "18":
+                await AssemblyCreateEdit.RunAsync();
+                break;
+
+            case "19":
+                await ContractShipToLineNo.RunAsync();
+                break;
+
+            case "20":
+                await OrderAppendHoldCancel.RunAsync();
+                break;
+
+            case "21":
+                await ItemCustomerMerge.RunAsync();
                 break;
 
             case "Q":

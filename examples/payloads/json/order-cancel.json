@@ -1,0 +1,33 @@
+{
+  "Name": "Order",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.order",
+          "Type": "Form",
+          "Keys": [
+            "order_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "order_no",
+                  "Value": "1001234"
+                },
+                {
+                  "Name": "cancel_flag",
+                  "Value": "ON"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

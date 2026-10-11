@@ -1,0 +1,45 @@
+{
+  "Name": "m_itemmerge",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [
+            "source_item_id",
+            "target_item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "source_item_id",
+                  "Value": "ITEM-002"
+                },
+                {
+                  "Name": "target_item_id",
+                  "Value": "ITEM-001"
+                },
+                {
+                  "Name": "create_alt_code_flag",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "keep_restrictions_flag",
+                  "Value": "OFF"
+                },
+                {
+                  "Name": "schedule_merge_flag",
+                  "Value": "OFF"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

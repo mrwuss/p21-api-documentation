@@ -32,6 +32,19 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
 | Reprint a purchase order PDF (`reprint_flag` must equal the PO's `po_hdr.printed` — see JSON notes) | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |
+| Lock a bin (`pick_locked_flag` / `put_locked_flag`) | [json](json/bin-lock.json) | — | `POST /api/v2/transaction` |
+| Delete a bin (soft delete; `OFF` restores) | [json](json/bin-delete.json) | — | `POST /api/v2/transaction` |
+| Create a vendor (and its supplier) | [json](json/vendor-create.json) | — | `POST /api/v2/transaction` |
+| Attach a ship-to to an existing contract | [json](json/contract-attach-ship-to.json) | — | `POST /api/v2/transaction` |
+| Update a contract line by `line_no` (+ commission cost) | [json](json/contract-update-line-by-line-no.json) | — | `POST /api/v2/transaction` |
+| Create an assembly on a plain item | [json](json/assembly-create.json) | — | `POST /api/v2/transaction` |
+| Change an assembly component's quantity | [json](json/assembly-edit-component.json) | — | `POST /api/v2/transaction` |
+| Delete an assembly component | [json](json/assembly-delete-component.json) | — | `POST /api/v2/transaction` |
+| Append several lines to a saved order (one Transaction) | [json](json/order-append-lines.json) | — | `POST /api/v2/transaction` |
+| Release an order's Hold (`TP_SHIPINFO.packing_basis`) | [json](json/order-release-hold.json) | — | `POST /api/v2/transaction` |
+| Cancel an order (header `cancel_flag`) | [json](json/order-cancel.json) | — | `POST /api/v2/transaction` |
+| Merge one item into another (one-way) | [json](json/item-merge.json) | — | `POST /api/v2/transaction` |
+| Merge one customer into another (one-way; success reports `Failed: 1`) | [json](json/customer-merge.json) | — | `POST /api/v2/transaction` |
 
 ## JSON notes
 
@@ -44,6 +57,8 @@ Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Tran
 ## XML notes
 
 The XML files are in verified **DataContract** shape: the `P21.Transactions.Model.V2` root namespace (mandatory), **alphabetical element order** within every parent (violations get silently dropped or 500), and `Keys` items as `<a:string>` in the Microsoft arrays namespace. Set `Content-Type: application/xml`; `Accept` independently controls the response format. Full rules and verification details: [XML Payloads](../../docs/03-Transaction-API.md#xml-payloads-content-negotiation).
+
+The write-path payloads added with the [bin, vendor, contract, assembly, order and merge scripts](../python/recipes/README.md#scripts-for-transaction-api-write-paths) are JSON only for now; build an XML counterpart from the service's definition the same way as the others.
 
 XML versions of the two **report** payloads are omitted: the `/api/v2/process/pdfreport` endpoint has not been verified with XML bodies — the JSON forms are the tested shape.
 

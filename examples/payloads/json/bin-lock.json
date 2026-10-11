@@ -1,0 +1,47 @@
+{
+  "Name": "BinLocation",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.form",
+          "Type": "Form",
+          "Keys": [
+            "company_id",
+            "location_id",
+            "bin_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "bin_id",
+                  "Value": "A01-02-03"
+                },
+                {
+                  "Name": "pick_locked_flag",
+                  "Value": "ON"
+                },
+                {
+                  "Name": "put_locked_flag",
+                  "Value": "ON"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
