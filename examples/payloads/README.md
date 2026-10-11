@@ -33,6 +33,12 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Create an item-level sales price page (FORM + COSTS + VALUES) | [json](json/sales-price-page-create.json) | — | `POST /api/v2/transaction` |
 | Link a sales price page to a price book (add `row_status_flag: "Delete"` to the `LIST.list_detail` row to unlink) | [json](json/sales-price-book-link.json) | — | `POST /api/v2/transaction` |
 | Edit a supplier/item purchase pricing page in place (exact keys, full field set) | [json](json/purchase-pricing-page-edit.json) | — | `POST /api/v2/transaction` |
+| Create a stock PO (runbook step A1) | [json](json/purchase-order-create.json) | — | `POST /api/v2/transaction` |
+| Receive a PO in full (runbook step A2) | [json](json/purchase-order-receipt.json) | — | `POST /api/v2/transaction` |
+| Vouch a PO receipt (runbook steps A3/B4) | [json](json/convert-po-to-voucher.json) | — | `POST /api/v2/transaction` |
+| Print a sales-order pick ticket (`print_tix`) | [json](json/order-print-pick-ticket.json) | — | `POST /api/v2/transaction` |
+| Append $0 lines to an existing order (disposal step 3) | [json](json/order-append-zero-price-lines.json) | — | `POST /api/v2/transaction` |
+| Contract line with Value commission and other cost + ship-to row (rebate step 5) | [json](json/contract-line-rebate-costs.json) | — | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
@@ -46,7 +52,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Change an assembly component's quantity | [json](json/assembly-edit-component.json) | — | `POST /api/v2/transaction` |
 | Delete an assembly component | [json](json/assembly-delete-component.json) | — | `POST /api/v2/transaction` |
 | Append several lines to a saved order (one Transaction) | [json](json/order-append-lines.json) | — | `POST /api/v2/transaction` |
-| Release an order's Hold (`TP_SHIPINFO.packing_basis`) | [json](json/order-release-hold.json) | — | `POST /api/v2/transaction` |
+| Release an order's Hold (`TP_SHIPINFO.packing_basis`; also disposal runbook step 4) | [json](json/order-release-hold.json) | — | `POST /api/v2/transaction` |
 | Cancel an order (header `cancel_flag`) | [json](json/order-cancel.json) | — | `POST /api/v2/transaction` |
 | Merge one item into another (one-way) | [json](json/item-merge.json) | — | `POST /api/v2/transaction` |
 | Merge one customer into another (one-way; success reports `Failed: 1`) | [json](json/customer-merge.json) | — | `POST /api/v2/transaction` |

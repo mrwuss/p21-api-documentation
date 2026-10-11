@@ -26,11 +26,11 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | [reassign-salesrep](reassign-salesrep.md) | Reassign a customer's and ship-tos' salesrep (two grids, two delete mechanisms) | Transaction (`Customer`, `ShipTo`) |
 | [ar-aging](ar-aging.md) | Age open receivables on each invoice's own terms | OData (`invoice_hdr`, `customer`) |
 | [inventory-cost-edit](inventory-cost-edit.md) | Write an item's average cost down at a location (residual-cost write-off) | Transaction (`InventoryCostEdit`) |
-| [dispose-zero-value-stock](dispose-zero-value-stock.md) | Ship unwanted stock out on a $0 order (checklist) | Interactive + Transaction (`Order`, `Shipping`) |
-| [sales-order-to-invoice](sales-order-to-invoice.md) | Sales order → pick ticket → shipment confirmation → invoice (checklist) | Transaction + Interactive (`Order`, `Shipping`) |
-| [purchase-receive-vouch](purchase-receive-vouch.md) | Stock PO → receipt → voucher, and drop ship end to end (checklist) | Transaction + Interactive (`PurchaseOrder`, `PurchaseOrderReceipt`, `ConvertPOToVoucher`, `DirectShipConfirmation`) |
-| [new-assembled-part](new-assembled-part.md) | New assembled part: item → BOM → contract line → first production order (checklist) | Interactive + Transaction (`Item`, `Assembly`, `JobContractPricing`, `ProductionOrder`) |
-| [rebate-assembly-program](rebate-assembly-program.md) | Set up a rebate-tracked assembly program on a job contract (checklist) | Transaction + Interactive (`JobContractPricing`, `Vendor`, `Item`, `Assembly`) |
+| [dispose-zero-value-stock](dispose-zero-value-stock.md) | Ship unwanted stock out on a $0 order (runbook — Python and C#) | Interactive + Transaction (`Order`, `Shipping`) |
+| [sales-order-to-invoice](sales-order-to-invoice.md) | Sales order → pick ticket → shipment confirmation → invoice (runbook — Python and C#) | Transaction + Interactive (`Order`, `Shipping`) |
+| [purchase-receive-vouch](purchase-receive-vouch.md) | Stock PO → receipt → voucher, and drop ship end to end (runbook — Python and C#) | Transaction + Interactive (`PurchaseOrder`, `PurchaseOrderReceipt`, `ConvertPOToVoucher`, `DirectShipConfirmation`) |
+| [new-assembled-part](new-assembled-part.md) | New assembled part: item → BOM → contract line → first production order (runbook — Python and C#) | Inventory REST + Transaction + Interactive (`Item`, `Assembly`, `JobContractPricing`, `ProductionOrder`) |
+| [rebate-assembly-program](rebate-assembly-program.md) | Set up a rebate-tracked assembly program on a job contract (runbook — Python and C#) | Transaction + Interactive (`JobContractPricing`, `Vendor`, `Item`, `Assembly`) |
 
 ## Shared conventions (recipes don't repeat these)
 

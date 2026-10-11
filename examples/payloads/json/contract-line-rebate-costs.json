@@ -1,0 +1,123 @@
+{
+  "Name": "JobContractPricing",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.d_dw_job_price_hdr",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "contract_no",
+                  "Value": "CONTRACT-001"
+                },
+                {
+                  "Name": "job_no",
+                  "Value": "JOB-001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "CUSTOMER_SHIP_TO.customer_ship_to",
+          "Type": "List",
+          "Keys": [
+            "customer_id",
+            "ship_to_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "customer_id",
+                  "Value": "CUST-100"
+                },
+                {
+                  "Name": "ship_to_id",
+                  "Value": "CUST-100"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "JOBPRICELINE.jobpriceline",
+          "Type": "List",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "ASSY-001"
+                },
+                {
+                  "Name": "uom",
+                  "Value": "EA"
+                },
+                {
+                  "Name": "pricing_method",
+                  "Value": "Price"
+                },
+                {
+                  "Name": "price",
+                  "Value": "45.00"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "JOBPRICECOST.jobpricecost",
+          "Type": "Form",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "ASSY-001"
+                },
+                {
+                  "Name": "commission_cost_type_cd",
+                  "Value": "Value"
+                },
+                {
+                  "Name": "commission_cost_value",
+                  "Value": "30.60"
+                },
+                {
+                  "Name": "other_cost_type_cd",
+                  "Value": "Value"
+                },
+                {
+                  "Name": "other_cost_value",
+                  "Value": "24.00"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "IgnoreDisabled": true
+}

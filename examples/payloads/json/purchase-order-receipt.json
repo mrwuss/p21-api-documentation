@@ -1,0 +1,47 @@
+{
+  "Name": "PurchaseOrderReceipt",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_po",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "po_no",
+                  "Value": "500100"
+                },
+                {
+                  "Name": "receive_all",
+                  "Value": "Y"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "external_reference_no",
+                  "Value": "RUNBOOK-001-A"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -60,6 +60,11 @@ while (true)
     Console.WriteLine("  30. Direct Ship Confirmation   - DirectShipConfirmation window, receive_all");
     Console.WriteLine("  31. Customer Price Library     - Customer window TABPAGE_7 add/remove + sequence");
     Console.WriteLine("  32. DynaChange Rule Toggle     - dc.organizer.rule disable/re-enable");
+    Console.WriteLine("  33. Purchase/Receive/Vouch     - Runbook: stock PO and drop-ship paths to a voucher");
+    Console.WriteLine("  34. Sales Order to Invoice     - Runbook: order, pick ticket, ship-confirm invoice");
+    Console.WriteLine("  35. Dispose Zero-Value Stock   - Runbook: $0 disposal order to a $0 invoice");
+    Console.WriteLine("  36. New Assembled Part         - Runbook: item, BOM, contract line, production order");
+    Console.WriteLine("  37. Rebate Assembly Program    - Runbook: rebate vendor, contract costs, rebate invoice");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -198,6 +203,26 @@ while (true)
 
             case "32":
                 await DynaChangeRuleToggle.RunAsync();
+                break;
+
+            case "33":
+                await PurchaseReceiveVouch.RunAsync();
+                break;
+
+            case "34":
+                await SalesOrderToInvoice.RunAsync();
+                break;
+
+            case "35":
+                await DisposeZeroValueStock.RunAsync();
+                break;
+
+            case "36":
+                await NewAssembledPart.RunAsync();
+                break;
+
+            case "37":
+                await RebateAssemblyProgram.RunAsync();
                 break;
 
             case "Q":

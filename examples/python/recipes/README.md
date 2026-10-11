@@ -23,6 +23,13 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | `inventory_cost_edit.py` | [inventory-cost-edit.md](../../../docs/recipes/inventory-cost-edit.md) |
 | `reprint_purchase_order.py` | [03 § Example: Generate and Save a PO Reprint](../../../docs/03-Transaction-API.md#example-generate-and-save-a-po-reprint) (also [generate-pick-ticket-pdf.md](../../../docs/recipes/generate-pick-ticket-pdf.md)) |
 | `clone_item.py` | [11 § Cloning an Existing Item](../../../docs/11-Inventory-REST-API.md#cloning-an-existing-item) — its dry run GETs the source item, so it needs credentials |
+| `purchase_receive_vouch.py` | [purchase-receive-vouch.md](../../../docs/recipes/purchase-receive-vouch.md) |
+| `sales_order_to_invoice.py` | [sales-order-to-invoice.md](../../../docs/recipes/sales-order-to-invoice.md) |
+| `dispose_zero_value_stock.py` | [dispose-zero-value-stock.md](../../../docs/recipes/dispose-zero-value-stock.md) |
+| `new_assembled_part.py` | [new-assembled-part.md](../../../docs/recipes/new-assembled-part.md) |
+| `rebate_assembly_program.py` | [rebate-assembly-program.md](../../../docs/recipes/rebate-assembly-program.md) |
+
+The five runbook scripts above take their record IDs as command-line options (`--help` lists them) and share [`runbook_common.py`](runbook_common.py) — one connection, Transaction POSTs judged by `Summary`, OData read-backs, and the Interactive session from `order_with_assembly.py` with longer timeouts. Each step is read back before the next one starts, and a mismatch stops the run.
 
 ## Scripts for Transaction API write paths
 
@@ -50,13 +57,13 @@ These have no recipe page; each runs the write path of a reference-doc section a
 
 | Script | C# (Recipes menu) | Doc section |
 |--------|-------------------|-------------|
-| `sales_price_page_create_link.py` | `SalesPricePageCreateLink.cs` (16) | [08 § Creating a Page Through the Transaction API](../../../docs/08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api) |
-| `purchase_pricing_page_edit.py` | `PurchasePricingPageEdit.cs` (17) | [08 § Editing a Supplier/Item Purchase Page](../../../docs/08-SalesPricePage-Codes.md#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem) |
-| `inventory_update_list_price_stockable.py` | `InventoryUpdateListPriceStockable.cs` (18) | [11 § Updating Existing Location Fields](../../../docs/11-Inventory-REST-API.md#updating-existing-location-fields) |
-| `order_entry_quote_off.py` | `OrderEntryQuoteOff.cs` (19) | [04 § Set `quote` to `OFF` first](../../../docs/04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode) |
-| `direct_ship_confirmation.py` | `DirectShipConfirmation.cs` (20) | [04 § The Interactive path works](../../../docs/04-Interactive-API.md#the-interactive-path-works) |
-| `customer_price_library.py` | `CustomerPriceLibrary.cs` (21) | [04 § Customer Window: Adding a Price Library](../../../docs/04-Interactive-API.md#customer-window-adding-a-price-library) |
-| `dynachange_rule_toggle.py` | `DynaChangeRuleToggle.cs` (22) | [04 § Managing Business Rules Through the DynaChange Organizer](../../../docs/04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer) |
+| `sales_price_page_create_link.py` | `SalesPricePageCreateLink.cs` (26) | [08 § Creating a Page Through the Transaction API](../../../docs/08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api) |
+| `purchase_pricing_page_edit.py` | `PurchasePricingPageEdit.cs` (27) | [08 § Editing a Supplier/Item Purchase Page](../../../docs/08-SalesPricePage-Codes.md#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem) |
+| `inventory_update_list_price_stockable.py` | `InventoryUpdateListPriceStockable.cs` (28) | [11 § Updating Existing Location Fields](../../../docs/11-Inventory-REST-API.md#updating-existing-location-fields) |
+| `order_entry_quote_off.py` | `OrderEntryQuoteOff.cs` (29) | [04 § Set `quote` to `OFF` first](../../../docs/04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode) |
+| `direct_ship_confirmation.py` | `DirectShipConfirmation.cs` (30) | [04 § The Interactive path works](../../../docs/04-Interactive-API.md#the-interactive-path-works) |
+| `customer_price_library.py` | `CustomerPriceLibrary.cs` (31) | [04 § Customer Window: Adding a Price Library](../../../docs/04-Interactive-API.md#customer-window-adding-a-price-library) |
+| `dynachange_rule_toggle.py` | `DynaChangeRuleToggle.cs` (32) | [04 § Managing Business Rules Through the DynaChange Organizer](../../../docs/04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer) |
 
 `purchase_pricing_page_edit.py` reads the page before its dry run, so that dry run needs credentials. The Interactive scripts print their planned calls as the dry run.
 
