@@ -23,10 +23,6 @@
                   <Name>job_no</Name>
                   <Value>31</Value>
                 </Edit>
-                <Edit>
-                  <Name>end_date</Name>
-                  <Value>2030-01-01</Value>
-                </Edit>
               </Edits>
               <RelativeDateEdits />
             </Row>

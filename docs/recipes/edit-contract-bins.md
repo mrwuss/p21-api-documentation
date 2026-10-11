@@ -8,7 +8,7 @@ Change `min_qty`, `max_qty`, `reorder_qty`, and `capacity` on the bins of an exi
 
 - The contract, its lines, and its bins already exist. Know the contract's `job_no`, the `customer_id`/`ship_to_id` combination, and per bin the line's `item_id` and the `contract_bin_id` (e.g. `A01-02`).
 - The BINS grid lives on a sub-tab that is normally disabled until a parent row is selected — which the stateless Transaction API cannot do. `IgnoreDisabled: true` at the **payload top level** is what unlocks it.
-- No `end_date` is required on this path — it works on **expired** contracts too, unlike line-field updates.
+- No `end_date` is required on this path — it works on **expired** contracts too, as line-field updates do when `end_date` is omitted ([Updating an Existing Contract](../03-Transaction-API.md#updating-an-existing-contract)).
 
 ## Payload
 
@@ -400,7 +400,7 @@ All verified live:
 - **`IgnoreDisabled` goes at the payload top level** (alongside `Name`/`Transactions`). Inside a Transaction object it is **silently ignored** and every transaction fails with `Column is disabled: <column>`.
 - **Select the line by `item_id`** (the `JOBPRICELINE` key). Selecting by `line_no` alone fails with *"Sequence contains no matching element."* If the same item appears on multiple lines, add `line_no` as a second key.
 - **Batching is fine here** — repeat the `JOBPRICELINE` + `BINS.bins` pair per bin inside the same Transaction. Unlike line inserts, bin edits don't collide on the header.
-- **No `end_date` required on this path** — it works on **expired** contracts too, unlike line-field updates.
+- **No `end_date` required on this path** — it works on **expired** contracts too, as line-field updates do when `end_date` is omitted.
 - **`Status: "New"` even for an existing contract** — [`"New"` is the only value the enum accepts](../03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts); `"Existing"` is HTTP 400 on 26.1.5940.0, HTTP 500 `NullReferenceException` on older builds.
 - **HTTP 200 can still carry `Summary.Failed > 0`** — check `Summary` and `Messages`, never the HTTP status.
 - **Interactive fallback** (slower; use when a Transaction-API edge case appears or the work needs window logic) — the EXISTING-contract unlock sequence from [Tab Unlock Sequences](../04-Interactive-API.md#tab-unlock-sequences):

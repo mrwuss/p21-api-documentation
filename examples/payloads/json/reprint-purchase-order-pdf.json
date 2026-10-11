@@ -26,7 +26,7 @@
                 },
                 {
                   "Name": "reprint_flag",
-                  "Value": "Y"
+                  "Value": "<po_hdr.printed>"
                 }
               ]
             }
