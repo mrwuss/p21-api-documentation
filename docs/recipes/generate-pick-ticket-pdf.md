@@ -54,7 +54,15 @@ POST {ui_server}/api/v2/process/pdfreport
 
 **`m_reprintpicktickets`** — pick-ticket reprint. DataElement name is `TABPAGE_1.tp_1_dw_1` (datawindow `d_reprint_pick_ticket_criteria`); the [definition](../../definitions/m_reprintpicktickets.json) marks `company_id`, `location_id`, and `print_qty` required, with ranges `beg_pick_ticket_no`/`end_pick_ticket_no` (sales-order tickets) and `beg_prod_pick_ticket_no`/`end_prod_pick_ticket_no` (production tickets). Its `pick_ticket_type` takes the display values `Sales Order`, `Production Order` or `Both`, and `print_dea_pick_tickets` takes `Yes`, `No` or `Only` (from the live definition, 2026-08-11).
 
-> **`UseCodeValues` for this service is unconfirmed.** It could not be settled on the Play tenant at 26.1.5910.3, where *every* report returned an empty HTTP 500 — including `m_reprintpurchaseorders`, which runs at production volume elsewhere and prints normally on the same tenant at 26.1.5950.0. `m_reprintpicktickets` has not been re-tested on 5950.0. If you hit an error here, try `UseCodeValues: true` with code values from the definition; and read [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient) first, because a 5xx here is most often a transient report-engine fault that a retry clears, not a payload problem.
+> **`UseCodeValues: false` with the display values works on 26.1.5950.0.** A scratch test on play 26.1.5950.0, 2026-10-10, reprinted one sales-order pick ticket (`beg_pick_ticket_no` = `end_pick_ticket_no`, `company_id`, `location_id`, `print_qty` = `1`, `pick_ticket_type` = `Sales Order`) and got HTTP 200 with one document, `StatusCode` `Success`, a one-page PDF of that ticket and order (`FileName` `PT<nnn> PICK_TICKET.pdf`, a document counter, not the ticket number). Results by setting:
+>
+> | `UseCodeValues` | `pick_ticket_type` | Result |
+> |---|---|---|
+> | `false` | `Sales Order`, or omitted | PDF |
+> | `true` | `S`, or omitted | PDF |
+> | `true` | `Sales Order` | Empty HTTP 500 on three attempts in a row; a label under `UseCodeValues: true` is a deterministic failure, not a transient one |
+>
+> A **direct-ship** pick ticket (the one `DirectShipConfirmation` creates) returned HTTP 200 with an empty array `[]` — no document and no error — on every attempt, while a stock ticket from the same location printed. Check for an empty array as well as for a failed `ResponseStatus`. The production-ticket case is under [Verify](#verify). Before you treat any other 5xx as a payload problem, read [An empty 5xx has several causes](../03-Transaction-API.md#an-empty-5xx-has-several-causes-and-is-usually-transient); on the Play tenant at 26.1.5910.3 *every* report returned an empty HTTP 500.
 
 For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
