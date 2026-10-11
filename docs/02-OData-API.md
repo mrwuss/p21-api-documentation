@@ -1825,9 +1825,9 @@ class P21OData:
 ```csharp
 public class P21OData
 {
-    private readonly Dictionary<string, JObject?> _libraryBookCache = new();
+    private readonly Dictionary<string, JsonElement?> _libraryBookCache = new();
 
-    public async Task<JObject?> GetBookForLibraryAsync(string libraryId)
+    public async Task<JsonElement?> GetBookForLibraryAsync(string libraryId)
     {
         // Return cached result if available
         if (_libraryBookCache.TryGetValue(libraryId, out var cached))

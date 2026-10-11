@@ -1375,12 +1375,11 @@ void CheckTokenExpiry(string token)
         var payload = parts[1];
         payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-        var claims = JObject.Parse(json);
+        using var claims = System.Text.Json.JsonDocument.Parse(json);
 
-        var exp = claims["exp"]?.Value<long>();
-        if (exp.HasValue)
+        if (claims.RootElement.TryGetProperty("exp", out var exp))
         {
-            var expTime = DateTimeOffset.FromUnixTimeSeconds(exp.Value).LocalDateTime;
+            var expTime = DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64()).LocalDateTime;
             Console.WriteLine($"Token expires: {expTime}");
             if (expTime < DateTime.Now)
             {

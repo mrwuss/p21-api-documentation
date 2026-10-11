@@ -5584,19 +5584,20 @@ var response = await httpClient.PostAsync(
 // HTTP 200 does NOT mean the transaction succeeded
 response.EnsureSuccessStatusCode();
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 // Always check the Summary
-var succeeded = (int)result["Summary"]!["Succeeded"]!;
-var failed = (int)result["Summary"]!["Failed"]!;
+var summary = result.RootElement.GetProperty("Summary");
+var succeeded = summary.GetProperty("Succeeded").GetInt32();
+var failed = summary.GetProperty("Failed").GetInt32();
 
 if (failed > 0)
 {
     Console.WriteLine($"Transaction failed ({failed} failures)");
-    var messages = result["Messages"] as JArray;
-    if (messages != null)
+    if (result.RootElement.TryGetProperty("Messages", out var messages) &&
+        messages.ValueKind == JsonValueKind.Array)
     {
-        foreach (var msg in messages)
+        foreach (var msg in messages.EnumerateArray())
             Console.WriteLine($"  Error: {msg}");
     }
 }

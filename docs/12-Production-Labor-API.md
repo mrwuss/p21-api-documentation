@@ -117,6 +117,8 @@ The example below posts labor by `service_labor_id` without `item_id` — the **
 
 This is one step of the full production order lifecycle — see the [Production Order Runbook](recipes/production-order-runbook.md#stage-2-log-labor-before-printing) for the end-to-end sequence, and the standalone [record-labor-time recipe](recipes/record-labor-time.md) for a complete, paste-and-run version of this call (using the `item_id`/`component_labor_id` variant).
 
+> Fragment -- assumes you already hold a token and the UI server URL (`ui_server_url` / `uiServerUrl`, an authenticated `client`). Full runnable version: [record-labor-time](recipes/record-labor-time.md).
+
 <!-- tabs -->
 ```python
 import httpx
@@ -175,72 +177,71 @@ print(f"Succeeded: {result['Summary']['Succeeded']}")
 ```
 
 ```csharp
-var payload = new JObject
+var payload = new
 {
-    ["Name"] = "TimeEntry",
-    ["UseCodeValues"] = false,
-    ["Transactions"] = new JArray
+    Name = "TimeEntry",
+    UseCodeValues = false,
+    Transactions = new[]
     {
-        new JObject
+        new
         {
-            ["Status"] = "New",
-            ["DataElements"] = new JArray
+            Status = "New",
+            DataElements = new object[]
             {
-                new JObject
+                new
                 {
-                    ["Name"] = "TP_TECHNICIAN.tp_technician",
-                    ["Type"] = "Form",
-                    ["Keys"] = new JArray(),
-                    ["Rows"] = new JArray
+                    Name = "TP_TECHNICIAN.tp_technician",
+                    Type = "Form",
+                    Keys = Array.Empty<string>(),
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "company_id", ["Value"] = "ACME" },
-                                new JObject { ["Name"] = "technician_id", ["Value"] = "300" },
-                                new JObject { ["Name"] = "entry_date", ["Value"] = "2026-03-06" }
+                                new { Name = "company_id", Value = "ACME" },
+                                new { Name = "technician_id", Value = "300" },
+                                new { Name = "entry_date", Value = "2026-03-06" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
-                        }
-                    }
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
                 },
-                new JObject
+                new
                 {
-                    ["Name"] = "TP_LABORRECORDING.prod_order_line_comp_labor",
-                    ["Type"] = "List",
-                    ["Keys"] = new JArray { "prod_order_number" },
-                    ["Rows"] = new JArray
+                    Name = "TP_LABORRECORDING.prod_order_line_comp_labor",
+                    Type = "List",
+                    Keys = new[] { "prod_order_number" },
+                    Rows = new[]
                     {
-                        new JObject
+                        new
                         {
-                            ["Edits"] = new JArray
+                            Edits = new[]
                             {
-                                new JObject { ["Name"] = "prod_order_number", ["Value"] = "1001" },
-                                new JObject { ["Name"] = "service_labor_id", ["Value"] = "LABOR01" },
-                                new JObject { ["Name"] = "start_time", ["Value"] = "2026-03-06T08:00:00" },
-                                new JObject { ["Name"] = "end_time", ["Value"] = "2026-03-06T12:00:00" },
-                                new JObject { ["Name"] = "time_worked", ["Value"] = "4:00" },
-                                new JObject { ["Name"] = "labor_type_cd", ["Value"] = "Rate" }
+                                new { Name = "prod_order_number", Value = "1001" },
+                                new { Name = "service_labor_id", Value = "LABOR01" },
+                                new { Name = "start_time", Value = "2026-03-06T08:00:00" },
+                                new { Name = "end_time", Value = "2026-03-06T12:00:00" },
+                                new { Name = "time_worked", Value = "4:00" },
+                                new { Name = "labor_type_cd", Value = "Rate" },
                             },
-                            ["RelativeDateEdits"] = new JArray()
-                        }
-                    }
-                }
-            }
-        }
-    }
+                            RelativeDateEdits = Array.Empty<object>(),
+                        },
+                    },
+                },
+            },
+        },
+    },
 };
 
 var content = new StringContent(
-    payload.ToString(), Encoding.UTF8, "application/json");
+    JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 var response = await client.PostAsync(
     $"{uiServerUrl}/api/v2/transaction", content);
 response.EnsureSuccessStatusCode();
 
-var result = JObject.Parse(
-    await response.Content.ReadAsStringAsync());
-Console.WriteLine($"Succeeded: {result["Summary"]["Succeeded"]}");
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+Console.WriteLine($"Succeeded: {result.RootElement.GetProperty("Summary").GetProperty("Succeeded")}");
 ```
 <!-- /tabs -->
 
