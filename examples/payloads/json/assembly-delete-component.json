@@ -1,0 +1,51 @@
+{
+  "Name": "Assembly",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.assemblyhdr",
+          "Type": "Form",
+          "Keys": [
+            "inv_mast_item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "inv_mast_item_id",
+                  "Value": "ITEM-001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [
+            "item_id_service_labor_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id_service_labor_id",
+                  "Value": "COMP-B"
+                },
+                {
+                  "Name": "delete_flag",
+                  "Value": "ON"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

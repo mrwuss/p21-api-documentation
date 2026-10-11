@@ -1,0 +1,79 @@
+{
+  "Name": "JobContractPricing",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "FORM.d_dw_job_price_hdr",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "job_no",
+                  "Value": "31"
+                },
+                {
+                  "Name": "contract_no",
+                  "Value": "JOB-1001"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "JOBPRICELINE.jobpriceline",
+          "Type": "List",
+          "Keys": [
+            "line_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "line_no",
+                  "Value": "2"
+                },
+                {
+                  "Name": "qty_maximum",
+                  "Value": "50"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "JOBPRICECOST.jobpricecost",
+          "Type": "Form",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "WIDGET-001"
+                },
+                {
+                  "Name": "commission_cost_type_cd",
+                  "Value": "Value"
+                },
+                {
+                  "Name": "commission_cost_value",
+                  "Value": "7.50"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "IgnoreDisabled": true
+}

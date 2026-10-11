@@ -1,0 +1,68 @@
+{
+  "Name": "Assembly",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.assemblyhdr",
+          "Type": "Form",
+          "Keys": [
+            "inv_mast_item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "inv_mast_item_id",
+                  "Value": "ITEM-001"
+                },
+                {
+                  "Name": "production_order_processing",
+                  "Value": "OFF"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [
+            "item_id_service_labor_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id_service_labor_id",
+                  "Value": "COMP-A"
+                },
+                {
+                  "Name": "quantity",
+                  "Value": "2"
+                }
+              ],
+              "RelativeDateEdits": []
+            },
+            {
+              "Edits": [
+                {
+                  "Name": "item_id_service_labor_id",
+                  "Value": "COMP-B"
+                },
+                {
+                  "Name": "quantity",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
