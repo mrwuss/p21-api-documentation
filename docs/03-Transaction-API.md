@@ -4504,11 +4504,11 @@ The `InventoryCostEdit` service is the **Edit Inventory Cost** window. It sets `
 **What it writes — and what it doesn't:**
 
 - `inv_loc.moving_average_cost` changes (`last_maintained_by` = the API user) and one `audit_trail` row is written (`column_changed = 'moving_average_cost'`).
-- A GL pair under journal **`IC`**, description `Cost Edit - <old> TO <new>`: the inventory account and the offset account you sent, for `qty_on_hand × (old − new)`. Sub-cent rounding posts to a separate rounding account.
+- A GL pair under journal **`IC`**, description `Cost Edit - <old> TO <new>`: `qty_on_hand × (new − old)` to the inventory account and the same amount with the opposite sign to the offset account you sent. Sub-cent rounding posts to a separate rounding account.
 - **No `inv_tran` row and no `inv_adj` row.** The cost edit is invisible to the inventory transaction tables; `audit_trail` and the GL are its only history. The `inv_cost_edit` table stays empty.
 - The GL shape is identical to the same edit made by hand in the window.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play (about a thousand items in one run, GL reconciled per item to the cent) and on production, September 2026. **Re-run here** with stock on hand on play 26.1.5950.0, 2026-10-10: a throwaway item was given 10 units at one location with an `InventoryAdjustment`, then the Python repo file moved its cost from 0.00 to 1.00 and the C# repo file from 1.00 to 0.50. Each run posted one `IC` GL pair in the period sent, described `Cost Edit - <old> TO <new>`: +10.00 to the inventory account and −10.00 to the offset account, then −5.00 and +5.00. Each wrote one `audit_trail` row with the old and new cost and no `inv_tran` row (the item's only `inv_tran` row is the adjustment's `IA`), and `inv_cost_edit` stayed empty. The amounts were whole cents, so the rounding account was not exercised. The `account_no`, period-order and period-zero failures, the rounding account and the equivalence with a hand edit in the window rest on the original report. Runnable: [recipe: inventory-cost-edit](recipes/inventory-cost-edit.md).
 
 ### Item Merge and Customer Merge (`m_itemmerge`, `m_customermerge`)
 
