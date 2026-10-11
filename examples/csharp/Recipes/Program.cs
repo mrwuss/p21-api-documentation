@@ -43,6 +43,11 @@ while (true)
     Console.WriteLine("  13. Update Order Lines         - Edit/add lines on an existing order");
     Console.WriteLine("  14. Reassign Salesrep          - Customer + ShipTo grids, two delete mechanisms");
     Console.WriteLine("  15. Update Supplier Contact    - Email/central phone via the Address service");
+    Console.WriteLine("  16. Purchase/Receive/Vouch     - Runbook: stock PO and drop-ship paths to a voucher");
+    Console.WriteLine("  17. Sales Order to Invoice     - Runbook: order, pick ticket, ship-confirm invoice");
+    Console.WriteLine("  18. Dispose Zero-Value Stock   - Runbook: $0 disposal order to a $0 invoice");
+    Console.WriteLine("  19. New Assembled Part         - Runbook: item, BOM, contract line, production order");
+    Console.WriteLine("  20. Rebate Assembly Program    - Runbook: rebate vendor, contract costs, rebate invoice");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -113,6 +118,26 @@ while (true)
 
             case "14":
                 await ReassignSalesrep.RunAsync();
+                break;
+
+            case "16":
+                await PurchaseReceiveVouch.RunAsync();
+                break;
+
+            case "17":
+                await SalesOrderToInvoice.RunAsync();
+                break;
+
+            case "18":
+                await DisposeZeroValueStock.RunAsync();
+                break;
+
+            case "19":
+                await NewAssembledPart.RunAsync();
+                break;
+
+            case "20":
+                await RebateAssemblyProgram.RunAsync();
                 break;
 
             case "Q":
