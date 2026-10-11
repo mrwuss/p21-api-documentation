@@ -26,7 +26,7 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 
 ## Scripts for Transaction API write paths
 
-These have no recipe page: each is the runnable version of a section of the [Transaction API guide](../../../docs/03-Transaction-API.md). Each has a C# twin in [`examples/csharp/Recipes`](../../csharp/Recipes/) (menu items 16-21), a payload in [`examples/payloads/json`](../../payloads/json/), and reads its result back over OData only. Record IDs are command-line arguments (C#: prompts), so nothing tenant-specific lives in the source.
+These have no recipe page: each is the runnable version of a section of the [Transaction API guide](../../../docs/03-Transaction-API.md). Each has a C# twin in [`examples/csharp/Recipes`](../../csharp/Recipes/) (menu items 20-25), a payload in [`examples/payloads/json`](../../payloads/json/), and reads its result back over OData only. Record IDs are command-line arguments (C#: prompts), so nothing tenant-specific lives in the source.
 
 | Script | C# class | Modes | Doc section |
 |--------|----------|-------|-------------|
