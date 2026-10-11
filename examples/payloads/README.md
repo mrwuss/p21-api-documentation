@@ -38,6 +38,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Vouch a PO receipt (runbook steps A3/B4) | [json](json/convert-po-to-voucher.json) | — | `POST /api/v2/transaction` |
 | Print a sales-order pick ticket (`print_tix`) | [json](json/order-print-pick-ticket.json) | — | `POST /api/v2/transaction` |
 | Append $0 lines to an existing order (disposal step 3) | [json](json/order-append-zero-price-lines.json) | — | `POST /api/v2/transaction` |
+| Confirm a direct ship in full (`DirectShipConfirmation`, 26.1.5950.0) | [json](json/direct-ship-confirmation.json) | — | `POST /api/v2/transaction` |
 | Contract line with Value commission and other cost + ship-to row (rebate step 5) | [json](json/contract-line-rebate-costs.json) | — | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
