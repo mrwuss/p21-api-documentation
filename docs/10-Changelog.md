@@ -18,6 +18,29 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-11 — v1.29.0
+
+Every example added in v1.27.0–v1.28.0 now runs. Each new write path has a Python and a C# example in `examples/`, run with `--execute` / `EXECUTE` against play 26.1.5950.0 and confirmed by read-back, and the five checklist runbooks are now end-to-end programs. Running them corrected several published claims.
+
+**Published code, now run (Python and C#)**
+
+- **fix:** [Cloning an item](11-Inventory-REST-API.md#cloning-an-existing-item) also drops the item-level `UserDefinedFields` block; [create a ship-to](recipes/create-ship-to.md), [inventory cost edit](recipes/inventory-cost-edit.md) (no GL posts when nothing is on hand) and the [PO reprint](03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted) (`DocumentId` is a per-call number, not the PO number) all run as published, now with repo files and payloads
+
+**New runnable examples for documented write paths**
+
+- **feat:** Transaction API — [bins](03-Transaction-API.md#locking-unlocking-and-deleting-bins), [vendor create](03-Transaction-API.md#vendor-service-creating-a-vendor-and-its-supplier), [assembly create and edit](03-Transaction-API.md#assembly-service), contract ship-to and `line_no` updates, [order append, hold release and cancel](03-Transaction-API.md#order-service-line-appends-cancels-holds-and-item-lookup), [item and customer merge](03-Transaction-API.md#item-merge-and-customer-merge-m_itemmerge-m_customermerge)
+- **feat:** pricing and Interactive — [price page create and book link](08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api), [purchase page edit](08-SalesPricePage-Codes.md#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem), [ListPrice and Stockable](11-Inventory-REST-API.md#cloning-an-existing-item), [order entry with quote OFF](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode), DirectShipConfirmation, [customer price library](04-Interactive-API.md#customer-window-adding-a-price-library), [DynaChange rule toggle](04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer)
+- **feat:** runnable runbooks — [stock PO and drop ship](recipes/purchase-receive-vouch.md), [sales order to invoice](recipes/sales-order-to-invoice.md), [zero-value disposal](recipes/dispose-zero-value-stock.md), [new assembled part](recipes/new-assembled-part.md), [rebate-tracked assembly](recipes/rebate-assembly-program.md); steps the API can't reach stay marked manual
+
+**Corrections found by running the code**
+
+- **fix:** Bin delete and contract ship-to attach work without `IgnoreDisabled`; a blank vendor ID is a real create (the ID comes back in the result); `allow_disassembly` is disabled while `production_order_processing` is OFF; component quantity lands in `assembly_line.quantity`; `line_no` can select a contract line but not insert one; appending an item already on an order edits that line; a cancel leaves `qty_canceled` at 0
+- **fix:** `strategic_price_applies_to_cd` is disabled on price page create; changing only a purchase page's `expiration_date` re-dates it in place; the customer price-library sequence you send is kept when `price_library_id` is set first
+- **fix:** the direct-ship PO wizard opens in a new order's first save, needs a user with a Buyer ID, and doesn't open for an intercompany supplier; `DirectShipConfirmation` overwrites `po_line.supplier_ship_date` (now confirmed live)
+- **docs:** creating an item in the Interactive Item window is not reachable on play (every unit-of-measure column is disabled for both API users); `customer.job_pricing` can't be turned on through either API
+
+All *@mrwuss*.
+
 ## 2026-10-10 — v1.28.0
 
 The first sweep of the maintainer's working notes against these docs: eleven gaps filed (#175–#185) and closed here. All verified against production or play 26.1 during real work; identifiers are placeholders.
