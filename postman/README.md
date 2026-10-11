@@ -1,12 +1,16 @@
 # P21 API Postman Collection
 
-This directory contains a **Postman Collection** for the Prophet 21 APIs. It allows developers to test OData, Transaction, Interactive, and Entity endpoints immediately without writing Python code.
+This directory contains a **Postman Collection** for part of the Prophet 21 API surface, for trying requests without writing code.
+
+**What it covers:** authentication (v2 token and UI-server router), OData table queries, the Transaction API (service list, `definition` / `defaults` / `basics`, `transaction/get`, and one order create), a short Interactive API session (open, change, save, close), the `/api/entity/` family, and the [other REST families](../docs/15-Other-REST-Families.md) listed under folder 05.
+
+**What it does not cover:** the [Inventory REST API](../docs/11-Inventory-REST-API.md), the [UDT Service API](../docs/13-UDT-Service-API.md), the [`ui/full` surface](../docs/04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api), the [`/api/v2/commands` endpoint](../docs/03-Transaction-API.md#commands-endpoint), [`/api/v2/process/pdfreport`](../docs/03-Transaction-API.md#pdf-report-generation) reports, and the [Production and Labor](../docs/12-Production-Labor-API.md) services. Use the docs and `examples/` for those.
 
 ## Getting Started
 
 1.  **Import:** Open Postman and click **Import** > **File** > Select `p21-api-documentation.postman_collection.json`.
 2.  **Configure Variables:** Click the collection name, go to the **Variables** tab, and fill in:
-    * `P21_BASE_URL` (e.g., `https://play.p21server.com`)
+    * `P21_BASE_URL` (e.g., `https://play.example.com`)
     * `P21_USERNAME`
     * `P21_PASSWORD`
     * All other variables (`TOKEN`, `UI_SERVER_URL`, `SESSION_ID`, `WINDOW_ID`) are auto-filled by test scripts.

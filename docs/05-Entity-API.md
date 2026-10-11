@@ -72,10 +72,10 @@ https://{hostname}/api/entity/{resource}
 ```
 
 Examples:
-- `https://play.p21server.com/api/entity/customers`
-- `https://play.p21server.com/api/entity/vendors`
-- `https://play.p21server.com/api/entity/contacts`
-- `https://play.p21server.com/api/entity/addresses`
+- `https://play.example.com/api/entity/customers`
+- `https://play.example.com/api/entity/vendors`
+- `https://play.example.com/api/entity/contacts`
+- `https://play.example.com/api/entity/addresses`
 
 > **Warning:** Customer/vendor/contact/address records are served **only** from `/api/entity/` — category-style URLs for those records (e.g., `/api/sales/customers`) return 404. But do **not** generalize that to "category URLs don't work": `/api/sales/orders` **exists and responds** (verified July 2026 — see [Other REST Endpoint Families](#other-rest-endpoint-families)), and `/api/inventory/parts` is fully functional ([Inventory REST API](11-Inventory-REST-API.md)). All of these are endpoint families of the same REST API.
 
@@ -100,7 +100,7 @@ Customers and Vendors require a **composite key** combining `CompanyId` and the 
 
 ```http
 /api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
-/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485
+/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=99001
 ```
 
 - `CompanyId` is a **string** (e.g., `"ACME"`), not numeric
@@ -179,7 +179,7 @@ Include the Bearer token in the Authorization header:
 
 ```http
 GET /api/entity/customers/ACME_10 HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -222,7 +222,7 @@ Accept: application/json
 {
     "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "ABC Supply Company",
+    "CustomerName": "ACME Supply Company",
     "SalesrepId": "200",
     "TermsId": "1",
     "CreditStatus": "GOOD",
@@ -425,7 +425,7 @@ GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 {
     "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "ABC Supply Company",
+    "CustomerName": "ACME Supply Company",
     "CustomerAddress": {
         "CorpAddressId": 10,
         "MailAddress1": "123 Industrial Parkway",
@@ -469,7 +469,7 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
 {
     "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "ABC Supply Company",
+    "CustomerName": "ACME Supply Company",
     "SalesrepId": "200",
     "CreditStatus": "GOOD",
     "UserDefinedFields": {},
@@ -484,12 +484,12 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
     {
         "CompanyId": "ACME",
         "CustomerId": 10,
-        "CustomerName": "ABC Supply Company"
+        "CustomerName": "ACME Supply Company"
     },
     {
         "CompanyId": "ACME",
         "CustomerId": 20,
-        "CustomerName": "ABC Supply Company"
+        "CustomerName": "ACME Supply Company"
     }
 ]
 ```
@@ -546,7 +546,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -590,7 +590,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -657,7 +657,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -701,7 +701,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -768,7 +768,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -805,7 +805,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     resp.raise_for_status()
     customer = resp.json()
     print(f"{customer['CustomerId']}: {customer['CustomerName']}")
-    # 10: ABC Supply Company
+    # 10: ACME Supply Company
 ```
 
 **C#:**
@@ -815,7 +815,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerKey = "ACME_10";                   // {CompanyId}_{CustomerId}
@@ -839,7 +839,7 @@ resp.EnsureSuccessStatusCode();
 using var customer = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
 var root = customer.RootElement;
 Console.WriteLine($"{root.GetProperty("CustomerId")}: {root.GetProperty("CustomerName")}");
-// 10: ABC Supply Company
+// 10: ACME Supply Company
 
 // --- helpers ---------------------------------------------------------------
 
@@ -886,7 +886,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -938,7 +938,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerKey = "ACME_10";                   // {CompanyId}_{CustomerId}
@@ -1011,7 +1011,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1063,7 +1063,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string NamePrefix = "ABC";                        // customers whose name starts with this
@@ -1138,7 +1138,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1185,7 +1185,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ContactId = "1";
@@ -1256,7 +1256,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1327,7 +1327,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -1426,7 +1426,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1487,7 +1487,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -2019,7 +2019,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2119,7 +2119,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";
@@ -2277,7 +2277,7 @@ Both create orders. Pick by what you need:
 | Verified by | Contributor, 25.2 ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) | This repo, against a live tenant |
 | Error reporting | Undocumented (see above) | `Summary.Succeeded` / `Failed` envelope, [documented traps](06-Error-Handling.md) |
 | Bulk | One order per call | Many orders per call |
-| Assembly lines | Untested | Auto-answers the explode prompt **No** — use the [order-with-assembly](recipes/order-with-assembly.md) recipe instead |
+| Assembly lines | Untested | Explodes the assembly with no prompt to answer on 26.1.5950.0 ([03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)) — use the [order-with-assembly](recipes/order-with-assembly.md) recipe to choose the answer |
 
 For a walk-through of the Transaction path, see the [create-sales-order recipe](recipes/create-sales-order.md).
 
@@ -2383,10 +2383,10 @@ https://{hostname}/api/entity/{resource}
 ```
 
 Examples:
-- `https://play.p21server.com/api/entity/customers`
-- `https://play.p21server.com/api/entity/vendors`
-- `https://play.p21server.com/api/entity/contacts`
-- `https://play.p21server.com/api/entity/addresses`
+- `https://play.example.com/api/entity/customers`
+- `https://play.example.com/api/entity/vendors`
+- `https://play.example.com/api/entity/contacts`
+- `https://play.example.com/api/entity/addresses`
 
 > **Warning:** Customer/vendor/contact/address records are served **only** from `/api/entity/` — category-style URLs for those records (e.g., `/api/sales/customers`) return 404. But do **not** generalize that to "category URLs don't work": `/api/sales/orders` **exists and responds** (verified July 2026 — see [Other REST Endpoint Families](#other-rest-endpoint-families)), and `/api/inventory/parts` is fully functional ([Inventory REST API](11-Inventory-REST-API.md)). All of these are endpoint families of the same REST API.
 
@@ -2411,7 +2411,7 @@ Customers and Vendors require a **composite key** combining `CompanyId` and the 
 
 ```http
 /api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
-/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485
+/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=99001
 ```
 
 - `CompanyId` is a **string** (e.g., `"ACME"`), not numeric
@@ -2490,7 +2490,7 @@ Include the Bearer token in the Authorization header:
 
 ```http
 GET /api/entity/customers/ACME_10 HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -2533,7 +2533,7 @@ Accept: application/json
 {
     "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "ABC Supply Company",
+    "CustomerName": "ACME Supply Company",
     "SalesrepId": "200",
     "TermsId": "1",
     "CreditStatus": "GOOD",
@@ -2736,7 +2736,7 @@ GET /api/entity/customers/ACME_10?extendedproperties=CustomerAddress
 {
     "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "ABC Supply Company",
+    "CustomerName": "ACME Supply Company",
     "CustomerAddress": {
         "CorpAddressId": 10,
         "MailAddress1": "123 Industrial Parkway",
@@ -2780,7 +2780,7 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
 {
     "CompanyId": "ACME",
     "CustomerId": 10,
-    "CustomerName": "ABC Supply Company",
+    "CustomerName": "ACME Supply Company",
     "SalesrepId": "200",
     "CreditStatus": "GOOD",
     "UserDefinedFields": {},
@@ -2795,12 +2795,12 @@ Entity API supports User Defined Fields (UDFs) when enabled in the P21 middlewar
     {
         "CompanyId": "ACME",
         "CustomerId": 10,
-        "CustomerName": "ABC Supply Company"
+        "CustomerName": "ACME Supply Company"
     },
     {
         "CompanyId": "ACME",
         "CustomerId": 20,
-        "CustomerName": "ABC Supply Company"
+        "CustomerName": "ACME Supply Company"
     }
 ]
 ```
@@ -2857,7 +2857,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2901,7 +2901,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -2968,7 +2968,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3012,7 +3012,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -3079,7 +3079,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3116,7 +3116,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
     resp.raise_for_status()
     customer = resp.json()
     print(f"{customer['CustomerId']}: {customer['CustomerName']}")
-    # 10: ABC Supply Company
+    # 10: ACME Supply Company
 ```
 
 **C#:**
@@ -3126,7 +3126,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerKey = "ACME_10";                   // {CompanyId}_{CustomerId}
@@ -3150,7 +3150,7 @@ resp.EnsureSuccessStatusCode();
 using var customer = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
 var root = customer.RootElement;
 Console.WriteLine($"{root.GetProperty("CustomerId")}: {root.GetProperty("CustomerName")}");
-// 10: ABC Supply Company
+// 10: ACME Supply Company
 
 // --- helpers ---------------------------------------------------------------
 
@@ -3197,7 +3197,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3249,7 +3249,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerKey = "ACME_10";                   // {CompanyId}_{CustomerId}
@@ -3322,7 +3322,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3374,7 +3374,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string NamePrefix = "ABC";                        // customers whose name starts with this
@@ -3449,7 +3449,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3496,7 +3496,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ContactId = "1";
@@ -3567,7 +3567,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3638,7 +3638,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -3737,7 +3737,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3798,7 +3798,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -4330,7 +4330,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -4430,7 +4430,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";
@@ -4588,7 +4588,7 @@ Both create orders. Pick by what you need:
 | Verified by | Contributor, 25.2 ([issue #108](https://github.com/mrwuss/p21-api-documentation/issues/108)) | This repo, against a live tenant |
 | Error reporting | Undocumented (see above) | `Summary.Succeeded` / `Failed` envelope, [documented traps](06-Error-Handling.md) |
 | Bulk | One order per call | Many orders per call |
-| Assembly lines | Untested | Auto-answers the explode prompt **No** — use the [order-with-assembly](recipes/order-with-assembly.md) recipe instead |
+| Assembly lines | Untested | Explodes the assembly with no prompt to answer on 26.1.5950.0 ([03 § Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)) — use the [order-with-assembly](recipes/order-with-assembly.md) recipe to choose the answer |
 
 For a walk-through of the Transaction path, see the [create-sales-order recipe](recipes/create-sales-order.md).
 

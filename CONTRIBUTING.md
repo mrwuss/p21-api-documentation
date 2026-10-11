@@ -36,9 +36,20 @@ Thank you for your interest in improving P21 API documentation! This project aim
 ### Documentation Standards
 - **Facts only** - No guesses about undocumented behavior; disputed or community-reported behavior gets live-verified before it's documented
 - **Verified examples** - All code should run without errors
-- **Real payloads** - Include actual API request/response examples (generalized placeholder data only — `ACME`, `WIDGET-001`, `play.p21server.com`; never real company/customer identifiers)
+- **Real payloads** - Include actual API request/response examples (generalized placeholder data only — `ACME`, `WIDGET-001`, `play.example.com`; never real company/customer identifiers)
 - **Note limitations** - Document known issues and workarounds
 - **Keep the routing layer in sync** - new task-worthy sections get a row in [docs/INDEX.md](docs/INDEX.md); renaming a heading must update its index anchors
+
+### Placeholders and Sanitization
+
+This repository is public. Everything in docs, examples, payloads and the Postman collection uses placeholders, never values copied from a tenant, **including test and play tenants**.
+
+- **Domains:** `example.com` only — `https://play.example.com` for a base URL, `p21.example.com` for anything else. Never a registrable look-alike.
+- **One naming convention:** `ACME` for company IDs and company or customer names (`ACME Supply Company`, `ACME Manufacturing`), `WIDGET-001`, `WIDGET-002` for item IDs, `A01-01-01` for bins, location `10`. Do not invent other company names, and never use a real company's name.
+- **No tenant record numbers.** Order, PO, receipt, voucher, adjustment, task, contract, customer, supplier, vendor and contact numbers, `*_uid` values, configuration IDs, GL account numbers, journal descriptions and amounts all become placeholders (customer `100198`, order `1001234`, PO `500100`, production order `1000123`, account `ACCT-1000`). This applies to evidence too: write "receipt `7000100` against PO `500101`" with placeholder numbers, not the numbers you saw, and keep the technical meaning.
+- **Code values are not tenant data.** System code values such as `row_status_flag` `704` or `LinkTypeCd` `1203` are the same on every tenant and stay as they are.
+- **Runnable examples take real values as arguments.** Put record IDs on the command line (Python) or behind a prompt (C#) with a placeholder default, so nothing tenant-specific lives in the source.
+- Before you commit, search your diff for five-digit-or-longer numbers and for proper nouns, and replace anything that came from a tenant.
 
 ### Provenance and Attribution
 
@@ -74,12 +85,12 @@ Changelog entries name both parties the same way — `— *Alex Westemeier, veri
 Every example that calls P21 is a **complete program**: paste it into a file, edit the constants at the top, run it. No repo clone, no `.env`, no helper imported from another page. A reader should never have to assemble an example from two places.
 
 - **Both languages, adjacent**: Python (`httpx`) *and* C#, inside `<!-- tabs -->` / `<!-- /tabs -->` markers. `scripts/generate_html.py` builds the tab labels from the **fence language**, so the fence goes directly after the opening marker; it discards other text inside the region. Match whatever label style the file you are editing already uses.
-- **Zero install beyond the language**: Python needs only `httpx`. C# targets **`net8.0` or later** with `ImplicitUsings` + `Nullable` and **System.Text.Json** — no NuGet packages, so `dotnet new console` + paste + `dotnet run` works. `net8.0` is the floor because that is the SDK the [csharp examples](examples/csharp/README.md) ask you to install; all 80 complete C# page programs are verified to build on it. Do not introduce Newtonsoft or `Microsoft.Extensions.*` into a docs example.
+- **Zero install beyond the language**: Python needs only `httpx`. C# targets **`net8.0` or later** with `ImplicitUsings` + `Nullable` and **System.Text.Json** — no NuGet packages, so `dotnet new console` + paste + `dotnet run` works. `net8.0` is the floor because that is the SDK the [csharp examples](examples/csharp/README.md) ask you to install; all 97 complete C# page programs (every `csharp` block with an `EDIT THESE` preamble, counted by script on 2026-10-10 alongside 98 complete Python programs) build on it. Do not introduce Newtonsoft or `Microsoft.Extensions.*` into a docs example.
 - **An `EDIT THESE` block at the top** holding `BASE_URL`, credentials, `VERIFY_SSL` and the task's own variables — one per line with a trailing comment. Copy the auth preamble verbatim from an existing converted example (e.g. [reassign-salesrep](docs/recipes/reassign-salesrep.md)) rather than writing your own; it handles the v2 token, the router 307, and the XML fallback.
 - **Only where it is used**: include the UI-server helper for Transaction/Interactive examples; omit it for OData, Entity, Inventory REST and UDT, which call `BASE_URL` directly.
 - **Every write ends in a read-back** that prints what actually landed. In this API HTTP 200 routinely lies — a save can report success and write nothing.
 - **Illustrative fragments stay fragments.** A payload shape, a two-line field-order demonstration or an error sample should not be inflated into a full program; add a `Full runnable version:` callout linking to the nearest one.
-- **V2 auth only** for username/password (credentials in the request body); the V1 header form leaks credentials into proxy/server logs. A 26.1 session failure is *not* a reason to fall back to V1 — see [Breaking Changes entry 1](docs/14-Breaking-Changes.md#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header).
+- **V2 auth only** for username/password (credentials in the request body); the V1 header form leaks credentials into proxy/server logs. A failing Interactive call is *not* a reason to fall back to V1: on current builds check the `Accept` header and the previous request's `DatawindowName` first — see [Breaking Changes entry 9](docs/14-Breaking-Changes.md#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500) and the resolved [entry 1](docs/14-Breaking-Changes.md#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header) for older builds.
 - Include error handling — check `Summary.Succeeded`/`Failed`, never the HTTP status alone
 - Validate example payloads with `python scripts/validate_payload.py <file>` (works for JSON and XML)
 - Add comments explaining P21-specific behavior

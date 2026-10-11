@@ -51,7 +51,7 @@ def build_payload(company_id: str, po_no: str, reprint_flag: str) -> dict:
         reprint_flag: The PO's own po_hdr.printed value, "Y" or "N".
 
     Returns:
-        dict: Report payload -- numeric Status/Type 0, Keys [].
+        dict: Report payload -- Status "New", Type "Form", Keys [].
     """
     return {
         "Name": "m_reprintpurchaseorders",
@@ -65,9 +65,9 @@ def build_payload(company_id: str, po_no: str, reprint_flag: str) -> dict:
                     {"Name": "end_po_no", "Value": po_no},
                     {"Name": "reprint_flag", "Value": reprint_flag},
                 ]}],
-                "Type": 0,
+                "Type": "Form",
             }],
-            "Status": 0,
+            "Status": "New",
         }],
         "UseCodeValues": False,
     }

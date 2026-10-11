@@ -12,7 +12,7 @@
 //     /api/v2/process/pdfreport.
 //   - m_picktickets REQUIRES UseCodeValues: true and the code "P"
 //     (Production Order); UseCodeValues: false returns HTTP 500.
-//   - Status and Type are numeric 0 with Keys: [] — not the "New" shape.
+//   - Status "New" (the same enum as /transaction), Type "Form", Keys: [].
 //   - Prerequisite: prod_order_hdr.printed = 'Y' (run a ProductionOrder
 //     transaction with print_form = ON first).
 //   - Success is a JSON ARRAY; errors use the P21 error envelope
@@ -46,13 +46,13 @@ public static class GeneratePickTicketPdf
             {
                 new JObject
                 {
-                    ["Status"] = 0,     // numeric 0 for report payloads
+                    ["Status"] = "New",
                     ["DataElements"] = new JArray
                     {
                         new JObject
                         {
                             ["Keys"] = new JArray(),  // always empty for reports
-                            ["Type"] = 0,             // numeric 0 for report payloads
+                            ["Type"] = "Form",
                             ["Name"] = "TABPAGE_1.tp_1_dw_1",
                             ["Rows"] = new JArray
                             {
@@ -82,8 +82,9 @@ public static class GeneratePickTicketPdf
         if (!ConfirmExecute())
             return;
 
-        var (rawHttp, uiServer, _) = await CreateRawClientAsync();
+        var (rawHttp, uiServer, baseUrl) = await CreateRawClientAsync();
         using var http = rawHttp;
+        var before = await ReadTicketsAsync(http, baseUrl);
 
         // ------------------------------------------------------------------
         // Write: generate the report (creates the ticket + returns the PDF)
@@ -130,7 +131,8 @@ public static class GeneratePickTicketPdf
             }
 
             var pdfBytes = Convert.FromBase64String(documentData);
-            // FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf"
+            // FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf";
+            // <nnn> is a document counter, not the pick-ticket number.
             var filename = doc["FileName"]?.ToString() ?? "pick_ticket.pdf";
             await File.WriteAllBytesAsync(filename, pdfBytes);
             Console.WriteLine($"Saved {filename} ({pdfBytes.Length} bytes)");
@@ -144,9 +146,34 @@ public static class GeneratePickTicketPdf
             Console.WriteLine($"  ResponseStatus.Message: {doc["ResponseStatus"]?["Message"]}");
         }
 
-        Console.WriteLine(
-            "\nTo prove the pick-ticket row landed, reprint it: run" +
-            " m_reprintpicktickets with beg_prod_pick_ticket_no/end_prod_pick_ticket_no" +
-            " set to the number from the FileName — a second PDF confirms the record.");
+        // ------------------------------------------------------------------
+        // Read-back: m_picktickets CREATED a ticket row; find it over OData
+        // by comparing the order's tickets before and after the run.
+        // ------------------------------------------------------------------
+        var after = await ReadTicketsAsync(http, baseUrl);
+        var created = after.Where(t => !before.ContainsKey(t.Key)).ToList();
+        if (created.Count == 0)
+            Console.WriteLine($"\nNo new pick ticket on production order {ProdOrder}");
+        foreach (var (number, ticket) in created)
+        {
+            // row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed
+            Console.WriteLine($"\nNew ticket {number} at location {ticket["location_id"]}: " +
+                              $"status {ticket["row_status_flag"]}");
+        }
+    }
+
+    /// <summary>
+    /// Production pick tickets on ProdOrder, read over OData (prod_pick_ticket_hdr),
+    /// keyed by prod_pick_ticket_number.
+    /// </summary>
+    private static async Task<Dictionary<string, JToken>> ReadTicketsAsync(HttpClient http, string baseUrl)
+    {
+        var filter = Uri.EscapeDataString($"prod_order_number eq {ProdOrder}");
+        var response = await http.GetAsync(
+            $"{baseUrl}/odataservice/odata/table/prod_pick_ticket_hdr?$filter={filter}" +
+            "&$select=prod_pick_ticket_number,location_id,row_status_flag");
+        response.EnsureSuccessStatusCode();
+        var rows = (JArray)JObject.Parse(await response.Content.ReadAsStringAsync())["value"]!;
+        return rows.ToDictionary(r => r["prod_pick_ticket_number"]!.ToString(), r => r);
     }
 }

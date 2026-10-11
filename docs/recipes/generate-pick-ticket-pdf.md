@@ -14,7 +14,7 @@ Generate or reprint pick tickets and purchase orders as base64-encoded PDFs via 
 
 ## Payload
 
-Constants for **every** report payload: `Status` and `Type` are **numeric `0`** (not the `"New"` record-edit shape) and the DataElement carries `Keys: []`. Only `Name`, the DataElement name, and the criteria `Edits` change per service.
+Constants for **every** report payload: `Status` is `"New"`, the same and only value the [Transaction API enum accepts](../03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts); `Type` is `"Form"`; and the DataElement carries `Keys: []`. Only `Name`, the DataElement name, and the criteria `Edits` change per service.
 
 **`m_picktickets`** — *creates* the pick-ticket record at `location_id` **and** returns its PDF in one call (verified worked example). Requires `UseCodeValues: true` with the code `"P"` (Production Order):
 
@@ -25,10 +25,10 @@ POST {ui_server}/api/v2/process/pdfreport
   "Name": "m_picktickets",
   "UseCodeValues": true,
   "Transactions": [{
-    "Status": 0,
+    "Status": "New",
     "DataElements": [{
       "Keys": [],
-      "Type": 0,
+      "Type": "Form",
       "Name": "TABPAGE_1.tp_1_dw_1",
       "Rows": [{ "Edits": [
         { "Name": "create_pick_ticket_type", "Value": "P" },
@@ -60,7 +60,7 @@ For any *other* report, swap `Name` and the criteria `Edits` (field names from `
 
 ## Complete example
 
-Generates a production-order pick ticket with `m_picktickets`, decodes the base64 PDF to `OUTPUT_DIR`, and handles both failure shapes (document-level `ResponseStatus` and the P21 error envelope). Because `m_picktickets` also **creates** the ticket row, the program finishes with the read-back from the Verify section: a `m_reprintpicktickets` run on the new ticket number, whose second PDF proves the record landed.
+Generates a production-order pick ticket with `m_picktickets`, decodes the base64 PDF to `OUTPUT_DIR`, and handles both failure shapes (document-level `ResponseStatus` and the P21 error envelope). Because `m_picktickets` also **creates** the ticket row, the program finishes with the read-back from the Verify section: the production order's `prod_pick_ticket_hdr` rows over OData, before and after the run.
 
 <!-- tabs -->
 ```python
@@ -73,7 +73,7 @@ import time
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -126,7 +126,8 @@ def save_documents(result: list, prefix: str) -> list[str]:
             print(f"Document failed: {msg}")
             continue
         pdf_bytes = base64.b64decode(doc["DocumentData"])
-        # FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf"
+        # FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf";
+        # <nnn> is a document counter, not the pick-ticket number
         filename = doc.get("FileName", f"{prefix}.pdf")
         path = os.path.join(OUTPUT_DIR, filename)
         with open(path, "wb") as f:
@@ -199,10 +200,10 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         "Name": "m_picktickets",
         "UseCodeValues": True,   # required here -- False returns HTTP 500
         "Transactions": [{
-            "Status": 0,         # numeric 0 for report payloads
+            "Status": "New",
             "DataElements": [{
                 "Keys": [],      # always empty for reports
-                "Type": 0,       # numeric 0 for report payloads
+                "Type": "Form",
                 "Name": "TABPAGE_1.tp_1_dw_1",
                 "Rows": [{"Edits": [
                     # code "P" = Production Order (the display label is rejected)
@@ -215,39 +216,31 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             }],
         }],
     }
-    saved = save_documents(run_report(client, ui_server, headers, payload),
-                           "pick_ticket")
+    def read_tickets() -> dict:
+        """The order's production pick tickets, read over OData."""
+        r = client.get(
+            f"{BASE_URL}/odataservice/odata/table/prod_pick_ticket_hdr",
+            params={"$filter": f"prod_order_number eq {PROD_ORDER}",
+                    "$select": "prod_pick_ticket_number,location_id,row_status_flag"},
+            headers=headers,
+        )
+        r.raise_for_status()
+        return {row["prod_pick_ticket_number"]: row for row in r.json()["value"]}
 
-    # --- Read-back: m_picktickets CREATED a ticket row, so reprint it. ---
-    # A second PDF proves the pick-ticket record exists in P21.
-    for filename in saved:
-        match = re.match(r"PPT(\d+)", filename)
-        if not match:
-            continue
-        ticket_no = match.group(1)
-        reprint = {
-            "Name": "m_reprintpicktickets",
-            # if this errors on correct criteria, retry with True + code values
-            "UseCodeValues": False,
-            "Transactions": [{
-                "Status": 0,
-                "DataElements": [{
-                    "Keys": [],
-                    "Type": 0,
-                    "Name": "TABPAGE_1.tp_1_dw_1",
-                    "Rows": [{"Edits": [
-                        {"Name": "company_id", "Value": "ACME"},
-                        {"Name": "location_id", "Value": LOCATION_ID},
-                        {"Name": "print_qty", "Value": "1"},
-                        {"Name": "beg_prod_pick_ticket_no", "Value": ticket_no},
-                        {"Name": "end_prod_pick_ticket_no", "Value": ticket_no},
-                    ]}],
-                }],
-            }],
-        }
-        print(f"Reprinting ticket {ticket_no} to prove the record landed:")
-        save_documents(run_report(client, ui_server, headers, reprint),
-                       f"reprint_{ticket_no}")
+    before = read_tickets()
+    save_documents(run_report(client, ui_server, headers, payload), "pick_ticket")
+
+    # --- Read-back: m_picktickets CREATED a ticket row; find it over OData. ---
+    # The FileName number (PPT<nnn>) is a document counter, not the ticket
+    # number, so compare the order's tickets before and after the run.
+    after = read_tickets()
+    new = [after[n] for n in sorted(set(after) - set(before))]
+    if not new:
+        raise SystemExit(f"No new pick ticket on production order {PROD_ORDER}")
+    for ticket in new:
+        # row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed
+        print(f"New ticket {ticket['prod_pick_ticket_number']} at location "
+              f"{ticket['location_id']}: status {ticket['row_status_flag']}")
 ```
 
 ```csharp
@@ -256,10 +249,9 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string CompanyId = "ACME";
 const string ProdOrder = "1000123";     // production order number (beg = end)
 const string LocationId = "10";         // location the components pick from
 const string OutputDir = ".";           // where the .pdf files are written
@@ -286,13 +278,13 @@ var payload = new
     {
         new
         {
-            Status = 0,     // numeric 0 for report payloads
+            Status = "New",
             DataElements = new object[]
             {
                 new
                 {
                     Keys = Array.Empty<string>(),   // always empty for reports
-                    Type = 0,                       // numeric 0 for report payloads
+                    Type = "Form",
                     Name = "TABPAGE_1.tp_1_dw_1",
                     Rows = new object[]
                     {
@@ -315,56 +307,38 @@ var payload = new
     },
 };
 
-var saved = SaveDocuments(await RunReportAsync(client, uiServer, payload), "pick_ticket");
+var before = await ReadTicketsAsync(client);
+SaveDocuments(await RunReportAsync(client, uiServer, payload), "pick_ticket");
 
-// --- Read-back: m_picktickets CREATED a ticket row, so reprint it. ---
-// A second PDF proves the pick-ticket record exists in P21.
-foreach (var filename in saved)
+// --- Read-back: m_picktickets CREATED a ticket row; find it over OData. ---
+// The FileName number (PPT<nnn>) is a document counter, not the ticket
+// number, so compare the order's tickets before and after the run.
+var after = await ReadTicketsAsync(client);
+var created = after.Keys.Except(before.Keys).OrderBy(n => n).ToList();
+if (created.Count == 0)
+    throw new InvalidOperationException($"No new pick ticket on production order {ProdOrder}");
+foreach (var number in created)
 {
-    var match = System.Text.RegularExpressions.Regex.Match(filename, @"^PPT(\d+)");
-    if (!match.Success) continue;
-    var ticketNo = match.Groups[1].Value;
-    var reprint = new
-    {
-        Name = "m_reprintpicktickets",
-        // if this errors on correct criteria, retry with true + code values
-        UseCodeValues = false,
-        Transactions = new object[]
-        {
-            new
-            {
-                Status = 0,
-                DataElements = new object[]
-                {
-                    new
-                    {
-                        Keys = Array.Empty<string>(),
-                        Type = 0,
-                        Name = "TABPAGE_1.tp_1_dw_1",
-                        Rows = new object[]
-                        {
-                            new
-                            {
-                                Edits = new[]
-                                {
-                                    new { Name = "company_id", Value = CompanyId },
-                                    new { Name = "location_id", Value = LocationId },
-                                    new { Name = "print_qty", Value = "1" },
-                                    new { Name = "beg_prod_pick_ticket_no", Value = ticketNo },
-                                    new { Name = "end_prod_pick_ticket_no", Value = ticketNo },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        },
-    };
-    Console.WriteLine($"Reprinting ticket {ticketNo} to prove the record landed:");
-    SaveDocuments(await RunReportAsync(client, uiServer, reprint), $"reprint_{ticketNo}");
+    var ticket = after[number];
+    // row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed
+    Console.WriteLine($"New ticket {number} at location {ticket.GetProperty("location_id")}: " +
+                      $"status {ticket.GetProperty("row_status_flag")}");
 }
 
 // --- helpers ---------------------------------------------------------------
+
+// The order's production pick tickets, read over OData, keyed by ticket number.
+static async Task<Dictionary<long, JsonElement>> ReadTicketsAsync(HttpClient client)
+{
+    var filter = Uri.EscapeDataString($"prod_order_number eq {ProdOrder}");
+    using var response = await client.GetAsync(
+        $"{BaseUrl}/odataservice/odata/table/prod_pick_ticket_hdr?$filter={filter}" +
+        "&$select=prod_pick_ticket_number,location_id,row_status_flag");
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    return doc.RootElement.GetProperty("value").EnumerateArray().ToDictionary(
+        row => row.GetProperty("prod_pick_ticket_number").GetInt64(), row => row.Clone());
+}
 
 // POST a report payload and return its document array.
 //
@@ -442,7 +416,8 @@ static List<string> SaveDocuments(List<JsonElement> documents, string prefix)
             continue;
         }
         var pdfBytes = Convert.FromBase64String(documentData);
-        // FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf"
+        // FileName includes .pdf, e.g. "PPT<nnn> PRODUCTION_PICK_TICKET.pdf";
+        // <nnn> is a document counter, not the pick-ticket number
         var filename = doc.TryGetProperty("FileName", out var f)
             ? f.GetString()! : $"{prefix}.pdf";
         var path = Path.Combine(OutputDir, filename);
@@ -510,7 +485,7 @@ All verified live — details in [PDF Report Generation](../03-Transaction-API.m
 - **Check the record exists first.** A missing record and a transient engine fault both surface as an unhelpful 5xx. A cheap OData read before the report call turns "not found" into your own clear error and leaves the 5xx meaning only "the engine faulted".
 - **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false`, but `m_picktickets` **requires `UseCodeValues: true` with code values** — `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the definition's `ValidValues`.
 - **`m_reprintpurchaseorders`: `reprint_flag` must equal `po_hdr.printed`.** `N` renders only never-printed POs and `Y` only printed ones; the wrong one is a deterministic empty 500 that a retry never clears. Read `printed` over OData before each call, including before a retry, because another user can print the PO in between. A first print marks the PO printed.
-- **`Status` and `Type` are numeric `0`** with `Keys: []` — not the `"New"` record-edit shape.
+- **`Status` is `"New"`, `Type` is `"Form"`**, with `Keys: []`. Older copies of these payloads sent the integers `0`/`0`; integer `0` binds to the same enum member, so they rendered the same PDF, but integers are never range-checked. Send the strings.
 - **`m_picktickets` prerequisite**: the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first. No date range is needed; `location_id` is the location the components pick from.
 - **`m_picktickets` has a side effect**: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
 - **Print flags on `/transaction` have limits.** A service's print flags (e.g. `ProductionOrder` `print_pick_ticket`/`print_form` on `TABPAGE_1.tp_1_dw_1`) return PDFs at `Results.Transactions[].Documents[].DocumentData`, but only on a **savable** transaction (a bare reprint errors with *"Save is not enabled"*), and `print_pick_ticket` emits only at the order's **make location** — if components stock elsewhere, generate with `m_picktickets` at the stock `location_id` instead.
@@ -520,6 +495,8 @@ All verified live — details in [PDF Report Generation](../03-Transaction-API.m
 
 - The saved file opens as a PDF (`DocumentContentType` is `"application/pdf"`, `DocumentFormat` is `5`, and the decoded bytes start with `%PDF`).
 - `ResponseStatus.StatusCode` is `"Success"` and `ResponseStatus.Message` reports the form request completed.
-- For `m_picktickets`: the ticket number is in `FileName` (`"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`). Confirm the record landed by reprinting it — run `m_reprintpicktickets` with `beg_prod_pick_ticket_no`/`end_prod_pick_ticket_no` set to that number; a second PDF proves the pick-ticket row exists.
+- For `m_picktickets`: read the production order's tickets over OData — `GET /odataservice/odata/table/prod_pick_ticket_hdr?$filter=prod_order_number eq 1000123` — before and after the run; the new `prod_pick_ticket_number` (status `702`, Open) is the record the report created. **The number in `FileName` (`"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`) is not the ticket number**: on play 26.1.5950.0 it was a document counter shared with other report runs (a PO reprint's `PO<nnn>` came from the same sequence), while the ticket itself was numbered separately. `POST /transaction/get` on `ProductionOrderPicking` returned blank values for a real ticket, and an `m_reprintpicktickets` run on a production ticket succeeded once (`pick_ticket_type = Both`, blank sales-ticket range) and returned an empty HTTP 500 on every other attempt, including two repeats of that same payload, so neither is a reliable read-back.
+
+Python and C# examples (`generate_pick_ticket_pdf.py`, `GeneratePickTicketPdf.cs`) run on play 26.1.5950.0, 2026-10-10, each against its own throwaway production order (form printed, no pick ticket yet): each saved the PDF and found exactly one new ticket at status `702` over OData.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — worked example verified end-to-end (report run → pick ticket row created → PDF returned → ticket confirmed and completed). Jeff Poss discovered the `/api/v2/process/pdfreport` endpoint.

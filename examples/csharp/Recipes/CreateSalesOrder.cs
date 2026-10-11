@@ -9,8 +9,10 @@
 //     "Jurisdiction ID for Order Header Tax" error.
 //   - requested_date must be AFTER order_date (same date trips a prompt).
 //   - Do NOT send company_id — it is a disabled column on the Order window.
-//   - No assembly lines here — the Transaction API auto-answers the
-//     "add as assembly?" prompt No. Use the OrderWithAssembly recipe instead.
+//   - quote = OFF goes first; without it the order saves as a quote
+//     (oe_hdr.projected_order = 'Y').
+//   - An assembly item explodes with no prompt to answer (26.1.5950.0); use
+//     the OrderWithAssembly recipe when you need to choose the answer.
 //   - HTTP 200 is not success; the generated order_no comes back in the
 //     result rows of TABPAGE_1.order.
 
@@ -66,7 +68,10 @@ public static class CreateSalesOrder
         {
             var hdr = hdrRows[0];
             Console.WriteLine($"  Header: taker={hdr["taker"]} po_no={hdr["po_no"]} " +
-                              $"order_date={hdr["order_date"]}");
+                              $"order_date={hdr["order_date"]} " +
+                              $"projected_order={hdr["projected_order"]}");
+            if ((string?)hdr["projected_order"] != "N")
+                Console.WriteLine("  WARNING: saved as a quote (projected_order is not 'N')");
         }
         else
         {
@@ -108,7 +113,8 @@ public static class CreateSalesOrder
                             ["Keys"] = new JArray(),
                             ["Rows"] = new JArray
                             {
-                                Row(("customer_id", "100198"),
+                                Row(("quote", "OFF"),                 // else a quote
+                                    ("customer_id", "100198"),
                                     ("sales_loc_id", "10"),
                                     ("source_loc_id", "10"),          // required in practice
                                     ("order_date", "2030-01-05"),

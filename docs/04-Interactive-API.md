@@ -142,7 +142,7 @@ Response (**2026.1** — the identifier is renamed `SessionId` → `Id`):
             "Properties": {
                 "fullversion": "26.1.5894.1",
                 "shortversion": "26.1",
-                "configurationid": "3694"
+                "configurationid": "1234"
             }
         }
     ]
@@ -435,7 +435,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -550,7 +550,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";           // window to inspect — open by ServiceName
@@ -1066,7 +1066,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1162,7 +1162,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SessionType = "Auto";                     // User | Auto | AutoInteractive
@@ -1590,7 +1590,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1779,7 +1779,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PriceBookId = "ACME_BOOK_A";              // the book to load on the FORM tab
@@ -1998,7 +1998,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2060,7 +2060,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // tried in order, first hit wins
@@ -2347,7 +2347,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2552,7 +2552,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PoNo = "123456";                          // existing purchase order to annotate
@@ -2937,13 +2937,13 @@ So there is no way to convert an existing order line to direct ship through eith
 
 Driven end-to-end on a 26.1 play tenant (August 2026):
 
-1. Order **1519097** created interactively — one line, `disposition = 'D'`, saved.
+1. Order **1001236** created interactively — one line, `disposition = 'D'`, saved.
    - Setting `requested_date` fired the **date-cascade popup** (`Status: 3`) even on a brand-new order, exactly as documented below; the sequence stalls with `400`s on every later call until it is answered.
 2. Re-opened, `c_create_po = 'ON'` → `Status: 1`, then `save()` → `Status: 3` with the wizard (`cb_finish` present in its tool list).
-3. `cb_next` → page 2 carried PO **998303**.
+3. `cb_next` → page 2 carried PO **500102**.
 4. `cb_finish` → closed.
 
-Confirmed in the database: `po_hdr` 998303 with **`po_type = 'D'`, `approved = 'Y'`**, and an `oe_line_po` row linking order 1519097 line 1 ↔ PO 998303 line 1 with **`connection_type = 'P'`** — matching the reported shape field for field.
+Confirmed in the database: `po_hdr` 500102 with **`po_type = 'D'`, `approved = 'Y'`**, and an `oe_line_po` row linking order 1001236 line 1 ↔ PO 500102 line 1 with **`connection_type = 'P'`** — matching the reported shape field for field.
 
 *(Flow and dead ends originally verified by [Alex Westemeier](https://github.com/AWestemeier) across two cycles; re-driven and confirmed independently here.)*
 
@@ -2974,8 +2974,8 @@ Verified sequence (session created with `"ResponseWindowHandlingEnabled": true`)
 > **Read notes back through OData, not `/transaction/get`.** The Transaction API read of the same order returns the header note in `HDR_NOTE.hdr_note`, but the **line note never appears** in `LINE_NOTE.line_note` (the element comes back empty). Query the tables directly:
 >
 > ```http
-> GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1519092'
-> GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'
+> GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1001237'
+> GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'
 > ```
 
 ## Production Order Notes (Header)
@@ -3120,7 +3120,7 @@ A new customer created through the Transaction `Customer` service came with one 
 
 ## Sales Order Entry with Assembly Lines
 
-Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. The Transaction API cannot do this: entering an assembly item fires an *"add as assembly?"* prompt, and the stateless API auto-answers **No**, killing the explode (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
+Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. On 26.1.5950.0 the Transaction API also explodes an assembly line, but it gives you no choice: it always saves the assembly the way *Yes* does (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). The Interactive API is the path when you need to see the *"add as assembly?"* prompt and pick the answer — including *No*, a plain stock line. Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
 
 The flow (session started with `ResponseWindowHandlingEnabled: true`):
 
@@ -3131,7 +3131,7 @@ The flow (session started with `ResponseWindowHandlingEnabled: true`):
    - Setting `oe_order_item_id` on an assembly item fires the **assembly prompt** (buttons `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel). Answer **`cb_1`** to explode the assembly / link a production order.
    - Then set `unit_quantity`.
    - **Do NOT use the quickmode datawindow** (`d_dw_quickmode_*`) to enter lines — it **bypasses the assembly prompt entirely**, and the line lands without the explode.
-3. **Save**, answering any follow-on prompts with their proceed button. Read the generated `order_no` from the window data (`GET /v2/data`).
+3. **Save**, answering any follow-on prompts with their proceed button. Read the generated `order_no` from the save's events: the `savesucceeded` event carries it as `__order_no`. The Order window clears after a successful save, so `GET /v2/data` afterward returns a blank `order` row. *(Python and C# examples run on play 26.1.5950.0, 2026-10-10.)*
 
 Assembly behavior is item-level (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save. On the saved order, `oe_line.assembly` codes: `B` = kit parent, `N` = component, `P` = production-order line, `S` = build-to-stock allocation. The production-order link is `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`). See the [Production & Labor API guide](12-Production-Labor-API.md) for the full production lifecycle.
 
@@ -3225,7 +3225,7 @@ Each **field definition** contains:
 |----------|-------------|
 | `Name` | Datawindow name |
 | `FullName` | Fully qualified name |
-| `ActiveRow` | Currently selected row index |
+| `ActiveRow` | Currently selected row, **1-based** — a one-row datawindow reports `1`, so the row is `Data[ActiveRow - 1]` |
 | `TotalRows` | Number of rows |
 | `Columns` | Array of column names |
 | `Data` | Array of arrays — each inner array is a row of values |

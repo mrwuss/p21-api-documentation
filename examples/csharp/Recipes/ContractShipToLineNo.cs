@@ -31,7 +31,7 @@ public static class ContractShipToLineNo
         Console.WriteLine(new string('=', 60));
 
         var mode = Ask("Mode (attach-ship-to, update-line)", "attach-ship-to").ToLowerInvariant();
-        var jobNo = Ask("Job no", "31");
+        var jobNo = Ask("Job no", "1001");
         var contractNo = Ask("Contract no", "JOB-1001");
 
         // Header: job_no + contract_no only. No end_date -> no header re-save.

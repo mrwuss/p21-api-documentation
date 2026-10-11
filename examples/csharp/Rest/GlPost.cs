@@ -45,7 +45,7 @@ public static class GlPost
         {
             new JObject
             {
-                ["CompanyNo"] = companyId, ["AccountNumber"] = "11120010",
+                ["CompanyNo"] = companyId, ["AccountNumber"] = "ACCT-1000",
                 ["Period"] = period, ["YearForPeriod"] = year, ["JournalId"] = "AC",
                 ["Amount"] = 0.01, ["ForeignAmount"] = 0.01,
                 ["Description"] = "ZZ API DOC TEST - safe to delete", ["Source"] = "ZZDOCTEST",
@@ -53,7 +53,7 @@ public static class GlPost
             },
             new JObject
             {
-                ["CompanyNo"] = companyId, ["AccountNumber"] = "11130010",
+                ["CompanyNo"] = companyId, ["AccountNumber"] = "ACCT-2000",
                 ["Period"] = period, ["YearForPeriod"] = year, ["JournalId"] = "AC",
                 ["Amount"] = -0.01, ["ForeignAmount"] = -0.01,
                 ["Description"] = "ZZ API DOC TEST - safe to delete", ["Source"] = "ZZDOCTEST",

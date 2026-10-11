@@ -41,9 +41,9 @@ def main() -> None:
         description="Upsert a customer form template (docs/15 accounting/customerformtemplates)"
     )
     parser.add_argument("--execute", action="store_true", help="Actually PUT (default: dry run)")
-    parser.add_argument("--customer-id", type=int, default=12066)
+    parser.add_argument("--customer-id", type=int, default=100198)
     parser.add_argument("--company-id", default="ACME")
-    parser.add_argument("--invoice-filename", default="ZZTEST.rpt")
+    parser.add_argument("--invoice-filename", default="ACME_INVOICE.rpt")
     args = parser.parse_args()
 
     print("Other REST Families - Customer Form Template (customerformtemplates)")

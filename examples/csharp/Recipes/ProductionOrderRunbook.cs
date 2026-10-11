@@ -52,13 +52,13 @@ public static class ProductionOrderRunbook
             {
                 new JObject
                 {
-                    ["Status"] = 0,    // reports use numeric 0, not "New"
+                    ["Status"] = "New",
                     ["DataElements"] = new JArray
                     {
                         new JObject
                         {
                             ["Keys"] = new JArray(),
-                            ["Type"] = 0,
+                            ["Type"] = "Form",
                             ["Name"] = "TABPAGE_1.tp_1_dw_1",
                             ["Rows"] = new JArray
                             {

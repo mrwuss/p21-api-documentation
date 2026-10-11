@@ -42,7 +42,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
-| Reprint a purchase order PDF (`reprint_flag` must equal the PO's `po_hdr.printed` — see JSON notes) | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |
+| Print or reprint a purchase order PDF (`reprint_flag` is a placeholder for the PO's `po_hdr.printed` — see JSON notes) | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |
 | Lock a bin (`pick_locked_flag` / `put_locked_flag`) | [json](json/bin-lock.json) | — | `POST /api/v2/transaction` |
 | Delete a bin (soft delete; `OFF` restores) | [json](json/bin-delete.json) | — | `POST /api/v2/transaction` |
 | Create a vendor (and its supplier) | [json](json/vendor-create.json) | — | `POST /api/v2/transaction` |
@@ -61,7 +61,7 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 
 Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Transactions`, `DataElements`, `Rows`, and `Edits` are always arrays (even with one entry); `UseCodeValues`/`IgnoreDisabled` are booleans, not quoted strings; `Value` is always a string; `IgnoreDisabled` is only honored at the payload top level. Full rules: [Payload Anatomy](../../docs/03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes).
 
-**`reprint-purchase-order-pdf.json` sends `reprint_flag: "Y"`, which is right only for a PO that has already been printed.** The flag must equal that PO's `po_hdr.printed`: send `N` for a PO that was never printed. A mismatch returns an empty HTTP 500 on every attempt. Read `printed` over OData before each call (`po_hdr?$filter=po_no eq 500100&$select=po_no,printed`) and substitute it, the same way you substitute the PO number. Detail: [`reprint_flag` must match the PO's `po_hdr.printed`](../../docs/03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted).
+**`reprint-purchase-order-pdf.json` carries `reprint_flag: "<po_hdr.printed>"`, a placeholder you must replace on every call.** The flag must equal that PO's `po_hdr.printed`: `Y` for a PO that has been printed, `N` for one that never was. A mismatch returns an empty HTTP 500 on every attempt, so never hardcode either value. Read `printed` over OData before each call (`po_hdr?$filter=po_no eq 500100&$select=po_no,printed`) and substitute it, the same way you substitute the PO number. Detail: [`reprint_flag` must match the PO's `po_hdr.printed`](../../docs/03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted).
 
 **`sales-task-create.json` is a different shape on purpose.** It targets the [`sales/tasks` REST family](../../docs/15-Other-REST-Families.md#salestasks), not the Transaction API — a flat domain object, no `Name`/`Transactions` wrapper. The validator recognizes this shape and checks only that it's structurally sane; it has no committed schema to check field names against the way `definitions/` does for Transaction API services, so read the family's own `GET /new` response to confirm a field name is real.
 

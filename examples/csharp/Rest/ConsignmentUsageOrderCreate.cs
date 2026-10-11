@@ -28,9 +28,9 @@ public static class ConsignmentUsageOrderCreate
 
         var newResp = await http.GetAsync($"{baseUrl}/api/sales/consignmentusageorders/new");
         var cuo = JObject.Parse(await newResp.Content.ReadAsStringAsync());
-        cuo["CustomerId"] = 12066;
+        cuo["CustomerId"] = 100198;
         cuo["CompanyId"] = "ACME";
-        cuo["LocationId"] = 40;
+        cuo["LocationId"] = 10;
         cuo["PoNo"] = "ZZ-CUO-TEST";
         cuo["OrderDate"] = "2026-09-12T00:00:00";
 

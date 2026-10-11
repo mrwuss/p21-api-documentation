@@ -1,0 +1,514 @@
+{
+ "Name": "InventoryCostEdit",
+ "Template": {
+  "TransactionSet": {
+   "Description": null,
+   "FieldMap": [],
+   "IgnoreDisabled": false,
+   "Name": "InventoryCostEdit",
+   "OnBehalfOf": null,
+   "Parameters": null,
+   "Query": null,
+   "TransactionSplitMethod": 0,
+   "Transactions": [
+    {
+     "DataElements": [
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "location_id",
+        "item_id"
+       ],
+       "Name": "QUERY.query",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_use_lot_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_on_hand",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot_sku_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "moving_average_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "standard_cost",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "List"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "location_id",
+        "item_id"
+       ],
+       "Name": "FORM.form",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "new_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "standard_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "qty_on_hand",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "c_costing_basis",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "moving_average_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot_sku_cost",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "location_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "item_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "company_name",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "lot",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_rowinfo",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "cf_dfflag",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      },
+      {
+       "BusinessObjectName": null,
+       "Keys": [
+        "account_no"
+       ],
+       "Name": "FORM.account",
+       "Rows": [
+        {
+         "Edits": [
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "account_no",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "period",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "year_for_period",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "account_desc",
+           "Value": ""
+          }
+         ],
+         "RelativeDateEdits": []
+        }
+       ],
+       "Type": "Form"
+      }
+     ],
+     "Documents": null,
+     "Status": "New"
+    }
+   ],
+   "UseCodeValues": false
+  }
+ },
+ "TransactionDefinition": {
+  "DataElementDefinitions": [
+   {
+    "BusinessObjectName": "inv_loc",
+    "DatawindowName": "d_dw_inventory_cost_edit_mac_grid",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_loc.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_loc.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "Location Name",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_desc",
+      "Label": "Item Description",
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "drv_inv_loc..use_lot_cost_as_inventory_cost",
+      "Label": "Item Uses Lot Cost",
+      "Name": "item_use_lot_cost",
+      "Required": false,
+      "ValidValues": [],
+      "ValidValuesRedacted": true
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "drv_inv_loc.lot",
+      "Label": "Lot",
+      "Name": "lot",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "drv_inv_loc.qty_on_hand",
+      "Label": "Quantity On Hand",
+      "Name": "qty_on_hand",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "drv_inv_loc..sku_cost",
+      "Label": "Lot Cost",
+      "Name": "lot_sku_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_loc.moving_average_cost",
+      "Label": "Moving Average Cost",
+      "Name": "moving_average_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_loc.standard_cost",
+      "Label": "Standard Cost",
+      "Name": "standard_cost",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "location_id",
+     "item_id"
+    ],
+    "Name": "QUERY.query",
+    "ParentText": "Query",
+    "Type": "List"
+   },
+   {
+    "BusinessObjectName": "inv_loc",
+    "DatawindowName": "d_dw_inventory_cost_edit_mac_form",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_loc.company_id",
+      "Label": "Company ID",
+      "Name": "company_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_loc.location_id",
+      "Label": "Location ID",
+      "Name": "location_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_id",
+      "Label": "Item ID",
+      "Name": "item_id",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "drv_inv_loc.new_cost",
+      "Label": "New Cost",
+      "Name": "new_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_loc.standard_cost",
+      "Label": "Standard Cost",
+      "Name": "standard_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "drv_inv_loc.qty_on_hand",
+      "Label": "Quantity On Hand",
+      "Name": "qty_on_hand",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "drv_inv_loc.costing_basis",
+      "Label": "Cost Basis",
+      "Name": "c_costing_basis",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "inv_loc.moving_average_cost",
+      "Label": "Moving Average Cost",
+      "Name": "moving_average_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Decimal",
+      "DbColumnName": "drv_inv_loc..sku_cost",
+      "Label": "Lot Cost",
+      "Name": "lot_sku_cost",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "location.location_name",
+      "Label": "",
+      "Name": "location_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "inv_mast.item_desc",
+      "Label": "",
+      "Name": "item_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "company.company_name",
+      "Label": "",
+      "Name": "company_name",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "drv_inv_loc.lot",
+      "Label": "Lot",
+      "Name": "lot",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_rowinfo",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": null,
+      "DbColumnName": null,
+      "Label": null,
+      "Name": "cf_dfflag",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "location_id",
+     "item_id"
+    ],
+    "Name": "FORM.form",
+    "ParentText": "Form View",
+    "Type": "Form"
+   },
+   {
+    "BusinessObjectName": "inv_loc",
+    "DatawindowName": "d_dw_inv_cost_edit_accounts",
+    "FieldDefinitions": [
+     {
+      "DataType": "Char",
+      "DbColumnName": "account_no",
+      "Label": "Variance Account Number",
+      "Name": "account_no",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "period",
+      "Label": "Period",
+      "Name": "period",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Long",
+      "DbColumnName": "year",
+      "Label": "Year",
+      "Name": "year_for_period",
+      "Required": true,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "account_desc",
+      "Label": "",
+      "Name": "account_desc",
+      "Required": false,
+      "ValidValues": null
+     }
+    ],
+    "KeyFields": [
+     "account_no"
+    ],
+    "Name": "FORM.account",
+    "ParentText": "Form View",
+    "Type": "Form"
+   }
+  ],
+  "KeyDefinitions": [
+   {
+    "Location": "query",
+    "Name": "location_id"
+   },
+   {
+    "Location": "query",
+    "Name": "item_id"
+   }
+  ]
+ }
+}

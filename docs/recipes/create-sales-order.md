@@ -10,7 +10,7 @@ Create a sales order — header plus line items — in one stateless Transaction
 
 - P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - The customer, ship-to, contact, and items already exist; the items are stocked at the source location.
-- **No assembly lines.** If a line should explode into components or spawn a production order, the Transaction API auto-answers the *"add as assembly?"* prompt **No** and kills the explode — use the [order-with-assembly](order-with-assembly.md) recipe for those.
+- **Assembly lines explode without a prompt.** On 26.1.5950.0 an assembly item saves the way the Interactive *"add as assembly?"* **Yes** does (kit parent `B` plus components, or a production-order line `P` plus components) — see [Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas). Use the [order-with-assembly](order-with-assembly.md) recipe when you need to choose the answer, for example a plain stock line.
 
 ## Payload
 
@@ -33,6 +33,7 @@ POST {ui_server}/api/v2/transaction
                 "Keys": [],
                 "Rows": [{
                     "Edits": [
+                        {"Name": "quote",          "Value": "OFF"},
                         {"Name": "customer_id",    "Value": "100198"},
                         {"Name": "sales_loc_id",   "Value": "10"},
                         {"Name": "source_loc_id",  "Value": "10"},
@@ -84,7 +85,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -155,6 +156,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                     "Keys": [],
                     "Rows": [{
                         "Edits": [
+                            {"Name": "quote",          "Value": "OFF"},  # else a quote
                             {"Name": "customer_id",    "Value": CUSTOMER_ID},
                             {"Name": "sales_loc_id",   "Value": SALES_LOC_ID},
                             {"Name": "source_loc_id",  "Value": SOURCE_LOC_ID},
@@ -224,7 +226,8 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             "order_no": row.get("order_no"),
             "taker": row.get("taker"),
             "po_no": row.get("po_no"),
-            "ship_to_id": row.get("ship_to_id"),
+            "ship_to_id": row.get("address_id"),  # oe_hdr stores the ship-to as address_id
+            "projected_order": row.get("projected_order"),  # 'N' = order, 'Y' = quote
         })
 
     lines = client.get(
@@ -248,7 +251,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";
@@ -302,6 +305,7 @@ var payload = new
                         {
                             Edits = new[]
                             {
+                                new { Name = "quote", Value = "OFF" },   // else a quote
                                 new { Name = "customer_id", Value = CustomerId },
                                 new { Name = "sales_loc_id", Value = SalesLocId },
                                 new { Name = "source_loc_id", Value = SourceLocId },
@@ -365,7 +369,8 @@ foreach (var row in await ODataAsync(client, "oe_hdr", $"order_no eq '{orderNo}'
 {
     Console.WriteLine(
         $"order_no={row.GetProperty("order_no")} taker={row.GetProperty("taker")} " +
-        $"po_no={row.GetProperty("po_no")} ship_to_id={row.GetProperty("ship_to_id")}");
+        $"po_no={row.GetProperty("po_no")} ship_to_id={row.GetProperty("address_id")} " +
+        $"projected_order={row.GetProperty("projected_order")}");  // 'N' = order, 'Y' = quote
 }
 
 var lineRows = await ODataAsync(client, "oe_line", $"order_no eq '{orderNo}'");
@@ -453,17 +458,18 @@ static string ReadField(string payload, string field)
 
 > **Payload files:** [JSON](../../examples/payloads/json/create-sales-order.json) · [XML](../../examples/payloads/xml/create-sales-order.xml) — validator-verified, see [payloads README](../../examples/payloads/README.md).
 >
-> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/create_sales_order.py`](../../examples/python/recipes/create_sales_order.py) · [`examples/csharp/Recipes/CreateSalesOrder.cs`](../../examples/csharp/Recipes/CreateSalesOrder.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/create_sales_order.py`](../../examples/python/recipes/create_sales_order.py) · [`examples/csharp/Recipes/CreateSalesOrder.cs`](../../examples/csharp/Recipes/CreateSalesOrder.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example. Python and C# examples (the snippets and both files) run on play 26.1.5950.0, 2026-10-10, with `quote = OFF`: each saved a two-line order read back as `projected_order = 'N'` with both lines present. The C# snippet's header read-back previously read an `oe_hdr.ship_to_id` column that does not exist; it reads `address_id` now.
 
 ## Gotchas
 
 All verified live — details in [Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas):
 
-- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI.
+- **Send `quote` = `OFF` as the first header edit.** On play 26.1.5950.0, 2026-10-10, an `Order` create without it saved a **quote** (`oe_hdr.projected_order = 'Y'`) for the password user, and a pick ticket for it was then refused. With `quote = OFF` the same payload saved a real order (`projected_order = 'N'`). This is the Transaction API side of [Set `quote` to `OFF` first](../04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode); read `projected_order` back after the save.
+- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A ship-to with no tax jurisdiction fails the same way even with `source_loc_id` set, once the order is real (`quote = OFF`) and a line is taxable; a quote saves without it.
 - **`requested_date` must be after `order_date`.** The same date trips a date-cascade prompt, which the stateless API can't answer.
 - **`company_id` is a disabled column** on the Order window — don't send it.
 - **DynaChange prompts are auto-answered with the default** (usually "No"), which silently discards the affected line — e.g. *"order line does not have a PO Cost… proceed? [No]"*. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see [DynaChange and Popup Handling](../03-Transaction-API.md#dynachange-and-popup-handling).
-- **Assembly items cannot be entered via the Transaction API** when they should explode or spawn a production order — the *"add as assembly?"* prompt is auto-answered **No**, killing the explode. Use the [order-with-assembly](order-with-assembly.md) recipe (Interactive API) for those lines.
+- **Assembly items explode with no prompt to answer** (26.1.5950.0): a kit saves as a `B` parent plus `N` components, a production-order assembly as a `P` line plus components. You cannot choose *No* (a plain stock line) here — use the [order-with-assembly](order-with-assembly.md) recipe (Interactive API) for that.
 - **The same item on two lines collapses to one** with `Keys: []` — the items list folds rows on `oe_order_item_id`, last value wins, and the response still reports `Succeeded: 1`. Add `Keys: ["unit_quantity"]` (or another column that differs between the rows) when an order legitimately repeats an item — see [Keys — Row Identity and the Collapse Trap](../03-Transaction-API.md#keys-row-identity-and-the-collapse-trap).
 - **HTTP 200 ≠ success.** The created `order_no` comes back in the result rows; check `Summary.Succeeded` and `Results.Transactions[].Status == "Passed"`, never the HTTP status. Transactions in one POST pass/fail independently.
 
@@ -472,10 +478,10 @@ All verified live — details in [Order Service Gotchas](../03-Transaction-API.m
 Read the order back — a `Succeeded` response is not proof every value landed:
 
 ```http
-GET {base_url}/odataservice/odata/table/oe_hdr?$filter=order_no eq '1013938'
-GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq '1013938'
+GET {base_url}/odataservice/odata/table/oe_hdr?$filter=order_no eq '1001234'
+GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq '1001234'
 ```
 
-Confirm the header fields you sent (`taker`, `po_no`, dates, ship-to) and that **every** line row exists — a DynaChange auto-answer can drop a line while the transaction still reports `Succeeded` (see Gotchas).
+Confirm the header fields you sent (`taker`, `po_no`, dates, ship-to as `address_id`), that `projected_order = 'N'` (a `Y` means it saved as a quote), and that **every** line row exists — a DynaChange auto-answer can drop a line while the transaction still reports `Succeeded` (see Gotchas).
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier)

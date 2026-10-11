@@ -144,7 +144,7 @@ def main():
     print("-" * 50)
 
     # Use a known test UID - in real usage, you'd query for this
-    test_uid = 45557  # Replace with a valid UID from your system
+    test_uid = 100012  # Replace with a valid UID from your system
 
     try:
         print(f"  Fetching price page UID: {test_uid}")

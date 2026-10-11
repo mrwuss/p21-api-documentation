@@ -38,7 +38,7 @@ The Inventory REST API is significant because it provides:
 https://{hostname}/api/inventory/parts
 ```
 
-Example: `https://play.p21server.com/api/inventory/parts`
+Example: `https://play.example.com/api/inventory/parts`
 
 ---
 
@@ -89,7 +89,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -136,7 +136,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to look up
@@ -248,7 +248,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -304,7 +304,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to look up
@@ -650,7 +650,7 @@ Findings from a production run appending **138 items × 2 locations** (276 rows)
 1. **`LocationSuppliers` append works — and sets the location's primary supplier.** Appending an `inventory_supplier_x_loc` object alongside the appended `Locations` entry in the *same* PUT creates the supplier-x-loc row **and** sets `inv_loc.primary_supplier_id`:
 
    ```json
-   {"ItemId": "...", "LocationId": 10, "SupplierId": 64284,
+   {"ItemId": "...", "LocationId": 10, "SupplierId": 10050,
     "PrimarySupplier": "Y", "ObjectName": "inventory_supplier_x_loc"}
    ```
 
@@ -725,7 +725,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -811,7 +811,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to update
@@ -930,7 +930,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1019,7 +1019,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string NewItemId = "WIDGET-002";                  // must not already exist in inv_mast
@@ -1190,7 +1190,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1306,7 +1306,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SourceItemId = "WIDGET-001";               // item to copy
@@ -1538,7 +1538,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1616,7 +1616,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to probe -- ItemDesc is overwritten, then restored
@@ -1764,7 +1764,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1843,7 +1843,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to update
@@ -1962,7 +1962,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2074,7 +2074,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to append the new company/location to
@@ -2405,7 +2405,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2469,7 +2469,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";                        // required query param

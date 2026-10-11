@@ -10,7 +10,7 @@
 //     printed, "Y" for one that was. A mismatch is an empty HTTP 500 on every
 //     attempt. Read printed over OData first, and re-read it before each retry.
 //   - A first print ("N") marks the PO printed.
-//   - Status and Type are numeric 0 with Keys: [] — the report shape.
+//   - Status "New" (the same enum as /transaction), Type "Form", Keys: [].
 //   - Classify the ErrorType/ErrorMessage envelope before the status code;
 //     success is per document (StatusCode "Success" AND non-empty DocumentData).
 //
@@ -111,7 +111,7 @@ public static class ReprintPurchaseOrder
         Console.WriteLine($"Verify: {(saved > 0 && after == "Y" ? "OK" : "CHECK")} ({saved} document(s) saved)");
     }
 
-    /// <summary>The report payload: numeric Status/Type 0, Keys [].</summary>
+    /// <summary>The report payload: Status "New", Type "Form", Keys [].</summary>
     private static JObject BuildPayload(string companyId, string poNo, string reprintFlag) => new()
     {
         ["Name"] = "m_reprintpurchaseorders",
@@ -128,9 +128,9 @@ public static class ReprintPurchaseOrder
                     Edit("end_po_no", poNo),
                     Edit("reprint_flag", reprintFlag),
                 } } },
-                ["Type"] = 0,
+                ["Type"] = "Form",
             } },
-            ["Status"] = 0,
+            ["Status"] = "New",
         } },
         ["UseCodeValues"] = false,
     };

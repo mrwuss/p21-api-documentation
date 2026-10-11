@@ -129,12 +129,12 @@ while (true)
                 await UpdateOrderLines.RunAsync();
                 break;
 
-            case "15":
-                await UpdateSupplierContact.RunAsync();
-                break;
-
             case "14":
                 await ReassignSalesrep.RunAsync();
+                break;
+
+            case "15":
+                await UpdateSupplierContact.RunAsync();
                 break;
 
             case "16":

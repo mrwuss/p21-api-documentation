@@ -1,7 +1,7 @@
 {
   "ActivityTransNo": "",
   "ActivityId": "FOLLOW UP",
-  "ContactId": "17055",
+  "ContactId": "300",
   "EntryDate": "2026-09-12T00:00:00",
   "AssignedById": "apiuser",
   "AssignedToId": "apiuser",
@@ -16,7 +16,7 @@
   "FollowupCommentCd": 1441,
   "ActivityDesc": "",
   "CompanyId": "ACME",
-  "LinkId": 12066,
+  "LinkId": 100198,
   "LinkTypeCd": 1203,
   "ContactAddressName": "",
   "HardTouch": "",

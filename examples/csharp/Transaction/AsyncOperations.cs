@@ -123,7 +123,7 @@ public static class AsyncOperations
         Console.WriteLine("  {");
         Console.WriteLine("    \"Content\": { ... transaction payload ... },");
         Console.WriteLine("    \"Callback\": {");
-        Console.WriteLine("      \"Url\": \"https://your-server.com/webhook\",");
+        Console.WriteLine("      \"Url\": \"https://p21.example.com/webhook\",");
         Console.WriteLine("      \"Method\": \"POST\",");
         Console.WriteLine("      \"ContentType\": \"application/json\",");
         Console.WriteLine("      \"Headers\": [");

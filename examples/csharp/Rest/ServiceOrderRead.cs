@@ -22,9 +22,9 @@ public static class ServiceOrderRead
         using var _ = http;
         Console.WriteLine($"Server: {baseUrl}");
 
-        Console.Write("Order number (any oe_hdr.order_no) [999991]: ");
+        Console.Write("Order number (any oe_hdr.order_no) [1001235]: ");
         var orderNo = Console.ReadLine()?.Trim();
-        orderNo = string.IsNullOrEmpty(orderNo) ? "999991" : orderNo;
+        orderNo = string.IsNullOrEmpty(orderNo) ? "1001235" : orderNo;
 
         var response = await http.GetAsync($"{baseUrl}/api/service/serviceorders/{orderNo}");
         response.EnsureSuccessStatusCode();

@@ -37,14 +37,14 @@ public static class TaskCrud
         Console.WriteLine($"\nServer template (/new): AssignedById={task["AssignedById"]}  " +
                           $"LinkTypeCd={task["LinkTypeCd"]}");
 
-        Console.Write("\nContactId [17055]: ");
+        Console.Write("\nContactId [300]: ");
         var contactId = Console.ReadLine()?.Trim();
-        contactId = string.IsNullOrEmpty(contactId) ? "17055" : contactId;
+        contactId = string.IsNullOrEmpty(contactId) ? "300" : contactId;
 
-        Console.Write("Customer id -> LinkId [12066] (this is what \"Customer ID is " +
+        Console.Write("Customer id -> LinkId [100198] (this is what \"Customer ID is " +
                       "required\" actually means): ");
         var customerId = Console.ReadLine()?.Trim();
-        customerId = string.IsNullOrEmpty(customerId) ? "12066" : customerId;
+        customerId = string.IsNullOrEmpty(customerId) ? "100198" : customerId;
 
         task["ActivityId"] = "FOLLOW UP";
         task["ContactId"] = contactId;

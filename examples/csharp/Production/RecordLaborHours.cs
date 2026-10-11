@@ -112,6 +112,9 @@ public static class RecordLaborHours
         if (!ConfirmExecute())
             return;
 
+        var hoursBefore = await ReadLaborHoursAsync(client, 1000123);
+        Console.WriteLine($"\n  Labor hours on production order 1000123 before: {hoursBefore:F4}");
+
         try
         {
             // P21Client.Transaction.CreateAsync handles the POST and parses the response
@@ -158,12 +161,13 @@ public static class RecordLaborHours
 
                 Console.WriteLine("\n  SUCCESS: Labor hours recorded!");
 
-                // READ-BACK — the only proof of persistence is reading the
-                // entry back. Verify via POST /api/v2/transaction/get
-                // (ServiceName "TimeEntry") or an OData query against
-                // prod_order_line_comp_labor for this prod_order_number.
-                Console.WriteLine("\n  Verify: read the entry back via /transaction/get or OData");
-                Console.WriteLine("  (prod_order_line_comp_labor) before trusting the write.");
+                // READ-BACK — the only proof of persistence. Time accumulates,
+                // so compare the order's total labor hours before and after.
+                var hoursAfter = await ReadLaborHoursAsync(client, 1000123);
+                Console.WriteLine($"\n  Read-back: {hoursBefore:F4} -> {hoursAfter:F4} labor hours " +
+                                  $"(+{hoursAfter - hoursBefore:F4}, expected +{hoursWorked:F4})");
+                if (Math.Abs((double)(hoursAfter - hoursBefore) - hoursWorked) > 0.01)
+                    Console.WriteLine("  WARNING: the recorded hours do not match -- check the labor grid");
             }
             else
             {
@@ -194,6 +198,32 @@ public static class RecordLaborHours
         Console.WriteLine("\nNote: This example uses test data (ACME/300/1000123).");
         Console.WriteLine("Adjust company_id, technician_id (a contact ID), and");
         Console.WriteLine("prod_order_number for your environment.");
+    }
+
+    /// <summary>
+    /// Total labor hours recorded on a production order, read over OData.
+    /// Labor rows (prod_order_line_comp_labor) hang off the order's components
+    /// by prod_order_line_component_uid and carry no prod_order_number of their
+    /// own. POST /transaction/get on TimeEntry is technician-scoped and returns
+    /// no labor values, so it is not a usable read-back here.
+    /// </summary>
+    private static async Task<decimal> ReadLaborHoursAsync(P21Client client, int prodOrderNumber)
+    {
+        decimal total = 0;
+        var components = (JArray)(await client.OData.QueryAsync(
+            "prod_order_line_component",
+            select: "prod_order_line_component_uid",
+            filter: $"prod_order_number eq {prodOrderNumber}"))["value"]!;
+        foreach (var comp in components)
+        {
+            var labor = (JArray)(await client.OData.QueryAsync(
+                "prod_order_line_comp_labor",
+                select: "hours_worked",
+                filter: $"prod_order_line_component_uid eq {comp["prod_order_line_component_uid"]}"))["value"]!;
+            foreach (var row in labor)
+                total += (decimal?)row["hours_worked"] ?? 0;
+        }
+        return total;
     }
 
     /// <summary>

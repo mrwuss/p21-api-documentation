@@ -47,7 +47,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # --- Configuration (generic placeholders -- substitute your own) ------------
-JOB_NO = "31"               # unique per header; survives renewals
+JOB_NO = "1001"               # unique per header; survives renewals
 CONTRACT_NO = "JOB-1001"
 
 LINE_COLUMNS = ("line_no,inv_mast_uid,price,qty_maximum,"

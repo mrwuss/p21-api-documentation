@@ -178,6 +178,8 @@ HTTP 400
 
 > **Do not send `Status` as an integer.** The binder accepts any integer because that is how .NET binds enums — it does not range-check, so out-of-range values bind silently to an undefined member rather than erroring. Every integer we probed returned HTTP 200. **Send the string `"New"`**, which is the only value with defined behavior, and let a wrong value fail loudly at the binder instead of undefined-behaving inside the transaction.
 
+> **The rule holds on `/api/v2/process/pdfreport` too.** Report payloads bind to the same `TransactionStatus` enum, and the report services' own definition templates carry `"Status": "New"` and `"Type": "Form"`. Verified on play 26.1.5950.0, 2026-10-10, with `m_reprintpurchaseorders`: `"New"`, `"new"`, `0`, `1` and an omitted `Status` all returned the same PDF, `"Type": "Form"` and `"Type": 0` returned byte-identical documents, and `"Existing"` returned the same HTTP 400 shown above. Earlier versions of this repo sent integer `0` on report payloads; it worked because `0` binds to `New`, but it is the unchecked integer path. Every report payload here now sends `"New"`; the Python and C# PO reprint examples ([`reprint_purchase_order.py`](../examples/python/recipes/reprint_purchase_order.py), `ReprintPurchaseOrder.cs`) were re-run with it on the same build and date.
+
 ### DataElement Fields
 
 | Field | Description |
@@ -536,7 +538,7 @@ The `po_hdr_po_type` `ValidValues` in the definition carry **display names only,
                         "Name": "TABPAGE_1.order",
                         "Rows": [{
                             "Edits": [
-                                {"Name": "order_no", "Value": "1013938"}
+                                {"Name": "order_no", "Value": "1001234"}
                             ]
                         }]
                     }
@@ -691,7 +693,7 @@ Two placement rules:
 >
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) for mapping the placement failure mode and the disabled-tab unlock behavior.
 
-> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column `corp_address_id` on `Order`'s `LINE_NOTE.line_note`, and on `SalesPricePage`'s `USED BY.price_book_x_page` link — four unrelated surfaces, marking it as platform behavior. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
+> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column `corp_address_id`, on `Order`'s `LINE_NOTE.line_note`, on `ProductionOrder`'s header-note grid (`PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab`), and on `SalesPricePage`'s `USED BY.price_book_x_page` link. That is five surfaces across four services, which marks it as platform behavior. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
 
 ---
 
@@ -875,7 +877,7 @@ Use the callback endpoint to receive notification when complete:
         "Transactions": [...]
     },
     "Callback": {
-        "Url": "https://your-server.com/webhook",
+        "Url": "https://p21.example.com/webhook",
         "Method": "POST",
         "ContentType": "application/json",
         "Headers": [
@@ -1041,7 +1043,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1123,7 +1125,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "Order";                    // any name from GET /api/v2/services
@@ -1243,7 +1245,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1386,7 +1388,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";                    // customer the order is for
@@ -1570,11 +1572,12 @@ static string ReadField(string payload, string field)
 
 All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 
-- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A realistic header sets `customer_id`, `sales_loc_id`, `source_loc_id`, `order_date`, `requested_date`, `po_no`, `taker`, `ship_to_id`, and `contact_id`.
+- **Send `quote` = `OFF` as the first header edit.** On play 26.1.5950.0, 2026-10-10, an `Order` create without it saved a **quote** (`oe_hdr.projected_order = 'Y'`) for the password user, and a pick ticket for it was then refused. With `quote = OFF` the same payload saved a real order (`projected_order = 'N'`). This is the Transaction API side of [Set `quote` to `OFF` first](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode); read `projected_order` back after the save.
+- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A ship-to with no tax jurisdiction fails the same way even with `source_loc_id` set, once the order is real (`quote = OFF`) and a line is taxable; a quote saves without it. A realistic header sets `quote`, `customer_id`, `sales_loc_id`, `source_loc_id`, `order_date`, `requested_date`, `po_no`, `taker`, `ship_to_id`, and `contact_id`.
 - **`requested_date` must be after `order_date`.** The same date trips a date-cascade prompt, which the stateless API can't answer.
 - **`company_id` is a disabled column** on the Order window — don't send it.
 - **DynaChange prompts are auto-answered with the default** (usually "No"), which silently discards the affected line — e.g. *"order line does not have a PO Cost… proceed? [No]"*. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see [DynaChange and Popup Handling](#dynachange-and-popup-handling).
-- **Assembly items cannot be entered via the Transaction API** when they should explode or spawn a production order — the *"add as assembly?"* prompt is auto-answered **No**, killing the explode. Use the Interactive API for those lines: see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
+- **Assembly items explode through the Transaction API on 26.1.5950.0.** There is no prompt to answer: an assembly item on `TP_ITEMS.items` is saved the way the Interactive *"add as assembly?"* **Yes** answer saves it. On play 26.1.5950.0, 2026-10-10, a `quote = OFF` Order create with one kit item (`production_order_processing = N`) saved a `B` parent line plus `N` component lines, and one with a production-order assembly (`production_order_processing = Y`, `auto_create_prod_order = N`) saved an `assembly = 'P'` line (`disposition = 'P'`) plus its component lines. Earlier versions of this page said the prompt is auto-answered **No** and the explode is lost; that is not what this build does. What you cannot do here is choose: a plain stock line for an assembly item (the Interactive **No**, `cb_2`) needs the Interactive API — see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines). Whether an `auto_create_prod_order = Y` item also creates and links its production order on this path was not tested.
 - **RMAs are not `Order` records.** An order with `rma_flag = 'Y'` is refused outright: `General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.` Use the [`RMA` service](#rma-service-orders-the-order-service-refuses).
 - **The same item on two lines collapses to one** with `Keys: []` — `TP_ITEMS.items` folds rows on its declared key (`oe_order_item_id`), last value wins, `Succeeded: 1`, no warning. Add `Keys: ["unit_quantity"]` (or another differing column) when an order legitimately repeats an item — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap).
 - The created `order_no` comes back in the result rows; check `Summary.Succeeded`, not the HTTP status.
@@ -1738,7 +1741,7 @@ To add one, load the header by `job_no` + `contract_no` (header `Keys: []`, both
   "Transactions": [{ "Status": "New", "DataElements": [
     { "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
-        {"Name": "job_no",      "Value": "31"},
+        {"Name": "job_no",      "Value": "1001"},
         {"Name": "contract_no", "Value": "JOB-1001"}
       ], "RelativeDateEdits": [] }] },
     { "Name": "CUSTOMER_SHIP_TO.customer_ship_to", "Type": "List",
@@ -1914,7 +1917,7 @@ The `JOBPRICECOST` DataElement includes `commission_cost_value` and related comm
   "Transactions": [{ "Status": "New", "DataElements": [
     { "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
-        {"Name": "job_no",      "Value": "31"},
+        {"Name": "job_no",      "Value": "1001"},
         {"Name": "contract_no", "Value": "JOB-1001"}
       ], "RelativeDateEdits": [] }] },
     { "Name": "JOBPRICELINE.jobpriceline", "Type": "List", "Keys": ["line_no"],
@@ -2009,13 +2012,13 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 COMPANY_ID = "ACME"                       # FORM key fields go in Edits, not Keys
 CONTRACT_NO = "JOB-1001"
-JOB_NO = "31"                             # unique per header; survives renewals
+JOB_NO = "1001"                             # unique per header; survives renewals
 ITEM_ID = "WIDGET-001"                    # the line to update
 UOM = "EA"
 PRICE = "36.58"
@@ -2152,12 +2155,12 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";              // FORM key fields go in Edits, not Keys
 const string ContractNo = "JOB-1001";
-const string JobNo = "31";                    // unique per header; survives renewals
+const string JobNo = "1001";                    // unique per header; survives renewals
 const string ItemId = "WIDGET-001";           // the line to update
 const string Uom = "EA";
 const string Price = "36.58";
@@ -2394,7 +2397,7 @@ Contract bin quantities (`BINS.bins` -- `min_qty`, `max_qty`, `reorder_qty`, `ca
             {
                 "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
                 "Rows": [{"Edits": [
-                    {"Name": "job_no", "Value": "31"},
+                    {"Name": "job_no", "Value": "1001"},
                     {"Name": "customer_id", "Value": "100198"},
                     {"Name": "ship_to_id", "Value": "200"}
                 ]}]
@@ -2456,7 +2459,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2645,7 +2648,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -3038,7 +3041,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3196,7 +3199,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                    // must ALREADY exist in inventory
@@ -3570,7 +3573,7 @@ A `location_id` is **never** supplied by the caller — every way of trying land
 |---|---|
 | `Keys: ["id", "company_id"]`, `id` = a specific new number (e.g. `99999`) | **Refused**: `General Exception: Enter a valid ID or leave ID blank. DataElement: tp_1_dw_1, Column: id, Value: 99999` |
 | `Keys: ["id", "company_id"]`, `id` = `""` (blank) | **False success** — `Succeeded: 1`, the response even echoes back `id: "0"` — but nothing is created *or* updated. `location_id` **0** is a pre-existing reserved row on every tenant tested; the write silently no-ops against it (confirmed by re-reading both `location` and `address` before and after — neither changed) |
-| `Keys: []` (no key fields at all — `id` absent from the payload entirely, not just blank) | **Succeeds**, and P21 assigns a real, unused `location_id` (verified: `65329`), with `location_type` auto-set to `1330` |
+| `Keys: []` (no key fields at all — `id` absent from the payload entirely, not just blank) | **Succeeds**, and P21 assigns a real, unused `location_id` (verified on a test tenant), with `location_type` auto-set to `1330` |
 
 The working create, in full:
 
@@ -3808,7 +3811,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3928,7 +3931,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PickTicketNo = "123456";                  // must NOT be invoiced yet
@@ -4133,7 +4136,7 @@ The P21 client uses the same window logic, so it cannot delete these tickets eit
 
 ### PurchaseOrder Service — Creating a PO
 
-The buy-side counterpart to `Order`, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO **998302**, confirmed in `po_hdr`/`po_line`.
+The buy-side counterpart to `Order`, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO **500101**, confirmed in `po_hdr`/`po_line`.
 
 ```json
 {
@@ -4142,7 +4145,7 @@ The buy-side counterpart to `Order`, and just as clean: one stateless POST, no s
     { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
         {"Name": "location_id",    "Value": "40"},
-        {"Name": "vendor_id",      "Value": "22026"},
+        {"Name": "vendor_id",      "Value": "99001"},
         {"Name": "buyer_id",       "Value": "829"},
         {"Name": "order_date",     "Value": "08/20/2026"},
         {"Name": "required_date",  "Value": "08/25/2026"},
@@ -4176,12 +4179,12 @@ Field mappings, each confirmed by read-back:
 
 ### PurchaseOrderReceipt Service — Receiving a PO
 
-**The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **5706613** against PO 998302, with nothing but a header:
+**The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **7000100** against PO 500101, with nothing but a header:
 
 ```json
 { "Name": "TABPAGE_1.tp_1_dw_po", "Type": "Form", "Keys": [],
   "Rows": [{ "Edits": [
-    {"Name": "po_no",       "Value": "998302"},
+    {"Name": "po_no",       "Value": "500101"},
     {"Name": "receive_all", "Value": "Y"}
   ], "RelativeDateEdits": [] }] },
 { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
@@ -4200,7 +4203,7 @@ Field mappings, each confirmed by read-back:
 
 ### ConvertPOToVoucher Service — Vouching a Receipt
 
-Step three of **build → receive → vouch**, and another clean one-POST. Verified on 26.1 (August 2026) — voucher **1775027** against receipt 5706613, with the receipt line flipping to `vouch_complete='Y'`, `qty_vouched=2`.
+Step three of **build → receive → vouch**, and another clean one-POST. Verified on 26.1 (August 2026) — voucher **8000100** against receipt 7000100, with the receipt line flipping to `vouch_complete='Y'`, `qty_vouched=2`.
 
 - **Form `TABPAGE_1.tp_1_dw_1`** (keys `["voucher_no"]`, leave the value empty to create): `po_no`, `invoice_no`, `invoice_date`, `invoice_amount`, `vendor_id`.
 - **List `TABPAGE_17.tp_17_dw_17`** — keyed **`["receipt_number", "line_number", "po_no"]`**, which is exactly the `KeyFields` triple this service publishes (see [What the definition already tells you](#what-the-definition-already-tells-you)). Per row: `unit_qty_invoiced`, `unit_cost_display`.
@@ -4691,15 +4694,15 @@ The payload follows the standard TransactionSet format. Report-specific criteria
                     {"Name": "reprint_flag", "Value": "<po_hdr.printed: Y or N>"}
                 ]
             }],
-            "Type": 0
+            "Type": "Form"
         }],
-        "Status": 0
+        "Status": "New"
     }],
     "UseCodeValues": false
 }
 ```
 
-Constants that apply to every report payload: `Status` and `Type` are **numeric `0`** (not the `"New"` record-edit shape) and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
+Constants that apply to every report payload: `Status` is `"New"` — the [same rule as every Transaction API payload](#status-new-is-the-only-value-the-enum-accepts) — `Type` is `"Form"`, and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
@@ -4810,7 +4813,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -4894,9 +4897,9 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                         {"Name": "reprint_flag", "Value": reprint_flag},
                     ]
                 }],
-                "Type": 0,
+                "Type": "Form",
             }],
-            "Status": 0,
+            "Status": "New",
         }],
         "UseCodeValues": False,
     }
@@ -4933,7 +4936,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -4984,10 +4987,10 @@ var payload = new
                             }
                         }
                     },
-                    Type = 0
+                    Type = "Form"
                 }
             },
-            Status = 0
+            Status = "New"
         }
     },
     UseCodeValues = false
@@ -5105,11 +5108,11 @@ POST /api/v2/process/pdfreport
   "UseCodeValues": true,
   "Transactions": [
     {
-      "Status": 0,
+      "Status": "New",
       "DataElements": [
         {
           "Keys": [],
-          "Type": 0,
+          "Type": "Form",
           "Name": "TABPAGE_1.tp_1_dw_1",
           "Rows": [{ "Edits": [
             { "Name": "create_pick_ticket_type", "Value": "P" },
@@ -5127,14 +5130,14 @@ POST /api/v2/process/pdfreport
 Every one of these is required to make it fire:
 
 - Endpoint **`/api/v2/process/pdfreport`** (not `/api/v2/transaction` — see the wrong-endpoint trap above).
-- `Status` and `Type` numeric **`0`**, `Keys: []`.
+- `Status: "New"`, `Type: "Form"`, `Keys: []`. This example was verified with the integers `0`/`0`, which bind to the same enum members; the switch to the strings was verified on `m_reprintpurchaseorders` (see [the `pdfreport` note under Status](#status-new-is-the-only-value-the-enum-accepts)) and not re-run here, because each run creates a pick ticket.
 - `create_pick_ticket_type` = the **code** `"P"` (Production Order) with **`UseCodeValues: true`** — the label is rejected, and `UseCodeValues: false` returns HTTP 500.
 - `location_id` = the location whose inventory the components pick from. No date range needed.
 - **Prerequisite:** the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
 
-The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
+The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`, where `<nnn>` is a document counter, **not** the pick-ticket number). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other; find its number in `prod_pick_ticket_hdr` (filter on `prod_order_number`) — see [generate-pick-ticket-pdf § Verify](recipes/generate-pick-ticket-pdf.md#verify).
 
-For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
+For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status: "New"`, `Type: "Form"`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified end-to-end (report run → pick ticket row created → PDF returned → ticket confirmed and completed).
 
@@ -5211,7 +5214,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -5293,7 +5296,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SpUid = "12345";              // from the P21 Stored Procedure Executor UI
@@ -5582,19 +5585,20 @@ var response = await httpClient.PostAsync(
 // HTTP 200 does NOT mean the transaction succeeded
 response.EnsureSuccessStatusCode();
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 // Always check the Summary
-var succeeded = (int)result["Summary"]!["Succeeded"]!;
-var failed = (int)result["Summary"]!["Failed"]!;
+var summary = result.RootElement.GetProperty("Summary");
+var succeeded = summary.GetProperty("Succeeded").GetInt32();
+var failed = summary.GetProperty("Failed").GetInt32();
 
 if (failed > 0)
 {
     Console.WriteLine($"Transaction failed ({failed} failures)");
-    var messages = result["Messages"] as JArray;
-    if (messages != null)
+    if (result.RootElement.TryGetProperty("Messages", out var messages) &&
+        messages.ValueKind == JsonValueKind.Array)
     {
-        foreach (var msg in messages)
+        foreach (var msg in messages.EnumerateArray())
             Console.WriteLine($"  Error: {msg}");
     }
 }

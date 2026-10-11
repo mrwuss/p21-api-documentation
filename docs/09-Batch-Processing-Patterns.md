@@ -31,7 +31,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -263,7 +263,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";           // window opened once per batch
@@ -573,7 +573,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -777,7 +777,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";           // opened once for the batch
@@ -1064,7 +1064,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1283,7 +1283,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";
@@ -1572,7 +1572,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1725,7 +1725,7 @@ def read_field(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if dw.get("Name") == datawindow and field in columns and rows:
-            return rows[dw.get("ActiveRow", 0)][columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
     return None
 
 
@@ -1809,7 +1809,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";
@@ -1994,7 +1994,8 @@ static async Task<string?> ReadFieldAsync(
         }
         if (index < 0) continue;
 
-        int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+        // ActiveRow is 1-based
+        int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
         return rows[activeRow][index].ToString();
     }
     return null;
@@ -2111,7 +2112,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2271,7 +2272,7 @@ def read_field(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if dw.get("Name") == datawindow and field in columns and rows:
-            return rows[dw.get("ActiveRow", 0)][columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
     return None
 
 
@@ -2388,7 +2389,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";
@@ -2624,7 +2625,8 @@ static async Task<string?> ReadFieldAsync(
         }
         if (index < 0) continue;
 
-        int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+        // ActiveRow is 1-based
+        int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
         return rows[activeRow][index].ToString();
     }
     return null;
@@ -3331,7 +3333,7 @@ from dataclasses import dataclass, field
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3726,7 +3728,7 @@ async def main() -> None:
                 if dw.get("Name") != "form" or not dw.get("Data"):
                     continue
                 columns = dw["Columns"]
-                row = dw["Data"][dw.get("ActiveRow", 0)]
+                row = dw["Data"][max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based
                 for column in ("price_page_uid", "description", "expiration_date"):
                     if column in columns:
                         print(f"  {column} = {row[columns.index(column)]!r}")
@@ -3745,7 +3747,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const bool VerifySsl = false;                          // true once you trust the cert chain
@@ -3778,7 +3780,8 @@ try
                 !dw.TryGetProperty("Data", out var rows) || rows.GetArrayLength() == 0)
                 continue;
 
-            int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+            // ActiveRow is 1-based
+            int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
             var columnNames = columns.EnumerateArray()
                 .Select(c => c.GetString() ?? "").ToList();
 
@@ -4324,7 +4327,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -4539,7 +4542,7 @@ def read_field_anywhere(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if field in columns and rows:
-            return rows[dw.get("ActiveRow", 0)][columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
     return None
 
 
@@ -4806,7 +4809,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 
@@ -5247,7 +5250,8 @@ static async Task<string?> ReadFieldAnywhereAsync(
         }
         if (index < 0) continue;
 
-        int activeRow = dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 0;
+        // ActiveRow is 1-based
+        int activeRow = Math.Max((dw.TryGetProperty("ActiveRow", out var ar) ? ar.GetInt32() : 1) - 1, 0);
         return rows[activeRow][index].ToString();
     }
     return null;

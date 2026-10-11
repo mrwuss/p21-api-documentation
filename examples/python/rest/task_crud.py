@@ -20,7 +20,7 @@ Key rules (verified live, 26.1.5950.0):
 Usage:
     python examples/python/rest/task_crud.py                    # dry run
     python examples/python/rest/task_crud.py --execute \\
-        --contact-id 17055 --customer-id 12066
+        --contact-id 300 --customer-id 100198
 """
 
 import argparse
@@ -88,8 +88,8 @@ def main() -> None:
     )
     parser.add_argument("--execute", action="store_true",
                         help="Actually POST/PUT (default: dry run)")
-    parser.add_argument("--contact-id", default="17055", help="activity_trans.contact_id")
-    parser.add_argument("--customer-id", default="12066",
+    parser.add_argument("--contact-id", default="300", help="activity_trans.contact_id")
+    parser.add_argument("--customer-id", default="100198",
                         help="Customer id -> LinkId. This is what \"Customer ID is "
                              "required\" actually means.")
     parser.add_argument("--subject", default="ZZ API DOC TEST - safe to delete")

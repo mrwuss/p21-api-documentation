@@ -37,9 +37,9 @@ def main() -> None:
         description="Create a staged cycle count (docs/15 inventory/externalcounts)"
     )
     parser.add_argument("--execute", action="store_true", help="Actually POST (default: dry run)")
-    parser.add_argument("--item-id", default="GBY")
-    parser.add_argument("--location-id", type=int, default=40)
-    parser.add_argument("--bin", default="FGA040")
+    parser.add_argument("--item-id", default="WIDGET-001")
+    parser.add_argument("--location-id", type=int, default=10)
+    parser.add_argument("--bin", default="A01-01-01")
     parser.add_argument("--quantity", type=float, default=5.0)
     args = parser.parse_args()
 

@@ -3,11 +3,11 @@
   "UseCodeValues": true,
   "Transactions": [
     {
-      "Status": 0,
+      "Status": "New",
       "DataElements": [
         {
           "Keys": [],
-          "Type": 0,
+          "Type": "Form",
           "Name": "TABPAGE_1.tp_1_dw_1",
           "Rows": [
             {

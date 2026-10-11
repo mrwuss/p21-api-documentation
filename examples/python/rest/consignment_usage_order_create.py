@@ -40,9 +40,9 @@ def main() -> None:
         description="Create a consignment usage order (docs/15 sales/consignmentusageorders)"
     )
     parser.add_argument("--execute", action="store_true", help="Actually POST (default: dry run)")
-    parser.add_argument("--customer-id", type=int, default=12066)
+    parser.add_argument("--customer-id", type=int, default=100198)
     parser.add_argument("--company-id", default="ACME")
-    parser.add_argument("--location-id", type=int, default=40)
+    parser.add_argument("--location-id", type=int, default=10)
     parser.add_argument("--contract-id", default=None,
                         help="Not set by default -- the create fails with 'Contract ID is "
                              "required.' either way until you supply one from a real "

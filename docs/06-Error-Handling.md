@@ -685,7 +685,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -741,7 +741,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -827,7 +827,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -940,7 +940,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";
@@ -1100,7 +1100,7 @@ import time
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1164,7 +1164,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -1375,12 +1375,11 @@ void CheckTokenExpiry(string token)
         var payload = parts[1];
         payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-        var claims = JObject.Parse(json);
+        using var claims = System.Text.Json.JsonDocument.Parse(json);
 
-        var exp = claims["exp"]?.Value<long>();
-        if (exp.HasValue)
+        if (claims.RootElement.TryGetProperty("exp", out var exp))
         {
-            var expTime = DateTimeOffset.FromUnixTimeSeconds(exp.Value).LocalDateTime;
+            var expTime = DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64()).LocalDateTime;
             Console.WriteLine($"Token expires: {expTime}");
             if (expTime < DateTime.Now)
             {

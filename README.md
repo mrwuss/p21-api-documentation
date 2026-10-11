@@ -23,7 +23,7 @@ The repo is built for **progressive disclosure**: this README routes you, each a
 | [`examples/python/`](examples/python/README.md) | Runnable Python examples for every API + end-to-end recipe scripts (dry-run by default) | [python README](examples/python/README.md) |
 | [`examples/csharp/`](examples/csharp/README.md) | Equivalent C# console apps (`P21Examples.sln`) + shared client library | [csharp README](examples/csharp/README.md) |
 | [`examples/payloads/`](examples/payloads/README.md) | Standalone copy-ready request bodies — JSON and DataContract-correct XML, validator-verified | [payloads README](examples/payloads/README.md) |
-| [`postman/`](postman/README.md) | Postman collection covering all APIs (import-and-go) | [postman README](postman/README.md) |
+| [`postman/`](postman/README.md) | Postman collection for authentication, OData, Transaction, Interactive, Entity and the other REST families (not Inventory REST, UDT, `ui/full`, `/commands`, reports or Production) | [postman README](postman/README.md) |
 | [`scripts/`](scripts/README.md) | Repo tooling: payload validator, definition fetcher, HTML generator | [scripts README](scripts/README.md) |
 
 ## APIs Covered
@@ -75,7 +75,7 @@ All documentation pages include tabbed Python/C# code blocks; the [online docs](
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.p21server.com`) |
+| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.example.com`) |
 | `P21_USERNAME` | Yes* | P21 API username |
 | `P21_PASSWORD` | Yes* | P21 API password |
 | `P21_CONSUMER_KEY` | No | Consumer key GUID (alternative to username/password) |

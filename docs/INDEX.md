@@ -279,22 +279,22 @@ Every task assumes you already have a token and (for Transaction/Interactive) th
 
 ## Doc inventory (what each file is)
 
-| Doc | Scope | Size |
+| Doc | Scope | Size (line counts as of 2026-10-10) |
 |-----|-------|------|
-| [00-Authentication](00-Authentication.md) | Tokens (v2/consumer key), permissions, UI server URL | large |
-| [01-API-Selection-Guide](01-API-Selection-Guide.md) | Which API for which job | small — read whole |
-| [02-OData-API](02-OData-API.md) | Read-only queries | large |
-| [03-Transaction-API](03-Transaction-API.md) | Stateless create/update + service reference + PDF reports | very large — use anchors |
-| [04-Interactive-API](04-Interactive-API.md) | Stateful window driving, popups, traps | very large — use anchors |
-| [05-Entity-API](05-Entity-API.md) | REST CRUD on 4 entities | medium |
-| [06-Error-Handling](06-Error-Handling.md) | Errors across all APIs | large |
-| [07-Session-Pool-Troubleshooting](07-Session-Pool-Troubleshooting.md) | One deep-dive: session pool contamination | medium — single topic |
-| [08-SalesPricePage-Codes](08-SalesPricePage-Codes.md) | SalesPricePage field codes/order | medium — single service |
-| [09-Batch-Processing-Patterns](09-Batch-Processing-Patterns.md) | Interactive bulk patterns + async client | very large |
-| [10-Changelog](10-Changelog.md) | Doc change history | small |
-| [11-Inventory-REST-API](11-Inventory-REST-API.md) | `/api/inventory/parts` read/append/update | large |
-| [12-Production-Labor-API](12-Production-Labor-API.md) | Production services + end-to-end lifecycle | large |
-| [13-UDT-Service-API](13-UDT-Service-API.md) | User-defined table CRUD | large |
-| [14-Breaking-Changes](14-Breaking-Changes.md) | P21 version breaking-change registry (check before upgrading) | small — read whole |
-| [15-Other-REST-Families](15-Other-REST-Families.md) | Sixteen more REST families: UDF metadata, GL, CRM tasks/opportunities/consignment orders, PO headers, inventory (adjustments/movement/counts/scan/serial info), file storage, system info, customer form templates, service orders, exchange rates | large |
+| [00-Authentication](00-Authentication.md) | Tokens (v2/consumer key), permissions, UI server URL | large (~1,500 lines) |
+| [01-API-Selection-Guide](01-API-Selection-Guide.md) | Which API for which job | small (~400 lines) — read whole |
+| [02-OData-API](02-OData-API.md) | Read-only queries | large (~1,900 lines) |
+| [03-Transaction-API](03-Transaction-API.md) | Stateless create/update + service reference + PDF reports | very large (~5,700 lines) — use anchors |
+| [04-Interactive-API](04-Interactive-API.md) | Stateful window driving, popups, traps | very large (~4,300 lines) — use anchors |
+| [05-Entity-API](05-Entity-API.md) | REST CRUD on 4 entities | very large (~4,700 lines) — use anchors |
+| [06-Error-Handling](06-Error-Handling.md) | Errors across all APIs | large (~1,400 lines) |
+| [07-Session-Pool-Troubleshooting](07-Session-Pool-Troubleshooting.md) | One deep-dive: session pool contamination | small (~500 lines) — single topic, read whole |
+| [08-SalesPricePage-Codes](08-SalesPricePage-Codes.md) | SalesPricePage field codes/order | very large (~2,800 lines) — single service, use anchors |
+| [09-Batch-Processing-Patterns](09-Batch-Processing-Patterns.md) | Interactive bulk patterns + async client | very large (~5,400 lines) — use anchors |
+| [10-Changelog](10-Changelog.md) | Doc change history | medium (~800 lines) — newest first |
+| [11-Inventory-REST-API](11-Inventory-REST-API.md) | `/api/inventory/parts` read/append/update | very large (~2,700 lines) — use anchors |
+| [12-Production-Labor-API](12-Production-Labor-API.md) | Production services + end-to-end lifecycle | large (~1,100 lines) |
+| [13-UDT-Service-API](13-UDT-Service-API.md) | User-defined table CRUD | large (~1,800 lines) |
+| [14-Breaking-Changes](14-Breaking-Changes.md) | P21 version breaking-change registry (check before upgrading) | small (~500 lines) — read whole |
+| [15-Other-REST-Families](15-Other-REST-Families.md) | Sixteen more REST families: UDF metadata, GL, CRM tasks/opportunities/consignment orders, PO headers, inventory (adjustments/movement/counts/scan/serial info), file storage, system info, customer form templates, service orders, exchange rates | large (~1,100 lines) |
 | [`definitions/`](../definitions/README.md) | Full-field service definition JSONs (every DataElement, field, key, label + payload template) | load one file per service |

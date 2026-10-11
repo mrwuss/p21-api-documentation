@@ -31,7 +31,7 @@ warnings.filterwarnings("ignore")
 CONTRACT = {
     "company_id": "ACME",
     "contract_no": "JOB-1001",
-    "job_no": "31",            # unique across renewals -- include it
+    "job_no": "1001",            # unique across renewals -- include it
     "end_date": "2030-01-01",  # optional for updates; omit on an expired contract
 }
 

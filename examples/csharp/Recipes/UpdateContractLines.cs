@@ -23,7 +23,7 @@ public static class UpdateContractLines
 {
     private const string CompanyId = "ACME";
     private const string ContractNo = "JOB-1001";
-    private const string JobNo = "31";           // unique across renewals — always include it
+    private const string JobNo = "1001";           // unique across renewals — always include it
     private const string EndDate = "2030-01-01"; // optional for updates; omit on an expired contract
 
     public static async Task RunAsync()

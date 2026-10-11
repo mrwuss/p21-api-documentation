@@ -33,13 +33,13 @@ public static class InventoryWmsAdjustment
         using var _ = http;
         Console.WriteLine($"Server: {baseUrl}");
 
-        Console.Write("Item id [GBY]: ");
+        Console.Write("Item id [WIDGET-001]: ");
         var itemId = Console.ReadLine()?.Trim();
-        itemId = string.IsNullOrEmpty(itemId) ? "GBY" : itemId;
+        itemId = string.IsNullOrEmpty(itemId) ? "WIDGET-001" : itemId;
 
-        Console.Write("Location id [40]: ");
+        Console.Write("Location id [10]: ");
         var locationId = Console.ReadLine()?.Trim();
-        locationId = string.IsNullOrEmpty(locationId) ? "40" : locationId;
+        locationId = string.IsNullOrEmpty(locationId) ? "10" : locationId;
 
         Console.Write("Signed quantity delta [1]: ");
         var qtyStr = Console.ReadLine()?.Trim();
