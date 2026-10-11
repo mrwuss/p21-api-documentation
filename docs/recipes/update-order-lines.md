@@ -37,7 +37,7 @@ POST {ui_server}/api/v2/transaction
                 "Keys": ["order_no"],
                 "Rows": [{
                     "Edits": [
-                        {"Name": "order_no", "Value": "1013938"}
+                        {"Name": "order_no", "Value": "1001234"}
                     ],
                     "RelativeDateEdits": []
                 }]
@@ -83,7 +83,7 @@ POST {ui_server}/api/v2/transaction/get
     "ServiceName": "Order",
     "TransactionStates": [{
         "DataElementName": "TABPAGE_1.order",
-        "Keys": [{"Name": "order_no", "Value": "1013938"}]
+        "Keys": [{"Name": "order_no", "Value": "1001234"}]
     }]
 }
 ```
@@ -100,7 +100,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -249,7 +249,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string OrderNo = "1001234";
@@ -469,4 +469,4 @@ All verified live on 26.1 — details in [Keys — Row Identity and the Collapse
 Read the order back — a `Succeeded` response is not proof:
 
 - `POST /api/v2/transaction/get` (as in the example) and compare every line: the edited handle carries the new quantity, the new handle exists, and **no unexpected extra lines appeared** (the signature of a key problem).
-- Or via OData: `GET /odataservice/odata/view/p21_view_oe_line?$filter=order_no eq '1013938'`.
+- Or via OData: `GET /odataservice/odata/view/p21_view_oe_line?$filter=order_no eq '1001234'`.

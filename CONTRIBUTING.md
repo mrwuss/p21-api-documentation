@@ -36,9 +36,20 @@ Thank you for your interest in improving P21 API documentation! This project aim
 ### Documentation Standards
 - **Facts only** - No guesses about undocumented behavior; disputed or community-reported behavior gets live-verified before it's documented
 - **Verified examples** - All code should run without errors
-- **Real payloads** - Include actual API request/response examples (generalized placeholder data only — `ACME`, `WIDGET-001`, `play.p21server.com`; never real company/customer identifiers)
+- **Real payloads** - Include actual API request/response examples (generalized placeholder data only — `ACME`, `WIDGET-001`, `play.example.com`; never real company/customer identifiers)
 - **Note limitations** - Document known issues and workarounds
 - **Keep the routing layer in sync** - new task-worthy sections get a row in [docs/INDEX.md](docs/INDEX.md); renaming a heading must update its index anchors
+
+### Placeholders and Sanitization
+
+This repository is public. Everything in docs, examples, payloads and the Postman collection uses placeholders, never values copied from a tenant, **including test and play tenants**.
+
+- **Domains:** `example.com` only — `https://play.example.com` for a base URL, `p21.example.com` for anything else. Never a registrable look-alike.
+- **One naming convention:** `ACME` for company IDs and company or customer names (`ACME Supply Company`, `ACME Manufacturing`), `WIDGET-001`, `WIDGET-002` for item IDs, `A01-01-01` for bins, location `10`. Do not invent other company names, and never use a real company's name.
+- **No tenant record numbers.** Order, PO, receipt, voucher, adjustment, task, contract, customer, supplier, vendor and contact numbers, `*_uid` values, configuration IDs, GL account numbers, journal descriptions and amounts all become placeholders (customer `100198`, order `1001234`, PO `500100`, production order `1000123`, account `ACCT-1000`). This applies to evidence too: write "receipt `7000100` against PO `500101`" with placeholder numbers, not the numbers you saw, and keep the technical meaning.
+- **Code values are not tenant data.** System code values such as `row_status_flag` `704` or `LinkTypeCd` `1203` are the same on every tenant and stay as they are.
+- **Runnable examples take real values as arguments.** Put record IDs on the command line (Python) or behind a prompt (C#) with a placeholder default, so nothing tenant-specific lives in the source.
+- Before you commit, search your diff for five-digit-or-longer numbers and for proper nouns, and replace anything that came from a tenant.
 
 ### Provenance and Attribution
 

@@ -26,7 +26,7 @@ One POST, batchable: repeat the `JOBPRICELINE` + `BINS.bins` pair per bin inside
                 // Load the contract header. job_no is unique across renewals.
                 "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
                 "Rows": [{"Edits": [
-                    {"Name": "job_no",      "Value": "31"},
+                    {"Name": "job_no",      "Value": "1001"},
                     {"Name": "customer_id", "Value": "100198"},
                     {"Name": "ship_to_id",  "Value": "200"}
                 ]}]
@@ -68,12 +68,12 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 CONTRACT_NO = "JOB-1001"
-JOB_NO = "31"                             # unique across renewals
+JOB_NO = "1001"                             # unique across renewals
 CUSTOMER_ID = "100198"
 SHIP_TO_ID = "200"
 # Per bin: the line's item_id, the bin id, and the new quantities.
@@ -201,11 +201,11 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ContractNo = "JOB-1001";
-const string JobNo = "31";              // unique across renewals
+const string JobNo = "1001";              // unique across renewals
 const string CustomerId = "100198";
 const string ShipToId = "200";
 // Per bin: the line's item_id, the bin id, and the new quantities.

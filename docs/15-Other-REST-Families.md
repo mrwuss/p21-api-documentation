@@ -53,8 +53,8 @@ Same middleware, same contract. Everything in this section was verified on all f
 Identical to every other P21 REST call: a bearer token from [`/api/security/token/v2`](00-Authentication.md), and **`Accept: application/json`** or you get DataContract XML.
 
 ```http
-GET /api/sales/tasks/16922 HTTP/1.1
-Host: play.p21server.com
+GET /api/sales/tasks/1001 HTTP/1.1
+Host: play.example.com
 Authorization: Bearer {token}
 Accept: application/json
 ```
@@ -108,7 +108,7 @@ This is not a parameter you are missing. Verified against `purchasing/purchaseor
 
 ### `UserDefinedFields` is present and always empty
 
-Every object on these families carries a `UserDefinedFields` key, and it is `{}` on every read — **including on records that genuinely have user-defined data**. Purchase order 584441 on the test tenant has a `po_hdr_ud` row with `received_flag: "Y"`; `GET /api/purchasing/purchaseorders/584441` returns `"UserDefinedFields": {}`.
+Every object on these families carries a `UserDefinedFields` key, and it is `{}` on every read — **including on records that genuinely have user-defined data**. Purchase order 500104 on the test tenant has a `po_hdr_ud` row with `received_flag: "Y"`; `GET /api/purchasing/purchaseorders/500104` returns `"UserDefinedFields": {}`.
 
 Treat the key as a contract placeholder, not as evidence. To read UDF *values*, query the `*_ud` table over OData; to find out which UDFs exist at all, use [`extensibility/userdefinedfields`](#extensibilityuserdefinedfields) below.
 
@@ -196,7 +196,7 @@ Filtering that way gives **96 real UDFs of the 152 rows** on the test tenant —
 """List every user-defined field in P21, grouped by the table it extends."""
 import httpx
 
-BASE_URL = "https://play.p21server.com"
+BASE_URL = "https://play.example.com"
 TOKEN = "..."  # see docs/00-Authentication.md
 
 r = httpx.get(
@@ -223,7 +223,7 @@ for table in r.json()["list"]:
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-const string BaseUrl = "https://play.p21server.com";
+const string BaseUrl = "https://play.example.com";
 const string Token = "...";  // see docs/00-Authentication.md
 
 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
@@ -274,11 +274,11 @@ foreach (var table in doc.RootElement.GetProperty("list").EnumerateArray())
 ```jsonc
 // GET /api/accounting/gl/3
 [
-  {"CompanyNo": "ACME", "AccountNumber": "11120010", "Period": 4, "YearForPeriod": 2011,
-   "JournalId": "IA", "Amount": -44631.09, "Source": "1000002", "Description": "GO LIVE",
+  {"CompanyNo": "ACME", "AccountNumber": "ACCT-1000", "Period": 4, "YearForPeriod": 2011,
+   "JournalId": "IA", "Amount": -125.00, "Source": "1000100", "Description": "ACME ADJUSTMENT",
    "TransactionDate": "2011-01-27T01:11:32.703", "TransactionNumber": 3,
    "Approved": true, "SequenceNumber": 1, "GlUid": 4, "RecordTypeCd": 1367, ...},
-  {"AccountNumber": "11130010", "Amount": 44631.09, "SequenceNumber": 2, ...}
+  {"AccountNumber": "ACCT-2000", "Amount": 125.00, "SequenceNumber": 2, ...}
 ]
 ```
 
@@ -288,11 +288,11 @@ The two lines sum to **0.00** — you get a balanced entry from one call, which 
 
 ### `Source` links the entry back to the document that created it
 
-`JournalId` names the subledger and `Source` carries that subledger's own key. In the example above, `JournalId: "IA"` and `Source: "1000002"` point at inventory adjustment 1000002 — the same record [`inventory/inventoryadjustments`](#inventoryinventoryadjustments) serves:
+`JournalId` names the subledger and `Source` carries that subledger's own key. In the example above, `JournalId: "IA"` and `Source: "1000100"` point at inventory adjustment 1000100 — the same record [`inventory/inventoryadjustments`](#inventoryinventoryadjustments) serves:
 
 ```http
-GET /api/inventory/inventoryadjustments/1000002
-  -> {"AdjustmentNo": 1000002, "Reason": "GO LIVE", "LocationId": 18, ...}
+GET /api/inventory/inventoryadjustments/1000100
+  -> {"AdjustmentNo": 1000100, "Reason": "ACME ADJUSTMENT", "LocationId": 10, ...}
 ```
 
 That pairing is the practical use of this family: find GL activity over OData, then pull the full entry and walk `Source` back to the originating document.
@@ -304,10 +304,10 @@ That pairing is the practical use of this family: find GL activity over OData, t
 ```jsonc
 // POST /api/accounting/gl/
 [
-  {"CompanyNo": "ACME", "AccountNumber": "11120010", "Period": 12, "YearForPeriod": 2026,
+  {"CompanyNo": "ACME", "AccountNumber": "ACCT-1000", "Period": 12, "YearForPeriod": 2026,
    "JournalId": "AC", "Amount": 0.01, "ForeignAmount": 0.01,
    "Description": "...", "Source": "...", "TransactionDate": "2026-09-12T00:00:00"},
-  {"CompanyNo": "ACME", "AccountNumber": "11130010", "Period": 12, "YearForPeriod": 2026,
+  {"CompanyNo": "ACME", "AccountNumber": "ACCT-2000", "Period": 12, "YearForPeriod": 2026,
    "JournalId": "AC", "Amount": -0.01, "ForeignAmount": -0.01,
    "Description": "...", "Source": "...", "TransactionDate": "2026-09-12T00:00:00"}
 ]
@@ -381,7 +381,7 @@ HTTP 500
 - The message names a field that does not exist in the contract you were sent. Map "Customer ID" to **`LinkId`**.
 - It says **`Update` failed** on what was a create — the middleware routes both through the same CRUD verb, so the word "Update" in an error is not evidence you hit the wrong route.
 
-`ContactAddressName` is server-derived: supply `LinkId: 12066` and the read-back comes back with `"ContactAddressName": "ABC Supply Company"`.
+`ContactAddressName` is server-derived: supply `LinkId: 100198` and the read-back comes back with `"ContactAddressName": "ACME Supply Company"`.
 
 ### Verified round trip
 
@@ -389,10 +389,10 @@ HTTP 500
 """Create, read and update a P21 CRM task. Verified on 26.1.5950.0."""
 import httpx
 
-BASE_URL = "https://play.p21server.com"
+BASE_URL = "https://play.example.com"
 TOKEN = "..."               # see docs/00-Authentication.md
-CONTACT_ID = "17055"
-CUSTOMER_ID = 12066         # goes in LinkId -- "Customer ID is required" means this
+CONTACT_ID = "300"
+CUSTOMER_ID = 100198         # goes in LinkId -- "Customer ID is required" means this
 
 headers = {
     "Authorization": f"Bearer {TOKEN}",
@@ -437,10 +437,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 
-const string BaseUrl = "https://play.p21server.com";
+const string BaseUrl = "https://play.example.com";
 const string Token = "...";          // see docs/00-Authentication.md
-const string ContactId = "17055";
-const int CustomerId = 12066;        // goes in LinkId -- "Customer ID is required" means this
+const string ContactId = "300";
+const int CustomerId = 100198;        // goes in LinkId -- "Customer ID is required" means this
 
 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
@@ -496,14 +496,14 @@ The PUT returns the updated object, and a follow-up GET confirmed both changed f
 ### The keyed read
 
 ```jsonc
-// GET /api/purchasing/purchaseorders/998310
+// GET /api/purchasing/purchaseorders/500100
 {"POLines": null, "POSales": null, "POHdrNotes": null, "POLineNotes": null,
  "DirectShipTo": {"Name": "", "Address1": "", "City": "", "State": "", "Country": "", "Zip": ""},
- "PoNo": 998310, "CompanyNo": "ACME", "LocationId": 20,
- "VendorId": 25753, "SupplierId": 25753, "DivisionId": 25753,
+ "PoNo": 500100, "CompanyNo": "ACME", "LocationId": 10,
+ "VendorId": 10050, "SupplierId": 10050, "DivisionId": 10050,
  "BuyerId": "812", "PoType": "X", "OrderDate": "2026-08-27T10:17:20.887",
  "DateDue": "2026-08-27T00:00:00", "Approved": "Y", "Terms": "1", "CarrierId": "100",
- "Printed": "N", "Delete": "N", "PoHdrUid": 468174, "Complete": "N", "CurrencyId": 1,
+ "Printed": "N", "Delete": "N", "PoHdrUid": 100003, "Complete": "N", "CurrencyId": 1,
  "UserDefinedFields": {}, ...}
 ```
 
@@ -549,7 +549,7 @@ A `GET` on the newly-created PO immediately afterward still returned `POLines: n
  "StartDate": "...", "CompletedDate": null, "Messages": null}
 ```
 
-Poll `GET .../async?requestId={RequestId}` until it completes. Observed values: **`Status: 3`** while running, **`Status: 2`** once complete — at which point `Messages` carries the new PO number as a plain string (`"998313"`), not a structured object, and `CompletedDate` is populated. The created PO reads back normally through the ordinary keyed GET. `async/callback` (a webhook-style variant taking a callback URL) was not exercised — it needs a reachable endpoint to receive the callback, which a documentation run against a shared test tenant cannot safely stand up.
+Poll `GET .../async?requestId={RequestId}` until it completes. Observed values: **`Status: 3`** while running, **`Status: 2`** once complete — at which point `Messages` carries the new PO number as a plain string (`"500103"`), not a structured object, and `CompletedDate` is populated. The created PO reads back normally through the ordinary keyed GET. `async/callback` (a webhook-style variant taking a callback URL) was not exercised — it needs a reachable endpoint to receive the callback, which a documentation run against a shared test tenant cannot safely stand up.
 
 ### Which PO surface should you use?
 
@@ -582,9 +582,9 @@ Prefer the Transaction API when the price needs to be exact. This family is now 
 ### The keyed read
 
 ```jsonc
-// GET /api/inventory/inventoryadjustments/1000002
-{"Lines": null, "AdjustmentNo": 1000002, "CompanyId": "ACME", "LocationId": 18,
- "Reason": "GO LIVE", "Approved": true, "Delete": false, "Description": "",
+// GET /api/inventory/inventoryadjustments/1000100
+{"Lines": null, "AdjustmentNo": 1000100, "CompanyId": "ACME", "LocationId": 10,
+ "Reason": "ACME ADJUSTMENT", "Approved": true, "Delete": false, "Description": "",
  "UserDefinedFields": {}, "ObjectName": "inv_adj_hdr"}
 ```
 
@@ -624,13 +624,13 @@ Two preconditions are not documented anywhere in `/help` and both fail with a cl
 With both satisfied, the call succeeds and **`unitQuantity` is a signed delta**, matching the Transaction API `InventoryAdjustment` service's own convention — confirmed by posting `unitQuantity: "1"` twice against a starting on-hand of 0 and watching it reach 2, not stay at 1:
 
 ```jsonc
-// POST .../createWmsAdjustment?locationId=40&reason=ADJUST&approved=Y&description=...
-//      &itemId=GBY&unitQuantity=1&unitOfMeasure=EA&binCd=FGA040&lotCd=&serialNumber=
+// POST .../createWmsAdjustment?locationId=10&reason=ADJUST&approved=Y&description=...
+//      &itemId=WIDGET-001&unitQuantity=1&unitOfMeasure=EA&binCd=A01-01-01&lotCd=&serialNumber=
 HTTP 200
-{"Lines": {"list": [{"Bins": {"list": [{"BinCd": "FGA040", "UnitQuantity": 1.0, ...}]},
-                     "AdjustmentNo": 1309659, "ItemId": "GBY", "UnitQuantity": 1.0,
-                     "Cost": 42.9938015, "ObjectName": "inv_adj_line"}]},
- "AdjustmentNo": 1309659, "CompanyId": "ACME", "LocationId": 40, "Reason": "ADJUST",
+{"Lines": {"list": [{"Bins": {"list": [{"BinCd": "A01-01-01", "UnitQuantity": 1.0, ...}]},
+                     "AdjustmentNo": 1000101, "ItemId": "WIDGET-001", "UnitQuantity": 1.0,
+                     "Cost": 12.5000000, "ObjectName": "inv_adj_line"}]},
+ "AdjustmentNo": 1000101, "CompanyId": "ACME", "LocationId": 10, "Reason": "ADJUST",
  "Approved": true, ...}
 ```
 
@@ -748,7 +748,7 @@ Middleware self-description: build number, configuration id, and (via child rout
   "Id": "ERP_SYSTEM", "Type": "Prophet 21", "Version": "0026.0001.5950.0000",
   "Properties": {"list": [
     {"Name": "ads_login_domain", "Value": "example.com"},
-    {"Name": "configuration_id", "Value": "3694"},
+    {"Name": "configuration_id", "Value": "1234"},
     {"Name": "database_schema_version", "Value": "0026.0001.5950.0000"}
   ]}
 }]}
@@ -796,7 +796,7 @@ POST /api/inventory/inventorymovement/moveinventory
 | A real, unlocked, item-associated bin | **`200`**, moves the stock |
 
 ```jsonc
-// A working move, verified: GBY at location 40, 1 unit, FGA040 -> XDOCK
+// A working move, verified: WIDGET-001 at location 10, 1 unit, A01-01-01 -> A01-01-02
 HTTP 200
 {"TransactionDetail": {"QuantityMoved": "1", "QuantityMovedUOM": "EA"}, "ResponseMessage": "success"}
 ```
@@ -824,16 +824,16 @@ The header needs a `Lines.list`, and each line needs a `Bins.list` — bin detai
 
 ```jsonc
 // This fails -- ItemId given only on the line:
-{"LocationId": 40, "CountDate": "2026-09-12T00:00:00",
- "Lines": {"list": [{"ItemId": "GBY", "UnitQuantity": 5.0, "UnitOfMeasure": "EA",
-                     "Bins": {"list": [{"BinCd": "FGA040", "UnitQuantity": 5.0, "UnitOfMeasure": "EA"}]}}]}}
+{"LocationId": 10, "CountDate": "2026-09-12T00:00:00",
+ "Lines": {"list": [{"ItemId": "WIDGET-001", "UnitQuantity": 5.0, "UnitOfMeasure": "EA",
+                     "Bins": {"list": [{"BinCd": "A01-01-01", "UnitQuantity": 5.0, "UnitOfMeasure": "EA"}]}}]}}
 // HTTP 500, <ImportReturn>: "Bin Detail Record Required for Import Set, but is missing"
 //                            "Bin Detail Record must be part of Import Set, but is unmatched"
 
 // This succeeds -- ItemId on BOTH the line and the bin:
-{"LocationId": 40, "CountDate": "2026-09-12T00:00:00",
- "Lines": {"list": [{"ItemId": "GBY", "UnitQuantity": 5.0, "UnitOfMeasure": "EA",
-                     "Bins": {"list": [{"ItemId": "GBY", "BinCd": "FGA040",
+{"LocationId": 10, "CountDate": "2026-09-12T00:00:00",
+ "Lines": {"list": [{"ItemId": "WIDGET-001", "UnitQuantity": 5.0, "UnitOfMeasure": "EA",
+                     "Bins": {"list": [{"ItemId": "WIDGET-001", "BinCd": "A01-01-01",
                                        "UnitQuantity": 5.0, "UnitOfMeasure": "EA"}]}}]}}
 // HTTP 200
 ```
@@ -858,9 +858,9 @@ A single, cross-entity part lookup — one call answers "what item does this sca
 All four scope parameters are optional in practice — sending them empty still resolves a plain item-id search, and the trailing slash before the query string matters (the bare form without it 307-redirects):
 
 ```jsonc
-// GET /api/inventory/partscan/?partSearch=GBY&companyId=ACME&locationId=&customerId=&supplierId=
+// GET /api/inventory/partscan/?partSearch=WIDGET-001&companyId=ACME&locationId=&customerId=&supplierId=
 HTTP 200
-[{"ItemId": "GBY", "Source": "Item ID", "InvMastUid": "35923"}]
+[{"ItemId": "WIDGET-001", "Source": "Item ID", "InvMastUid": "100001"}]
 ```
 
 `Source` names *how* the term matched (`"Item ID"` here) — worth reading when `partSearch` is a barcode, customer part number, or supplier part number rather than a literal `item_id`, since the field tells you which of those it resolved through. Cross-search behavior across those other identifier types was not separately exercised.
@@ -896,9 +896,9 @@ HTTP 500
 
 ```jsonc
 // PUT /api/accounting/customerformtemplates/
-{"CustomerFormTemplateUid": 1, "CustomerId": 12066, "CompanyId": "ACME", "InvoiceFilename": "ZZTEST2.rpt"}
+{"CustomerFormTemplateUid": 1, "CustomerId": 100198, "CompanyId": "ACME", "InvoiceFilename": "ACME_INVOICE2.rpt"}
 HTTP 200
-{"CustomerFormTemplateUid": 1, "CustomerId": 12066, "CompanyId": "ACME", "InvoiceFilename": "ZZTEST2.rpt", ...}
+{"CustomerFormTemplateUid": 1, "CustomerId": 100198, "CompanyId": "ACME", "InvoiceFilename": "ACME_INVOICE2.rpt", ...}
 ```
 
 **Read the record first (or track the uid your own create returned) before calling `PUT` a second time for the same customer.** A null-uid `PUT` against a customer that already has a row does not update it — it fails.
@@ -922,14 +922,14 @@ There is **no create route** in the contract — this family only reads and upda
 ### Verified read: an ordinary order number resolves
 
 ```jsonc
-// GET /api/service/serviceorders/999991  -- an ordinary sales order, not
+// GET /api/service/serviceorders/1001235  -- an ordinary sales order, not
 // specially flagged as a "service" order in any way this documentation
 // controlled for
 HTTP 200
-{"Lines": null, "Salesreps": null, "Notes": null, "OrderNo": "999991",
- "CustomerId": 14278, "CompanyId": "ACME", "LocationId": 20,
- "PoNo": "Cylinder / Filter / Regulator", "ContactId": "10501",
- "Ship2Name": "ABC SUPPLY COMPANY", ...}
+{"Lines": null, "Salesreps": null, "Notes": null, "OrderNo": "1001235",
+ "CustomerId": 100201, "CompanyId": "ACME", "LocationId": 10,
+ "PoNo": "PO-TEST-001", "ContactId": "301",
+ "Ship2Name": "ACME SUPPLY COMPANY", ...}
 ```
 
 The same order also answers on the ordinary [`sales/tasks`](#salestasks) and Transaction API `Order` surfaces — this family is a differently-shaped **view** onto the same header, not a separate class of record with its own storage.
@@ -941,7 +941,7 @@ The same order also answers on the ordinary [`sales/tasks`](#salestasks) and Tra
 ```jsonc
 HTTP 500
 <ImportReturn type="UPDATE">
-  <ImportMessage severity="error">...Import Set No (A): 1: Unable to find Order Header using Order No (B): = 999991</ImportMessage>
+  <ImportMessage severity="error">...Import Set No (A): 1: Unable to find Order Header using Order No (B): = 1001235</ImportMessage>
   <ImportMessage severity="info">(Return value: -8, Import is ok but some records failed)</ImportMessage>
 </ImportReturn>
 ```
@@ -1054,18 +1054,18 @@ The [`serial_number_extd_info` OData table](02-OData-API.md) itself is empty on 
 
 ### A missing field corrupts the error message, not just the request
 
-The first attempt sent `InvMastUid` (the natural-looking key) and a real, currently-existing serial number (`serial_number.serial_number = "1"`, `inv_mast_uid = 74298`, confirmed over OData):
+The first attempt sent `InvMastUid` (the natural-looking key) and a real, currently-existing serial number (`serial_number.serial_number = "1"`, `inv_mast_uid = 100002`, confirmed over OData):
 
 ```jsonc
 HTTP 500
 "ErrorMessage": "Invalid serial number 1 for item 1 on line number %s. Process aborted during setup...."
 ```
 
-**"item 1" and the literal `%s` are template placeholders that never got filled in** — the real item id is `6408-HHP-06`, not `1`. Adding `InvMastItemId` (present on the domain object, read-only-looking, easy to assume is server-derived) to the payload fixed the error text itself:
+**"item 1" and the literal `%s` are template placeholders that never got filled in** — the real item id is `WIDGET-002`, not `1`. Adding `InvMastItemId` (present on the domain object, read-only-looking, easy to assume is server-derived) to the payload fixed the error text itself:
 
 ```jsonc
 HTTP 500
-"ErrorMessage": "Invalid serial number 1 for item 6408-HHP-06 on line number 1. Process aborted during setup...."
+"ErrorMessage": "Invalid serial number 1 for item WIDGET-002 on line number 1. Process aborted during setup...."
 ```
 
 Correctly formatted now — and still refused, against a serial number that genuinely exists for that exact item. **`InvMastItemId` is read by the backend despite looking derived, and omitting it degrades the diagnostic on every other failure this route can produce, not just this one.** Whatever the real precondition for a successful `PUT` is here remains open; send `InvMastItemId` regardless; the fix so far only makes the error message trustworthy.

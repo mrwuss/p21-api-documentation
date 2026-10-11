@@ -24,9 +24,9 @@ public static class ExternalCountCreate
         using var _ = http;
         Console.WriteLine($"Server: {baseUrl}");
 
-        const string itemId = "GBY";
-        const int locationId = 40;
-        const string bin = "FGA040";
+        const string itemId = "WIDGET-001";
+        const int locationId = 10;
+        const string bin = "A01-01-01";
         const double qty = 5.0;
 
         var payload = new JObject

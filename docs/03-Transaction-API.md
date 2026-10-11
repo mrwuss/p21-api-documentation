@@ -538,7 +538,7 @@ The `po_hdr_po_type` `ValidValues` in the definition carry **display names only,
                         "Name": "TABPAGE_1.order",
                         "Rows": [{
                             "Edits": [
-                                {"Name": "order_no", "Value": "1013938"}
+                                {"Name": "order_no", "Value": "1001234"}
                             ]
                         }]
                     }
@@ -877,7 +877,7 @@ Use the callback endpoint to receive notification when complete:
         "Transactions": [...]
     },
     "Callback": {
-        "Url": "https://your-server.com/webhook",
+        "Url": "https://p21.example.com/webhook",
         "Method": "POST",
         "ContentType": "application/json",
         "Headers": [
@@ -1043,7 +1043,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1125,7 +1125,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "Order";                    // any name from GET /api/v2/services
@@ -1245,7 +1245,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1388,7 +1388,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";                    // customer the order is for
@@ -1741,7 +1741,7 @@ To add one, load the header by `job_no` + `contract_no` (header `Keys: []`, both
   "Transactions": [{ "Status": "New", "DataElements": [
     { "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
-        {"Name": "job_no",      "Value": "31"},
+        {"Name": "job_no",      "Value": "1001"},
         {"Name": "contract_no", "Value": "JOB-1001"}
       ], "RelativeDateEdits": [] }] },
     { "Name": "CUSTOMER_SHIP_TO.customer_ship_to", "Type": "List",
@@ -1917,7 +1917,7 @@ The `JOBPRICECOST` DataElement includes `commission_cost_value` and related comm
   "Transactions": [{ "Status": "New", "DataElements": [
     { "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
-        {"Name": "job_no",      "Value": "31"},
+        {"Name": "job_no",      "Value": "1001"},
         {"Name": "contract_no", "Value": "JOB-1001"}
       ], "RelativeDateEdits": [] }] },
     { "Name": "JOBPRICELINE.jobpriceline", "Type": "List", "Keys": ["line_no"],
@@ -2012,13 +2012,13 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 COMPANY_ID = "ACME"                       # FORM key fields go in Edits, not Keys
 CONTRACT_NO = "JOB-1001"
-JOB_NO = "31"                             # unique per header; survives renewals
+JOB_NO = "1001"                             # unique per header; survives renewals
 ITEM_ID = "WIDGET-001"                    # the line to update
 UOM = "EA"
 PRICE = "36.58"
@@ -2155,12 +2155,12 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";              // FORM key fields go in Edits, not Keys
 const string ContractNo = "JOB-1001";
-const string JobNo = "31";                    // unique per header; survives renewals
+const string JobNo = "1001";                    // unique per header; survives renewals
 const string ItemId = "WIDGET-001";           // the line to update
 const string Uom = "EA";
 const string Price = "36.58";
@@ -2397,7 +2397,7 @@ Contract bin quantities (`BINS.bins` -- `min_qty`, `max_qty`, `reorder_qty`, `ca
             {
                 "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
                 "Rows": [{"Edits": [
-                    {"Name": "job_no", "Value": "31"},
+                    {"Name": "job_no", "Value": "1001"},
                     {"Name": "customer_id", "Value": "100198"},
                     {"Name": "ship_to_id", "Value": "200"}
                 ]}]
@@ -2459,7 +2459,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2648,7 +2648,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -3041,7 +3041,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3199,7 +3199,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                    // must ALREADY exist in inventory
@@ -3573,7 +3573,7 @@ A `location_id` is **never** supplied by the caller — every way of trying land
 |---|---|
 | `Keys: ["id", "company_id"]`, `id` = a specific new number (e.g. `99999`) | **Refused**: `General Exception: Enter a valid ID or leave ID blank. DataElement: tp_1_dw_1, Column: id, Value: 99999` |
 | `Keys: ["id", "company_id"]`, `id` = `""` (blank) | **False success** — `Succeeded: 1`, the response even echoes back `id: "0"` — but nothing is created *or* updated. `location_id` **0** is a pre-existing reserved row on every tenant tested; the write silently no-ops against it (confirmed by re-reading both `location` and `address` before and after — neither changed) |
-| `Keys: []` (no key fields at all — `id` absent from the payload entirely, not just blank) | **Succeeds**, and P21 assigns a real, unused `location_id` (verified: `65329`), with `location_type` auto-set to `1330` |
+| `Keys: []` (no key fields at all — `id` absent from the payload entirely, not just blank) | **Succeeds**, and P21 assigns a real, unused `location_id` (verified on a test tenant), with `location_type` auto-set to `1330` |
 
 The working create, in full:
 
@@ -3811,7 +3811,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3931,7 +3931,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PickTicketNo = "123456";                  // must NOT be invoiced yet
@@ -4136,7 +4136,7 @@ The P21 client uses the same window logic, so it cannot delete these tickets eit
 
 ### PurchaseOrder Service — Creating a PO
 
-The buy-side counterpart to `Order`, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO **998302**, confirmed in `po_hdr`/`po_line`.
+The buy-side counterpart to `Order`, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO **500101**, confirmed in `po_hdr`/`po_line`.
 
 ```json
 {
@@ -4145,7 +4145,7 @@ The buy-side counterpart to `Order`, and just as clean: one stateless POST, no s
     { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
         {"Name": "location_id",    "Value": "40"},
-        {"Name": "vendor_id",      "Value": "22026"},
+        {"Name": "vendor_id",      "Value": "99001"},
         {"Name": "buyer_id",       "Value": "829"},
         {"Name": "order_date",     "Value": "08/20/2026"},
         {"Name": "required_date",  "Value": "08/25/2026"},
@@ -4179,12 +4179,12 @@ Field mappings, each confirmed by read-back:
 
 ### PurchaseOrderReceipt Service — Receiving a PO
 
-**The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **5706613** against PO 998302, with nothing but a header:
+**The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **7000100** against PO 500101, with nothing but a header:
 
 ```json
 { "Name": "TABPAGE_1.tp_1_dw_po", "Type": "Form", "Keys": [],
   "Rows": [{ "Edits": [
-    {"Name": "po_no",       "Value": "998302"},
+    {"Name": "po_no",       "Value": "500101"},
     {"Name": "receive_all", "Value": "Y"}
   ], "RelativeDateEdits": [] }] },
 { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
@@ -4203,7 +4203,7 @@ Field mappings, each confirmed by read-back:
 
 ### ConvertPOToVoucher Service — Vouching a Receipt
 
-Step three of **build → receive → vouch**, and another clean one-POST. Verified on 26.1 (August 2026) — voucher **1775027** against receipt 5706613, with the receipt line flipping to `vouch_complete='Y'`, `qty_vouched=2`.
+Step three of **build → receive → vouch**, and another clean one-POST. Verified on 26.1 (August 2026) — voucher **8000100** against receipt 7000100, with the receipt line flipping to `vouch_complete='Y'`, `qty_vouched=2`.
 
 - **Form `TABPAGE_1.tp_1_dw_1`** (keys `["voucher_no"]`, leave the value empty to create): `po_no`, `invoice_no`, `invoice_date`, `invoice_amount`, `vendor_id`.
 - **List `TABPAGE_17.tp_17_dw_17`** — keyed **`["receipt_number", "line_number", "po_no"]`**, which is exactly the `KeyFields` triple this service publishes (see [What the definition already tells you](#what-the-definition-already-tells-you)). Per row: `unit_qty_invoiced`, `unit_cost_display`.
@@ -4813,7 +4813,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -4936,7 +4936,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -5214,7 +5214,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -5296,7 +5296,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SpUid = "12345";              // from the P21 Stored Procedure Executor UI

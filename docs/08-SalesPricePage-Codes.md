@@ -46,7 +46,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -214,7 +214,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -612,11 +612,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # an existing page to probe
+PRICE_PAGE_UID = "100011"                  # an existing page to probe
 DISPLAY_VALUE = "Mark Up"                 # the dropdown label under test
 # ---------------------------------------------------------------------------
 
@@ -735,10 +735,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";                   // an existing page to probe
+const string PricePageUid = "100011";                   // an existing page to probe
 const string DisplayValue = "Mark Up";                 // the dropdown label under test
 // ---------------------------------------------------------------------------
 
@@ -917,11 +917,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # the page whose tiers you are setting
+PRICE_PAGE_UID = "100011"                  # the page whose tiers you are setting
 # ---------------------------------------------------------------------------
 
 
@@ -1062,10 +1062,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";        // the page whose tiers you are setting
+const string PricePageUid = "100011";        // the page whose tiers you are setting
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -1265,7 +1265,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1423,7 +1423,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -1605,7 +1605,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1677,7 +1677,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SupplierId = "10050";                     // numeric -- no quotes in the filter
@@ -1786,11 +1786,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # the page whose tiers you are setting
+PRICE_PAGE_UID = "100011"                  # the page whose tiers you are setting
 # ---------------------------------------------------------------------------
 
 
@@ -1944,10 +1944,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";        // the page whose tiers you are setting
+const string PricePageUid = "100011";        // the page whose tiers you are setting
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -2141,11 +2141,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # the page whose COSTS tab you are setting
+PRICE_PAGE_UID = "100011"                  # the page whose COSTS tab you are setting
 COMMISSION_COST_VALUE = "1.01"            # 1.01 = pass-through costing, 1% margin
 # ---------------------------------------------------------------------------
 
@@ -2279,10 +2279,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";        // the page whose COSTS tab you are setting
+const string PricePageUid = "100011";        // the page whose COSTS tab you are setting
 const string CommissionCostValue = "1.01";  // 1.01 = pass-through costing, 1% margin
 // ---------------------------------------------------------------------------
 
@@ -2561,7 +2561,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2668,7 +2668,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";                       // the five key fields below

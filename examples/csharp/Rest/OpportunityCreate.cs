@@ -52,8 +52,8 @@ public static class OpportunityCreate
         var opp = JObject.Parse(await oppResp.Content.ReadAsStringAsync());
         opp["OpportunityName"] = "ZZ API DOC TEST - safe to delete";
         opp["CompanyId"] = "ACME";
-        opp["CustomerId"] = 12066;
-        opp["LocationId"] = 40;
+        opp["CustomerId"] = 100198;
+        opp["LocationId"] = 10;
 
         var content = new StringContent(opp.ToString());
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");

@@ -71,7 +71,7 @@ Epicor publishes an explicit capability list for this implementation. The negati
 ### Base URL Example
 
 ```http
-https://play.p21server.com/odataservice/odata/table/supplier
+https://play.example.com/odataservice/odata/table/supplier
 ```
 
 > **Base host, not ui_server:** OData runs on the P21 **base host** — unlike the Transaction and Interactive APIs, it does **not** use the UI server URL returned by the router endpoint. Don't prefix OData paths with the ui_server.
@@ -89,7 +89,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -220,7 +220,7 @@ Include the Bearer token in the Authorization header:
 
 ```http
 GET /odataservice/odata/table/supplier HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -505,9 +505,9 @@ On a **direct-ship PO (`po_hdr.po_type = 'D'`)**, confirming the shipment writes
 
 | `po_no` | line | ordered | received | `supplier_ship_date` | `date_due` |
 |---|---|---|---|---|---|
-| 990695 | 1 | 200 | 147 | 2026-06-01 | 2026-07-24 |
-| 991529 | 1 | 600 | 360 | 2026-05-22 | 2026-06-09 |
-| 992085 | 1 | 1200 | 480 | 2026-06-02 | 2026-06-16 |
+| 500105 | 1 | 200 | 147 | 2026-06-01 | 2026-07-24 |
+| 500106 | 1 | 600 | 360 | 2026-05-22 | 2026-06-09 |
+| 500107 | 1 | 1200 | 480 | 2026-06-02 | 2026-06-16 |
 
 Each of these has hundreds of pieces still open against a `supplier_ship_date` in the past that describes a shipment covering a fraction of the line.
 
@@ -656,7 +656,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -741,7 +741,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "1/2-FITTING";                    // item ID containing characters that need escaping
@@ -839,11 +839,11 @@ static string ReadField(string payload, string field)
 
 ```json
 {
-    "@odata.context": "https://play.p21server.com/odataservice/odata/$metadata#supplier",
+    "@odata.context": "https://play.example.com/odataservice/odata/$metadata#supplier",
     "value": [
         {
             "supplier_id": 10050,
-            "supplier_name": "ABC Supply Company",
+            "supplier_name": "ACME Supply Company",
             "row_status_flag": 704,
             ...
         },
@@ -1001,7 +1001,7 @@ Accept: application/json
     {
       "ship_to_id": 1,
       "ship_to_name": "Address 1",
-      "customer_id": 10397,
+      "customer_id": 100199,
       "customer_name": "ACME Plumbing Supply",
       "phys_address1": null,
       "phys_address2": null,
@@ -1032,7 +1032,7 @@ Accept: application/json
       "date_last_modified": "2021-04-26T13:09:15.507-04:00",
       "created_by": "apiuser",
       "last_maintained_by": "apiuser",
-      "corp_address_id": 10397,
+      "corp_address_id": 100199,
       "corp_address_name": "ACME Plumbing Supply",
       "salesrep_id": "1002",
       "salesrep_name": "Jane Smith",
@@ -1131,7 +1131,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1184,7 +1184,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -1262,7 +1262,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1322,7 +1322,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const int SupplierId = 10050;                            // supplier to look up price pages for
@@ -1405,7 +1405,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1499,7 +1499,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "supplier";                        // table to page through
@@ -1878,12 +1878,12 @@ Returns the 118 available views. The set is inventory- and order-centric — `p2
 This is the reason to know the endpoint exists:
 
 ```http
-GET {base}/data/erp/views/v1/p21_view_oe_hdr('1013938')
+GET {base}/data/erp/views/v1/p21_view_oe_hdr('1001234')
 ```
 
 ```json
 {"odata.metadata": "{base}/data/erp/views/v1/$metadata#p21_view_oe_hdr/@Element",
- "order_no": "1013938", "customer_id": "13162", "order_date": "..."}
+ "order_no": "1001234", "customer_id": "100200", "order_date": "..."}
 ```
 
 For a view with a **compound key**, name each part — and mind the OData type suffixes, which is where this bites:

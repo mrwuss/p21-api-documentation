@@ -52,7 +52,7 @@ from datetime import date, datetime
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -202,7 +202,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyNo = "ACME";                       // invoice_hdr.company_no
@@ -371,9 +371,9 @@ top 15 by past-due balance
 customer                                   past due          1-30         31-60         61-90           90+   oldest
 --------------------------------------------------------------------------------------------------------------------
 100198 ACME MANUFACTURING                    52,310        52,310             0             0             0       15
-100204 WIDGET WORKS INC                      31,940             0        31,940             0             0       46
-100311 NORTHSTAR FABRICATION                 18,775         2,145        10,320         6,310             0       62
-100477 CONTOSO HYDRAULICS                     7,268         1,120        -1,405           838         6,715      466
+100204 ACME WIDGETS INC                      31,940             0        31,940             0             0       46
+100311 ACME FABRICATION INC                  18,775         2,145        10,320         6,310             0       62
+100477 ACME HYDRAULICS                     7,268         1,120        -1,405           838         6,715      466
 ```
 
 ## Gotchas

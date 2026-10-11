@@ -7,8 +7,8 @@ supplier, or location. Read-only.
 Mirrors: docs/15-Other-REST-Families.md#inventorypartscan
 
 Usage:
-    python examples/python/rest/part_scan.py GBY
-    python examples/python/rest/part_scan.py GBY --company-id ACME
+    python examples/python/rest/part_scan.py WIDGET-001
+    python examples/python/rest/part_scan.py WIDGET-001 --company-id ACME
 """
 
 import argparse

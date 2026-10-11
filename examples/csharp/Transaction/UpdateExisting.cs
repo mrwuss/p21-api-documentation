@@ -58,7 +58,7 @@ public static class UpdateExisting
         Console.WriteLine(new string('-', 50));
 
         // Use a known test UID — in real usage, you'd query for this
-        var testUid = 45557; // Replace with a valid UID from your system
+        var testUid = 100012; // Replace with a valid UID from your system
 
         try
         {

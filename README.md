@@ -75,7 +75,7 @@ All documentation pages include tabbed Python/C# code blocks; the [online docs](
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.p21server.com`) |
+| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.example.com`) |
 | `P21_USERNAME` | Yes* | P21 API username |
 | `P21_PASSWORD` | Yes* | P21 API password |
 | `P21_CONSUMER_KEY` | No | Consumer key GUID (alternative to username/password) |

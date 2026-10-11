@@ -22,7 +22,7 @@ public static class InventoryAdjustmentRead
         Console.WriteLine("Other REST Families - Inventory Adjustment (inventory/inventoryadjustments)");
         Console.WriteLine(new string('=', 60));
 
-        Console.Write("AdjustmentNo to read (e.g. 1000002): ");
+        Console.Write("AdjustmentNo to read (e.g. 1000100): ");
         var adjustmentNo = Console.ReadLine()?.Trim();
         if (string.IsNullOrEmpty(adjustmentNo))
         {

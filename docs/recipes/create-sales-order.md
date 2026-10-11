@@ -85,7 +85,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -251,7 +251,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";
@@ -478,8 +478,8 @@ All verified live — details in [Order Service Gotchas](../03-Transaction-API.m
 Read the order back — a `Succeeded` response is not proof every value landed:
 
 ```http
-GET {base_url}/odataservice/odata/table/oe_hdr?$filter=order_no eq '1013938'
-GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq '1013938'
+GET {base_url}/odataservice/odata/table/oe_hdr?$filter=order_no eq '1001234'
+GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq '1001234'
 ```
 
 Confirm the header fields you sent (`taker`, `po_no`, dates, ship-to as `address_id`), that `projected_order = 'N'` (a `Y` means it saved as a quote), and that **every** line row exists — a DynaChange auto-answer can drop a line while the transaction still reports `Succeeded` (see Gotchas).

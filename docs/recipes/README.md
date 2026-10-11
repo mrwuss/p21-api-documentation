@@ -34,7 +34,7 @@ One page per task, **self-contained**: the complete working payload, a full runn
 
 ## Shared conventions (recipes don't repeat these)
 
-**Environment.** Examples use `https://play.p21server.com` with user `apiuser` and generic data (`ACME`, `WIDGET-001`, customer `100198`). Substitute your own. Always run against a **test/play environment first**.
+**Environment.** Examples use `https://play.example.com` with user `apiuser` and generic data (`ACME`, `WIDGET-001`, customer `100198`). Substitute your own. Always run against a **test/play environment first**.
 
 **Auth preamble.** Every recipe's complete example is a **standalone program** — it carries its own copy of the preamble below, so you never have to come back to this page to make a recipe run. It is reproduced here once for reference (and because it is handy on its own: paste it, edit the constants, run it, and it prints the token and the UI server URL). Recipes that only talk to OData, the Entity API, the Inventory REST API or the UDT service drop `get_ui_server` / `GetUiServerAsync` — those endpoints live on `BASE_URL` directly.
 
@@ -46,7 +46,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -104,7 +104,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------

@@ -29,19 +29,19 @@ public static class InventoryMovement
         using var _ = http;
         Console.WriteLine($"Server: {baseUrl}");
 
-        Console.Write("Item id [GBY]: ");
+        Console.Write("Item id [WIDGET-001]: ");
         var itemId = Console.ReadLine()?.Trim();
-        itemId = string.IsNullOrEmpty(itemId) ? "GBY" : itemId;
-        Console.Write("Location id [40]: ");
+        itemId = string.IsNullOrEmpty(itemId) ? "WIDGET-001" : itemId;
+        Console.Write("Location id [10]: ");
         var locationId = Console.ReadLine()?.Trim();
-        locationId = string.IsNullOrEmpty(locationId) ? "40" : locationId;
-        Console.Write("From bin [FGA040]: ");
+        locationId = string.IsNullOrEmpty(locationId) ? "10" : locationId;
+        Console.Write("From bin [A01-01-01]: ");
         var fromBin = Console.ReadLine()?.Trim();
-        fromBin = string.IsNullOrEmpty(fromBin) ? "FGA040" : fromBin;
+        fromBin = string.IsNullOrEmpty(fromBin) ? "A01-01-01" : fromBin;
         Console.Write("To bin (must already be a bin this item/location holds stock "
-                      + "associations for) [XDOCK]: ");
+                      + "associations for) [A01-01-02]: ");
         var toBin = Console.ReadLine()?.Trim();
-        toBin = string.IsNullOrEmpty(toBin) ? "XDOCK" : toBin;
+        toBin = string.IsNullOrEmpty(toBin) ? "A01-01-02" : toBin;
 
         var query = $"location={locationId}&itemId={itemId}&toBin={toBin}&fromBin={fromBin}" +
                    "&lot=&uom=EA&quantity=1&moveAvailable=Y&moveAllocations=N";

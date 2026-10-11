@@ -251,7 +251,7 @@ def main():
     print("  {")
     print("    \"Content\": { ... transaction payload ... },")
     print("    \"Callback\": {")
-    print("      \"Url\": \"https://your-server.com/webhook\",")
+    print("      \"Url\": \"https://p21.example.com/webhook\",")
     print("      \"Method\": \"POST\",")
     print("      \"ContentType\": \"application/json\",")
     print("      \"Headers\": [")

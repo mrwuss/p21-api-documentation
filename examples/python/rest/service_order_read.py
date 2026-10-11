@@ -14,7 +14,7 @@ Header using Order No" -- against the identical order number this GET
 just read. See docs/15 for the exact error and what remains unresolved.
 
 Usage:
-    python examples/python/rest/service_order_read.py 999991
+    python examples/python/rest/service_order_read.py 1001235
 """
 
 import argparse

@@ -142,7 +142,7 @@ Response (**2026.1** — the identifier is renamed `SessionId` → `Id`):
             "Properties": {
                 "fullversion": "26.1.5894.1",
                 "shortversion": "26.1",
-                "configurationid": "3694"
+                "configurationid": "1234"
             }
         }
     ]
@@ -435,7 +435,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -550,7 +550,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";           // window to inspect — open by ServiceName
@@ -1066,7 +1066,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1162,7 +1162,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SessionType = "Auto";                     // User | Auto | AutoInteractive
@@ -1590,7 +1590,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1779,7 +1779,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PriceBookId = "ACME_BOOK_A";              // the book to load on the FORM tab
@@ -1998,7 +1998,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2060,7 +2060,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // tried in order, first hit wins
@@ -2347,7 +2347,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2552,7 +2552,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PoNo = "123456";                          // existing purchase order to annotate
@@ -2937,13 +2937,13 @@ So there is no way to convert an existing order line to direct ship through eith
 
 Driven end-to-end on a 26.1 play tenant (August 2026):
 
-1. Order **1519097** created interactively — one line, `disposition = 'D'`, saved.
+1. Order **1001236** created interactively — one line, `disposition = 'D'`, saved.
    - Setting `requested_date` fired the **date-cascade popup** (`Status: 3`) even on a brand-new order, exactly as documented below; the sequence stalls with `400`s on every later call until it is answered.
 2. Re-opened, `c_create_po = 'ON'` → `Status: 1`, then `save()` → `Status: 3` with the wizard (`cb_finish` present in its tool list).
-3. `cb_next` → page 2 carried PO **998303**.
+3. `cb_next` → page 2 carried PO **500102**.
 4. `cb_finish` → closed.
 
-Confirmed in the database: `po_hdr` 998303 with **`po_type = 'D'`, `approved = 'Y'`**, and an `oe_line_po` row linking order 1519097 line 1 ↔ PO 998303 line 1 with **`connection_type = 'P'`** — matching the reported shape field for field.
+Confirmed in the database: `po_hdr` 500102 with **`po_type = 'D'`, `approved = 'Y'`**, and an `oe_line_po` row linking order 1001236 line 1 ↔ PO 500102 line 1 with **`connection_type = 'P'`** — matching the reported shape field for field.
 
 *(Flow and dead ends originally verified by [Alex Westemeier](https://github.com/AWestemeier) across two cycles; re-driven and confirmed independently here.)*
 
@@ -2974,8 +2974,8 @@ Verified sequence (session created with `"ResponseWindowHandlingEnabled": true`)
 > **Read notes back through OData, not `/transaction/get`.** The Transaction API read of the same order returns the header note in `HDR_NOTE.hdr_note`, but the **line note never appears** in `LINE_NOTE.line_note` (the element comes back empty). Query the tables directly:
 >
 > ```http
-> GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1519092'
-> GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'
+> GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1001237'
+> GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'
 > ```
 
 ## Production Order Notes (Header)

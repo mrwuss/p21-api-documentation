@@ -10,7 +10,7 @@ This directory contains a **Postman Collection** for part of the Prophet 21 API 
 
 1.  **Import:** Open Postman and click **Import** > **File** > Select `p21-api-documentation.postman_collection.json`.
 2.  **Configure Variables:** Click the collection name, go to the **Variables** tab, and fill in:
-    * `P21_BASE_URL` (e.g., `https://play.p21server.com`)
+    * `P21_BASE_URL` (e.g., `https://play.example.com`)
     * `P21_USERNAME`
     * `P21_PASSWORD`
     * All other variables (`TOKEN`, `UI_SERVER_URL`, `SESSION_ID`, `WINDOW_ID`) are auto-filled by test scripts.

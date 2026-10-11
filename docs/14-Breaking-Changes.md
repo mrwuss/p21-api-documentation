@@ -292,7 +292,7 @@ POST {uiserver}/api/ui/interactive/sessions   // Accept: application/json
 {
   "Id": "3c2aca0b-...",
   "Properties": [{"Name": "Telemetry", "Properties": {
-      "fullversion": "26.1.5950.0", "shortversion": "26.1", "configurationid": "3694", ...
+      "fullversion": "26.1.5950.0", "shortversion": "26.1", "configurationid": "1234", ...
   }}]
 }
 ```

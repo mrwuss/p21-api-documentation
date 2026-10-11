@@ -54,9 +54,9 @@ def main() -> None:
     )
     parser.add_argument("--execute", action="store_true",
                         help="Also attempt the create (default: only check preconditions)")
-    parser.add_argument("--customer-id", type=int, default=12066)
+    parser.add_argument("--customer-id", type=int, default=100198)
     parser.add_argument("--company-id", default="ACME")
-    parser.add_argument("--location-id", type=int, default=40)
+    parser.add_argument("--location-id", type=int, default=10)
     args = parser.parse_args()
 
     print("Other REST Families - Opportunity Create (sales/opportunities)")
