@@ -114,7 +114,7 @@ public static class Program
             {
                 Console.WriteLine();
                 Console.WriteLine("Make sure you have a .env file with:");
-                Console.WriteLine("  P21_BASE_URL=https://play.p21server.com");
+                Console.WriteLine("  P21_BASE_URL=https://play.example.com");
                 Console.WriteLine("  P21_USERNAME=your_username");
                 Console.WriteLine("  P21_PASSWORD=your_password");
             }

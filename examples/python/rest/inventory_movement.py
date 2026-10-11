@@ -47,11 +47,11 @@ def main() -> None:
         description="Bin-to-bin inventory movement (docs/15 inventory/inventorymovement)"
     )
     parser.add_argument("--execute", action="store_true", help="Actually POST (default: dry run)")
-    parser.add_argument("--item-id", default="GBY")
-    parser.add_argument("--location-id", default="40")
-    parser.add_argument("--from-bin", default="FGA040",
+    parser.add_argument("--item-id", default="WIDGET-001")
+    parser.add_argument("--location-id", default="10")
+    parser.add_argument("--from-bin", default="A01-01-01",
                         help="Must be a bin this item/location currently holds stock in")
-    parser.add_argument("--to-bin", default="XDOCK",
+    parser.add_argument("--to-bin", default="A01-01-02",
                         help="Must be a bin this item/location already has a stock "
                              "association with -- not just any bin at the location")
     parser.add_argument("--quantity", default="1")

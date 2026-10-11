@@ -43,6 +43,28 @@ while (true)
     Console.WriteLine("  13. Update Order Lines         - Edit/add lines on an existing order");
     Console.WriteLine("  14. Reassign Salesrep          - Customer + ShipTo grids, two delete mechanisms");
     Console.WriteLine("  15. Update Supplier Contact    - Email/central phone via the Address service");
+    Console.WriteLine("  16. Clone Item                 - Inventory REST GET -> strip -> POST");
+    Console.WriteLine("  17. Create Ship-To             - ShipTo service + inherited-rep swap");
+    Console.WriteLine("  18. Inventory Cost Edit        - InventoryCostEdit moving average cost");
+    Console.WriteLine("  19. Reprint Purchase Order PDF - m_reprintpurchaseorders, flag = po_hdr.printed");
+    Console.WriteLine("  20. Bin Lock/Delete            - BinLocation lock, unlock, delete, restore");
+    Console.WriteLine("  21. Vendor Create              - Vendor + its auto-created supplier");
+    Console.WriteLine("  22. Assembly Create/Edit       - Create on a plain item; flag, qty, delete");
+    Console.WriteLine("  23. Contract Ship-To/line_no   - Attach ship-to; update a line by line_no");
+    Console.WriteLine("  24. Order Append/Hold/Cancel   - Multi-line append, release Hold, cancel");
+    Console.WriteLine("  25. Item/Customer Merge        - m_itemmerge / m_customermerge (one-way)");
+    Console.WriteLine("  26. Sales Price Page + Book    - SalesPricePage create, SalesPriceBook link/unlink");
+    Console.WriteLine("  27. Purchase Pricing Page Edit - PurchasePricingPageSupplierItem in-place edit");
+    Console.WriteLine("  28. Inventory ListPrice/Stock  - Inventory REST PUT of ListPrice + Stockable");
+    Console.WriteLine("  29. Order Entry, quote OFF     - Order window quote check (+ direct-ship wizard)");
+    Console.WriteLine("  30. Direct Ship Confirmation   - DirectShipConfirmation window, receive_all");
+    Console.WriteLine("  31. Customer Price Library     - Customer window TABPAGE_7 add/remove + sequence");
+    Console.WriteLine("  32. DynaChange Rule Toggle     - dc.organizer.rule disable/re-enable");
+    Console.WriteLine("  33. Purchase/Receive/Vouch     - Runbook: stock PO and drop-ship paths to a voucher");
+    Console.WriteLine("  34. Sales Order to Invoice     - Runbook: order, pick ticket, ship-confirm invoice");
+    Console.WriteLine("  35. Dispose Zero-Value Stock   - Runbook: $0 disposal order to a $0 invoice");
+    Console.WriteLine("  36. New Assembled Part         - Runbook: item, BOM, contract line, production order");
+    Console.WriteLine("  37. Rebate Assembly Program    - Runbook: rebate vendor, contract costs, rebate invoice");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -107,12 +129,100 @@ while (true)
                 await UpdateOrderLines.RunAsync();
                 break;
 
+            case "14":
+                await ReassignSalesrep.RunAsync();
+                break;
+
             case "15":
                 await UpdateSupplierContact.RunAsync();
                 break;
 
-            case "14":
-                await ReassignSalesrep.RunAsync();
+            case "16":
+                await CloneItem.RunAsync();
+                break;
+
+            case "17":
+                await CreateShipTo.RunAsync();
+                break;
+
+            case "18":
+                await InventoryCostEdit.RunAsync();
+                break;
+
+            case "19":
+                await ReprintPurchaseOrder.RunAsync();
+                break;
+
+            case "20":
+                await BinLockDelete.RunAsync();
+                break;
+
+            case "21":
+                await VendorCreate.RunAsync();
+                break;
+
+            case "22":
+                await AssemblyCreateEdit.RunAsync();
+                break;
+
+            case "23":
+                await ContractShipToLineNo.RunAsync();
+                break;
+
+            case "24":
+                await OrderAppendHoldCancel.RunAsync();
+                break;
+
+            case "25":
+                await ItemCustomerMerge.RunAsync();
+                break;
+
+            case "26":
+                await SalesPricePageCreateLink.RunAsync();
+                break;
+
+            case "27":
+                await PurchasePricingPageEdit.RunAsync();
+                break;
+
+            case "28":
+                await InventoryUpdateListPriceStockable.RunAsync();
+                break;
+
+            case "29":
+                await OrderEntryQuoteOff.RunAsync();
+                break;
+
+            case "30":
+                await DirectShipConfirmation.RunAsync();
+                break;
+
+            case "31":
+                await CustomerPriceLibrary.RunAsync();
+                break;
+
+            case "32":
+                await DynaChangeRuleToggle.RunAsync();
+                break;
+
+            case "33":
+                await PurchaseReceiveVouch.RunAsync();
+                break;
+
+            case "34":
+                await SalesOrderToInvoice.RunAsync();
+                break;
+
+            case "35":
+                await DisposeZeroValueStock.RunAsync();
+                break;
+
+            case "36":
+                await NewAssembledPart.RunAsync();
+                break;
+
+            case "37":
+                await RebateAssemblyProgram.RunAsync();
                 break;
 
             case "Q":

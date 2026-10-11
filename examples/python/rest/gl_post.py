@@ -23,7 +23,7 @@ Verified live, 26.1.5950.0:
 Usage:
     python examples/python/rest/gl_post.py                     # dry run
     python examples/python/rest/gl_post.py --execute \\
-        --account 11120010 --offset-account 11130010 --amount 0.01
+        --account ACCT-1000 --offset-account ACCT-2000 --amount 0.01
 """
 
 import argparse
@@ -84,8 +84,8 @@ def main() -> None:
     parser.add_argument("--execute", action="store_true",
                         help="Actually POST (default: dry run)")
     parser.add_argument("--company-id", default="ACME")
-    parser.add_argument("--account", default="11120010", help="First account number")
-    parser.add_argument("--offset-account", default="11130010",
+    parser.add_argument("--account", default="ACCT-1000", help="First account number")
+    parser.add_argument("--offset-account", default="ACCT-2000",
                         help="Second account number -- must differ from --account")
     parser.add_argument("--amount", type=float, default=0.01,
                         help="Amount on the first line; the second line is the negative")

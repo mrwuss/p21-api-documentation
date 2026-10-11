@@ -25,7 +25,7 @@ public static class CustomerFormTemplate
         using var _ = http;
         Console.WriteLine($"Server: {baseUrl}");
 
-        const int customerId = 12066;
+        const int customerId = 100198;
         const string companyId = "ACME";
 
         var existingResp = await http.GetAsync(
@@ -41,7 +41,7 @@ public static class CustomerFormTemplate
         template["CustomerFormTemplateUid"] = existingUid;
         template["CustomerId"] = customerId;
         template["CompanyId"] = companyId;
-        template["InvoiceFilename"] = "ZZTEST.rpt";
+        template["InvoiceFilename"] = "ACME_INVOICE.rpt";
 
         Console.WriteLine("\nPayload:");
         Console.WriteLine(template.ToString());

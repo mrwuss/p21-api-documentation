@@ -28,16 +28,40 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Inventory adjustment (write-off) | [json](json/inventory-adjustment.json) | [xml](xml/inventory-adjustment.xml) | `POST /api/v2/transaction` |
 | Reassign a customer's salesrep (promote new, delete old) | [json](json/reassign-salesrep.json) | [xml](xml/reassign-salesrep.xml) | `POST /api/v2/transaction` |
 | Update a supplier's email / central phone | [json](json/update-supplier-contact.json) | [xml](xml/update-supplier-contact.xml) | `POST /api/v2/transaction` |
+| Create a ship-to (add the wanted rep, retire the inherited one) | [json](json/create-ship-to.json) | — | `POST /api/v2/transaction` |
+| Edit an item's moving average cost at one location (posts to the GL) | [json](json/inventory-cost-edit.json) | — | `POST /api/v2/transaction` |
+| Create an item-level sales price page (FORM + COSTS + VALUES) | [json](json/sales-price-page-create.json) | — | `POST /api/v2/transaction` |
+| Link a sales price page to a price book (add `row_status_flag: "Delete"` to the `LIST.list_detail` row to unlink) | [json](json/sales-price-book-link.json) | — | `POST /api/v2/transaction` |
+| Edit a supplier/item purchase pricing page in place (exact keys, full field set) | [json](json/purchase-pricing-page-edit.json) | — | `POST /api/v2/transaction` |
+| Create a stock PO (runbook step A1) | [json](json/purchase-order-create.json) | — | `POST /api/v2/transaction` |
+| Receive a PO in full (runbook step A2) | [json](json/purchase-order-receipt.json) | — | `POST /api/v2/transaction` |
+| Vouch a PO receipt (runbook steps A3/B4) | [json](json/convert-po-to-voucher.json) | — | `POST /api/v2/transaction` |
+| Print a sales-order pick ticket (`print_tix`) | [json](json/order-print-pick-ticket.json) | — | `POST /api/v2/transaction` |
+| Append $0 lines to an existing order (disposal step 3) | [json](json/order-append-zero-price-lines.json) | — | `POST /api/v2/transaction` |
+| Contract line with Value commission and other cost + ship-to row (rebate step 5) | [json](json/contract-line-rebate-costs.json) | — | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
-| Reprint a purchase order PDF (`reprint_flag` must equal the PO's `po_hdr.printed` — see JSON notes) | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |
+| Print or reprint a purchase order PDF (`reprint_flag` is a placeholder for the PO's `po_hdr.printed` — see JSON notes) | [json](json/reprint-purchase-order-pdf.json) | — | `POST /api/v2/process/pdfreport` |
+| Lock a bin (`pick_locked_flag` / `put_locked_flag`) | [json](json/bin-lock.json) | — | `POST /api/v2/transaction` |
+| Delete a bin (soft delete; `OFF` restores) | [json](json/bin-delete.json) | — | `POST /api/v2/transaction` |
+| Create a vendor (and its supplier) | [json](json/vendor-create.json) | — | `POST /api/v2/transaction` |
+| Attach a ship-to to an existing contract | [json](json/contract-attach-ship-to.json) | — | `POST /api/v2/transaction` |
+| Update a contract line by `line_no` (+ commission cost) | [json](json/contract-update-line-by-line-no.json) | — | `POST /api/v2/transaction` |
+| Create an assembly on a plain item | [json](json/assembly-create.json) | — | `POST /api/v2/transaction` |
+| Change an assembly component's quantity | [json](json/assembly-edit-component.json) | — | `POST /api/v2/transaction` |
+| Delete an assembly component | [json](json/assembly-delete-component.json) | — | `POST /api/v2/transaction` |
+| Append several lines to a saved order (one Transaction) | [json](json/order-append-lines.json) | — | `POST /api/v2/transaction` |
+| Release an order's Hold (`TP_SHIPINFO.packing_basis`; also disposal runbook step 4) | [json](json/order-release-hold.json) | — | `POST /api/v2/transaction` |
+| Cancel an order (header `cancel_flag`) | [json](json/order-cancel.json) | — | `POST /api/v2/transaction` |
+| Merge one item into another (one-way) | [json](json/item-merge.json) | — | `POST /api/v2/transaction` |
+| Merge one customer into another (one-way; success reports `Failed: 1`) | [json](json/customer-merge.json) | — | `POST /api/v2/transaction` |
 
 ## JSON notes
 
 Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Transactions`, `DataElements`, `Rows`, and `Edits` are always arrays (even with one entry); `UseCodeValues`/`IgnoreDisabled` are booleans, not quoted strings; `Value` is always a string; `IgnoreDisabled` is only honored at the payload top level. Full rules: [Payload Anatomy](../../docs/03-Transaction-API.md#payload-anatomy-types-nesting-and-common-mistakes).
 
-**`reprint-purchase-order-pdf.json` sends `reprint_flag: "Y"`, which is right only for a PO that has already been printed.** The flag must equal that PO's `po_hdr.printed`: send `N` for a PO that was never printed. A mismatch returns an empty HTTP 500 on every attempt. Read `printed` over OData before each call (`po_hdr?$filter=po_no eq 500100&$select=po_no,printed`) and substitute it, the same way you substitute the PO number. Detail: [`reprint_flag` must match the PO's `po_hdr.printed`](../../docs/03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted).
+**`reprint-purchase-order-pdf.json` carries `reprint_flag: "<po_hdr.printed>"`, a placeholder you must replace on every call.** The flag must equal that PO's `po_hdr.printed`: `Y` for a PO that has been printed, `N` for one that never was. A mismatch returns an empty HTTP 500 on every attempt, so never hardcode either value. Read `printed` over OData before each call (`po_hdr?$filter=po_no eq 500100&$select=po_no,printed`) and substitute it, the same way you substitute the PO number. Detail: [`reprint_flag` must match the PO's `po_hdr.printed`](../../docs/03-Transaction-API.md#reprint_flag-must-match-the-pos-po_hdrprinted).
 
 **`sales-task-create.json` is a different shape on purpose.** It targets the [`sales/tasks` REST family](../../docs/15-Other-REST-Families.md#salestasks), not the Transaction API — a flat domain object, no `Name`/`Transactions` wrapper. The validator recognizes this shape and checks only that it's structurally sane; it has no committed schema to check field names against the way `definitions/` does for Transaction API services, so read the family's own `GET /new` response to confirm a field name is real.
 
@@ -45,8 +69,10 @@ Indentation is cosmetic — **nesting and types** are what matter: `Keys`, `Tran
 
 The XML files are in verified **DataContract** shape: the `P21.Transactions.Model.V2` root namespace (mandatory), **alphabetical element order** within every parent (violations get silently dropped or 500), and `Keys` items as `<a:string>` in the Microsoft arrays namespace. Set `Content-Type: application/xml`; `Accept` independently controls the response format. Full rules and verification details: [XML Payloads](../../docs/03-Transaction-API.md#xml-payloads-content-negotiation).
 
+The write-path payloads added with the [bin, vendor, contract, assembly, order and merge scripts](../python/recipes/README.md#scripts-for-transaction-api-write-paths) are JSON only for now; build an XML counterpart from the service's definition the same way as the others.
+
 XML versions of the two **report** payloads are omitted: the `/api/v2/process/pdfreport` endpoint has not been verified with XML bodies — the JSON forms are the tested shape.
 
 ## Where these come from
 
-Each payload is the canonical example from its [recipe page](../../docs/recipes/README.md), which carries the gotchas, the runnable code, and the verify read-back. For **every field** a service accepts, load its schema from [`definitions/`](../../definitions/README.md).
+Each payload is the canonical example from its [recipe page](../../docs/recipes/README.md), which carries the gotchas, the runnable code, and the verify read-back. The three pricing payloads come from [doc 08](../../docs/08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api) instead, and their runnable code is listed in the [recipes README](../python/recipes/README.md#reference-doc-examples). For **every field** a service accepts, load its schema from [`definitions/`](../../definitions/README.md).

@@ -60,7 +60,7 @@ Update prices on existing `JobContractPricing` lines, insert new lines onto an e
                     "Edits": [
                         {"Name": "company_id",  "Value": "ACME"},
                         {"Name": "contract_no", "Value": "JOB-1001"},
-                        {"Name": "job_no",      "Value": "31"},        // unique across renewals
+                        {"Name": "job_no",      "Value": "1001"},        // unique across renewals
                         {"Name": "end_date",    "Value": "2030-01-01"} // optional: send only to change it (see Prerequisites)
                     ],
                     "RelativeDateEdits": []
@@ -111,12 +111,12 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 CONTRACT = {"company_id": "ACME", "contract_no": "JOB-1001",
-            "job_no": "31", "end_date": "2030-01-01"}   # end_date optional for updates
+            "job_no": "1001", "end_date": "2030-01-01"}   # end_date optional for updates
 # One POST per line: inserts re-save the shared header and collide when batched.
 LINES = [
     ("WIDGET-001", "EA", 36.58, 17.19),  # already on contract -> updated
@@ -243,14 +243,14 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 var contract = new
 {
     CompanyId = "ACME",
     ContractNo = "JOB-1001",
-    JobNo = "31",
+    JobNo = "1001",
     EndDate = "2030-01-01",   // optional for updates -- drop it for an expired contract
 };
 // One POST per line: inserts re-save the shared header and collide when batched.

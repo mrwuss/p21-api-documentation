@@ -37,7 +37,7 @@ POST {ui_server}/api/v2/transaction
                 "Keys": ["order_no"],
                 "Rows": [{
                     "Edits": [
-                        {"Name": "order_no", "Value": "1013938"}
+                        {"Name": "order_no", "Value": "1001234"}
                     ],
                     "RelativeDateEdits": []
                 }]
@@ -83,7 +83,7 @@ POST {ui_server}/api/v2/transaction/get
     "ServiceName": "Order",
     "TransactionStates": [{
         "DataElementName": "TABPAGE_1.order",
-        "Keys": [{"Name": "order_no", "Value": "1013938"}]
+        "Keys": [{"Name": "order_no", "Value": "1001234"}]
     }]
 }
 ```
@@ -93,54 +93,105 @@ Walk the response's `TP_ITEMS.items` rows and map `user_line_no` → (`oe_order_
 ## Complete example
 
 <!-- tabs -->
-
-**Python**
-
 ```python
-"""Modify an existing sales order: update a line in place + add a line.
-
-Dry run by default; pass --execute to POST. Mirrors docs/recipes/update-order-lines.md.
-"""
-
-import argparse
-import json
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
+"""Modify an existing sales order: update a line in place and add a line, then read it back."""
+import re
 
 import httpx
-from common.auth import get_token, get_auth_headers, get_ui_server_url
-from common.config import load_config
 
-import warnings
-warnings.filterwarnings("ignore")
-
-# --- Configuration (generic placeholders -- substitute your own) ------------
-ORDER_NO = "1013938"
-
-# (user_line_no, item_id, quantity)
-# An EXISTING handle updates that line; a NEW handle inserts a line.
+# ---- EDIT THESE -----------------------------------------------------------
+BASE_URL = "https://play.example.com"   # your P21 server
+USERNAME = "apiuser"
+PASSWORD = "your-password"
+VERIFY_SSL = False                        # True once you trust the cert chain
+ORDER_NO = "1001234"
+# (user_line_no, oe_order_item_id, unit_quantity): an EXISTING handle updates
+# that line in place, a NEW handle inserts a line.
 LINES = [
-    ("010", "WIDGET-001", "4"),   # existing handle -> quantity updated in place
-    ("030", "WIDGET-002", "1"),   # new handle      -> line inserted
+    ("010", "WIDGET-001", "4"),
+    ("030", "WIDGET-002", "1"),
 ]
+# ---------------------------------------------------------------------------
 
 
-def build_payload() -> dict:
-    """Header loads the order by key; the keyed items list upserts each row."""
-    return {
+def get_token(client: httpx.Client) -> str:
+    """v2 token endpoint — credentials go in the body, never in headers."""
+    r = client.post(
+        f"{BASE_URL}/api/security/token/v2",
+        json={"username": USERNAME, "password": PASSWORD},
+        headers={"Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["AccessToken"]
+    except (ValueError, KeyError):  # some middleware answers in XML
+        match = re.search(r"<AccessToken>([^<]+)</AccessToken>", r.text)
+        if not match:
+            raise ValueError(f"No AccessToken in response: {r.text[:200]}") from None
+        return match.group(1)
+
+
+def get_ui_server(client: httpx.Client, token: str) -> str:
+    """Transaction and Interactive calls go to the UI server, not BASE_URL."""
+    r = client.get(
+        f"{BASE_URL}/api/ui/router/v1/?urlType=external",  # trailing slash avoids a 307
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    r.raise_for_status()
+    try:
+        return r.json()["Url"].rstrip("/")
+    except (ValueError, KeyError):
+        match = re.search(r"<Url>([^<]+)</Url>", r.text)
+        if not match:
+            raise ValueError(f"No Url in router response: {r.text[:200]}") from None
+        return match.group(1).rstrip("/")
+
+
+def read_lines(client: httpx.Client, ui_server: str, headers: dict) -> list[dict]:
+    """Read the order's lines back with /transaction/get -- the only proof."""
+    r = client.post(
+        f"{ui_server}/api/v2/transaction/get", headers=headers,
+        json={"ServiceName": "Order", "TransactionStates": [{
+            "DataElementName": "TABPAGE_1.order",
+            "Keys": [{"Name": "order_no", "Value": ORDER_NO}],
+        }]},
+    )
+    r.raise_for_status()
+    for element in r.json()["Transactions"][0]["DataElements"]:
+        if element["Name"] != "TP_ITEMS.items":
+            continue
+        rows = [{edit["Name"]: edit["Value"] for edit in row.get("Edits", [])}
+                for row in element.get("Rows", [])]
+        return [row for row in rows if row.get("oe_order_item_id")]
+    return []
+
+
+with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as client:
+    token = get_token(client)
+    ui_server = get_ui_server(client, token)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",       # without this you get XML, not JSON
+        "Content-Type": "application/json",
+    }
+
+    before = read_lines(client, ui_server, headers)
+    print(f"Before: {len(before)} line(s)")
+    for row in before:
+        print(f"  {row['user_line_no']}: {row['oe_order_item_id']} x {row['unit_quantity']}")
+
+    payload = {
         "Name": "Order",
         "UseCodeValues": False,
         "Transactions": [{
             "Status": "New",
             "DataElements": [
                 {
+                    # ONLY the key. Re-sending header fields fails on disabled
+                    # columns (customer_id) once the order exists.
                     "Name": "TABPAGE_1.order",
                     "Type": "Form",
                     "Keys": ["order_no"],
-                    # ONLY the key. Re-sending header fields fails on
-                    # disabled columns (customer_id) once the order exists.
                     "Rows": [{
                         "Edits": [{"Name": "order_no", "Value": ORDER_NO}],
                         "RelativeDateEdits": [],
@@ -163,215 +214,243 @@ def build_payload() -> dict:
         }],
     }
 
+    response = client.post(f"{ui_server}/api/v2/transaction",
+                           headers=headers, json=payload)
+    response.raise_for_status()
+    result = response.json()
 
-def read_lines(ui_server: str, headers: dict, verify_ssl: bool) -> list[dict]:
-    """Read the order's lines back -- the only proof the write landed."""
-    resp = httpx.post(
-        f"{ui_server}/api/v2/transaction/get",
-        headers=headers, verify=verify_ssl, follow_redirects=True, timeout=120,
-        json={"ServiceName": "Order", "TransactionStates": [{
-            "DataElementName": "TABPAGE_1.order",
-            "Keys": [{"Name": "order_no", "Value": ORDER_NO}],
-        }]},
-    )
-    resp.raise_for_status()
-    for element in resp.json()["Transactions"][0]["DataElements"]:
-        if element["Name"] != "TP_ITEMS.items":
-            continue
-        rows = [{edit["Name"]: edit["Value"] for edit in row.get("Edits", [])}
-                for row in element.get("Rows", [])]
-        return [row for row in rows if row.get("oe_order_item_id")]
-    return []
+    # HTTP 200 even on failure -- check the Summary, never the status code
+    summary = result["Summary"]
+    print(f"Succeeded: {summary['Succeeded']}, Failed: {summary['Failed']}")
+    if summary["Failed"] > 0 or summary["Succeeded"] == 0:
+        for msg in result.get("Messages", []):
+            print(msg)
+        raise SystemExit("Order update failed")
 
-
-def main() -> None:
-    """Entry point: build the payload, POST on --execute, read the lines back."""
-    parser = argparse.ArgumentParser(
-        description="Modify an existing sales order (docs/recipes/update-order-lines.md)")
-    parser.add_argument("--execute", action="store_true",
-                        help="Actually POST the transaction (default: dry run)")
-    args = parser.parse_args()
-
-    print("Recipe - Modify an Existing Sales Order")
-    print("=" * 60)
-
-    payload = build_payload()
-    if not args.execute:
-        print("\nDRY RUN - would POST to {ui_server}/api/v2/transaction:")
-        print(json.dumps(payload, indent=2))
-        print("\nRe-run with --execute to POST the transaction.")
-        return
-
-    config = load_config()
-    token_data = get_token(config)
-    headers = get_auth_headers(token_data["AccessToken"])
-    ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"],
-                                  config.verify_ssl)
-    print(f"UI Server: {ui_server}")
-
-    print("\nBefore:")
-    for row in read_lines(ui_server, headers, config.verify_ssl):
-        print(f"  {row.get('user_line_no')}: {row.get('oe_order_item_id')}"
-              f" x {row.get('unit_quantity')}")
-
-    resp = httpx.post(f"{ui_server}/api/v2/transaction", headers=headers,
-                      json=payload, verify=config.verify_ssl,
-                      follow_redirects=True, timeout=120)
-    resp.raise_for_status()          # HTTP 200 does NOT mean the write succeeded
-    result = resp.json()
-    print(f"\nSummary: {result['Summary']}")
-    for message in result.get("Messages") or []:
-        print(f"  Message: {message}")
-
-    print("\nAfter (read-back is the only proof):")
-    for row in read_lines(ui_server, headers, config.verify_ssl):
-        print(f"  {row.get('user_line_no')}: {row.get('oe_order_item_id')}"
-              f" x {row.get('unit_quantity')}")
-
-
-if __name__ == "__main__":
-    main()
+    # Read back: each handle carries its value, and no unexpected line appeared
+    after = read_lines(client, ui_server, headers)
+    print(f"After: {len(after)} line(s)")
+    by_handle = {row["user_line_no"]: row for row in after}
+    for handle, item_id, qty in LINES:
+        row = by_handle.get(handle)
+        landed = (row is not None and row["oe_order_item_id"] == item_id
+                  and float(row["unit_quantity"]) == float(qty))
+        detail = f" ({row['oe_order_item_id']} x {row['unit_quantity']})" if row else ""
+        print(f"  {handle}: {'OK' if landed else 'NOT APPLIED'}{detail}")
+    expected = len({row["user_line_no"] for row in before} | {h for h, _, _ in LINES})
+    if len(after) != expected:
+        print(f"WARNING: expected {expected} lines, found {len(after)} -- a key problem "
+              "appends lines while reporting Succeeded (see Gotchas)")
 ```
 
-**C#**
-
 ```csharp
-// Modify an existing sales order: update a line in place + add a line.
-// Mirrors docs/recipes/update-order-lines.md. See the runnable class at
-// examples/csharp/Recipes/UpdateOrderLines.cs (menu option in the Recipes
-// project; prints the payload and asks for EXECUTE before posting).
-
+using System.Net.Http.Headers;
 using System.Text;
-using Newtonsoft.Json.Linq;
-using P21Examples.Common;
-using static P21Examples.Recipes.RecipeHelpers;
+using System.Text.Json;
 
-namespace P21Examples.Recipes;
-
-public static class UpdateOrderLines
+// ---- EDIT THESE -----------------------------------------------------------
+const string BaseUrl = "https://play.example.com";   // your P21 server
+const string Username = "apiuser";
+const string Password = "your-password";
+const string OrderNo = "1001234";
+// (user_line_no, oe_order_item_id, unit_quantity): an EXISTING handle updates
+// that line in place, a NEW handle inserts a line.
+var lines = new (string Handle, string ItemId, string Quantity)[]
 {
-    private const string OrderNo = "1013938";
+    ("010", "WIDGET-001", "4"),
+    ("030", "WIDGET-002", "1"),
+};
+// ---------------------------------------------------------------------------
 
-    // (handle, item, qty): existing handle -> update; new handle -> insert.
-    private static readonly (string Handle, string ItemId, string Qty)[] Lines =
+var handler = new HttpClientHandler
+{
+    // Test tenants often present a self-signed cert. Delete this line in production.
+    ServerCertificateCustomValidationCallback =
+        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+};
+using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
+client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+var token = await GetTokenAsync(client);
+var uiServer = await GetUiServerAsync(client, token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+var before = await ReadLinesAsync(client, uiServer);
+Console.WriteLine($"Before: {before.Count} line(s)");
+foreach (var row in before)
+{
+    Console.WriteLine($"  {row["user_line_no"]}: {row["oe_order_item_id"]} x {row["unit_quantity"]}");
+}
+
+var payload = new
+{
+    Name = "Order",
+    UseCodeValues = false,
+    Transactions = new[]
     {
-        ("010", "WIDGET-001", "4"),
-        ("030", "WIDGET-002", "1"),
-    };
-
-    public static async Task RunAsync()
-    {
-        Console.WriteLine("Recipe - Modify an Existing Sales Order");
-        Console.WriteLine(new string('=', 60));
-
-        using var client = await P21Client.CreateAsync();
-
-        Console.WriteLine("\nBefore:");
-        await PrintLinesAsync();
-
-        var payload = BuildPayload();
-        PrintPayload("Payload", payload);
-        if (!ConfirmExecute())
-            return;
-
-        var result = await client.Transaction.CreateAsync(payload);
-        if (!CheckResult(result))
-            return;
-
-        Console.WriteLine("\nAfter (read-back is the only proof):");
-        await PrintLinesAsync();
-    }
-
-    private static JObject BuildPayload()
-    {
-        var itemRows = new JArray();
-        foreach (var (handle, itemId, qty) in Lines)
+        new
         {
-            itemRows.Add(new JObject
+            Status = "New",
+            DataElements = new object[]
             {
-                ["Edits"] = new JArray
+                // ONLY the key. Re-sending header fields fails on disabled
+                // columns (customer_id) once the order exists.
+                new
                 {
-                    Edit("user_line_no", handle),
-                    Edit("oe_order_item_id", itemId),
-                    Edit("unit_quantity", qty),
-                },
-                ["RelativeDateEdits"] = new JArray(),
-            });
-        }
-
-        return new JObject
-        {
-            ["Name"] = "Order",
-            ["UseCodeValues"] = false,
-            ["Transactions"] = new JArray
-            {
-                new JObject
-                {
-                    ["Status"] = "New",
-                    ["DataElements"] = new JArray
+                    Name = "TABPAGE_1.order",
+                    Type = "Form",
+                    Keys = new[] { "order_no" },
+                    Rows = new object[]
                     {
-                        new JObject
+                        new
                         {
-                            // ONLY the key -- re-sending header fields fails on
-                            // disabled columns (customer_id) once the order exists.
-                            ["Name"] = "TABPAGE_1.order", ["Type"] = "Form",
-                            ["Keys"] = new JArray { "order_no" },
-                            ["Rows"] = new JArray { new JObject {
-                                ["Edits"] = new JArray { Edit("order_no", OrderNo) },
-                                ["RelativeDateEdits"] = new JArray() } },
-                        },
-                        new JObject
-                        {
-                            ["Name"] = "TP_ITEMS.items", ["Type"] = "List",
-                            ["Keys"] = new JArray { "user_line_no" },
-                            ["Rows"] = itemRows,
+                            Edits = new[] { new { Name = "order_no", Value = OrderNo } },
+                            RelativeDateEdits = Array.Empty<object>(),
                         },
                     },
                 },
+                new
+                {
+                    Name = "TP_ITEMS.items",
+                    Type = "List",
+                    Keys = new[] { "user_line_no" },
+                    Rows = lines.Select(l => (object)new
+                    {
+                        Edits = new[]
+                        {
+                            new { Name = "user_line_no", Value = l.Handle },
+                            new { Name = "oe_order_item_id", Value = l.ItemId },
+                            new { Name = "unit_quantity", Value = l.Quantity },
+                        },
+                        RelativeDateEdits = Array.Empty<object>(),
+                    }).ToArray(),
+                },
             },
-        };
-    }
+        },
+    },
+};
 
-    private static async Task PrintLinesAsync()
+using var response = await client.PostAsync(
+    $"{uiServer}/api/v2/transaction",
+    new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+response.EnsureSuccessStatusCode();
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+// HTTP 200 even on failure -- check the Summary, never the status code
+var summary = result.RootElement.GetProperty("Summary");
+var succeeded = summary.GetProperty("Succeeded").GetInt32();
+var failed = summary.GetProperty("Failed").GetInt32();
+Console.WriteLine($"Succeeded: {succeeded}, Failed: {failed}");
+if (failed > 0 || succeeded == 0)
+{
+    if (result.RootElement.TryGetProperty("Messages", out var messages))
     {
-        var (http, uiServer, _) = await CreateRawClientAsync();
-        var request = new JObject
-        {
-            ["ServiceName"] = "Order",
-            ["TransactionStates"] = new JArray { new JObject {
-                ["DataElementName"] = "TABPAGE_1.order",
-                ["Keys"] = new JArray { new JObject {
-                    ["Name"] = "order_no", ["Value"] = OrderNo } } } },
-        };
-        var response = await http.PostAsync(
-            $"{uiServer}/api/v2/transaction/get",
-            new StringContent(request.ToString(), Encoding.UTF8, "application/json"));
-        response.EnsureSuccessStatusCode();
+        Console.Error.WriteLine(messages);
+    }
+    throw new InvalidOperationException("Order update failed");
+}
 
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        foreach (var element in body["Transactions"]![0]!["DataElements"]!)
+// Read back: each handle carries its value, and no unexpected line appeared
+var after = await ReadLinesAsync(client, uiServer);
+Console.WriteLine($"After: {after.Count} line(s)");
+foreach (var (handle, itemId, quantity) in lines)
+{
+    var row = after.FirstOrDefault(r => r["user_line_no"] == handle);
+    var landed = row is not null && row["oe_order_item_id"] == itemId
+        && decimal.Parse(row["unit_quantity"]) == decimal.Parse(quantity);
+    var detail = row is null ? "" : $" ({row["oe_order_item_id"]} x {row["unit_quantity"]})";
+    Console.WriteLine($"  {handle}: {(landed ? "OK" : "NOT APPLIED")}{detail}");
+}
+var expected = before.Select(r => r["user_line_no"])
+    .Union(lines.Select(l => l.Handle)).Count();
+if (after.Count != expected)
+{
+    Console.WriteLine($"WARNING: expected {expected} lines, found {after.Count} -- a key " +
+                      "problem appends lines while reporting Succeeded (see Gotchas)");
+}
+
+// --- helpers ---------------------------------------------------------------
+
+// Read the order's lines back with /transaction/get -- the only proof.
+static async Task<List<Dictionary<string, string>>> ReadLinesAsync(HttpClient client, string uiServer)
+{
+    var request = JsonSerializer.Serialize(new
+    {
+        ServiceName = "Order",
+        TransactionStates = new[]
         {
-            if ((string?)element["Name"] != "TP_ITEMS.items")
-                continue;
-            foreach (var row in element["Rows"]!)
+            new
             {
-                var edits = row["Edits"]!.ToDictionary(
-                    e => (string)e["Name"]!, e => (string?)e["Value"]);
-                if (string.IsNullOrEmpty(edits.GetValueOrDefault("oe_order_item_id")))
-                    continue;
-                Console.WriteLine(
-                    $"  {edits.GetValueOrDefault("user_line_no")}: " +
-                    $"{edits.GetValueOrDefault("oe_order_item_id")} x " +
-                    $"{edits.GetValueOrDefault("unit_quantity")}");
+                DataElementName = "TABPAGE_1.order",
+                Keys = new[] { new { Name = "order_no", Value = OrderNo } },
+            },
+        },
+    });
+    using var response = await client.PostAsync($"{uiServer}/api/v2/transaction/get",
+        new StringContent(request, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+    var rows = new List<Dictionary<string, string>>();
+    foreach (var element in doc.RootElement.GetProperty("Transactions")[0]
+                 .GetProperty("DataElements").EnumerateArray())
+    {
+        if (element.GetProperty("Name").GetString() != "TP_ITEMS.items") continue;
+        foreach (var row in element.GetProperty("Rows").EnumerateArray())
+        {
+            var edits = row.GetProperty("Edits").EnumerateArray().ToDictionary(
+                e => e.GetProperty("Name").GetString()!,
+                e => e.GetProperty("Value").GetString() ?? "");
+            if (!string.IsNullOrEmpty(edits.GetValueOrDefault("oe_order_item_id")))
+            {
+                rows.Add(edits);
             }
         }
     }
+    return rows;
+}
+
+// v2 token endpoint — credentials go in the body, never in headers.
+static async Task<string> GetTokenAsync(HttpClient client)
+{
+    var payload = JsonSerializer.Serialize(new { username = Username, password = Password });
+    var response = await client.PostAsync(
+        $"{BaseUrl}/api/security/token/v2",
+        new StringContent(payload, Encoding.UTF8, "application/json"));
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "AccessToken");
+}
+
+// Transaction and Interactive calls go to the UI server, not BaseUrl.
+static async Task<string> GetUiServerAsync(HttpClient client, string token)
+{
+    using var request = new HttpRequestMessage(
+        HttpMethod.Get, $"{BaseUrl}/api/ui/router/v1/?urlType=external");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    var response = await client.SendAsync(request);
+    response.EnsureSuccessStatusCode();
+    return ReadField(await response.Content.ReadAsStringAsync(), "Url").TrimEnd('/');
+}
+
+// Some middleware answers these two endpoints in XML even when asked for JSON.
+static string ReadField(string payload, string field)
+{
+    try
+    {
+        var value = JsonDocument.Parse(payload).RootElement.GetProperty(field).GetString();
+        if (!string.IsNullOrEmpty(value)) return value;
+    }
+    catch (Exception ex) when (ex is JsonException or KeyNotFoundException) { }
+
+    var match = System.Text.RegularExpressions.Regex.Match(payload, $"<{field}>([^<]+)</{field}>");
+    if (!match.Success)
+        throw new InvalidOperationException(
+            $"No {field} in response: {payload[..Math.Min(200, payload.Length)]}");
+    return match.Groups[1].Value;
 }
 ```
-
 <!-- /tabs -->
 
-> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/update_order_lines.py`](../../examples/python/recipes/update_order_lines.py) · [`examples/csharp/Recipes/UpdateOrderLines.cs`](../../examples/csharp/Recipes/UpdateOrderLines.cs). The snippets above are self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/update_order_lines.py`](../../examples/python/recipes/update_order_lines.py) · [`examples/csharp/Recipes/UpdateOrderLines.cs`](../../examples/csharp/Recipes/UpdateOrderLines.cs). The snippets above are self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example. Python and C# examples (the snippets above and both files) run on play 26.1.5950.0, 2026-10-10, each against a throwaway two-line order: one existing handle's quantity changed in place and one new handle inserted, both confirmed by the `/transaction/get` read-back with no extra lines.
 
 ## Gotchas
 
@@ -390,4 +469,4 @@ All verified live on 26.1 — details in [Keys — Row Identity and the Collapse
 Read the order back — a `Succeeded` response is not proof:
 
 - `POST /api/v2/transaction/get` (as in the example) and compare every line: the edited handle carries the new quantity, the new handle exists, and **no unexpected extra lines appeared** (the signature of a key problem).
-- Or via OData: `GET /odataservice/odata/view/p21_view_oe_line?$filter=order_no eq '1013938'`.
+- Or via OData: `GET /odataservice/odata/view/p21_view_oe_line?$filter=order_no eq '1001234'`.

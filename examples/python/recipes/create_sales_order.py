@@ -3,9 +3,10 @@ Create a Sales Order (Order service)
 
 Create a sales order -- header plus line items -- in one stateless
 Transaction API call, extract the generated order_no from the result rows,
-and read the order back via OData. No assembly lines: the Transaction API
-auto-answers the "add as assembly?" prompt No, killing the explode -- use
-order_with_assembly.py for those.
+and read the order back via OData. quote = OFF goes first: without it the
+order saves as a quote (oe_hdr.projected_order = 'Y'). An assembly item
+explodes with no prompt to answer (26.1.5950.0); use order_with_assembly.py
+when you need to choose the answer.
 
 Mirrors: docs/recipes/create-sales-order.md
 
@@ -73,6 +74,7 @@ def build_order_payload() -> dict:
                     "Keys": [],
                     "Rows": [{
                         "Edits": [
+                            {"Name": "quote",          "Value": "OFF"},  # else a quote
                             {"Name": "customer_id",    "Value": CUSTOMER_ID},
                             {"Name": "sales_loc_id",   "Value": SALES_LOC_ID},
                             {"Name": "source_loc_id",  "Value": SOURCE_LOC_ID},
@@ -175,7 +177,10 @@ def main() -> None:
     hdr_resp.raise_for_status()
     for hdr in hdr_resp.json()["value"]:
         print(f"  Header: taker={hdr.get('taker')} po_no={hdr.get('po_no')} "
-              f"ship2={hdr.get('ship2_name') or hdr.get('address_id')}")
+              f"ship2={hdr.get('ship2_name') or hdr.get('address_id')} "
+              f"projected_order={hdr.get('projected_order')}")
+        if hdr.get("projected_order") != "N":
+            print("  WARNING: saved as a quote (projected_order is not 'N')")
 
     line_resp = httpx.get(
         f"{config.base_url}/odataservice/odata/table/oe_line",

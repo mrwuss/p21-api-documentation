@@ -36,7 +36,7 @@ def main() -> None:
     print(f"Server: {config.base_url}")
 
     response = httpx.get(
-        f"{config.base_url}/api/environment/systems",
+        f"{config.base_url}/api/environment/systems/",  # trailing slash: no 307
         headers=headers, verify=config.verify_ssl, follow_redirects=True, timeout=30.0,
     )
     response.raise_for_status()

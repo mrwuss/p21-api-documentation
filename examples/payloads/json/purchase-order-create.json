@@ -1,0 +1,81 @@
+{
+  "Name": "PurchaseOrder",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "location_id",
+                  "Value": "10"
+                },
+                {
+                  "Name": "vendor_id",
+                  "Value": "SUP-100"
+                },
+                {
+                  "Name": "buyer_id",
+                  "Value": "100"
+                },
+                {
+                  "Name": "order_date",
+                  "Value": "2030-01-05"
+                },
+                {
+                  "Name": "required_date",
+                  "Value": "2030-01-10"
+                },
+                {
+                  "Name": "external_po_no",
+                  "Value": "RUNBOOK-001-A"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [
+            "item_id"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "item_id",
+                  "Value": "ITEM-001"
+                },
+                {
+                  "Name": "unit_quantity",
+                  "Value": "2"
+                },
+                {
+                  "Name": "unit_of_measure",
+                  "Value": "EA"
+                },
+                {
+                  "Name": "pricing_unit",
+                  "Value": "EA"
+                },
+                {
+                  "Name": "unit_price_display",
+                  "Value": "6.55"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

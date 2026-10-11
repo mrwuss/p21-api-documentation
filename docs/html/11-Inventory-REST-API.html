@@ -757,7 +757,7 @@
 <div class="highlight"><pre><span></span><code><span class="err">https://{hostname}/api/inventory/parts</span>
 </code></pre></div>
 
-<p>Example: <code>https://play.p21server.com/api/inventory/parts</code></p>
+<p>Example: <code>https://play.example.com/api/inventory/parts</code></p>
 <hr />
 <h2 id="endpoints">Endpoints</h2>
 <div class="table-wrap"><table>
@@ -891,7 +891,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -936,7 +936,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// item to look up</span>
@@ -1042,7 +1042,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1096,7 +1096,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// item to look up</span>
@@ -1617,7 +1617,7 @@
 <li><strong><code>LocationSuppliers</code> append works — and sets the location's primary supplier.</strong> Appending an <code>inventory_supplier_x_loc</code> object alongside the appended <code>Locations</code> entry in the <em>same</em> PUT creates the supplier-x-loc row <strong>and</strong> sets <code>inv_loc.primary_supplier_id</code>:</li>
 </ol>
 <p><code>json
-   {"ItemId": "...", "LocationId": 10, "SupplierId": 64284,
+   {"ItemId": "...", "LocationId": 10, "SupplierId": 10050,
     "PrimarySupplier": "Y", "ObjectName": "inventory_supplier_x_loc"}</code></p>
 <p>This is a simpler alternative to the Transaction API's <code>SUPPLIER_X_LOCATION</code> flag pattern and avoids its silent-no-op gotcha — the same PUT can also append the item-level <code>Suppliers</code> entry when the item–supplier link doesn't exist yet (verified: one call created <code>inventory_supplier</code> + the x_loc row + the primary flag together).</p>
 <ol>
@@ -1644,7 +1644,7 @@
 <h2 id="updating-existing-location-fields">Updating Existing Location Fields</h2>
 <p>The GET -&gt; Modify -&gt; PUT pattern also works for <strong>updating fields on existing <code>inv_loc</code> records</strong>, not just appending new ones.</p>
 <p><strong>Verified writable fields:</strong> <code>Sellable</code>, <code>Stockable</code>, <code>ProductGroupId</code>, <code>PurchaseDiscountGroup</code>, <code>SalesDiscountGroup</code>, <code>ReplenishmentLocation</code>, <code>PrimaryBin</code> (see <a href="#location-append-update-gotchas-verified-at-scale">Location-Append &amp; Update Gotchas</a> — <code>PrimaryBin</code> verified across 276 rows; the bin must already exist at that location)</p>
-<p><code>Stockable</code> on an existing <code>inv_loc</code> row was verified on production 26.1 (October 2026) by SQL read-back of <code>inv_loc.stockable</code> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/175">#175</a>).</p>
+<p><code>Stockable</code> on an existing <code>inv_loc</code> row was verified on production 26.1 (October 2026) by SQL read-back of <code>inv_loc.stockable</code> (<a href="https://github.com/mrwuss/p21-api-documentation/issues/175">#175</a>). Re-run on play with a runnable example — see <a href="#updating-a-suppliers-cost-supplierslistcost"><code>ListPrice</code> below</a>.</p>
 <blockquote>
 <p><strong><code>ProductGroupId</code> and the location's GL accounts.</strong> Through the Transaction API <code>Item</code> service, a location's product-group change rewrites its GL, revenue, and COS accounts to the target group's defaults — see <a href="03-Transaction-API.html#changing-a-locations-product-group-re-syncs-its-gl-accounts">03 § Changing a Location's Product Group Re-Syncs Its GL Accounts</a>. Whether this PUT does the same was not tested; snapshot the three account columns before a product-group change here too, and compare after.</p>
 </blockquote>
@@ -1677,6 +1677,7 @@
 <blockquote>
 <p><strong>Credit:</strong> <em>@mrwuss</em> — verified on production 26.1, October 2026, with SQL read-back (<a href="https://github.com/mrwuss/p21-api-documentation/issues/175">#175</a>).</p>
 </blockquote>
+<p><strong>Runnable example (<code>ListPrice</code> + <code>Stockable</code>):</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/inventory_update_list_price_stockable.py"><code>inventory_update_list_price_stockable.py</code></a> and <code>examples/csharp/Recipes/InventoryUpdateListPriceStockable.cs</code> (Recipes menu 28) GET the item with <code>extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure</code>, change one supplier's <code>ListPrice</code> and one location's <code>Stockable</code> (<code>Y</code>/<code>N</code>) in that payload, PUT it back, and verify through both the REST GET and OData (<code>inventory_supplier.list_price</code>, <code>inv_loc.stockable</code>). They then PUT the original values back and verify the restore. The C# version parses the GET with dates left as strings, so the PUT sends them back unchanged. Python and C# examples run on play 26.1.5950.0, 2026-10-10, on a throwaway item: change and restore both read back exactly.</p>
 <p>This API is the recommended path for <code>inv_loc</code> modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) <strong>read-only</strong>, so they cannot be edited there either.</p>
 <p>P21 validates changed values through business logic. For example, setting an invalid <code>ProductGroupId</code> returns:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -1698,7 +1699,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1782,7 +1783,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// item to update</span>
@@ -1899,7 +1900,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1986,7 +1987,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">NewItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-002&quot;</span><span class="p">;</span><span class="w">                  </span><span class="c1">// must not already exist in inv_mast</span>
@@ -2131,7 +2132,7 @@
 <tbody>
 <tr>
 <td>Item</td>
-<td><code>InvMastUid</code></td>
+<td><code>InvMastUid</code>, <code>UserDefinedFields</code> (it carries the source's own <code>InvMastUdUid</code> and <code>InvMastUid</code>)</td>
 </tr>
 <tr>
 <td><code>Locations.list[]</code></td>
@@ -2157,6 +2158,10 @@
 <li>Read the new item back. Check its locations, suppliers and units against the source.</li>
 </ol>
 <p>Everything you don't drop is copied as-is, including supplier <code>Cost</code> and <code>ListPrice</code>, product and discount groups, GL accounts and replenishment settings. Edit them in the payload before the POST when the new item should differ. If the new <code>ItemId</code> already exists, the POST fails with <code>The proposed item ID already exists in the database.</code></p>
+<p>The create does not copy the source's item user-defined fields. With the header <code>UserDefinedFields</code> block sent unchanged, the clone got no <code>inv_mast_ud</code> row at all and the source's row was left untouched, so the examples drop the block. Set any UD values on the new item after it exists.</p>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>; the source GET runs on a dry run, the POST needs <code>--execute</code> / typing <code>EXECUTE</code>, and both re-GET the new item and compare its locations, suppliers, location-suppliers and units with the source): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/clone_item.py"><code>examples/python/recipes/clone_item.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/CloneItem.cs"><code>examples/csharp/Recipes/CloneItem.cs</code></a>.</p>
+</blockquote>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -2171,7 +2176,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2213,9 +2218,10 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">build_clone</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Copy the source item, drop identity/stock fields, and re-key it to the new ID.&quot;&quot;&quot;</span>
-    <span class="c1"># Top level: drop the uid and any null header fields.</span>
+    <span class="c1"># Top level: drop the source record&#39;s uid and UD block, and any null header fields.</span>
     <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">source</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-               <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;InvMastUid&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isupper</span><span class="p">())}</span>
+               <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;InvMastUid&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDefinedFields&quot;</span><span class="p">)</span>
+               <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isupper</span><span class="p">())}</span>
     <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;ItemId&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">NEW_ITEM_ID</span>
     <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;ItemDesc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">NEW_ITEM_DESC</span>
     <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">drop</span> <span class="ow">in</span> <span class="n">DROP</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -2284,7 +2290,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">SourceItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">               </span><span class="c1">// item to copy</span>
@@ -2326,11 +2332,11 @@
 <span class="n">getResp</span><span class="p">.</span><span class="n">EnsureSuccessStatusCode</span><span class="p">();</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonNode</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">getResp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">())</span><span class="o">!</span><span class="p">.</span><span class="n">AsObject</span><span class="p">();</span>
 
-<span class="c1">// Top level: drop the uid and any null header fields, then re-key.</span>
+<span class="c1">// Top level: drop the source record&#39;s uid and UD block, and any null header fields, then re-key.</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JsonObject</span><span class="p">();</span>
 <span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">source</span><span class="p">)</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">key</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;InvMastUid&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">drop</span><span class="p">.</span><span class="n">ContainsKey</span><span class="p">(</span><span class="n">key</span><span class="p">))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">key</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="s">&quot;InvMastUid&quot;</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="s">&quot;UserDefinedFields&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">drop</span><span class="p">.</span><span class="n">ContainsKey</span><span class="p">(</span><span class="n">key</span><span class="p">))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">value</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="kt">char</span><span class="p">.</span><span class="n">IsUpper</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
 <span class="w">    </span><span class="n">payload</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">value</span><span class="o">?.</span><span class="n">DeepClone</span><span class="p">();</span>
 <span class="p">}</span>
@@ -2418,7 +2424,7 @@
 </div>
 <p>Read the result back with SQL or OData as well (<code>inv_mast</code>, <code>inv_loc</code>, <code>inventory_supplier</code>, <code>item_uom</code> for the new <code>item_id</code>) — the re-GET shows what the API returns, not every column it wrote.</p>
 <blockquote>
-<p><strong>Credit:</strong> <em>@mrwuss</em> — a clone built this way was created on production 26.1, October 2026, and checked by SQL read-back (<a href="https://github.com/mrwuss/p21-api-documentation/issues/175">#175</a>). The examples above mirror that run; they were not run separately.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — a clone built this way was created on production 26.1, October 2026, and checked by SQL read-back (<a href="https://github.com/mrwuss/p21-api-documentation/issues/175">#175</a>). Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each cloning a throwaway two-location, one-supplier, two-unit item under a new ID, with <code>inv_loc</code>, <code>inventory_supplier</code>, <code>inventory_supplier_x_loc</code> and <code>item_uom</code> checked against the source by SQL read-back. The source had no stock on hand, so the run shows the copied setup, not the stripping of a non-zero <code>QtyOnHand</code>.</p>
 </blockquote>
 <hr />
 <h2 id="common-issues">Common Issues</h2>
@@ -2502,7 +2508,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2578,7 +2584,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// item to probe -- ItemDesc is overwritten, then restored</span>
@@ -2721,7 +2727,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2798,7 +2804,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// item to update</span>
@@ -2927,7 +2933,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -3037,7 +3043,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// item to append the new company/location to</span>
@@ -3421,7 +3427,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -3483,7 +3489,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// required query param</span>

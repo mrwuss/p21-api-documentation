@@ -2,10 +2,10 @@
 // Docs:   docs/recipes/order-with-assembly.md
 //
 // Enter a sales order interactively when a line is an assembly that must
-// explode into components and/or spawn a production order. The Transaction
-// API auto-answers the "add as assembly?" prompt No (killing the explode),
-// so this flow uses the Interactive API with response-window handling ON
-// and answers the prompts itself.
+// explode into components and/or spawn a production order, answering the
+// "add as assembly?" prompt yourself. The Transaction API never shows the
+// prompt (on 26.1.5950.0 it saves every assembly line as Yes), so this flow
+// uses the Interactive API with response-window handling ON.
 //
 // Key rules (all verified end-to-end — see the recipe page):
 //   - Session must start with ResponseWindowHandlingEnabled: true.
@@ -55,7 +55,8 @@ Planned call sequence:
           (assembly prompt -> answer cb_1 = Yes, explode / link prod order)
   6. PUT  /v2/change TP_ITEMS/items: unit_quantity=" + Quantity + @"
   7. PUT  /v2/data (bare window-ID string body) -> answer follow-on prompts
-  8. PUT  /v2/tab -> TABPAGE_1, GET /v2/data?id={windowId} -> read order_no
+  8. order_no from the save's savesucceeded event (__order_no); the window
+          clears after a save, so GET /v2/data no longer holds the order
   9. DELETE /v2/window?id={windowId}, DELETE /sessions
 Verify: OData oe_line for the new order_no -> assembly codes
         (B kit parent, N component, P production-order line, S build-to-stock)");
@@ -119,30 +120,21 @@ Verify: OData oe_line for the new order_no -> assembly codes
                     Encoding.UTF8, "application/json"));
             saveResp.EnsureSuccessStatusCode();
             var result = JObject.Parse(await saveResp.Content.ReadAsStringAsync());
+            var events = new JArray(result["Events"] as JArray ?? new JArray());
             while (IsBlocked(result))  // follow-on prompts: answer with proceed button
+            {
                 result = await AnswerResponseWindowsAsync(http, iapi, result);
+                foreach (var e in result["Events"] as JArray ?? new JArray())
+                    events.Add(e);
+            }
             if (result["Status"]?.ToString() is "2" or "Failure")
                 throw new InvalidOperationException($"Save failed: {result["Messages"]}");
             Console.WriteLine("Order saved");
 
-            // 8. Read order_no back -- /v2/data returns the ACTIVE surface, so
-            //    switch back to the header tab first.
-            var backBody = new JObject { ["WindowId"] = windowId, ["PageName"] = "TABPAGE_1" };
-            (await http.PutAsync($"{iapi}/v2/tab",
-                new StringContent(backBody.ToString(), Encoding.UTF8, "application/json")))
-                .EnsureSuccessStatusCode();
-            var dataResp = await http.GetAsync($"{iapi}/v2/data?id={windowId}");
-            dataResp.EnsureSuccessStatusCode();
-
-            string? orderNo = null;
-            foreach (var dw in JArray.Parse(await dataResp.Content.ReadAsStringAsync()))
-            {
-                if (dw["Name"]?.ToString() != "order") continue;
-                var columns = (dw["Columns"] as JArray)!.Select(c => c.ToString()).ToList();
-                var row = (dw["Data"] as JArray)![(int?)dw["ActiveRow"] ?? 0];
-                orderNo = row[columns.IndexOf("order_no")]?.ToString();
-                Console.WriteLine($"Created order_no: {orderNo}");
-            }
+            // 8. The window clears after the save, so the new order_no comes
+            //    from the save's events, not from GET /v2/data.
+            var orderNo = SavedOrderNo(events);
+            Console.WriteLine($"Created order_no: {orderNo}");
 
             // Verify: assembly codes on the saved lines
             // (B kit parent, N component, P production-order line, S build-to-stock)
@@ -170,6 +162,28 @@ Verify: OData oe_line for the new order_no -> assembly codes
             await http.DeleteAsync($"{iapi}/sessions");
             Console.WriteLine("\nWindow closed, session ended");
         }
+    }
+
+    /// <summary>
+    /// The new order number from the save's events: savesucceeded carries it
+    /// as __order_no; a keygenerated event (column order_no) carries it when
+    /// the number is generated at save time.
+    /// </summary>
+    private static string? SavedOrderNo(JArray events)
+    {
+        foreach (var e in events)
+        {
+            var data = (e["Data"] as JArray ?? new JArray())
+                .GroupBy(kv => kv["Key"]?.ToString() ?? "")
+                .ToDictionary(g => g.Key, g => g.First()["Value"]?.ToString());
+            if (e["Name"]?.ToString() == "savesucceeded"
+                && data.TryGetValue("__order_no", out var saved) && !string.IsNullOrEmpty(saved))
+                return saved;
+            if (e["Name"]?.ToString() == "keygenerated"
+                && data.GetValueOrDefault("column") == "order_no")
+                return data.GetValueOrDefault("value");
+        }
+        return null;
     }
 
     /// <summary>Status may be an integer or a string form — handle both.</summary>

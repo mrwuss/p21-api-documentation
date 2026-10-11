@@ -25,7 +25,7 @@ public static class PurchaseOrderRead
         Console.WriteLine("Other REST Families - Purchase Order Header (purchasing/purchaseorders)");
         Console.WriteLine(new string('=', 60));
 
-        Console.Write("po_no to read (e.g. 998310): ");
+        Console.Write("po_no to read (e.g. 500100): ");
         var poNo = Console.ReadLine()?.Trim();
         if (string.IsNullOrEmpty(poNo))
         {

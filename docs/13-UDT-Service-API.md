@@ -53,9 +53,9 @@ On **2026.1 and later** there is a second, differently-shaped endpoint for high-
 https://{hostname}/udtservice/api/udtdata/
 ```
 
-Example: `https://play.p21server.com/udtservice/api/udtdata/`
+Example: `https://play.example.com/udtservice/api/udtdata/`
 
-> **SaaS environments:** The hostname may require `-api` in the FQDN (e.g., `play-api.p21server.com` instead of `play.p21server.com`). Credit: Brad Vandenbogaerde.
+> **SaaS environments:** The hostname may require `-api` in the FQDN (e.g., `play-api.example.com` instead of `play.example.com`). Credit: Brad Vandenbogaerde.
 
 ---
 
@@ -146,7 +146,7 @@ Accept: application/json
     {
       "columns": [
         {"name": "order_ref", "value": "ORD-2026-001"},
-        {"name": "customer_name", "value": "ABC Supply Company"},
+        {"name": "customer_name", "value": "ACME Supply Company"},
         {"name": "order_total", "value": "1250.00"},
         {"name": "status", "value": "pending"}
       ],
@@ -167,7 +167,7 @@ Insert multiple rows in a single request by adding objects to the `rows` array:
     {
       "columns": [
         {"name": "order_ref", "value": "ORD-2026-001"},
-        {"name": "customer_name", "value": "ABC Supply Company"},
+        {"name": "customer_name", "value": "ACME Supply Company"},
         {"name": "order_total", "value": "1250.00"},
         {"name": "status", "value": "pending"}
       ],
@@ -176,7 +176,7 @@ Insert multiple rows in a single request by adding objects to the `rows` array:
     {
       "columns": [
         {"name": "order_ref", "value": "ORD-2026-002"},
-        {"name": "customer_name", "value": "XYZ Manufacturing"},
+        {"name": "customer_name", "value": "ACME Manufacturing"},
         {"name": "order_total", "value": "875.50"},
         {"name": "status", "value": "pending"}
       ],
@@ -198,7 +198,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -237,7 +237,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             {
                 "columns": [
                     {"name": "order_ref", "value": "ORD-2026-001"},
-                    {"name": "customer_name", "value": "ABC Supply Company"},
+                    {"name": "customer_name", "value": "ACME Supply Company"},
                     {"name": "order_total", "value": "1250.00"},
                     {"name": "status", "value": "pending"},
                 ],
@@ -276,7 +276,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
@@ -305,7 +305,7 @@ var payload = new
             columns = new object[]
             {
                 new { name = "order_ref", value = "ORD-2026-001" },
-                new { name = "customer_name", value = "ABC Supply Company" },
+                new { name = "customer_name", value = "ACME Supply Company" },
                 new { name = "order_total", value = "1250.00" },
                 new { name = "status", value = "pending" },
             },
@@ -429,7 +429,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -511,7 +511,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
@@ -672,7 +672,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -746,7 +746,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
@@ -912,7 +912,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -994,7 +994,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
@@ -1129,7 +1129,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1182,7 +1182,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
@@ -1317,7 +1317,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1356,7 +1356,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             {
                 "columns": [
                     {"name": "order_ref", "value": "ORD-2026-002"},
-                    {"name": "customer_name", "value": "XYZ Manufacturing"},
+                    {"name": "customer_name", "value": "ACME Manufacturing"},
                     {"name": "order_total", "value": "875.50"},
                     {"name": "status", "value": "pending"},
                 ],
@@ -1389,7 +1389,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
@@ -1417,7 +1417,7 @@ var payload = new
             columns = new object[]
             {
                 new { name = "order_ref", value = "ORD-2026-002" },
-                new { name = "customer_name", value = "XYZ Manufacturing" },
+                new { name = "customer_name", value = "ACME Manufacturing" },
                 new { name = "order_total", value = "875.50" },
                 new { name = "status", value = "pending" },
             },
@@ -1553,8 +1553,8 @@ The official Epicor documentation examples for this API contain JSON syntax erro
 
 SaaS-hosted P21 environments may require `-api` in the FQDN hostname for the UDT Service endpoint. For example:
 
-- **On-premise:** `https://play.p21server.com/udtservice/api/udtdata/`
-- **SaaS:** `https://play-api.p21server.com/udtservice/api/udtdata/`
+- **On-premise:** `https://play.example.com/udtservice/api/udtdata/`
+- **SaaS:** `https://play-api.example.com/udtservice/api/udtdata/`
 
 If you receive connection errors or 404s in a SaaS environment, check whether the `-api` hostname variant is required. Credit: Brad Vandenbogaerde.
 
@@ -1574,7 +1574,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1614,7 +1614,7 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
             {
                 "columns": [
                     {"name": "order_ref", "value": "ORD-2026-100"},
-                    {"name": "customer_name", "value": "ABC Supply Company"},
+                    {"name": "customer_name", "value": "ACME Supply Company"},
                     {"name": "order_total", "value": "500.00"},
                     {"name": "status", "value": "draft"},
                 ],
@@ -1691,7 +1691,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string Table = "udt_custom_orders";               // UDT table name
@@ -1720,7 +1720,7 @@ var insertPayload = new
             columns = new object[]
             {
                 new { name = "order_ref", value = "ORD-2026-100" },
-                new { name = "customer_name", value = "ABC Supply Company" },
+                new { name = "customer_name", value = "ACME Supply Company" },
                 new { name = "order_total", value = "500.00" },
                 new { name = "status", value = "draft" },
             },

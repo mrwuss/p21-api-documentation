@@ -654,12 +654,14 @@
     <div class="page-toc">
         <div class="toc">
 <ul>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#runbook">Runbook</a><ul>
-<li><a href="#step-1-create-the-order-verified">Step 1 — Create the order (Verified)</a></li>
-<li><a href="#step-2-print-the-pick-ticket-verified">Step 2 — Print the pick ticket (Verified)</a></li>
-<li><a href="#step-3-confirm-the-shipment-and-invoice-verified">Step 3 — Confirm the shipment and invoice (Verified)</a></li>
+<li><a href="#step-1-create-the-order-verified-run-on-play-26159500-2026-10-10">Step 1 — Create the order (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-2-print-the-pick-ticket-verified-run-on-play-26159500-2026-10-10">Step 2 — Print the pick ticket (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-3-confirm-the-shipment-and-invoice-verified-run-on-play-26159500-2026-10-10">Step 3 — Confirm the shipment and invoice (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 </ul>
 </li>
+<li><a href="#steps-1-and-3-in-code">Steps 1 and 3, in code</a></li>
 <li><a href="#verify">Verify</a></li>
 </ul>
 </div>
@@ -669,8 +671,15 @@
 <h1 id="sales-order-pick-ticket-invoice">Sales Order → Pick Ticket → Invoice</h1>
 <p>Take a sales order from entry to a customer invoice through the API: create the order, print its pick ticket, then confirm the shipment, which creates the invoice.</p>
 <p><strong>API:</strong> Transaction + Interactive · <strong>Services:</strong> <code>Order</code>, <code>Shipping</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#create-order">Create Order</a> · <a href="../04-Interactive-API.html#sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</a> · <a href="../12-Production-Labor-API.html#shipping-and-invoicing-the-linked-sales-order">Shipping and Invoicing</a></p>
-<p>This page is a <strong>checklist</strong>, not a script. Runnable code for each step: <a href="create-sales-order.html">create-sales-order</a> (step 1, Transaction), <a href="order-with-assembly.html">order-with-assembly</a> (step 1, Interactive), <a href="generate-pick-ticket-pdf.html">generate-pick-ticket-pdf</a> (step 2, report route).</p>
-<p><strong>Status legend:</strong> <strong>Verified</strong> = run end to end with a read-back by the credited contributor on play (many orders) and on production; <strong>Inferred</strong> = follows from verified behavior but was not run as its own step.</p>
+<p>The three steps below are one runnable program, in Python and C#, that runs each step and reads it back before the next: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/sales_order_to_invoice.py"><code>examples/python/recipes/sales_order_to_invoice.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/SalesOrderToInvoice.cs"><code>examples/csharp/Recipes/SalesOrderToInvoice.cs</code></a> (menu item 34). Both are dry runs until you pass <code>--execute</code> or type <code>EXECUTE</code>. Step 1 on the Interactive surface (lines that raise a prompt) is <a href="order-with-assembly.html">order-with-assembly</a>; the report route for step 2 is <a href="generate-pick-ticket-pdf.html">generate-pick-ticket-pdf</a>.</p>
+<p><strong>Status legend:</strong> <strong>Run on play 26.1.5950.0, 2026-10-10</strong> = the step ran in both the Python and the C# runbook against a play tenant on that build and date, with a read-back. <strong>Verified</strong> = run end to end with a read-back by the credited contributor on play (many orders) and on production.</p>
+<h2 id="run-it">Run it</h2>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>examples/python/recipes/sales_order_to_invoice.py<span class="w">            </span><span class="c1"># dry run: payloads</span>
+python<span class="w"> </span>examples/python/recipes/sales_order_to_invoice.py<span class="w"> </span>--customer<span class="w"> </span>CUST-100<span class="w"> </span>--ship-to<span class="w"> </span>CUST-100<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--contact<span class="w"> </span><span class="m">300</span><span class="w"> </span>--location<span class="w"> </span><span class="m">10</span><span class="w"> </span>--taker<span class="w"> </span>JSMITH<span class="w"> </span>--item<span class="w"> </span>ITEM-001<span class="w"> </span>--qty<span class="w"> </span><span class="m">2</span><span class="w"> </span>--price<span class="w"> </span><span class="m">12</span>.00<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--po-no<span class="w"> </span>RUNBOOK-001<span class="w"> </span>--execute
+</code></pre></div>
+
 <h2 id="runbook">Runbook</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -679,6 +688,7 @@
 <th>Step</th>
 <th>Surface</th>
 <th>Read-back</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
@@ -687,52 +697,179 @@
 <td>Create the order</td>
 <td>Transaction <code>Order</code> (plain stock lines) or Interactive <code>Order</code> (anything with a prompt)</td>
 <td><code>oe_hdr</code>, <code>oe_line</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10 (Transaction)</td>
 </tr>
 <tr>
 <td>2</td>
 <td>Print the pick ticket</td>
 <td>Transaction <code>Order</code> — <code>TP_FRONTCOUNTER.tp_frontcounter.print_tix</code> = <code>ON</code></td>
 <td><code>oe_pick_ticket</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 <tr>
 <td>3</td>
 <td>Confirm the shipment (creates the invoice)</td>
 <td>Interactive <code>Shipping</code> — retrieve <code>pick_ticket_no</code>, save</td>
 <td><code>invoice_hdr</code>, <code>invoice_line</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 </tbody>
 </table></div>
-<h3 id="step-1-create-the-order-verified">Step 1 — Create the order (Verified)</h3>
-<p>Header on <code>TABPAGE_1.order</code>: <code>quote</code> = <code>OFF</code> (Interactive — the window <a href="../04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">can open in quote mode</a>), <strong><code>sales_loc_id</code> then <code>source_loc_id</code></strong>, <code>customer_id</code>, <code>ship_to_id</code>, <code>contact_id</code>, <code>order_date</code>, <code>requested_date</code> (after the order date), <code>po_no</code>, <code>taker</code>. Lines on <code>TP_ITEMS.items</code>: <code>oe_order_item_id</code>, <code>unit_quantity</code>, and <code>unit_price</code> only if you are overriding pricing.</p>
+<h3 id="step-1-create-the-order-verified-run-on-play-26159500-2026-10-10">Step 1 — Create the order (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>Header on <code>TABPAGE_1.order</code>: <strong><code>quote</code> = <code>OFF</code> first</strong>, <strong><code>sales_loc_id</code> then <code>source_loc_id</code></strong>, <code>customer_id</code>, <code>ship_to_id</code>, <code>contact_id</code>, <code>order_date</code>, <code>requested_date</code> (after the order date), <code>po_no</code>, <code>taker</code>. Lines on <code>TP_ITEMS.items</code>: <code>oe_order_item_id</code>, <code>unit_quantity</code>, and <code>unit_price</code> only if you are overriding pricing.</p>
+<blockquote>
+<p><strong><code>quote</code> = <code>OFF</code> matters on the Transaction API too.</strong> The Interactive window <a href="../04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">can open in quote mode</a>, and so can a Transaction create: for the verification API user, whose user record carries <code>default_quote_order = 'Y'</code>, an <code>Order</code> POST without <code>quote</code> saved a quote (<code>oe_hdr.projected_order = 'Y'</code>), and step 2 then failed with <em>"You cannot print, fax or email a pick ticket for a quotation."</em> The same POST with <code>quote</code> = <code>OFF</code> as its first header edit saved a real order. Read <code>projected_order</code> back after step 1 (play 26.1.5950.0, 2026-10-10).</p>
+</blockquote>
 <p>Choose the surface by the prompts the order will raise — the Transaction API answers every prompt with its default, usually No:</p>
 <ul>
 <li><strong>"Add as assembly?"</strong> on a production-order assembly item: <strong>Yes</strong> (<code>cb_1</code>) makes a production-order line and, if the assembly auto-creates, spawns and links a production order. <strong>No</strong> (<code>cb_2</code>) makes a plain stock line that can never become a production-order line later. Interactive only for Yes.</li>
 <li><strong>Date cascade</strong> when the dates are set: answer <code>cb_ok</code>.</li>
 <li><strong>Salesrep not allowed at a location</strong> (a site DynaChange rule): pick a sales/source location pair the customer's rep is valid at.</li>
+<li><strong>Profit-percentage rules</strong> are prompts too. On the verification tenant a line priced far above cost failed the Transaction with <em>"The order line (…) profit percentage of 99.59% is greater than the acceptable limit of 85.00%. Continue? [Response: No]"</em> — the Transaction API answered No for you.</li>
 </ul>
 <p><code>source_loc_id</code> is the ship-from location. It decides <code>oe_line.supplier_id</code> (the item's primary supplier <strong>there</strong>), which in turn decides any supplier rebate at invoice — see <a href="../03-Transaction-API.html#rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor">Rebate prerequisites</a>.</p>
 <p><strong>Contract pricing binds here, once.</strong> If the customer, ship-to and item are on an approved contract in date, the line gets the contract price, <code>job_price_hdr_uid</code>, and a snapshot of the contract cost. That binding is permanent for the line — <a href="../03-Transaction-API.html#binding-happens-once-at-line-entry">details</a>.</p>
 <p>Read back: <code>oe_hdr</code> (the new <code>order_no</code> — in the Transaction response rows; on the Interactive path, find the order by its newest <code>oe_hdr_uid</code>, because <code>order_no</code> is a string and does not sort numerically), <code>oe_line</code> (<code>assembly</code>, <code>disposition</code>, <code>qty_allocated</code>, <code>supplier_id</code>, <code>job_price_hdr_uid</code>, <code>other_cost</code>). An order on Hold has <code>packing_basis = 'Hold'</code>; release it before step 2.</p>
-<h3 id="step-2-print-the-pick-ticket-verified">Step 2 — Print the pick ticket (Verified)</h3>
+<h3 id="step-2-print-the-pick-ticket-verified-run-on-play-26159500-2026-10-10">Step 2 — Print the pick ticket (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>Transaction <code>Order</code>, <code>TABPAGE_1.order</code> keyed on <code>order_no</code>, plus <code>TP_FRONTCOUNTER.tp_frontcounter</code> with <code>print_tix</code> = <code>ON</code>. It creates <code>oe_pick_ticket</code> and returns the PDF in <code>Results.Transactions[].Documents[].DocumentData</code>. It allocates nothing new: a backordered line is simply not on the ticket.</p>
-<p>Read back the newest <code>pick_ticket_no</code> for the order from <code>oe_pick_ticket</code>.</p>
-<h3 id="step-3-confirm-the-shipment-and-invoice-verified">Step 3 — Confirm the shipment and invoice (Verified)</h3>
-<p>Interactive <code>Shipping</code>: set <code>pick_ticket_no</code> on <code>TABPAGE_1.tp_1_dw_1</code>; optionally set picked quantities on the items grid; leave <code>create_invoice</code> ("Confirm Shipment") at its default <code>ON</code>; save, and answer the proceed prompts with their Yes/OK button (<code>cb_1</code> / <code>cb_ok</code> / <code>cb_yes</code>). Never answer <code>cb_cancel</code>.</p>
+<p>Read back the newest <code>pick_ticket_no</code> for the order from <code>oe_pick_ticket</code>. <strong>Do not take it from the PDF's file name</strong> — in the verification runs the returned <code>FileName</code> (<code>PT…</code>) carried a different number from the <code>pick_ticket_no</code> the ticket was saved under.</p>
+<h3 id="step-3-confirm-the-shipment-and-invoice-verified-run-on-play-26159500-2026-10-10">Step 3 — Confirm the shipment and invoice (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>Interactive <code>Shipping</code>: set <code>pick_ticket_no</code> on <code>TABPAGE_1.tp_1_dw_1</code>; optionally set picked quantities on the items grid; leave <code>create_invoice</code> ("Confirm Shipment") at its default <code>ON</code>; save, and answer the proceed prompts with their Yes/OK button (<code>cb_1</code> / <code>cb_ok</code> / <code>cb_yes</code>). Never answer <code>cb_cancel</code>. Read the new <code>invoice_no</code> from <code>oe_pick_ticket</code>.</p>
 <ul>
 <li><strong>Partial shipments work</strong> — the ticket ships what it carries; print another ticket later for the rest.</li>
 <li><strong>Usual blockers:</strong> an item with no packaging code (the save refuses), and an order left in a <code>t~</code> status by a crashed session (re-open the order in the <code>Order</code> window, save it, then ship — <a href="../06-Error-Handling.html#locks-and-orphaned-sessions">details</a>).</li>
 <li>For a direct-ship line the invoice comes from Direct Ship Confirmation instead — see <a href="purchase-receive-vouch.html#path-b-drop-ship">purchase-receive-vouch</a>.</li>
 </ul>
-<p><strong>Shortcut for counter sales (Verified on play 26.1):</strong> on the Interactive <code>Order</code> window, <code>fc_create_invoice</code> = <code>ON</code> with <code>quote</code> = <code>OFF</code> on a stocked line creates the pick ticket <strong>and</strong> the invoice in the order's own save.</p>
+<p><strong>Shortcut for counter sales (Verified on play 26.1; not in the runbooks):</strong> on the Interactive <code>Order</code> window, <code>fc_create_invoice</code> = <code>ON</code> with <code>quote</code> = <code>OFF</code> on a stocked line creates the pick ticket <strong>and</strong> the invoice in the order's own save.</p>
+<h2 id="steps-1-and-3-in-code">Steps 1 and 3, in code</h2>
+<p>From the shared runbook helpers (<a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/runbook_common.py"><code>runbook_common.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/RunbookSteps.cs"><code>RunbookSteps.cs</code></a>), which the disposal and rebate runbooks reuse:</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_order_payload</span><span class="p">(</span><span class="n">customer</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ship_to</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">contact</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sales_loc</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                        <span class="n">source_loc</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">order_date</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">requested_date</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                        <span class="n">po_no</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">taker</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                        <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transaction sales order: header plus every line in one POST.</span>
+
+<span class="sd">    quote = OFF goes first: when the API user&#39;s default is &quot;quote&quot;, a header</span>
+<span class="sd">    without it saves a quote (oe_hdr.projected_order = &#39;Y&#39;), and a quote</span>
+<span class="sd">    refuses a pick ticket. A line price of None leaves unit_price unset so a</span>
+<span class="sd">    contract price can bind.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="p">[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;quote&quot;</span><span class="p">,</span> <span class="s2">&quot;OFF&quot;</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span> <span class="n">customer</span><span class="p">),</span>
+              <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;sales_loc_id&quot;</span><span class="p">,</span> <span class="n">sales_loc</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;source_loc_id&quot;</span><span class="p">,</span> <span class="n">source_loc</span><span class="p">),</span>
+              <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;order_date&quot;</span><span class="p">,</span> <span class="n">order_date</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;requested_date&quot;</span><span class="p">,</span> <span class="n">requested_date</span><span class="p">),</span>
+              <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;po_no&quot;</span><span class="p">,</span> <span class="n">po_no</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;taker&quot;</span><span class="p">,</span> <span class="n">taker</span><span class="p">),</span>
+              <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span> <span class="n">ship_to</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;contact_id&quot;</span><span class="p">,</span> <span class="n">contact</span><span class="p">)]</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">item_id</span><span class="p">,</span> <span class="n">qty</span><span class="p">,</span> <span class="n">price</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="p">[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;oe_order_item_id&quot;</span><span class="p">,</span> <span class="n">item_id</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;unit_quantity&quot;</span><span class="p">,</span> <span class="n">qty</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">price</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;unit_price&quot;</span><span class="p">,</span> <span class="n">price</span><span class="p">))</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">payload</span><span class="p">(</span><span class="s2">&quot;Order&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">element</span><span class="p">(</span><span class="s2">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[</span><span class="n">header</span><span class="p">]),</span>
+                             <span class="n">element</span><span class="p">(</span><span class="s2">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="p">[],</span> <span class="n">rows</span><span class="p">)])</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">ship_and_invoice</span><span class="p">(</span><span class="n">rb</span><span class="p">:</span> <span class="n">P21Runbook</span><span class="p">,</span> <span class="n">pick_ticket_no</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Confirm the shipment in the Interactive Shipping window; return the invoice_no.</span>
+
+<span class="sd">    create_invoice (&quot;Confirm Shipment&quot;) defaults ON, so the save ships AND</span>
+<span class="sd">    invoices. Proceed prompts -- one per unpriced line on a $0 order -- are</span>
+<span class="sd">    answered with cb_1 / cb_ok / cb_yes, never cb_cancel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">rb</span><span class="o">.</span><span class="n">session</span><span class="p">()</span>
+    <span class="n">window_id</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">open_window</span><span class="p">(</span><span class="s2">&quot;Shipping&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;tp_1_dw_1&quot;</span><span class="p">,</span> <span class="s2">&quot;pick_ticket_no&quot;</span><span class="p">,</span> <span class="n">pick_ticket_no</span><span class="p">)</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">window_id</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">cleanup</span><span class="p">(</span><span class="n">window_id</span><span class="p">)</span>
+    <span class="n">ticket</span> <span class="o">=</span> <span class="n">rb</span><span class="o">.</span><span class="n">one</span><span class="p">(</span><span class="s2">&quot;oe_pick_ticket&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;pick_ticket_no eq </span><span class="si">{</span><span class="n">pick_ticket_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;pick_ticket_no,ship_date,invoice_no&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ticket</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;invoice_no&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pick ticket </span><span class="si">{</span><span class="n">pick_ticket_no</span><span class="si">}</span><span class="s2"> has no invoice after the save&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    shipped </span><span class="si">{</span><span class="n">ticket</span><span class="p">[</span><span class="s1">&#39;ship_date&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, invoice_no = </span><span class="si">{</span><span class="n">ticket</span><span class="p">[</span><span class="s1">&#39;invoice_no&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">ticket</span><span class="p">[</span><span class="s2">&quot;invoice_no&quot;</span><span class="p">])</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Transaction sales order, header plus every line in one POST. quote = OFF</span>
+<span class="c1">/// goes first: when the API user&#39;s default is &quot;quote&quot;, a header without it</span>
+<span class="c1">/// saves a quote, and a quote refuses a pick ticket. A null price leaves</span>
+<span class="c1">/// unit_price unset so a contract price can bind.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="nf">BuildOrderPayload</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">customer</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">shipTo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">contact</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">salesLoc</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">sourceLoc</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">orderDate</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">requestedDate</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">poNo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">taker</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IEnumerable</span><span class="o">&lt;</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">Item</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Qty</span><span class="p">,</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">Price</span><span class="p">)</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lines</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">header</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;quote&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;OFF&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">customer</span><span class="p">),</span>
+<span class="w">        </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;sales_loc_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">salesLoc</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;source_loc_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">sourceLoc</span><span class="p">),</span>
+<span class="w">        </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;order_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">orderDate</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;requested_date&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">requestedDate</span><span class="p">),</span>
+<span class="w">        </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;po_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">poNo</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;taker&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">taker</span><span class="p">),</span>
+<span class="w">        </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">shipTo</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;contact_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">contact</span><span class="p">),</span>
+<span class="w">    </span><span class="p">};</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lines</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">l</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">JObject</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;oe_order_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">.</span><span class="n">Item</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;unit_quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">.</span><span class="n">Qty</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">l</span><span class="p">.</span><span class="n">Price</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="p">)</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">Add</span><span class="p">(</span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;unit_price&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">.</span><span class="n">Price</span><span class="p">));</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">row</span><span class="p">.</span><span class="n">ToArray</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}).</span><span class="n">ToArray</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nf">Payload</span><span class="p">(</span><span class="s">&quot;Order&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;TABPAGE_1.order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="n">header</span><span class="p">),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;TP_ITEMS.items&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="n">rows</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// Confirm the shipment in the Interactive Shipping window; return the</span>
+<span class="c1">/// invoice_no. create_invoice defaults ON, so the save ships AND invoices.</span>
+<span class="c1">/// Proceed prompts (one per unpriced line on a $0 order) get cb_1 / cb_ok /</span>
+<span class="c1">/// cb_yes — never cb_cancel.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">public</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ShipAndInvoiceAsync</span><span class="p">(</span><span class="n">Runbook</span><span class="w"> </span><span class="n">rb</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">pickTicketNo</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">SessionAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenAsync</span><span class="p">(</span><span class="s">&quot;Shipping&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;pick_ticket_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">pickTicketNo</span><span class="p">);</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">SaveAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">finally</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">ticket</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">OneAsync</span><span class="p">(</span><span class="s">&quot;oe_pick_ticket&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;pick_ticket_no eq {pickTicketNo}&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;pick_ticket_no,ship_date,invoice_no&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="p">.</span><span class="n">IsNullOrEmpty</span><span class="p">(</span><span class="n">ticket</span><span class="p">[</span><span class="s">&quot;invoice_no&quot;</span><span class="p">]</span><span class="o">?.</span><span class="n">ToString</span><span class="p">()))</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Pick ticket {pickTicketNo} has no invoice after the save&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;    shipped {ticket[&quot;</span><span class="n">ship_date</span><span class="s">&quot;]}, invoice_no = {ticket[&quot;</span><span class="n">invoice_no</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ticket</span><span class="p">[</span><span class="s">&quot;invoice_no&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Payload files</strong> (validator-verified, JSON only): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/create-sales-order.json">step 1 order</a> (add <code>quote</code> = <code>OFF</code> as the first header edit) · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/order-print-pick-ticket.json">step 2 print_tix</a> — see <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/README.md">payloads README</a>. Step 3 is an Interactive window step.</p>
+</blockquote>
 <h2 id="verify">Verify</h2>
+<p>The runbooks check the first two of these automatically:</p>
 <ul>
-<li><code>invoice_hdr</code> by <code>order_no</code>; <code>invoice_line</code>: <code>unit_price</code>, <code>other_cost</code>, <code>commission_cost</code>, <code>cogs_amount</code>, <code>supplier_id</code>.</li>
-<li>Inventory relieved at the source location; <code>oe_line.qty_invoiced</code> = shipped.</li>
+<li><code>invoice_hdr</code> by <code>order_no</code>; <code>invoice_line</code>: <code>unit_price</code>, <code>other_cost</code>, <code>commission_cost</code>, <code>cogs_amount</code>, <code>supplier_id</code>. <code>oe_line.qty_invoiced</code> = shipped.</li>
+<li>Inventory relieved at the source location (<code>inv_loc.qty_on_hand</code> down by the shipped quantity).</li>
 <li><strong>What the invoice cost should be:</strong> for a line bound to a contract with an other cost, the contract value (re-read at invoicing); otherwise the item's moving average cost at the source location. Commission cost: a contract <code>Value</code> × its multiplier, or COGS × the multiplier for type <code>Order</code> — <a href="../03-Transaction-API.html#order-entry-effect-of-each-commission-cost-setting">table</a>.</li>
-<li><strong>If a rebate should have fired:</strong> a <code>vendor_rebate</code> row for the invoice, and GL rows for the invoice showing the Sales Journal at full moving average cost plus a Rebate Journal entry for the difference.</li>
+<li><strong>If a rebate should have fired:</strong> a <code>vendor_rebate</code> row for the invoice, and GL rows for the invoice showing the Sales Journal at full moving average cost plus a Rebate Journal entry for the difference — the <a href="rebate-assembly-program.html">rebate-assembly-program</a> runbook checks the <code>vendor_rebate</code> row.</li>
 </ul>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — runbook verified on play (dozens of orders) and production, September 2026; not re-run here. The counter-sale shortcut and the commission-cost results: <em>@mrwuss</em>, play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>).</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — runbook verified on play (dozens of orders) and production, September 2026. The counter-sale shortcut and the commission-cost results: <em>@mrwuss</em>, play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). Runnable Python and C# runbook, and the Transaction-side <code>quote</code> finding: run end to end on play 26.1.5950.0, 2026-10-10.</p>
 </blockquote>
     </main>
 
@@ -741,12 +878,14 @@
         <div class="page-toc" id="page-toc">
             <div class="toc">
 <ul>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#runbook">Runbook</a><ul>
-<li><a href="#step-1-create-the-order-verified">Step 1 — Create the order (Verified)</a></li>
-<li><a href="#step-2-print-the-pick-ticket-verified">Step 2 — Print the pick ticket (Verified)</a></li>
-<li><a href="#step-3-confirm-the-shipment-and-invoice-verified">Step 3 — Confirm the shipment and invoice (Verified)</a></li>
+<li><a href="#step-1-create-the-order-verified-run-on-play-26159500-2026-10-10">Step 1 — Create the order (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-2-print-the-pick-ticket-verified-run-on-play-26159500-2026-10-10">Step 2 — Print the pick ticket (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-3-confirm-the-shipment-and-invoice-verified-run-on-play-26159500-2026-10-10">Step 3 — Confirm the shipment and invoice (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 </ul>
 </li>
+<li><a href="#steps-1-and-3-in-code">Steps 1 and 3, in code</a></li>
 <li><a href="#verify">Verify</a></li>
 </ul>
 </div>

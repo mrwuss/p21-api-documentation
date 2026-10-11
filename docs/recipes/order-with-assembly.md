@@ -8,7 +8,7 @@ Enter a sales order interactively when a line is an assembly that must explode i
 
 - P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).
 - The item is configured as an assembly (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save.
-- **Why not the Transaction API?** Entering an assembly item there fires an *"add as assembly?"* prompt which the stateless API auto-answers **No**, killing the explode ([Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas)). The Interactive API lets you answer it. For plain (non-assembly) orders, use the simpler [create-sales-order](create-sales-order.md) recipe instead.
+- **Why not the Transaction API?** On 26.1.5950.0 it explodes an assembly line too, but always as *Yes* — you cannot see the *"add as assembly?"* prompt or choose *No* ([Order Service Gotchas](../03-Transaction-API.md#order-service-gotchas)). The Interactive API lets you answer it. For plain (non-assembly) orders, use the simpler [create-sales-order](create-sales-order.md) recipe instead.
 - The session must be started with **`ResponseWindowHandlingEnabled: true`** so you can inspect and answer the prompts yourself.
 
 ## Flow
@@ -69,7 +69,7 @@ Enter a sales order interactively when a line is an assembly that must explode i
 
    Answer any follow-on prompts with their proceed button.
 
-8. **Read the generated `order_no`** from the window data: `GET /api/ui/interactive/v2/data?id={windowId}` (returns the datawindows on the active surface — switch back to `TABPAGE_1` first so the `order` datawindow is active).
+8. **Read the generated `order_no` from the save's events.** The Order window clears after a successful save, so `GET /api/ui/interactive/v2/data` afterward returns a blank `order` row. The save response (or the last prompt answer in the save) carries a `savesucceeded` event whose `Data` holds `{"Key": "__order_no", "Value": "{orderNo}"}`; on some saves a `keygenerated` event with `column` = `order_no` carries it as well.
 
 9. **Clean up**: `DELETE /api/ui/interactive/v2/window?id={windowId}`, then `DELETE /api/ui/interactive/sessions`.
 
@@ -85,7 +85,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -256,25 +256,24 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
         save = client.put(f"{iapi}/v2/data", headers=headers, json=window_id)
         save.raise_for_status()
         result = save.json()
+        events = list(result.get("Events") or [])
         while is_blocked(result):  # follow-on prompts: answer with proceed button
             result = answer_response_windows(result)
+            events.extend(result.get("Events") or [])
         if result.get("Status") in (2, "Failure"):
             raise RuntimeError(f"Save failed: {result.get('Messages')}")
 
-        # 8. Read order_no back. GET /v2/data returns the ACTIVE surface --
-        #    switch back to the header tab first.
-        client.put(
-            f"{iapi}/v2/tab", headers=headers,
-            json={"WindowId": window_id, "PageName": "TABPAGE_1"},
-        ).raise_for_status()
-        data = client.get(f"{iapi}/v2/data", params={"id": window_id},
-                          headers=headers)
-        data.raise_for_status()
-        for dw in data.json():
-            if dw.get("Name") == "order":
-                row = dw["Data"][dw.get("ActiveRow", 0)]
-                order_no = row[dw["Columns"].index("order_no")]
-                print(f"Created order_no: {order_no}")
+        # 8. The window clears after the save, so the new order_no comes from
+        #    the save's events (savesucceeded __order_no), not GET /v2/data.
+        for event in events:
+            data = {kv.get("Key"): kv.get("Value") for kv in event.get("Data", [])}
+            if event.get("Name") == "savesucceeded" and data.get("__order_no"):
+                order_no = data["__order_no"]
+                break
+            if event.get("Name") == "keygenerated" and data.get("column") == "order_no":
+                order_no = data.get("value")
+                break
+        print(f"Created order_no: {order_no}")
     finally:
         # 9. Clean up (window uses ?id=; sessions endpoint takes no parameter)
         client.delete(f"{iapi}/v2/window", params={"id": window_id}, headers=headers)
@@ -310,7 +309,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";
@@ -348,6 +347,11 @@ static bool IsBlocked(JsonElement r) =>
 static string? StatusText(JsonElement s) =>
     s.ValueKind == JsonValueKind.String ? s.GetString() : s.ToString();
 
+static IEnumerable<JsonElement> EventsOf(JsonElement r) =>
+    r.TryGetProperty("Events", out var ev) && ev.ValueKind == JsonValueKind.Array
+        ? ev.EnumerateArray().Select(e => e.Clone()).ToList()
+        : new List<JsonElement>();
+
 // Window IDs of popups opened by the last action.
 // Events[].Data is a key-value list: [{"Key": "windowid", "Value": "..."}].
 static List<string> PopupIds(JsonElement r)
@@ -356,8 +360,9 @@ static List<string> PopupIds(JsonElement r)
     if (!r.TryGetProperty("Events", out var events)) return ids;
     foreach (var e in events.EnumerateArray())
     {
-        if (e.GetProperty("Name").GetString() != "windowopened") continue;
-        foreach (var kv in e.GetProperty("Data").EnumerateArray())
+        if (!e.TryGetProperty("Name", out var n) || n.GetString() != "windowopened") continue;
+        if (!e.TryGetProperty("Data", out var dataArr) || dataArr.ValueKind != JsonValueKind.Array) continue;
+        foreach (var kv in dataArr.EnumerateArray())
         {
             if (kv.GetProperty("Key").GetString() == "windowid")
             {
@@ -481,9 +486,11 @@ try
         using var saved = JsonDocument.Parse(await saveResp.Content.ReadAsStringAsync());
         result = saved.RootElement.Clone();
     }
+    var events = new List<JsonElement>(EventsOf(result));
     while (IsBlocked(result))  // follow-on prompts: answer with proceed button
     {
         result = await AnswerResponseWindowsAsync(result);
+        events.AddRange(EventsOf(result));
     }
     if (result.TryGetProperty("Status", out var saveStatus) &&
         StatusText(saveStatus) is "2" or "Failure")
@@ -491,22 +498,27 @@ try
         throw new InvalidOperationException($"Save failed: {result.GetProperty("Messages")}");
     }
 
-    // 8. Read order_no back -- /v2/data returns the ACTIVE surface, so
-    //    switch back to the header tab first.
-    await SwitchTabAsync(client, iapi, windowId, "TABPAGE_1");
-    using var dataResp = await client.GetAsync($"{iapi}/v2/data?id={windowId}");
-    dataResp.EnsureSuccessStatusCode();
-    using var data = JsonDocument.Parse(await dataResp.Content.ReadAsStringAsync());
-    foreach (var dw in data.RootElement.EnumerateArray())
+    // 8. The window clears after the save, so the new order_no comes from
+    //    the save's events (savesucceeded __order_no), not GET /v2/data.
+    foreach (var e in events)
     {
-        if (dw.GetProperty("Name").GetString() != "order") continue;
-        var columns = dw.GetProperty("Columns").EnumerateArray()
-            .Select(c => c.GetString()).ToList();
-        var activeRow = dw.TryGetProperty("ActiveRow", out var a) ? a.GetInt32() : 0;
-        var row = dw.GetProperty("Data")[activeRow];
-        orderNo = row[columns.IndexOf("order_no")].ToString();
-        Console.WriteLine($"Created order_no: {orderNo}");
+        if (!e.TryGetProperty("Data", out var dataArr) || dataArr.ValueKind != JsonValueKind.Array) continue;
+        var data = dataArr.EnumerateArray().ToDictionary(
+            kv => kv.TryGetProperty("Key", out var k) ? k.GetString() ?? "" : "",
+            kv => kv.TryGetProperty("Value", out var v) ? v.ToString() : "");
+        var name = e.TryGetProperty("Name", out var n) ? n.GetString() : null;
+        if (name == "savesucceeded" && !string.IsNullOrEmpty(data.GetValueOrDefault("__order_no")))
+        {
+            orderNo = data["__order_no"];
+            break;
+        }
+        if (name == "keygenerated" && data.GetValueOrDefault("column") == "order_no")
+        {
+            orderNo = data.GetValueOrDefault("value");
+            break;
+        }
     }
+    Console.WriteLine($"Created order_no: {orderNo}");
 }
 finally
 {
@@ -590,7 +602,7 @@ static string ReadField(string payload, string field)
 ```
 <!-- /tabs -->
 
-> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/order_with_assembly.py`](../../examples/python/recipes/order_with_assembly.py) · [`examples/csharp/Recipes/OrderWithAssembly.cs`](../../examples/csharp/Recipes/OrderWithAssembly.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example.
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default): [`examples/python/recipes/order_with_assembly.py`](../../examples/python/recipes/order_with_assembly.py) · [`examples/csharp/Recipes/OrderWithAssembly.cs`](../../examples/csharp/Recipes/OrderWithAssembly.cs). The snippet above is self-contained; the files use the repo's shared `common` / `P21Examples.Common` helpers like every other example. Python and C# examples (the files and the snippet above) run on play 26.1.5950.0, 2026-10-10: a kit item exploded into its parent line (`assembly = 'B'`) and component lines (`N`), with `order_no` read from the save's `savesucceeded` event.
 
 ## Gotchas
 
@@ -600,8 +612,9 @@ All verified end-to-end — details in [Sales Order Entry with Assembly Lines](.
 - **`taker` defaults to the API user** — override it with the real salesperson or the order is attributed to the service account.
 - **The date-cascade prompt fires even on a brand-new order** (`w_response_common`, `cb_ok`/`cb_cancel`). Answer `cb_ok` via the **popup's** window ID, not the Order window's.
 - **Set the first line on the existing `items` row** — do not `POST /v2/row` a new row for it.
-- **Assembly prompt buttons are `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel** — `cb_1` explodes the assembly / links the production order. This is exactly the prompt the Transaction API auto-answers No, which is why that API can't do this job.
+- **Assembly prompt buttons are `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel** — `cb_1` explodes the assembly / links the production order. The Transaction API never shows this prompt; on 26.1.5950.0 it saves every assembly line as *Yes*.
 - **Save body shape**: `PUT /v2/data` takes the bare window-ID string as the JSON body — wrapping it in an object is a common source of 422 errors.
+- **The window clears after the save** — `GET /v2/data` afterward returns a blank `order` row, so read the new `order_no` from the save's `savesucceeded` event (`__order_no`). Where you do read window data, `ActiveRow` is **1-based**: a one-row datawindow reports `ActiveRow: 1`, so index `Data[ActiveRow - 1]`.
 - **`?id=` vs `?windowId=`**: `/v2/window` and `/v2/data` take `?id=`, but `/v2/tools` takes `?windowId=` — the wrong one errors, there is no fallback.
 - **Status may be an integer or a string** (`3` or `"Blocked"`, from the `ResultStatus` enum `None=0, Success=1, Failure=2, Blocked=3`) — handle both.
 - **`DatawindowName` is required in v2 change requests on P21 25.2+** — the 3-parameter form (TabName + FieldName + Value) no longer works.
@@ -611,7 +624,7 @@ All verified end-to-end — details in [Sales Order Entry with Assembly Lines](.
 On the saved order, `oe_line.assembly` codes: `B` = kit parent, `N` = component, `P` = production-order line, `S` = build-to-stock allocation. The production-order link is `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`):
 
 ```http
-GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq '1013938'
+GET {base_url}/odataservice/odata/table/oe_line?$filter=order_no eq '{orderNo}'
 GET {base_url}/odataservice/odata/table/prod_order_line_link?$filter=trans_type eq 'O'
 ```
 

@@ -1,0 +1,81 @@
+{
+  "Name": "ConvertPOToVoucher",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "voucher_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "po_no",
+                  "Value": "500100"
+                },
+                {
+                  "Name": "invoice_no",
+                  "Value": "INV-1001"
+                },
+                {
+                  "Name": "invoice_date",
+                  "Value": "2030-01-12"
+                },
+                {
+                  "Name": "invoice_amount",
+                  "Value": "13.10"
+                },
+                {
+                  "Name": "vendor_id",
+                  "Value": "SUP-100"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_17.tp_17_dw_17",
+          "Type": "List",
+          "Keys": [
+            "receipt_number",
+            "line_number",
+            "po_no"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "receipt_number",
+                  "Value": "600100"
+                },
+                {
+                  "Name": "line_number",
+                  "Value": "1"
+                },
+                {
+                  "Name": "po_no",
+                  "Value": "500100"
+                },
+                {
+                  "Name": "unit_qty_invoiced",
+                  "Value": "2"
+                },
+                {
+                  "Name": "unit_cost_display",
+                  "Value": "6.55"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

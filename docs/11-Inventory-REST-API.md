@@ -38,7 +38,7 @@ The Inventory REST API is significant because it provides:
 https://{hostname}/api/inventory/parts
 ```
 
-Example: `https://play.p21server.com/api/inventory/parts`
+Example: `https://play.example.com/api/inventory/parts`
 
 ---
 
@@ -89,7 +89,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -136,7 +136,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to look up
@@ -248,7 +248,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -304,7 +304,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to look up
@@ -650,7 +650,7 @@ Findings from a production run appending **138 items × 2 locations** (276 rows)
 1. **`LocationSuppliers` append works — and sets the location's primary supplier.** Appending an `inventory_supplier_x_loc` object alongside the appended `Locations` entry in the *same* PUT creates the supplier-x-loc row **and** sets `inv_loc.primary_supplier_id`:
 
    ```json
-   {"ItemId": "...", "LocationId": 10, "SupplierId": 64284,
+   {"ItemId": "...", "LocationId": 10, "SupplierId": 10050,
     "PrimarySupplier": "Y", "ObjectName": "inventory_supplier_x_loc"}
    ```
 
@@ -676,7 +676,7 @@ The GET -> Modify -> PUT pattern also works for **updating fields on existing `i
 
 **Verified writable fields:** `Sellable`, `Stockable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`, `ReplenishmentLocation`, `PrimaryBin` (see [Location-Append & Update Gotchas](#location-append-update-gotchas-verified-at-scale) — `PrimaryBin` verified across 276 rows; the bin must already exist at that location)
 
-`Stockable` on an existing `inv_loc` row was verified on production 26.1 (October 2026) by SQL read-back of `inv_loc.stockable` ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)).
+`Stockable` on an existing `inv_loc` row was verified on production 26.1 (October 2026) by SQL read-back of `inv_loc.stockable` ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)). Re-run on play with a runnable example — see [`ListPrice` below](#updating-a-suppliers-cost-supplierslistcost).
 
 > **`ProductGroupId` and the location's GL accounts.** Through the Transaction API `Item` service, a location's product-group change rewrites its GL, revenue, and COS accounts to the target group's defaults — see [03 § Changing a Location's Product Group Re-Syncs Its GL Accounts](03-Transaction-API.md#changing-a-locations-product-group-re-syncs-its-gl-accounts). Whether this PUT does the same was not tested; snapshot the three account columns before a product-group change here too, and compare after.
 
@@ -698,6 +698,8 @@ If something downstream keys off `inv_loc.date_last_modified` (a sync job, a "re
 **`ListPrice` is writable the same way.** Change `Suppliers.list[n].ListPrice` in the same GET → modify → PUT round trip and P21 writes `inventory_supplier.list_price`. The SQL read-back matched the value sent exactly on every item tested.
 
 > **Credit:** *@mrwuss* — verified on production 26.1, October 2026, with SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)).
+
+**Runnable example (`ListPrice` + `Stockable`):** [`inventory_update_list_price_stockable.py`](../examples/python/recipes/inventory_update_list_price_stockable.py) and `examples/csharp/Recipes/InventoryUpdateListPriceStockable.cs` (Recipes menu 28) GET the item with `extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure`, change one supplier's `ListPrice` and one location's `Stockable` (`Y`/`N`) in that payload, PUT it back, and verify through both the REST GET and OData (`inventory_supplier.list_price`, `inv_loc.stockable`). They then PUT the original values back and verify the restore. The C# version parses the GET with dates left as strings, so the PUT sends them back unchanged. Python and C# examples run on play 26.1.5950.0, 2026-10-10, on a throwaway item: change and restore both read back exactly.
 
 This API is the recommended path for `inv_loc` modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) **read-only**, so they cannot be edited there either.
 
@@ -723,7 +725,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -809,7 +811,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to update
@@ -928,7 +930,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1017,7 +1019,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string NewItemId = "WIDGET-002";                  // must not already exist in inv_mast
@@ -1159,7 +1161,7 @@ To create an item that is set up like one you already have — same locations, p
 
    | Where | Drop |
    |---|---|
-   | Item | `InvMastUid` |
+   | Item | `InvMastUid`, `UserDefinedFields` (it carries the source's own `InvMastUdUid` and `InvMastUid`) |
    | `Locations.list[]` | `QtyOnHand`, `MovingAverageCost`, `PrimaryBin`, `PeriodFirstStocked`, `YearFirstStocked`, `PatternLikeInvMastUid`, `PatternLikeLocationId`, `UserDefinedFields` |
    | `Suppliers.list[]` | `InventorySupplierUid`, `UserDefinedFields` |
    | `LocationSuppliers.list[]` | `InventorySupplierXLocUid`, `UserDefinedFields` |
@@ -1170,6 +1172,10 @@ To create an item that is set up like one you already have — same locations, p
 5. Read the new item back. Check its locations, suppliers and units against the source.
 
 Everything you don't drop is copied as-is, including supplier `Cost` and `ListPrice`, product and discount groups, GL accounts and replenishment settings. Edit them in the payload before the POST when the new item should differ. If the new `ItemId` already exists, the POST fails with `The proposed item ID already exists in the database.`
+
+The create does not copy the source's item user-defined fields. With the header `UserDefinedFields` block sent unchanged, the clone got no `inv_mast_ud` row at all and the source's row was left untouched, so the examples drop the block. Set any UD values on the new item after it exists.
+
+> **End-to-end files** (runnable from the repo with a `.env`; the source GET runs on a dry run, the POST needs `--execute` / typing `EXECUTE`, and both re-GET the new item and compare its locations, suppliers, location-suppliers and units with the source): [`examples/python/recipes/clone_item.py`](../examples/python/recipes/clone_item.py) · [`examples/csharp/Recipes/CloneItem.cs`](../examples/csharp/Recipes/CloneItem.cs).
 
 <!-- tabs -->
 
@@ -1184,7 +1190,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1226,9 +1232,10 @@ def get_token(client: httpx.Client) -> str:
 
 def build_clone(source: dict) -> dict:
     """Copy the source item, drop identity/stock fields, and re-key it to the new ID."""
-    # Top level: drop the uid and any null header fields.
+    # Top level: drop the source record's uid and UD block, and any null header fields.
     payload = {k: v for k, v in copy.deepcopy(source).items()
-               if k != "InvMastUid" and not (v is None and k[0].isupper())}
+               if k not in ("InvMastUid", "UserDefinedFields")
+               and not (v is None and k[0].isupper())}
     payload["ItemId"] = NEW_ITEM_ID
     payload["ItemDesc"] = NEW_ITEM_DESC
     for key, drop in DROP.items():
@@ -1299,7 +1306,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SourceItemId = "WIDGET-001";               // item to copy
@@ -1341,11 +1348,11 @@ var getResp = await client.GetAsync(
 getResp.EnsureSuccessStatusCode();
 var source = JsonNode.Parse(await getResp.Content.ReadAsStringAsync())!.AsObject();
 
-// Top level: drop the uid and any null header fields, then re-key.
+// Top level: drop the source record's uid and UD block, and any null header fields, then re-key.
 var payload = new JsonObject();
 foreach (var (key, value) in source)
 {
-    if (key == "InvMastUid" || drop.ContainsKey(key)) continue;
+    if (key is "InvMastUid" or "UserDefinedFields" || drop.ContainsKey(key)) continue;
     if (value is null && char.IsUpper(key[0])) continue;
     payload[key] = value?.DeepClone();
 }
@@ -1434,7 +1441,7 @@ static string ReadField(string payload, string field)
 
 Read the result back with SQL or OData as well (`inv_mast`, `inv_loc`, `inventory_supplier`, `item_uom` for the new `item_id`) — the re-GET shows what the API returns, not every column it wrote.
 
-> **Credit:** *@mrwuss* — a clone built this way was created on production 26.1, October 2026, and checked by SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)). The examples above mirror that run; they were not run separately.
+> **Credit:** *@mrwuss* — a clone built this way was created on production 26.1, October 2026, and checked by SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)). Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each cloning a throwaway two-location, one-supplier, two-unit item under a new ID, with `inv_loc`, `inventory_supplier`, `inventory_supplier_x_loc` and `item_uom` checked against the source by SQL read-back. The source had no stock on hand, so the run shows the copied setup, not the stripping of a non-zero `QtyOnHand`.
 
 ---
 
@@ -1531,7 +1538,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1609,7 +1616,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to probe -- ItemDesc is overwritten, then restored
@@ -1757,7 +1764,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1836,7 +1843,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to update
@@ -1955,7 +1962,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2067,7 +2074,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                     // item to append the new company/location to
@@ -2398,7 +2405,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2462,7 +2469,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";                        // required query param

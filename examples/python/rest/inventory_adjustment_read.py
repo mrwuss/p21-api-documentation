@@ -23,8 +23,8 @@ Verified live, 26.1.5950.0:
       to the GL. See docs/15's Open Questions.
 
 Usage:
-    python examples/python/rest/inventory_adjustment_read.py 1000002
-    python examples/python/rest/inventory_adjustment_read.py 1000002 --gl-transaction 3
+    python examples/python/rest/inventory_adjustment_read.py 1000100
+    python examples/python/rest/inventory_adjustment_read.py 1000100 --gl-transaction 3
 """
 
 import argparse

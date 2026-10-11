@@ -46,7 +46,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -214,7 +214,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -437,8 +437,13 @@ A Transaction API create has also been verified, for an item-level page with a f
 - **Link the page to its book immediately after the create.** An unlinked page is invisible to customer pricing, and order lines priced in the gap never pick the page up later. Do the create and the link back to back in one run.
 - **Link through `SalesPriceBook`, not through the page.** `SalesPriceBook` · `FORM.form` keyed `price_book_id`, plus a `LIST.list_detail` row keyed `price_page_uid`, creates the `price_page_x_book` row. The page's own `USED BY.price_book_x_page` element cannot do it: sending `price_book_price_book_id` there fails cleanly with `Column is disabled: price_book_price_book_id` — and with `IgnoreDisabled: true` it reports `Succeeded: 1`, drops the element from the response and writes **no** link row ([Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing)). Read `price_page_x_book` back after the link. The Interactive alternative is [Linking Price Page to Price Book](04-Interactive-API.md#example-linking-price-page-to-price-book).
 - **Unlink** with the same `SalesPriceBook` `LIST.list_detail` row and `row_status_flag` = `Delete`. That **physically deletes** the `price_page_x_book` row — it is not a soft delete.
+- **Omit `strategic_price_applies_to_cd` on create too.** Sending it (`Core`) failed the whole transaction with `Column is disabled: strategic_price_applies_to_cd`; left out, the page stored `2636` (*Core*) anyway.
+- **The new `price_page_uid` comes back in the create response** — the first `Edit` of `FORM.form` in `Results` carries it. Read it there and feed it straight into the link.
+- To retire a throwaway page afterwards, send `SalesPricePage` · `FORM.form` keyed `price_page_uid` with `row_status_flag` = `Delete`; the row stays, stored as `700`.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — create plus book link verified on play, then production, July 2026; the create is not re-run here. The book-link behavior (both elements, with and without `IgnoreDisabled`) and the unlink: verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by Alex Westemeier.
+**Runnable example:** [`sales_price_page_create_link.py`](../examples/python/recipes/sales_price_page_create_link.py) and `examples/csharp/Recipes/SalesPricePageCreateLink.cs` (Recipes menu 26) create the page, link it, read `price_page` and `price_page_x_book` back over OData, and optionally unlink and soft-delete it. Payloads: [`sales-price-page-create.json`](../examples/payloads/json/sales-price-page-create.json) and [`sales-price-book-link.json`](../examples/payloads/json/sales-price-book-link.json). Python and C# examples run on play 26.1.5950.0, 2026-10-10: create, link, read-back, unlink and page delete all confirmed. The run linked to a book that was itself created through `SalesPriceBook` · `FORM.form` keyed `price_book_id` (`price_book_id`, `price_book_description`, `row_status_flag` = `Active`), in no library, so the test page could not reach customer pricing.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — create plus book link verified on play, then production, July 2026. The create was re-run here with the examples above on 26.1.5950.0 (October 2026). The book-link behavior (both elements, with and without `IgnoreDisabled`) and the unlink: verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by Alex Westemeier.
 
 ---
 
@@ -571,7 +576,7 @@ The `commission_cost_calc_method_cd` field on the COSTS tab. Its accepted displa
 | 213 | Mark Up | **Not confirmed** — conflicts with `code_p21`, where 213 is *Supplier / Discount Group* |
 | 214 | Percentage | **Not confirmed** — conflicts with `code_p21`, where 214 is *Supplier / Product Group* |
 
-> ⚠️ **The 212–214 rows are unverified and probably wrong.** They are not page types (see [Price Page Type](#price-page-type-form-tab)), but they reuse page-type numbers, and `code_p21` gives each `code_no` one description. The verified calc-method codes elsewhere are `Difference`=228, `Mark up`=229 and `Percentage`=230 ([03 § Labels vs What the Database Stores](03-Transaction-API.md#labels-vs-what-the-database-stores-code_p21)). Before you interpret a stored `commission_cost_calc_method_cd` other than 211, join it to `code_p21`. Writes are unaffected: you send the display value.
+> ⚠️ **The 212–214 rows are unverified and probably wrong.** They are not page types (see [Price Page Type](#price-page-type-form-tab)), but they reuse page-type numbers, and `code_p21` gives each `code_no` one description. The verified calc-method codes elsewhere are `Difference`=228, `Mark up`=229 and `Percentage`=230 ([03 § Labels vs What the Database Stores](03-Transaction-API.md#labels-vs-what-the-database-stores-code_p21)). Before you interpret a stored `commission_cost_calc_method_cd` other than 211, join it to `code_p21`. Writes are unaffected: you send the display value. These rows came from the page-type table, where an earlier version of this page listed `212` as *Difference*; they were moved here because a calculation method is where *Difference* belongs, not because the codes were confirmed. Stored data cannot settle them: on play 26.1.5950.0 (2026-10-10) every `price_page` and `job_price_line` row stores `211`.
 
 ---
 
@@ -607,11 +612,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # an existing page to probe
+PRICE_PAGE_UID = "100011"                  # an existing page to probe
 DISPLAY_VALUE = "Mark Up"                 # the dropdown label under test
 # ---------------------------------------------------------------------------
 
@@ -730,10 +735,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";                   // an existing page to probe
+const string PricePageUid = "100011";                   // an existing page to probe
 const string DisplayValue = "Mark Up";                 // the dropdown label under test
 // ---------------------------------------------------------------------------
 
@@ -912,11 +917,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # the page whose tiers you are setting
+PRICE_PAGE_UID = "100011"                  # the page whose tiers you are setting
 # ---------------------------------------------------------------------------
 
 
@@ -1057,10 +1062,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";        // the page whose tiers you are setting
+const string PricePageUid = "100011";        // the page whose tiers you are setting
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -1260,7 +1265,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1418,7 +1423,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -1600,7 +1605,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1672,7 +1677,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SupplierId = "10050";                     // numeric -- no quotes in the filter
@@ -1781,11 +1786,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # the page whose tiers you are setting
+PRICE_PAGE_UID = "100011"                  # the page whose tiers you are setting
 # ---------------------------------------------------------------------------
 
 
@@ -1939,10 +1944,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";        // the page whose tiers you are setting
+const string PricePageUid = "100011";        // the page whose tiers you are setting
 // ---------------------------------------------------------------------------
 
 var handler = new HttpClientHandler
@@ -2136,11 +2141,11 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
-PRICE_PAGE_UID = "45556"                  # the page whose COSTS tab you are setting
+PRICE_PAGE_UID = "100011"                  # the page whose COSTS tab you are setting
 COMMISSION_COST_VALUE = "1.01"            # 1.01 = pass-through costing, 1% margin
 # ---------------------------------------------------------------------------
 
@@ -2274,10 +2279,10 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
-const string PricePageUid = "45556";        // the page whose COSTS tab you are setting
+const string PricePageUid = "100011";        // the page whose COSTS tab you are setting
 const string CommissionCostValue = "1.01";  // 1.01 = pass-through costing, 1% margin
 // ---------------------------------------------------------------------------
 
@@ -2521,7 +2526,7 @@ These carry no break fields — they exist to name a book or tie pages to it.
 
 `SalesPriceBook`'s `LIST.list_detail` exposes `calculation_value1`, `calculation_value2`, `break1`, and `other_cost_value` as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.
 
-> **The purchase-side write path is not re-verified here.** Everything above is read from the service definitions and confirmed by a live read in this repo. The one write that has been reported verified is below; treat the other two services as unproven until you have tested them in your own environment.
+> **Only one purchase-side write is verified.** Everything above is read from the service definitions and confirmed by a live read in this repo. The `PurchasePricingPageSupplierItem` create and in-place edit below are verified, and `PurchasePricingBook` · `FORM.form` created a book (`company_id`, `purchase_pricing_book_id`, `purchase_pricing_book_desc`) on play 26.1.5950.0. Treat the supplier and discount-group page services as unproven until you have tested them in your own environment.
 
 ### Editing a Supplier/Item Purchase Page (`PurchasePricingPageSupplierItem`)
 
@@ -2535,7 +2540,15 @@ Creates and in-place edits on `PurchasePricingPageSupplierItem` have been verifi
 - `location_id` can be stored while `all_locations_flag` stays `Y`; a location-specific page overrides an all-locations page for that location.
 - Quantity-break pages are `pricing_method` `None` + `calculation_type` `Fixed Price`, with tiers in `value{n}` / `break{n}`.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — create and in-place edit verified on play, July 2026; not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — create and in-place edit verified on play, July 2026.
+
+**Re-run on play 26.1.5950.0 (October 2026)** against a throwaway book and page. The create and the in-place price edit both worked as described, and `Status: "Edit"` was HTTP 400. Two results differ from the list above:
+
+- **Only `effective_date` behaved as an identity key.** Changing `effective_date` created a second page. Changing only `expiration_date` re-dated the **existing** page in place (same `purchase_pricing_page_uid`) instead of creating a new one. Send both dates exactly as stored either way — but don't rely on a changed `expiration_date` to create a page.
+- **A keys-plus-`price` edit also succeeded** on this build, with `totaling_basis` and the other header fields left out; the page kept its stored values. The required-field failure above was not reproduced. The example still mirrors the full field set, because that is what works on both builds.
+- `purchase_pricing_book_id` has a short length limit: a 12-character ID failed *"The length of the data exceeds the maximum length for the purchase_pricing_book_id field"*; an 8-character ID was accepted.
+
+**Runnable example:** [`purchase_pricing_page_edit.py`](../examples/python/recipes/purchase_pricing_page_edit.py) and `examples/csharp/Recipes/PurchasePricingPageEdit.cs` (Recipes menu 27) read the page over OData, map the stored codes to labels, change the price, post `Status: "New"` with the exact keys, and confirm the same `purchase_pricing_page_uid` carries the new price with no duplicate. Payload: [`purchase-pricing-page-edit.json`](../examples/payloads/json/purchase-pricing-page-edit.json). Python and C# examples run on play 26.1.5950.0, 2026-10-10.
 
 <!-- tabs -->
 
@@ -2548,7 +2561,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2655,7 +2668,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";                       // the five key fields below

@@ -656,16 +656,18 @@
 <ul>
 <li><a href="#why-it-exists">Why it exists</a></li>
 <li><a href="#parameters-fill-these-in">Parameters (fill these in)</a></li>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#runbook">Runbook</a><ul>
-<li><a href="#step-1-catalog-what-the-customer-actually-buys-inferred-method">Step 1 — Catalog what the customer actually buys (Inferred method)</a></li>
-<li><a href="#step-2-fix-the-boms-transaction-assembly-verified">Step 2 — Fix the BOMs (Transaction Assembly) (Verified)</a></li>
-<li><a href="#step-3-create-the-rebate-vendor-transaction-vendor-verified">Step 3 — Create the rebate vendor (Transaction Vendor) (Verified)</a></li>
-<li><a href="#step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-interactive-item-verified">Step 4 — Make it the primary supplier at the ship-from location (Transaction + Interactive Item) (Verified)</a></li>
-<li><a href="#step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified">Step 5 — Price and cost the contract lines (Transaction JobContractPricing) (Verified)</a></li>
-<li><a href="#step-6-order-entry-and-invoicing-verified">Step 6 — Order entry and invoicing (Verified)</a></li>
+<li><a href="#step-1-catalog-what-the-customer-actually-buys-inferred-method-run-on-play-26159500-2026-10-10">Step 1 — Catalog what the customer actually buys (Inferred method; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-2-fix-the-boms-transaction-assembly-verified-run-on-play-26159500-2026-10-10">Step 2 — Fix the BOMs (Transaction Assembly) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-3-create-the-rebate-vendor-transaction-vendor-verified-run-on-play-26159500-2026-10-10">Step 3 — Create the rebate vendor (Transaction Vendor) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the ship-from location (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 5 — Price and cost the contract lines (Transaction JobContractPricing) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-6-order-entry-and-invoicing-verified-run-on-play-26159500-2026-10-10">Step 6 — Order entry and invoicing (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 </ul>
 </li>
 <li><a href="#verify-the-acceptance-test-is-a-real-invoice">Verify — the acceptance test is a real invoice</a></li>
+<li><a href="#steps-4-and-5-in-code">Steps 4 and 5, in code</a></li>
 <li><a href="#reporting-cost-and-margin-without-double-counting-verified">Reporting cost and margin without double-counting (Verified)</a></li>
 <li><a href="#maintenance">Maintenance</a></li>
 </ul>
@@ -676,8 +678,8 @@
 <h1 id="rebate-tracked-assembly-program">Rebate-Tracked Assembly Program</h1>
 <p>Set up a customer program where assembled parts are sold on a job contract and their components carry a supplier rebate — so that each invoice books cost at the <strong>rebated</strong> value and P21 writes the rebate receivable automatically, instead of the rebate being reconciled by hand.</p>
 <p><strong>API:</strong> Transaction + Interactive · <strong>Services:</strong> <code>JobContractPricing</code>, <code>Vendor</code>, <code>Item</code>, <code>Assembly</code>, <code>Order</code>, <code>Shipping</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#how-contract-costs-reach-the-order-and-the-invoice">How Contract Costs Reach the Order and the Invoice</a> · <a href="../03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service</a> · <a href="../03-Transaction-API.html#rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor">Rebate prerequisites</a></p>
-<p>This page is a <strong>checklist</strong>, not a script — a template you fill in per program. Adding a single new part to a running program: <a href="new-assembled-part.html">new-assembled-part</a>.</p>
-<p><strong>Status legend:</strong> <strong>Verified</strong> = proven end to end with a read-back by the credited contributor (play, and production for the contract and BOM work, 2026); <strong>Inferred</strong> = the business method or a step that follows from verified behavior but was not run as its own step.</p>
+<p>This page is a template you fill in per program. The API-reachable steps, for one assembled part, are one runnable program in Python and C# that runs each step and reads it back before the next: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/rebate_assembly_program.py"><code>examples/python/recipes/rebate_assembly_program.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/RebateAssemblyProgram.cs"><code>examples/csharp/Recipes/RebateAssemblyProgram.cs</code></a> (menu item 37). Both are dry runs until you pass <code>--execute</code> or type <code>EXECUTE</code>. Adding a single new part to a running program: <a href="new-assembled-part.html">new-assembled-part</a>.</p>
+<p><strong>Status legend:</strong> <strong>Run on play 26.1.5950.0, 2026-10-10</strong> = the step ran in both the Python and the C# runbook against a play tenant on that build and date, with a read-back. <strong>Manual</strong> = a business decision or a check a person makes; the runbooks do not do it. <strong>Verified</strong> = proven end to end with a read-back by the credited contributor (play, and production for the contract and BOM work, 2026); <strong>Inferred</strong> = the business method or a step that follows from verified behavior but was not run as its own step.</p>
 <h2 id="why-it-exists">Why it exists</h2>
 <p>Assemblies priced off a job contract cost wrong when the parent's cost rolls up <strong>non-rebated</strong> component cost, and when BOMs carry hand-entered charge lines or duplicate components. The invoice shows a phantom loss and under-credits the rep's margin. The fix is to put the rebated cost on the contract and let P21 book the rebate — which only happens when every prerequisite below is in place.</p>
 <h2 id="parameters-fill-these-in">Parameters (fill these in)</h2>
@@ -707,57 +709,207 @@
 </tr>
 <tr>
 <td>Rebate vendor</td>
-<td><code>100500</code></td>
-<td>Track Rebates on (step 3)</td>
+<td>created in step 3</td>
+<td>Track Rebates on</td>
 </tr>
 <tr>
 <td>Rebate schedule</td>
 <td>percent by component product code</td>
-<td>From the supplier agreement — confirm with the supplier</td>
+<td>From the supplier agreement — confirm with the supplier (manual)</td>
 </tr>
 <tr>
 <td>Pricing rule</td>
 <td>price = true cost ÷ (1 − target margin)</td>
-<td>A business decision</td>
+<td>A business decision (manual)</td>
 </tr>
 </tbody>
 </table></div>
+<h2 id="run-it">Run it</h2>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>examples/python/recipes/rebate_assembly_program.py<span class="w">            </span><span class="c1"># dry run: payloads</span>
+python<span class="w"> </span>examples/python/recipes/rebate_assembly_program.py<span class="w"> </span>--company<span class="w"> </span>ACME<span class="w"> </span>--customer<span class="w"> </span>CUST-100<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--ship-to<span class="w"> </span>CUST-100<span class="w"> </span>--contact<span class="w"> </span><span class="m">300</span><span class="w"> </span>--taker<span class="w"> </span>JSMITH<span class="w"> </span>--job-no<span class="w"> </span>JOB-001<span class="w"> </span>--contract-no<span class="w"> </span>CONTRACT-001<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--ship-from<span class="w"> </span><span class="m">30</span><span class="w"> </span>--item<span class="w"> </span>ASSY-001<span class="w"> </span>--component-qty<span class="w"> </span>COMP-001<span class="o">=</span><span class="m">2</span><span class="w"> </span>--vendor-name<span class="w"> </span><span class="s2">&quot;Example Rebate Vendor&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--ap-account<span class="w"> </span><span class="m">2222200</span><span class="w"> </span>--rebate-account<span class="w"> </span><span class="m">1111100</span><span class="w"> </span>--rebate-allowance-account<span class="w"> </span><span class="m">3333300</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--price<span class="w"> </span><span class="m">45</span>.00<span class="w"> </span>--true-cost<span class="w"> </span><span class="m">30</span>.60<span class="w"> </span>--rebated-cost<span class="w"> </span><span class="m">24</span>.00<span class="w"> </span>--execute
+</code></pre></div>
+
+<p>Step 6 sells one unit, so the assembled part must be <strong>in stock at the ship-from location</strong> first (built on a production order, or received).</p>
 <h2 id="runbook">Runbook</h2>
-<h3 id="step-1-catalog-what-the-customer-actually-buys-inferred-method">Step 1 — Catalog what the customer actually buys (Inferred method)</h3>
-<p>Sweep the customer's order and invoice history (read-only) for every assembly they have ordered, and compare with the contract's <code>job_price_line</code> rows. Items ordered but not on the contract are the gap to add. Repeat this sweep periodically — new assemblies appear over time.</p>
-<h3 id="step-2-fix-the-boms-transaction-assembly-verified">Step 2 — Fix the BOMs (Transaction <code>Assembly</code>) (Verified)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Surface</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Catalog what the customer buys</td>
+<td>OData (read-only)</td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Fix the BOMs</td>
+<td>Transaction <code>Assembly</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10 (quantity fix)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Create the rebate vendor</td>
+<td>Transaction <code>Vendor</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Primary supplier at the ship-from location</td>
+<td>Transaction <code>Item</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Price and cost the contract lines</td>
+<td>Transaction <code>JobContractPricing</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Order entry and invoicing</td>
+<td>Transaction <code>Order</code> + Interactive <code>Shipping</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>—</td>
+<td>GL check, supplier claim, rebate schedule</td>
+<td>—</td>
+<td>Manual</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="step-1-catalog-what-the-customer-actually-buys-inferred-method-run-on-play-26159500-2026-10-10">Step 1 — Catalog what the customer actually buys (Inferred method; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>Sweep the customer's order and invoice history (read-only) for every assembly they have ordered, and compare with the contract's <code>job_price_line</code> rows. Items ordered but not on the contract are the gap to add. Repeat this sweep periodically — new assemblies appear over time. The runbooks read up to 200 of the customer's orders since <code>--since</code>, collect the ordered <code>inv_mast_uid</code>s, and list those that have an <code>assembly_hdr</code> and no line on the contract.</p>
+<h3 id="step-2-fix-the-boms-transaction-assembly-verified-run-on-play-26159500-2026-10-10">Step 2 — Fix the BOMs (Transaction <code>Assembly</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>Edits to existing assemblies work through keyed <code>Status: "New"</code> Transactions (<a href="../03-Transaction-API.html#part-assembly-creation-workflow">details</a>):</p>
 <ul>
-<li><strong>Remove charge lines</strong> (labor, burden and other charge items) if your costing replaces them: <code>delete_flag</code> = <code>ON</code> on the component row keyed <code>item_id_service_labor_id</code>.</li>
-<li><strong>Fix duplicated or wrong-quantity components</strong> — a duplicate component double-counts real COGS.</li>
+<li><strong>Remove charge lines</strong> (labor, burden and other charge items) if your costing replaces them: <code>delete_flag</code> = <code>ON</code> on the component row keyed <code>item_id_service_labor_id</code>. (<code>--remove-component</code> in the runbooks; the verification runs exercised the quantity fix only — the removal is <a href="../03-Transaction-API.html#part-assembly-creation-workflow">verified in the manual</a>.)</li>
+<li><strong>Fix duplicated or wrong-quantity components</strong> — a duplicate component double-counts real COGS. (<code>--component-qty COMP=QTY</code>; run.)</li>
 <li><strong>Fix component units</strong> that do not match the component's base unit.</li>
 </ul>
 <p>These change the item for <strong>every</strong> customer, so confirm before running. Read back <code>assembly_line</code> (<code>delete_flag</code>, <code>quantity</code>, unit).</p>
-<h3 id="step-3-create-the-rebate-vendor-transaction-vendor-verified">Step 3 — Create the rebate vendor (Transaction <code>Vendor</code>) (Verified)</h3>
-<p>Create the vendor with <code>vendor</code> = <code>ON</code>, <code>track_rebates</code> = <code>ON</code>, terms by description, no currency, and its rebate receivable and allowance accounts on <code>REBATE_ACCOUNTS.d_vendor_rebate_accounts</code>. The save creates the same-ID supplier. <a href="../03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">Payload and traps</a>.</p>
+<h3 id="step-3-create-the-rebate-vendor-transaction-vendor-verified-run-on-play-26159500-2026-10-10">Step 3 — Create the rebate vendor (Transaction <code>Vendor</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>Create the vendor with <code>vendor</code> = <code>ON</code>, <code>track_rebates</code> = <code>ON</code>, terms by description, no currency, and its rebate receivable and allowance accounts on <code>REBATE_ACCOUNTS.d_vendor_rebate_accounts</code>. The runbooks leave <code>id</code> out: P21 numbered the vendor from the address sequence and returned it in the header's result row, and the save created the same-ID supplier with <code>vendor_supplier.primary_vendor = 'Y'</code>. <a href="../03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">Payload and traps</a>.</p>
 <p>Some programs book the receivable against a dedicated internal vendor (one per location) rather than the real supplier, and file the claim to the supplier separately; P21 does not care which, as long as Track Rebates is on.</p>
-<h3 id="step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-interactive-item-verified">Step 4 — Make it the primary supplier at the ship-from location (Transaction + Interactive <code>Item</code>) (Verified)</h3>
+<h3 id="step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the ship-from location (Transaction <code>Item</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>Per assembly item, at the <strong>ship-from</strong> location — not the sales location:</p>
 <ol>
 <li>Insert the vendor's supplier row on the location's supplier list: Transaction <code>Item</code>, <code>SUPPLIER_X_LOCATION</code> keyed on both <code>location_id</code> and <code>supplier_id</code>, <code>IgnoreDisabled: true</code> (<a href="../03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">details</a>).</li>
-<li>Flip it to primary. Items with a zero supplier cost or list price trip the <em>Item Issues Detected</em> rule, which the Transaction API cannot answer — use the <a href="../04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Interactive fallback</a> and answer <code>cb_1</code>, or <a href="../03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">fix the data</a>.</li>
+<li>Flip it to primary. Items with a zero supplier cost or list price trip the <em>Item Issues Detected</em> rule, which the Transaction API cannot answer — use the <a href="../04-Interactive-API.html#worked-example-item-issues-detected-rule-callback">Interactive fallback</a> and answer <code>cb_1</code>, or <a href="../03-Transaction-API.html#item-issues-detected-popup-root-cause-and-data-fix">fix the data</a>. (The verification item did not trip it.)</li>
 </ol>
 <p>Read back <code>inv_loc.primary_supplier_id</code> at the ship-from location — the flag write can succeed and flip nothing.</p>
-<h3 id="step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified">Step 5 — Price and cost the contract lines (Transaction <code>JobContractPricing</code>) (Verified)</h3>
+<h3 id="step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 5 — Price and cost the contract lines (Transaction <code>JobContractPricing</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>One line per POST. For each assembly: <code>pricing_method</code> = <code>Price</code> <strong>before</strong> <code>price</code>; <code>commission_cost_type_cd</code> = <code>Value</code> with the true cost; <strong><code>other_cost_type_cd</code> = <code>Value</code> with the rebated component cost</strong>. <a href="../03-Transaction-API.html#commission-costs">Payload</a>.</p>
-<p>Attach every ship-to that orders to the contract (<a href="../03-Transaction-API.html#attaching-a-ship-to-to-an-existing-contract">details</a>) — pricing follows the ship-to grid, not the contract header.</p>
-<h3 id="step-6-order-entry-and-invoicing-verified">Step 6 — Order entry and invoicing (Verified)</h3>
-<p>Enter orders with <code>unit_price</code> blank so the contract price and binding fill in at entry (<a href="sales-order-to-invoice.html">sales-order-to-invoice</a>). A line is bound once, at entry: a bound line re-reads the contract's other cost at invoicing; a line entered before the item was on the contract never binds — delete and re-enter it.</p>
+<p>Attach every ship-to that orders to the contract (<a href="../03-Transaction-API.html#attaching-a-ship-to-to-an-existing-contract">details</a>) — pricing follows the ship-to grid, not the contract header. The runbooks send the ship-to as a keyed <code>CUSTOMER_SHIP_TO.customer_ship_to</code> row in the same POST and read <code>job_price_customer_shipto</code> back; in the verification runs the ship-to was already on the contract, so attaching a <em>new</em> one was not exercised.</p>
+<h3 id="step-6-order-entry-and-invoicing-verified-run-on-play-26159500-2026-10-10">Step 6 — Order entry and invoicing (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>Enter orders with <code>unit_price</code> blank so the contract price and binding fill in at entry (<a href="sales-order-to-invoice.html">sales-order-to-invoice</a>). A line is bound once, at entry: a bound line re-reads the contract's other cost at invoicing; a line entered before the item was on the contract never binds — delete and re-enter it. The runbooks enter one unit through the Transaction API (<code>quote</code> = <code>OFF</code>), check <code>oe_line.job_price_hdr_uid</code> and <code>oe_line.supplier_id</code>, print the pick ticket and ship-confirm it.</p>
+<blockquote>
+<p><strong>Observed on the test tenant:</strong> the assembled part (<code>production_order_processing</code> = <code>Y</code>, <code>auto_create_prod_order</code> = <code>N</code>, stock on hand) entered through the Transaction API came back as an <code>assembly = 'P'</code> line that allocated the finished unit, followed by its components as <code>assembly = 'N'</code> lines at $0. The components appeared on the invoice with <code>qty_shipped</code> and <code>cogs_amount</code> filled, while their <code>oe_line.qty_invoiced</code> stayed 0 and their on-hand did not move — the double-counting trap described under <em>Reporting cost and margin without double-counting</em> below.</p>
+</blockquote>
 <h2 id="verify-the-acceptance-test-is-a-real-invoice">Verify — the acceptance test is a real invoice</h2>
-<p>On a test order shipped and invoiced:</p>
+<p>On a test order shipped and invoiced (the runbooks check the first three automatically):</p>
 <ul>
 <li><code>invoice_line.unit_price</code> = the contract price; <code>commission_cost</code> = the contract value × its multiplier; <code>oe_line.job_price_hdr_uid</code> = the contract.</li>
 <li><code>invoice_line.cogs_amount</code> = the contract's <strong>other cost</strong> value, not the moving average.</li>
-<li>A <code>vendor_rebate</code> row for the invoice: vendor = the rebate vendor, base cost = moving average, after-rebate cost = the contract value, due = the difference.</li>
-<li>GL for the invoice: the Sales Journal books COGS at the full moving average, then a Rebate Journal entry debits the rebate receivable (re-suffixed to the sales location) and credits COGS — net COGS = the contract value.</li>
+<li>A <code>vendor_rebate</code> row for the invoice line: vendor = the rebate vendor, base cost = moving average, after-rebate cost = the contract value, due = the difference.</li>
+<li>GL for the invoice (manual): the Sales Journal books COGS at the full moving average, then a Rebate Journal entry debits the rebate receivable (re-suffixed to the sales location) and credits COGS — net COGS = the contract value.</li>
 <li>No charge lines on the exploded order.</li>
 </ul>
 <p>If COGS dropped but <strong>no</strong> <code>vendor_rebate</code> row appeared, the primary supplier at the ship-from location is not the Track Rebates vendor (step 4). The same mechanics apply to assemblies built on production orders, linked or build-to-stock.</p>
+<h2 id="steps-4-and-5-in-code">Steps 4 and 5, in code</h2>
+<p>The two payload builders where the rebate is won or lost; the step sequencing and read-backs are in the files.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_supplier_payloads</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">supplier_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Step 4: insert the location supplier row (both keys + IgnoreDisabled), then flip primary.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">item_payload</span><span class="p">(</span><span class="n">detail</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ignore</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">payload</span><span class="p">(</span><span class="s2">&quot;Item&quot;</span><span class="p">,</span> <span class="p">[</span>
+            <span class="n">element</span><span class="p">(</span><span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span> <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">item</span><span class="p">)]]),</span>
+            <span class="n">element</span><span class="p">(</span><span class="s2">&quot;TABPAGE_17.invloclist&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">],</span>
+                    <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">ship_from</span><span class="p">)]]),</span>
+            <span class="n">detail</span><span class="p">,</span>
+        <span class="p">],</span> <span class="n">ignore_disabled</span><span class="o">=</span><span class="n">ignore</span><span class="p">)</span>
+    <span class="n">insert</span> <span class="o">=</span> <span class="n">item_payload</span><span class="p">(</span><span class="n">element</span><span class="p">(</span><span class="s2">&quot;SUPPLIER_X_LOCATION.supplier_x_location&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span>
+                                  <span class="p">[</span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span> <span class="s2">&quot;supplier_id&quot;</span><span class="p">],</span>
+                                  <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;location_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">ship_from</span><span class="p">),</span>
+                                    <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="n">supplier_id</span><span class="p">)]]),</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">flip</span> <span class="o">=</span> <span class="n">item_payload</span><span class="p">(</span><span class="n">element</span><span class="p">(</span><span class="s2">&quot;SUPPLIER_X_LOCATION.supplier_x_location&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;supplier_id&quot;</span><span class="p">],</span>
+                                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;supplier_id&quot;</span><span class="p">,</span> <span class="n">supplier_id</span><span class="p">),</span>
+                                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;primary_supplier&quot;</span><span class="p">,</span> <span class="s2">&quot;ON&quot;</span><span class="p">)]]),</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">insert</span><span class="p">,</span> <span class="n">flip</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_contract_payload</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Step 5: ship-to on the grid; pricing_method BEFORE price; both costs type Value.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">payload</span><span class="p">(</span><span class="s2">&quot;JobContractPricing&quot;</span><span class="p">,</span> <span class="p">[</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;FORM.d_dw_job_price_hdr&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">company</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;contract_no&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">contract_no</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;job_no&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">job_no</span><span class="p">)]]),</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;CUSTOMER_SHIP_TO.customer_ship_to&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span> <span class="s2">&quot;ship_to_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;customer_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">customer</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;ship_to_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">ship_to</span><span class="p">)]]),</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;JOBPRICELINE.jobpriceline&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">item</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;uom&quot;</span><span class="p">,</span> <span class="s2">&quot;EA&quot;</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;pricing_method&quot;</span><span class="p">,</span> <span class="s2">&quot;Price&quot;</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">price</span><span class="p">)]]),</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;JOBPRICECOST.jobpricecost&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">item</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;commission_cost_type_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;commission_cost_value&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">true_cost</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;other_cost_type_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;other_cost_value&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">rebated_cost</span><span class="p">)]]),</span>
+    <span class="p">],</span> <span class="n">ignore_disabled</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;Step 4: insert the location supplier row (both keys + IgnoreDisabled), then flip it primary.&lt;/summary&gt;</span>
+<span class="k">private</span><span class="w"> </span><span class="nf">static</span><span class="w"> </span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">Insert</span><span class="p">,</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="n">Flip</span><span class="p">)</span><span class="w"> </span><span class="n">BuildSupplierPayloads</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">location</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">supplierId</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">JObject</span><span class="w"> </span><span class="nf">ItemPayload</span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">detail</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="n">ignore</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">Payload</span><span class="p">(</span><span class="s">&quot;Item&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">ignore</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;item_id&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;TABPAGE_17.invloclist&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;location_id&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">location</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">detail</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="n">ItemPayload</span><span class="p">(</span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;SUPPLIER_X_LOCATION.supplier_x_location&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;supplier_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;location_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">location</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;supplier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">supplierId</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span><span class="w"> </span><span class="k">true</span><span class="p">),</span>
+<span class="w">        </span><span class="n">ItemPayload</span><span class="p">(</span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;SUPPLIER_X_LOCATION.supplier_x_location&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;supplier_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;supplier_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">supplierId</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;primary_supplier&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span><span class="w"> </span><span class="k">false</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="c1">/// &lt;summary&gt;Step 5: ship-to on the grid; pricing_method BEFORE price; both costs type Value.&lt;/summary&gt;</span>
+<span class="k">private</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="nf">BuildContractPayload</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">company</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">contractNo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">jobNo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">customer</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">shipTo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">item</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">price</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">trueCost</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">rebatedCost</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="n">Payload</span><span class="p">(</span><span class="s">&quot;JobContractPricing&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;FORM.d_dw_job_price_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">company</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;contract_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">contractNo</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;job_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">jobNo</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;CUSTOMER_SHIP_TO.customer_ship_to&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ship_to_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;customer_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">customer</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;ship_to_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">shipTo</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;JOBPRICELINE.jobpriceline&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;item_id&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;uom&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;EA&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;pricing_method&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Price&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;price&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">price</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;JOBPRICECOST.jobpricecost&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;item_id&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">),</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;commission_cost_type_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Value&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;commission_cost_value&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">trueCost</span><span class="p">),</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;other_cost_type_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Value&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;other_cost_value&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">rebatedCost</span><span class="p">),</span>
+<span class="w">        </span><span class="p">}));</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Payload files</strong> (validator-verified, JSON only): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/add-supplier-x-loc.json">step 4 supplier row</a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/set-primary-supplier.json">step 4 flip</a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/contract-line-rebate-costs.json">step 5 contract line</a> — see <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/README.md">payloads README</a>.</p>
+</blockquote>
 <h2 id="reporting-cost-and-margin-without-double-counting-verified">Reporting cost and margin without double-counting (Verified)</h2>
 <p>Margin reports on a program like this go wrong in two ways, even when the setup above is correct:</p>
 <ul>
@@ -800,7 +952,7 @@
 </tbody>
 </table></div>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — program built and proven on play and production, 2026, including the rebate trigger end to end on play (September 2026); not re-run here.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — program built and proven on play and production, 2026, including the rebate trigger end to end on play (September 2026). Runnable Python and C# runbook, rebate trigger included: run end to end on play 26.1.5950.0, 2026-10-10.</p>
 </blockquote>
     </main>
 
@@ -811,16 +963,18 @@
 <ul>
 <li><a href="#why-it-exists">Why it exists</a></li>
 <li><a href="#parameters-fill-these-in">Parameters (fill these in)</a></li>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#runbook">Runbook</a><ul>
-<li><a href="#step-1-catalog-what-the-customer-actually-buys-inferred-method">Step 1 — Catalog what the customer actually buys (Inferred method)</a></li>
-<li><a href="#step-2-fix-the-boms-transaction-assembly-verified">Step 2 — Fix the BOMs (Transaction Assembly) (Verified)</a></li>
-<li><a href="#step-3-create-the-rebate-vendor-transaction-vendor-verified">Step 3 — Create the rebate vendor (Transaction Vendor) (Verified)</a></li>
-<li><a href="#step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-interactive-item-verified">Step 4 — Make it the primary supplier at the ship-from location (Transaction + Interactive Item) (Verified)</a></li>
-<li><a href="#step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified">Step 5 — Price and cost the contract lines (Transaction JobContractPricing) (Verified)</a></li>
-<li><a href="#step-6-order-entry-and-invoicing-verified">Step 6 — Order entry and invoicing (Verified)</a></li>
+<li><a href="#step-1-catalog-what-the-customer-actually-buys-inferred-method-run-on-play-26159500-2026-10-10">Step 1 — Catalog what the customer actually buys (Inferred method; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-2-fix-the-boms-transaction-assembly-verified-run-on-play-26159500-2026-10-10">Step 2 — Fix the BOMs (Transaction Assembly) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-3-create-the-rebate-vendor-transaction-vendor-verified-run-on-play-26159500-2026-10-10">Step 3 — Create the rebate vendor (Transaction Vendor) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-4-make-it-the-primary-supplier-at-the-ship-from-location-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 4 — Make it the primary supplier at the ship-from location (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-5-price-and-cost-the-contract-lines-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 5 — Price and cost the contract lines (Transaction JobContractPricing) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-6-order-entry-and-invoicing-verified-run-on-play-26159500-2026-10-10">Step 6 — Order entry and invoicing (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
 </ul>
 </li>
 <li><a href="#verify-the-acceptance-test-is-a-real-invoice">Verify — the acceptance test is a real invoice</a></li>
+<li><a href="#steps-4-and-5-in-code">Steps 4 and 5, in code</a></li>
 <li><a href="#reporting-cost-and-margin-without-double-counting-verified">Reporting cost and margin without double-counting (Verified)</a></li>
 <li><a href="#maintenance">Maintenance</a></li>
 </ul>

@@ -1,0 +1,90 @@
+{
+    "Name": "ShipTo",
+    "UseCodeValues": true,
+    "Transactions": [{
+        "Status": "New",
+        "DataElements": [
+            {
+                "Name": "TABPAGE_1.shiptomain",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "company_id",       "Value": "ACME"},
+                        {"Name": "customer_id",      "Value": "1001"},
+                        {"Name": "address_name",     "Value": "ACME Industrial - East Plant"},
+                        {"Name": "default_branch",   "Value": "10"},
+                        {"Name": "terms_id",         "Value": "1"},
+                        {"Name": "invoice_type",     "Value": "IN"},
+                        {"Name": "tax_group_id",     "Value": "TAX-01"},
+                        {"Name": "phys_address1",    "Value": "456 Industrial Pkwy"},
+                        {"Name": "phys_city",        "Value": "Des Moines"},
+                        {"Name": "phys_state",       "Value": "IA"},
+                        {"Name": "phys_postal_code", "Value": "50309"},
+                        {"Name": "phys_country",     "Value": "USA"}
+                    ],
+                    "RelativeDateEdits": []
+                }]
+            },
+            {
+                "Name": "TABPAGE_2.tp_2_dw_2",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "mail_address1",    "Value": "456 Industrial Pkwy"},
+                        {"Name": "mail_city",        "Value": "Des Moines"},
+                        {"Name": "mail_state",       "Value": "IA"},
+                        {"Name": "mail_postal_code", "Value": "50309"},
+                        {"Name": "mail_country",     "Value": "USA"}
+                    ],
+                    "RelativeDateEdits": []
+                }]
+            },
+            {
+                "Name": "TABPAGE_5.tp_5_dw_5",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "central_phone_number", "Value": "515-555-0100"}
+                    ],
+                    "RelativeDateEdits": []
+                }]
+            },
+            {
+                "Name": "TABPAGE_OEOPTIONS.tabpage_oeoptions",
+                "Type": "Form",
+                "Keys": [],
+                "Rows": [{
+                    "Edits": [
+                        {"Name": "preferred_location_id", "Value": "10"}
+                    ],
+                    "RelativeDateEdits": []
+                }]
+            },
+            {
+                "Name": "TABPAGE_SALESREP.tabpage_salesrep",
+                "Type": "List",
+                "Keys": ["salesrep_id"],
+                "Rows": [
+                    {
+                        "Edits": [
+                            {"Name": "salesrep_id",           "Value": "200"},
+                            {"Name": "primary_salesrep",      "Value": "Y"},
+                            {"Name": "commission_percentage", "Value": "100"}
+                        ],
+                        "RelativeDateEdits": []
+                    },
+                    {
+                        "Edits": [
+                            {"Name": "salesrep_id", "Value": "100"},
+                            {"Name": "delete_flag", "Value": "Y"}
+                        ],
+                        "RelativeDateEdits": []
+                    }
+                ]
+            }
+        ]
+    }]
+}

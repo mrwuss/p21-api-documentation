@@ -59,6 +59,8 @@ p21-api-documentation/
 │   ├── 13-UDT-Service-API.md
 │   ├── 14-Breaking-Changes.md
 │   ├── 15-Other-REST-Families.md
+│   ├── img/                     # Screenshots used by the docs (00-Authentication)
+│   ├── index.html               # GitHub Pages landing page (redirects into html/)
 │   └── html/                    # Generated HTML versions
 │
 ├── definitions/                 # Sanitized full-field service definition JSONs (schema library)
@@ -67,18 +69,21 @@ p21-api-documentation/
 │   ├── python/                  # Python examples
 │   │   ├── common/              # Shared auth/config (used by every script)
 │   │   ├── odata/ transaction/ interactive/ entity/ production/
-│   │   └── recipes/             # End-to-end recipe scripts (dry-run by default)
+│   │   ├── recipes/             # End-to-end recipe scripts (dry-run by default)
+│   │   └── rest/                # Other REST families (doc 15) read/write scripts
 │   ├── csharp/                  # C# console app examples (P21Examples.sln)
 │   │   ├── Common/              # Shared library (auth, config, client)
 │   │   ├── OData/ Transaction/ Interactive/ Entity/ Production/
-│   │   └── Recipes/             # End-to-end recipe classes (EXECUTE-gated)
+│   │   ├── Recipes/             # End-to-end recipe classes (EXECUTE-gated)
+│   │   └── Rest/                # Other REST families (doc 15), menu-driven
 │   └── payloads/                # Standalone request payloads, validator-verified
 │       ├── json/                # One .json per documented task
 │       └── xml/                 # DataContract-correct XML counterparts
 │
-├── postman/                     # Postman collection for all APIs
+├── postman/                     # Postman collection (auth, OData, Transaction, Interactive, Entity, other REST families)
 │
 └── scripts/                     # Repo tooling (NOT API examples)
+    ├── README.md                # What each tool does and when to run it
     ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
     ├── validate_payload.py      # Offline payload validator (JSON/XML shape + schema checks)
     ├── check_anchors.py         # Validate internal doc links against the generated HTML
@@ -108,7 +113,7 @@ python examples/python/odata/01_basic_query.py
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.p21server.com`) |
+| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.example.com`) |
 | `P21_USERNAME` | Yes* | P21 API username |
 | `P21_PASSWORD` | Yes* | P21 API password |
 | `P21_CONSUMER_KEY` | No | Consumer key GUID (alternative to username/password) |
@@ -146,7 +151,7 @@ All documentation is derived from:
 |---|---|
 | **2026.1 breaking changes** — `SessionId`→`Id`, sequential fail-fast `/v2/change`, silent-false-success loads, UDT delete no-op, `IgnoreDisabled` false success, bad-`DatawindowName` eats the next request. **Accept-header empty 500 + ghost sessions are FIXED in 26.1.5940.0** and kept as resolved entries. Whole registry re-run unchanged on **26.1.5950.0** (Sept 2026) | [docs/14-Breaking-Changes.md](docs/14-Breaking-Changes.md) (version-indexed registry; **which entries apply depends on the build** — check before touching Interactive code) |
 | **An empty HTTP 500 on the interactive surface no longer means the `Accept` header** — on current builds it means a bad `DatawindowName` on the *previous* request burned this one | [docs/14 entry 9](docs/14-Breaking-Changes.md#9-a-bad-datawindowname-eats-the-next-request-on-that-window-empty-http-500) |
-| Transaction `Status` — **`"New"` is the only string the enum accepts** (case-insensitive); `"Existing"`/`"Update"`/etc. are HTTP 400 on 5940.0 and later, HTTP 500 on older builds; integers bind silently, never send one | [docs/03 § Status: "New" is the only value](docs/03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
+| Transaction `Status` — **`"New"` is the only string the enum accepts** (case-insensitive); `"Existing"`/`"Update"`/etc. are HTTP 400 on 5940.0 and later, HTTP 500 on older builds; integers bind silently, never send one. Same rule on `/process/pdfreport` (report payloads send `"New"` too) | [docs/03 § Status: "New" is the only value](docs/03-Transaction-API.md#status-new-is-the-only-value-the-enum-accepts) |
 | **P21 supports both .NET and .NET Framework for business rules, for now** — the middleware's own .NET 10 move did not drag rule code with it; client runtime is unconstrained (`net8.0`+) | [docs/14 § The middleware runtime](docs/14-Breaking-Changes.md#the-middleware-runtime-and-what-it-does-not-dictate) |
 | **25.2** — `DatawindowName` required in change requests | [docs/14 § 25.2](docs/14-Breaking-Changes.md#p21-252) |
 | `IgnoreDisabled: true` reports success on writes that write nothing — and on other elements the same flag genuinely unlocks the write, with an identical-looking response. Never trust a `Passed` under this flag; read the record back | [docs/14 entry 8](docs/14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) · [docs/03 § IgnoreDisabled](docs/03-Transaction-API.md#ignoredisabled) |
@@ -197,4 +202,4 @@ All documentation is derived from:
 
 ---
 
-*Last updated: 2026-09-22*
+*Last updated: 2026-10-10*

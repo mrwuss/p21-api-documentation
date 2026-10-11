@@ -142,7 +142,7 @@ Response (**2026.1** — the identifier is renamed `SessionId` → `Id`):
             "Properties": {
                 "fullversion": "26.1.5894.1",
                 "shortversion": "26.1",
-                "configurationid": "3694"
+                "configurationid": "1234"
             }
         }
     ]
@@ -435,7 +435,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -550,7 +550,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "SalesPricePage";           // window to inspect — open by ServiceName
@@ -1066,7 +1066,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1162,7 +1162,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SessionType = "Auto";                     // User | Auto | AutoInteractive
@@ -1590,7 +1590,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1779,7 +1779,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PriceBookId = "ACME_BOOK_A";              // the book to load on the FORM tab
@@ -1998,7 +1998,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2060,7 +2060,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // tried in order, first hit wins
@@ -2347,7 +2347,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2552,7 +2552,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PoNo = "123456";                          // existing purchase order to annotate
@@ -2823,6 +2823,14 @@ On a 26.1 play tenant the `Order` window opened through the Interactive API defa
 
 > **Credit:** *@mrwuss* — verified on play 26.1, October 2026, including the correction of an earlier round that ran in quote mode by accident ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)).
 
+**Runnable example:** [`order_entry_quote_off.py`](../examples/python/recipes/order_entry_quote_off.py) and `examples/csharp/Recipes/OrderEntryQuoteOff.cs` (Recipes menu 29). Both read `quote` from `GET /v2/data` on open, set it `OFF`, enter one line, save, and read `oe_hdr.projected_order` back through the new `oe_line_uid` (it arrives on the item change's `keygenerated` event). With the direct-ship option they also enter the line as `disposition = D` with a `po_cost`, set `c_create_po = ON`, drive the wizard (`cb_next`, then `cb_finish`) and read back the `oe_line_po` link and `po_hdr.po_type`. Python and C# examples run on play 26.1.5950.0, 2026-10-10, both modes:
+
+- `quote` was `Y` on every open, for both the password user and a consumer-key user, and `N` after the change; every order saved as `projected_order = 'N'`.
+- The save raised `w_message` prompts that the examples answer **Yes** (`cb_1`): *"The order line does not have a PO Cost specified. Proceed?"* on a line with no cost, and *"profit percentage … is greater than the acceptable limit"* on a line whose `po_cost` left a high margin. The prompt text is not in `GET /v2/data` for a `w_message`; it appears in the 400 error of any call the open prompt blocks.
+- **Direct ship in one save.** With `quote = OFF`, `disposition = D` and `po_cost` set at line entry and `c_create_po = ON` on the header of the **new** order, the first save opened the wizard directly (`quote_item = N`), and `cb_next` / `cb_finish` built a `po_type = 'D'` PO linked with `connection_type = 'P'`. That contradicts step 1 of [The flow](#the-flow) below for this build; the two-phase sequence was not re-tested with an outside supplier.
+- **The wizard did not open for an internal supplier.** When the item's primary supplier at the location was the company's own intercompany supplier, the save succeeded with **no** wizard and **no** PO, whether `c_create_po` was set on the new order or on the re-opened one. Changing the primary supplier to an outside supplier, with everything else the same, made the wizard open.
+- `c_create_po` needs a user with a Buyer ID. The password user without one got `Status: 2`, *"To create a PO, you must have a valid Buyer ID."*; the examples take a consumer-key option (`P21_CONSUMER_KEY` + `P21_CONSUMER_USERNAME`) to run as a user who has one.
+
 ### Why this cannot start in the Transaction API
 
 The line's `disposition` field is the trigger for a direct-ship line, and it is a **disabled column** — `Column is disabled: disposition`, verified both through `/transaction` and through an interactive change on an existing line. Its valid values are `B`, `C`, `D`, `H`, `M`, `P`, `S`; `D` is direct ship. Set it **as the line is entered**, in the Interactive window — there is no stateless path.
@@ -2886,7 +2894,7 @@ Two notes for whoever picks this up:
 - **The checkbox fields take `ON`/`OFF`, not `Y`/`N`.** `receive_all`, `complete`, `print_invoice` and `fax_invoice` all publish `ValidValues: ["ON", "OFF"]` and default to `"OFF"`. Getting this wrong is easy and was *not* the cause of the no-op, but fix it anyway.
 - The path described elsewhere is `receive_all` on — a **full** confirmation. Nothing documents driving a **partial** one, which is the case that matters for the date overwrite. `TABPAGE_17.tp_17_dw_17` exposes `unit_quantity` and a `complete` bound to `po_line.complete`, so a partial looks expressible in principle.
 
-The date-overwrite behavior above rests on the field binding and on the receipt data, not on a live write from this repo — the data is unambiguous, the write path is not yet.
+The date-overwrite behavior above rests on the field binding and on the receipt data. A live **full** confirmation through the Interactive window below then wrote the `shipment_date` into `po_line.supplier_ship_date`, as predicted; a **partial** confirmation is still not exercised here.
 
 ##### The Interactive path works
 
@@ -2898,6 +2906,12 @@ Driving the window instead of posting a transaction confirmed a direct ship on p
 4. Save.
 
 `shipment_date`, `period` and `year_for_period` came pre-filled. One save completed the PO, created a pick ticket and invoiced the sales-order line, with no popups. Read back `po_line.complete`, `oe_line.qty_invoiced` and the new `invoice_hdr` row.
+
+**Runnable example:** [`direct_ship_confirmation.py`](../examples/python/recipes/direct_ship_confirmation.py) and `examples/csharp/Recipes/DirectShipConfirmation.cs` (Recipes menu 30) take a PO number, check it is `po_type = 'D'` with an `oe_line_po` link, confirm it as above, and print the PO line, sales-order line and invoice before and after. Python and C# examples run on play 26.1.5950.0, 2026-10-10, each against its own `D` PO built with [`order_entry_quote_off.py`](#set-quote-to-off-first-the-window-can-open-in-quote-mode) in direct-ship mode:
+
+- `po_line.complete` `N` → `Y`, `qty_received` 0 → 1 of 1; `oe_line.qty_invoiced` 0 → 1 and `complete` `Y`; one new `invoice_hdr` row for the order.
+- **`po_line.supplier_ship_date` went from NULL to the confirmation's `shipment_date`** (today's date, pre-filled) — the live write behind [the ship-date overwrite above](#directshipconfirmation-writes-its-ship-date-down-onto-every-line), observed on a full confirmation.
+- The confirmation ran as a user **without** a Buyer ID; only the PO creation needed one.
 
 > **Credit:** *@mrwuss* — verified on play 26.1, October 2026 ([#169](https://github.com/mrwuss/p21-api-documentation/issues/169)). The Transaction API path that returned an empty result on 26.1.5940.0 above is the same one [Alex Westemeier](https://github.com/AWestemeier) reports working on his play tenant in August 2026 (`receive_all = 'Y'`, `print_invoice = 'N'`, `fax_invoice = 'N'`, and **never** `c_email_invoice`, which is disabled and fails the transaction *after* the documents are written). The difference is not explained.
 
@@ -2923,13 +2937,13 @@ So there is no way to convert an existing order line to direct ship through eith
 
 Driven end-to-end on a 26.1 play tenant (August 2026):
 
-1. Order **1519097** created interactively — one line, `disposition = 'D'`, saved.
+1. Order **1001236** created interactively — one line, `disposition = 'D'`, saved.
    - Setting `requested_date` fired the **date-cascade popup** (`Status: 3`) even on a brand-new order, exactly as documented below; the sequence stalls with `400`s on every later call until it is answered.
 2. Re-opened, `c_create_po = 'ON'` → `Status: 1`, then `save()` → `Status: 3` with the wizard (`cb_finish` present in its tool list).
-3. `cb_next` → page 2 carried PO **998303**.
+3. `cb_next` → page 2 carried PO **500102**.
 4. `cb_finish` → closed.
 
-Confirmed in the database: `po_hdr` 998303 with **`po_type = 'D'`, `approved = 'Y'`**, and an `oe_line_po` row linking order 1519097 line 1 ↔ PO 998303 line 1 with **`connection_type = 'P'`** — matching the reported shape field for field.
+Confirmed in the database: `po_hdr` 500102 with **`po_type = 'D'`, `approved = 'Y'`**, and an `oe_line_po` row linking order 1001236 line 1 ↔ PO 500102 line 1 with **`connection_type = 'P'`** — matching the reported shape field for field.
 
 *(Flow and dead ends originally verified by [Alex Westemeier](https://github.com/AWestemeier) across two cycles; re-driven and confirmed independently here.)*
 
@@ -2960,8 +2974,8 @@ Verified sequence (session created with `"ResponseWindowHandlingEnabled": true`)
 > **Read notes back through OData, not `/transaction/get`.** The Transaction API read of the same order returns the header note in `HDR_NOTE.hdr_note`, but the **line note never appears** in `LINE_NOTE.line_note` (the element comes back empty). Query the tables directly:
 >
 > ```http
-> GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1519092'
-> GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1519092'
+> GET /odataservice/odata/table/oe_hdr_notepad?$filter=order_no eq '1001237'
+> GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'
 > ```
 
 ## Production Order Notes (Header)
@@ -3047,7 +3061,9 @@ The Transaction API [cannot create an item](03-Transaction-API.md#item-service-g
 - **One location per session.** Add the remaining locations afterwards through the Transaction `Item` service — one POST per location, `IgnoreDisabled: true`, with `TABPAGE_17.invloclist`, `TABPAGE_18.inv_loc_detail` and a keyed [location supplier row](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert).
 - **The Units of Measure grid can be locked for your role by a DynaChange screen version.** On one tenant the same steps worked in production and failed on the test copy for exactly that reason — check [which role the API user runs as](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you).
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on production, September 2026 (two items created end to end); not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on production, September 2026 (two items created end to end).
+
+**Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.** Step 1 behaved as described (`Status: 2` with `tabpageenabled` events, then `item_desc` and both discount groups — `sales_discount_group_id` / `purchase_discount_group_id` — accepted). Step 2 failed: every change on `TABPAGE_2.tp_2_dw_2` (`unit_id`, `unit_size`, the four unit flags) returned **HTTP 400 `Column is disabled: unit_id`**, for a password user and for a consumer-key user alike, and the save then failed *"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."* That is the screen-version lock in the last bullet above. Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.
 
 ## Customer Window: Adding a Price Library
 
@@ -3085,9 +3101,26 @@ Set `date_last_modified` and `last_maintained_by` in the same statements if you 
 
 > **Credit:** *@mrwuss* — verified on production 26.1, May 2026 ([#181](https://github.com/mrwuss/p21-api-documentation/issues/181)).
 
+#### Re-tested on play 26.1.5950.0: the order of the two edits decides the sequence
+
+A re-run on play (October 2026, a throwaway customer, the steps above) did **not** reproduce "whatever you set is discarded" for a **new** row. What landed depended on the order of the edits on the new row:
+
+| Edits on the new row, in order | Saved `sequence_number` |
+|---|---|
+| `price_library_id` only | Last (`N+1`) |
+| `price_library_id`, then `sequence_number = 1` | **1** — every existing row moved down one |
+| `price_library_id`, then `sequence_number = 2` (of 3) | **2** — the rows from 2 on moved down one |
+| `sequence_number = 1`, then `price_library_id` | 2, not 1 |
+
+Removing a row (select it with `PUT /v2/row`, then `row_status_flag` = `Delete`, save) **physically deleted** the `price_library_x_cust_x_cmpy` row and renumbered the remaining rows from 1. Changing an existing row's sequence was not re-tested. The production result above may differ by build or by edit order; if your run gives the order you need, the SQL fix is unnecessary. Read the sequence back either way.
+
+A new customer created through the Transaction `Customer` service came with one library row already on it (a tenant default), so check the grid before you add.
+
+**Runnable example:** [`customer_price_library.py`](../examples/python/recipes/customer_price_library.py) and `examples/csharp/Recipes/CustomerPriceLibrary.cs` (Recipes menu 31) add a library (`price_library_id`, then an optional `sequence_number`) or remove one, then read every row's sequence back over OData. Python and C# examples run on play 26.1.5950.0, 2026-10-10, add and remove, with the read-back results in the table above.
+
 ## Sales Order Entry with Assembly Lines
 
-Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. The Transaction API cannot do this: entering an assembly item fires an *"add as assembly?"* prompt, and the stateless API auto-answers **No**, killing the explode (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
+Use the Interactive API to create a sales order when a line is an **assembly** that should explode into components and/or spawn a **production order**. On 26.1.5950.0 the Transaction API also explodes an assembly line, but it gives you no choice: it always saves the assembly the way *Yes* does (see [Order Service Gotchas](03-Transaction-API.md#order-service-gotchas)). The Interactive API is the path when you need to see the *"add as assembly?"* prompt and pick the answer — including *No*, a plain stock line. Verified end-to-end: interactive order entry created a sales order whose assembly line (`oe_line.assembly = 'P'`) auto-linked to a new production order.
 
 The flow (session started with `ResponseWindowHandlingEnabled: true`):
 
@@ -3098,7 +3131,7 @@ The flow (session started with `ResponseWindowHandlingEnabled: true`):
    - Setting `oe_order_item_id` on an assembly item fires the **assembly prompt** (buttons `cb_1` = Yes / `cb_2` = No / `cb_3` = Cancel). Answer **`cb_1`** to explode the assembly / link a production order.
    - Then set `unit_quantity`.
    - **Do NOT use the quickmode datawindow** (`d_dw_quickmode_*`) to enter lines — it **bypasses the assembly prompt entirely**, and the line lands without the explode.
-3. **Save**, answering any follow-on prompts with their proceed button. Read the generated `order_no` from the window data (`GET /v2/data`).
+3. **Save**, answering any follow-on prompts with their proceed button. Read the generated `order_no` from the save's events: the `savesucceeded` event carries it as `__order_no`. The Order window clears after a successful save, so `GET /v2/data` afterward returns a blank `order` row. *(Python and C# examples run on play 26.1.5950.0, 2026-10-10.)*
 
 Assembly behavior is item-level (`assembly_hdr`): `production_order_processing` `Y` = production-order assembly / `N` = kit; `auto_create_prod_order` `Y` = auto-create and link the production order at save. On the saved order, `oe_line.assembly` codes: `B` = kit parent, `N` = component, `P` = production-order line, `S` = build-to-stock allocation. The production-order link is `prod_order_line_link` (`transaction_uid = oe_line.oe_line_uid`, `trans_type = 'O'`). See the [Production & Labor API guide](12-Production-Labor-API.md) for the full production lifecycle.
 
@@ -3192,7 +3225,7 @@ Each **field definition** contains:
 |----------|-------------|
 | `Name` | Datawindow name |
 | `FullName` | Fully qualified name |
-| `ActiveRow` | Currently selected row index |
+| `ActiveRow` | Currently selected row, **1-based** — a one-row datawindow reports `1`, so the row is `Data[ActiveRow - 1]` |
 | `TotalRows` | Number of rows |
 | `Columns` | Array of column names |
 | `Data` | Array of arrays — each inner array is a row of values |
@@ -3581,7 +3614,9 @@ This is how you take a rule such as the [Item Issues Detected save rule](03-Tran
 
 **Still open:** whether role scoping is honored for a consumer-key token's `username`, and whether a user without DynaChange rights gets the `dc.organizer.rule` tool at all (the verified run used an admin user). Test both with the account your integration runs as.
 
-> **Credit:** [@yeshayak](https://github.com/yeshayak) — verified on a 26.1 test database, reported October 2026 (disable, re-enable and user/role scoping, each confirmed over OData and reverted); not re-run here. Filed under [#167](https://github.com/mrwuss/p21-api-documentation/issues/167).
+> **Credit:** [@yeshayak](https://github.com/yeshayak) — verified on a 26.1 test database, reported October 2026 (disable, re-enable and user/role scoping, each confirmed over OData and reverted). Filed under [#167](https://github.com/mrwuss/p21-api-documentation/issues/167). Disable and re-enable re-run here as below; scoping not re-run.
+
+**Runnable example:** [`dynachange_rule_toggle.py`](../examples/python/recipes/dynachange_rule_toggle.py) and `examples/csharp/Recipes/DynaChangeRuleToggle.cs` (Recipes menu 32) open the organizer from a `Customer` host window, find one rule by `rule_name` + `field_name` + `window_title`, switch it to the opposite status with `cb_apply`, read `row_status_flag` back from `p21_view_business_rule`, then restore the original status and read it back again. Python and C# examples run on play 26.1.5950.0, 2026-10-10, on an active report-window rule: `704` → `705` → `704` each run, `date_last_modified` stamped on each apply, rule left active. The organizer's `LIST.list` held 60 rows against 66 in the view, consistent with internal rules being left out.
 
 ## Verifying Writes (Don't Trust Save Status Alone)
 

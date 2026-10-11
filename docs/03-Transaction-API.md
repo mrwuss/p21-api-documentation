@@ -178,6 +178,8 @@ HTTP 400
 
 > **Do not send `Status` as an integer.** The binder accepts any integer because that is how .NET binds enums — it does not range-check, so out-of-range values bind silently to an undefined member rather than erroring. Every integer we probed returned HTTP 200. **Send the string `"New"`**, which is the only value with defined behavior, and let a wrong value fail loudly at the binder instead of undefined-behaving inside the transaction.
 
+> **The rule holds on `/api/v2/process/pdfreport` too.** Report payloads bind to the same `TransactionStatus` enum, and the report services' own definition templates carry `"Status": "New"` and `"Type": "Form"`. Verified on play 26.1.5950.0, 2026-10-10, with `m_reprintpurchaseorders`: `"New"`, `"new"`, `0`, `1` and an omitted `Status` all returned the same PDF, `"Type": "Form"` and `"Type": 0` returned byte-identical documents, and `"Existing"` returned the same HTTP 400 shown above. Earlier versions of this repo sent integer `0` on report payloads; it worked because `0` binds to `New`, but it is the unchecked integer path. Every report payload here now sends `"New"`; the Python and C# PO reprint examples ([`reprint_purchase_order.py`](../examples/python/recipes/reprint_purchase_order.py), `ReprintPurchaseOrder.cs`) were re-run with it on the same build and date.
+
 ### DataElement Fields
 
 | Field | Description |
@@ -536,7 +538,7 @@ The `po_hdr_po_type` `ValidValues` in the definition carry **display names only,
                         "Name": "TABPAGE_1.order",
                         "Rows": [{
                             "Edits": [
-                                {"Name": "order_no", "Value": "1013938"}
+                                {"Name": "order_no", "Value": "1001234"}
                             ]
                         }]
                     }
@@ -691,7 +693,7 @@ Two placement rules:
 >
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) for mapping the placement failure mode and the disabled-tab unlock behavior.
 
-> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column `corp_address_id` on `Order`'s `LINE_NOTE.line_note`, and on `SalesPricePage`'s `USED BY.price_book_x_page` link — four unrelated surfaces, marking it as platform behavior. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
+> **It is not a universal unlock — and it can hide the failure.** On P21 26.1, writes to the JobContractPricing `VALUES.values` element are refused with `General Exception: Tab page is disabled and cannot be selected`. Adding `IgnoreDisabled: true` flips the response to `Summary: {"Failed": 0, "Succeeded": 1}` / `Status: "Passed"` and **writes nothing** — the echoed response even drops the affected DataElements, so the omission is invisible in the response body. The same false success reproduces on the JobContractPricing header column `corp_address_id`, on `Order`'s `LINE_NOTE.line_note`, on `ProductionOrder`'s header-note grid (`PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab`), and on `SalesPricePage`'s `USED BY.price_book_x_page` link. That is five surfaces across four services, which marks it as platform behavior. **Always read back after a write that used this flag.** Detail: [VALUES Writes Are Refused on 26.1](#values-writes-are-refused-on-261) and [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing).
 
 ---
 
@@ -875,7 +877,7 @@ Use the callback endpoint to receive notification when complete:
         "Transactions": [...]
     },
     "Callback": {
-        "Url": "https://your-server.com/webhook",
+        "Url": "https://p21.example.com/webhook",
         "Method": "POST",
         "ContentType": "application/json",
         "Headers": [
@@ -1041,7 +1043,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1123,7 +1125,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ServiceName = "Order";                    // any name from GET /api/v2/services
@@ -1243,7 +1245,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1386,7 +1388,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CustomerId = "100198";                    // customer the order is for
@@ -1570,11 +1572,12 @@ static string ReadField(string payload, string field)
 
 All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 
-- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A realistic header sets `customer_id`, `sales_loc_id`, `source_loc_id`, `order_date`, `requested_date`, `po_no`, `taker`, `ship_to_id`, and `contact_id`.
+- **Send `quote` = `OFF` as the first header edit.** On play 26.1.5950.0, 2026-10-10, an `Order` create without it saved a **quote** (`oe_hdr.projected_order = 'Y'`) for the password user, and a pick ticket for it was then refused. With `quote = OFF` the same payload saved a real order (`projected_order = 'N'`). This is the Transaction API side of [Set `quote` to `OFF` first](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode); read `projected_order` back after the save.
+- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A ship-to with no tax jurisdiction fails the same way even with `source_loc_id` set, once the order is real (`quote = OFF`) and a line is taxable; a quote saves without it. A realistic header sets `quote`, `customer_id`, `sales_loc_id`, `source_loc_id`, `order_date`, `requested_date`, `po_no`, `taker`, `ship_to_id`, and `contact_id`.
 - **`requested_date` must be after `order_date`.** The same date trips a date-cascade prompt, which the stateless API can't answer.
 - **`company_id` is a disabled column** on the Order window — don't send it.
 - **DynaChange prompts are auto-answered with the default** (usually "No"), which silently discards the affected line — e.g. *"order line does not have a PO Cost… proceed? [No]"*. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see [DynaChange and Popup Handling](#dynachange-and-popup-handling).
-- **Assembly items cannot be entered via the Transaction API** when they should explode or spawn a production order — the *"add as assembly?"* prompt is auto-answered **No**, killing the explode. Use the Interactive API for those lines: see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines).
+- **Assembly items explode through the Transaction API on 26.1.5950.0.** There is no prompt to answer: an assembly item on `TP_ITEMS.items` is saved the way the Interactive *"add as assembly?"* **Yes** answer saves it. On play 26.1.5950.0, 2026-10-10, a `quote = OFF` Order create with one kit item (`production_order_processing = N`) saved a `B` parent line plus `N` component lines, and one with a production-order assembly (`production_order_processing = Y`, `auto_create_prod_order = N`) saved an `assembly = 'P'` line (`disposition = 'P'`) plus its component lines. Earlier versions of this page said the prompt is auto-answered **No** and the explode is lost; that is not what this build does. What you cannot do here is choose: a plain stock line for an assembly item (the Interactive **No**, `cb_2`) needs the Interactive API — see [Sales Order Entry with Assembly Lines](04-Interactive-API.md#sales-order-entry-with-assembly-lines). Whether an `auto_create_prod_order = Y` item also creates and links its production order on this path was not tested.
 - **RMAs are not `Order` records.** An order with `rma_flag = 'Y'` is refused outright: `General Exception: You cannot retrieve an RMA from the Order Entry/Front Counter window.` Use the [`RMA` service](#rma-service-orders-the-order-service-refuses).
 - **The same item on two lines collapses to one** with `Keys: []` — `TP_ITEMS.items` folds rows on its declared key (`oe_order_item_id`), last value wins, `Succeeded: 1`, no warning. Add `Keys: ["unit_quantity"]` (or another differing column) when an order legitimately repeats an item — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap).
 - The created `order_no` comes back in the result rows; check `Summary.Succeeded`, not the HTTP status.
@@ -1582,17 +1585,40 @@ All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 
 #### Order Service — Line Appends, Cancels, Holds, and Item Lookup
 
-Field-verified on the `Order` service. Unless marked otherwise, credit [Alex Westemeier](https://github.com/AWestemeier) — verified on play and production, September 2026; not re-run here.
+Field-verified on the `Order` service. Unless marked otherwise, credit [Alex Westemeier](https://github.com/AWestemeier) — verified on play and production, September 2026. The append, cancel and Hold-release bullets were **re-run here** with the examples below (play 26.1.5950.0, 2026-10-10); the others were not.
 
-- **Append many lines to a saved order in one Transaction, not one per line.** Key the header on `order_no` (`TABPAGE_1.order`, `Keys: ["order_no"]`) and send the new lines as multiple rows of one `TP_ITEMS.items` element (`Keys: []`). One Transaction per line fails: the rows collide with the existing line and the server answers *"Item ID X has been saved; therefore, the Item ID cannot be edited"*. (The same message also appears, transiently, when an orphaned Interactive session for the same user is still open — end it first; see [Locks and orphaned sessions](06-Error-Handling.md#locks-and-orphaned-sessions).)
+- **Append many lines to a saved order in one Transaction, not one per line.** Key the header on `order_no` (`TABPAGE_1.order`, `Keys: ["order_no"]`) and send the new lines as multiple rows of one `TP_ITEMS.items` element (`Keys: []`). One Transaction per line fails: the rows collide with the existing line and the server answers *"Item ID X has been saved; therefore, the Item ID cannot be edited"*. (The same message also appears, transiently, when an orphaned Interactive session for the same user is still open — end it first; see [Locks and orphaned sessions](06-Error-Handling.md#locks-and-orphaned-sessions).) *Re-run:* a two-row `TP_ITEMS.items` element appended lines 2 and 3 to a saved one-line order (`Succeeded: 1`). Two single-row Transactions in one POST came back `Failed: 1, Succeeded: 1` — the first refused with the message above, the second appended — so per-line Transactions are not even consistently wrong.
+- **A row whose item is already on the order edits that line instead of adding one.** `TP_ITEMS.items` folds rows on its declared key `oe_order_item_id`: appending an item ID the order already carries changed the existing line's `qty_ordered` and reported `Succeeded: 1`. Check the order's live lines before an append, as the examples do; to add a genuine second line for the same item, over-key the rows ([Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap)).
 - **Per-line cost grows with the size of the order.** P21 re-reads the whole document after every Transaction, so appending to a large order slows down as it grows. Split very large line lists into orders of about 100 lines — measured numbers and the pattern are in [Batch Processing § Large Sales Orders](09-Batch-Processing-Patterns.md#large-sales-orders-split-at-about-100-lines).
 - **A failed append soft-deletes its rows.** Filter read-backs on `delete_flag = 'N' AND cancel_flag = 'N'` — see [A failed create leaves rows behind](#a-failed-create-leaves-rows-behind).
-- **Cancel an order through the header `cancel_flag`.** `TABPAGE_1.order` keyed on `order_no` with the edit `cancel_flag = "ON"` sets `oe_hdr.cancel_flag = 'Y'` and `completed = 'Y'` and releases every line's allocation. P21 reloads the whole order first, so cancelling a very large order takes minutes.
-- **Release a Hold through Ship Info when the header copy is disabled.** On some tenants the header `packing_basis` is a disabled column for the API user (*"Column is disabled: packing_basis"*). The same field on `TP_SHIPINFO.shipinfo` (`Type: Form`, `Keys: []`, after the keyed `TABPAGE_1.order` row) is enabled: set it to `Partial` to release the Hold. Allocation is untouched.
+- **Cancel an order through the header `cancel_flag`.** `TABPAGE_1.order` keyed on `order_no` with the edit `cancel_flag = "ON"` sets `oe_hdr.cancel_flag = 'Y'` and `completed = 'Y'` and releases every line's allocation. P21 reloads the whole order first, so cancelling a very large order takes minutes. *Re-run:* on a three-line order the header went to `cancel_flag = 'Y'`, `completed = 'Y'` and every `oe_line` to `cancel_flag = 'Y'`, with `delete_flag` still `N` and `qty_canceled` left at 0 — so a cancel read-back must check `cancel_flag`, not `qty_canceled`. The throwaway items had no stock, so allocation release was not exercised.
+- **Release a Hold through Ship Info when the header copy is disabled.** On some tenants the header `packing_basis` is a disabled column for the API user (*"Column is disabled: packing_basis"*). The same field on `TP_SHIPINFO.shipinfo` (`Type: Form`, `Keys: []`, after the keyed `TABPAGE_1.order` row) is enabled: set it to `Partial` to release the Hold. Allocation is untouched. *Re-run:* the `TP_SHIPINFO` edit moved `oe_hdr.packing_basis` from `Hold` to `Partial`. On the test tenant the header copy was enabled too (an order was created with header `packing_basis = Hold`), so the `TP_SHIPINFO` path is the one that works on either kind of tenant.
 - **`TP_SALESREPS` on a *new* order adds rows; it does not replace the default.** The customer's default rep row is created at save, after the element is processed (a keyed edit finds *"row 0 not found"*), and any rep row you send is added on top of it. Two 100% rows then trip the *"Do not use the Full Commission flag"* rule and the create fails. Rep changes on a new order need either a customer or ship-to whose default rep already satisfies your rules, or the Interactive window (`TP_SALESREPS`, select row 1, set `salesrep_id`). [Add-then-retire on a saved order](#order-service-reassigning-the-salesrep) is unaffected.
 - **Item IDs are prefix-matched.** An ID that matches more than one item fails with *"Ambiguous data detected (PopUp encountered)"* — check for near-duplicates that differ only in spacing (`ITEM-001 3/8 NPT` versus `ITEM-001 3/8NPT`) and send the exact ID.
 - **A merged-away item fails with *"'X' has been deleted"*.** After an item merge the old ID stays in `inv_mast` with `delete_flag = 'Y'`, and `inv_mast.extended_desc` names the survivor. Build line lists from live data at run time, not from a saved spreadsheet.
 - **A failed create consumes an order number and can leave a soft-deleted header and lines.** Look for the stray order before retrying — see [A failed create leaves rows behind](#a-failed-create-leaves-rows-behind) (verified by the maintainer on 26.1.5950.0).
+
+The append, keyed on the saved order, with every new line a row of one element:
+
+```json
+{ "Name": "Order", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "TABPAGE_1.order", "Type": "Form", "Keys": ["order_no"],
+      "Rows": [{ "Edits": [ {"Name": "order_no", "Value": "1001234"} ], "RelativeDateEdits": [] }] },
+    { "Name": "TP_ITEMS.items", "Type": "List", "Keys": [],
+      "Rows": [
+        { "Edits": [ {"Name": "oe_order_item_id", "Value": "ITEM-001"},
+                     {"Name": "unit_quantity",    "Value": "2"} ], "RelativeDateEdits": [] },
+        { "Edits": [ {"Name": "oe_order_item_id", "Value": "ITEM-002"},
+                     {"Name": "unit_quantity",    "Value": "3"} ], "RelativeDateEdits": [] }
+      ] }
+  ]}]
+}
+```
+
+The Hold release swaps the second element for `TP_SHIPINFO.shipinfo` (`Form`, `Keys: []`, edit `packing_basis` = `Partial`); the cancel drops it and adds `cancel_flag` = `ON` to the header row.
+
+**Runnable:** [`order_append_hold_cancel.py`](../examples/python/recipes/order_append_hold_cancel.py) · [`OrderAppendHoldCancel.cs`](../examples/csharp/Recipes/OrderAppendHoldCancel.cs) (Recipes menu 24) · payloads [`order-append-lines.json`](../examples/payloads/json/order-append-lines.json), [`order-release-hold.json`](../examples/payloads/json/order-release-hold.json), [`order-cancel.json`](../examples/payloads/json/order-cancel.json). Modes `append`, `release-hold`, `cancel`. Before writing they refuse an order that is deleted, canceled or held open (`completed = 'T'`), and an append item that is not an exact live item ID or is already on the order; afterwards they read `oe_hdr` and the live (`delete_flag = 'N'`) `oe_line` rows back over OData. Python and C# examples run on play 26.1.5950.0, 2026-10-10, each on its own throwaway order (created on Hold): append two lines, release the Hold, cancel.
 
 #### Order Service — Reassigning the Salesrep
 
@@ -1705,18 +1731,18 @@ GET /api/v2/definition/JobContractPricing
 
 **Contract pricing follows this grid, not the header.** On a saved contract, `job_price_hdr.customer_id` and `ship_to_id` are NULL; the customers and ship-tos the contract serves are rows in `job_price_customer_shipto`. A sales order line gets the contract price only when the order's customer **and ship-to** are a row here — a ship-to missing from the grid prices as if the contract did not exist.
 
-To add one, load the header by `job_no` + `contract_no` (header `Keys: []`, both in `Edits`) and send a `CUSTOMER_SHIP_TO.customer_ship_to` row keyed on `customer_id` + `ship_to_id`, with `IgnoreDisabled: true` at the payload top level:
+To add one, load the header by `job_no` + `contract_no` (header `Keys: []`, both in `Edits`, no `end_date`) and send a `CUSTOMER_SHIP_TO.customer_ship_to` row keyed on `customer_id` + `ship_to_id`:
 
-> Payload shape only. Full runnable version — same endpoint and response checks: [Updating an Existing Contract](#updating-an-existing-contract).
+> Runnable: [`contract_shipto_line_no.py attach-ship-to`](../examples/python/recipes/contract_shipto_line_no.py) · [`ContractShipToLineNo.cs`](../examples/csharp/Recipes/ContractShipToLineNo.cs) (Recipes menu 23) · payload [`contract-attach-ship-to.json`](../examples/payloads/json/contract-attach-ship-to.json). Both read the grid and the header back over OData before and after.
 
 ```json
 {
-  "Name": "JobContractPricing", "UseCodeValues": false, "IgnoreDisabled": true,
+  "Name": "JobContractPricing", "UseCodeValues": false,
   "Transactions": [{ "Status": "New", "DataElements": [
     { "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
-        {"Name": "job_no",      "Value": "JOB-001"},
-        {"Name": "contract_no", "Value": "CONTRACT-001"}
+        {"Name": "job_no",      "Value": "1001"},
+        {"Name": "contract_no", "Value": "JOB-1001"}
       ], "RelativeDateEdits": [] }] },
     { "Name": "CUSTOMER_SHIP_TO.customer_ship_to", "Type": "List",
       "Keys": ["customer_id", "ship_to_id"],
@@ -1728,9 +1754,13 @@ To add one, load the header by `job_no` + `contract_no` (header `Keys: []`, both
 }
 ```
 
-Read back `job_price_customer_shipto` for the contract, then confirm on a test order: a blank-price line for that ship-to should now fill in the contract price. Because `IgnoreDisabled` is on, [never trust `Passed` alone](#ignoredisabled).
+Read back `job_price_customer_shipto` for the contract (the new row has `row_status_flag` 704), then confirm on a test order: a blank-price line for that ship-to should now fill in the contract price.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (a blank-price order to the newly added ship-to auto-priced from the contract); not re-run here.
+**`IgnoreDisabled` is not needed on 26.1.5950.0** — the grid row landed without it, and the header was not re-saved (`job_price_hdr.date_last_modified` unchanged). The run credited below sent `IgnoreDisabled: true`; if your build refuses the row as disabled, add it at the payload top level and then [never trust `Passed` alone](#ignoredisabled).
+
+**The customer must have Job/Contract Pricing enabled.** A ship-to whose customer has `customer.job_pricing = 'N'` fails *"Job/Contract Pricing is not enabled for Customer ID …"*. On the test tenant `job_pricing` (`Customer` service, `TABPAGE_7.tp_7_dw_7`) was `Column is disabled` for the API user on both create and update, and `IgnoreDisabled` turned that into a [false success](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) — so a customer created through the API could not be put on a contract; set the flag in the Customer window first.
+
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (a blank-price order to the newly added ship-to auto-priced from the contract). **Re-run here:** Python and C# examples run on play 26.1.5950.0, 2026-10-10 — a ship-to attached to each of two throwaway contracts, confirmed by the `job_price_customer_shipto` read-back. The order-pricing step was not re-run.
 
 #### Line Items -- `JOBPRICELINE.jobpriceline` (List, 29 fields)
 
@@ -1879,7 +1909,33 @@ The `JOBPRICECOST` DataElement includes `commission_cost_value` and related comm
 
 **`commission_cost_value` is disabled unless the type is `Value`.** Switching a line back to type `Order` while still sending the value fails with `Column is disabled: commission_cost_value`. Drop the value field when you restore type `Order`. *(@mrwuss, play 26.1, October 2026.)*
 
-**Duplicate `item_id`s on one contract: key the line by `line_no`.** `JOBPRICECOST.jobpricecost` has no `line_no` key, so it binds to whichever line `JOBPRICELINE` selected. Key `JOBPRICELINE` by `item_id` on a contract that carries the same item twice and both elements silently hit the **first** matching line. Select the line with `Keys: ["line_no"]` (and `line_no` in `Edits`) first; the cost form then binds to that line. *(Credit: [Alex Westemeier](https://github.com/AWestemeier) — verified on production, July 2026; not re-run here.)*
+**Duplicate `item_id`s on one contract: key the line by `line_no`.** `JOBPRICECOST.jobpricecost` has no `line_no` key, so it binds to whichever line `JOBPRICELINE` selected. Key `JOBPRICELINE` by `item_id` on a contract that carries the same item twice and both elements silently hit the **first** matching line. Select the line with `Keys: ["line_no"]` (and `line_no` in `Edits`) first; the cost form then binds to that line. *(Credit: [Alex Westemeier](https://github.com/AWestemeier) — verified on production, July 2026.)*
+
+```json
+{
+  "Name": "JobContractPricing", "UseCodeValues": false, "IgnoreDisabled": true,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
+      "Rows": [{ "Edits": [
+        {"Name": "job_no",      "Value": "1001"},
+        {"Name": "contract_no", "Value": "JOB-1001"}
+      ], "RelativeDateEdits": [] }] },
+    { "Name": "JOBPRICELINE.jobpriceline", "Type": "List", "Keys": ["line_no"],
+      "Rows": [{ "Edits": [
+        {"Name": "line_no",      "Value": "2"},
+        {"Name": "qty_maximum",  "Value": "50"}
+      ], "RelativeDateEdits": [] }] },
+    { "Name": "JOBPRICECOST.jobpricecost", "Type": "Form", "Keys": ["item_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "item_id",                 "Value": "WIDGET-001"},
+        {"Name": "commission_cost_type_cd", "Value": "Value"},
+        {"Name": "commission_cost_value",   "Value": "7.50"}
+      ] }] }
+  ]}]
+}
+```
+
+**Re-run here** on play 26.1.5950.0, 2026-10-10, against a throwaway contract carrying one item on lines 1 and 2: a `qty_maximum` edit keyed by `item_id` changed **line 1** only; keyed by `line_no` = `2` it changed line 2 only, with and without `IgnoreDisabled`; and the payload above set line 2's quantity and `Value` commission cost while line 1 stayed untouched. `IgnoreDisabled` is there only for the commission cost. `line_no` works as a **selector** but cannot insert: a `line_no` the contract does not have fails *"Column is disabled: line_no"*. To add a second line for an item already on the contract, over-key the row (for example `Keys: ["item_id", "price"]` with a price no existing line has) — see [Keys — Row Identity and the Collapse Trap](#keys-row-identity-and-the-collapse-trap). Runnable: [`contract_shipto_line_no.py update-line`](../examples/python/recipes/contract_shipto_line_no.py) · [`ContractShipToLineNo.cs`](../examples/csharp/Recipes/ContractShipToLineNo.cs) · payload [`contract-update-line-by-line-no.json`](../examples/payloads/json/contract-update-line-by-line-no.json) — both resolve the line's `item_id` for the cost row and print which lines changed.
 
 #### How Contract Costs Reach the Order and the Invoice
 
@@ -1942,7 +1998,7 @@ Use `Status = "New"` to update existing contracts -- there is no separate "Updat
 - Batching many line-field **updates** in one POST is fine (25 Transactions per POST in production use); the one-Transaction-per-POST rule applies to **inserts**, where `line_no` allocation and the header re-save collide.
 - On `JOBPRICELINE`, set `Keys: ["item_id"]` and put the `item_id` value in `Edits` alongside the fields you're changing.
 
-> **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier). This replaces earlier guidance in this section that `end_date` had to be sent on every update.
+> **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier). This replaces earlier guidance in this section that `end_date` had to be sent on every update. Re-checked on play 26.1.5950.0, 2026-10-10: with `end_date` omitted, line edits left `job_price_hdr.date_last_modified` unchanged; the same edit with the unchanged `end_date` added moved the header's `date_last_modified` **and every line's**. The [`contract_shipto_line_no.py`](../examples/python/recipes/contract_shipto_line_no.py) / [`ContractShipToLineNo.cs`](../examples/csharp/Recipes/ContractShipToLineNo.cs) examples send no `end_date` and print `Header re-saved: no` after the write.
 
 > Empirically verified 2026-05-14: 173 successful price updates against contract `JOB-1001` on a production tenant. Each call returned HTTP 200 with `Summary.Succeeded = 1`, and OData confirmed each `job_price_line.price` matched the submitted value.
 
@@ -1956,13 +2012,13 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
 COMPANY_ID = "ACME"                       # FORM key fields go in Edits, not Keys
 CONTRACT_NO = "JOB-1001"
-JOB_NO = "31"                             # unique per header; survives renewals
+JOB_NO = "1001"                             # unique per header; survives renewals
 ITEM_ID = "WIDGET-001"                    # the line to update
 UOM = "EA"
 PRICE = "36.58"
@@ -2099,12 +2155,12 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";              // FORM key fields go in Edits, not Keys
 const string ContractNo = "JOB-1001";
-const string JobNo = "31";                    // unique per header; survives renewals
+const string JobNo = "1001";                    // unique per header; survives renewals
 const string ItemId = "WIDGET-001";           // the line to update
 const string Uom = "EA";
 const string Price = "36.58";
@@ -2341,7 +2397,7 @@ Contract bin quantities (`BINS.bins` -- `min_qty`, `max_qty`, `reorder_qty`, `ca
             {
                 "Name": "FORM.d_dw_job_price_hdr", "Type": "Form", "Keys": [],
                 "Rows": [{"Edits": [
-                    {"Name": "job_no", "Value": "31"},
+                    {"Name": "job_no", "Value": "1001"},
                     {"Name": "customer_id", "Value": "100198"},
                     {"Name": "ship_to_id", "Value": "200"}
                 ]}]
@@ -2403,7 +2459,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -2592,7 +2648,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -2925,12 +2981,34 @@ The Assembly service does NOT create new inventory items -- it adds BOM metadata
 |---|---|
 | Item is not a component anywhere | Header `TABPAGE_1.assemblyhdr` with `inv_mast_item_id` + component rows on `TABPAGE_17.tp_17_dw_17` → `Succeeded: 1`; `assembly_hdr` and one `assembly_line` per component written |
 | Item is already a component of an existing assembly | The window asks *"…is a component of an existing assembly, continue?"*; the Transaction API answers **No** and the save throws `Cannot insert the value NULL into column 'inv_mast_uid', table '…assembly_hdr'` (SQL error 3621, "No changes made to database"). Nothing is left behind |
+| Same, with `production_order_processing` = `OFF` | Refused earlier and more clearly, on the header element: *"This item is another assembly item's component. You cannot change it to be a bypass assembly item."* Nothing is left behind |
 
 For the second case use the **Interactive** `Assembly` window: set `TABPAGE_1.assemblyhdr.inv_mast_item_id`, answer the popup **Yes** (`cb_1`), fill row 1 of `tp_17_dw_17` (it already exists — `add_row` + `select_row` for each further component), set the header flags, save. Check `assembly_line` before the first write: a `component_inv_mast_uid` match tells you which path the item needs. Leave `copy_item_id` out — it was not tested.
 
 **Edits to an existing assembly work through the Transaction API**, with keyed `Status: "New"` and **no `IgnoreDisabled`**: a header flag keyed on `inv_mast_item_id`; a component's `quantity` keyed on `item_id_service_labor_id`; and removing a component with `delete_flag` = `ON` on its row.
 
-> **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier).
+```json
+{ "Name": "Assembly", "UseCodeValues": false,
+  "Transactions": [{ "Status": "New", "DataElements": [
+    { "Name": "TABPAGE_1.assemblyhdr", "Type": "Form", "Keys": ["inv_mast_item_id"],
+      "Rows": [{ "Edits": [ {"Name": "inv_mast_item_id", "Value": "ITEM-001"} ],
+                 "RelativeDateEdits": [] }] },
+    { "Name": "TABPAGE_17.tp_17_dw_17", "Type": "List", "Keys": ["item_id_service_labor_id"],
+      "Rows": [{ "Edits": [
+        {"Name": "item_id_service_labor_id", "Value": "COMP-A"},
+        {"Name": "quantity",                 "Value": "5"}
+      ], "RelativeDateEdits": [] }] }
+  ]}]
+}
+```
+
+- The component quantity lands in **`assembly_line.quantity`**. `assembly_line.qty_needed` is a different column and stays `0` — read `quantity` back.
+- A deleted component stays in `assembly_line` with `delete_flag = 'Y'`.
+- **`allow_disassembly` is disabled while `production_order_processing` is `OFF`** (*"Column is disabled: allow_disassembly"*). With `production_order_processing` = `ON` it is writable, and setting `production_order_processing` back to `OFF` resets `allow_disassembly` to `N`.
+
+**Runnable:** [`assembly_create_edit.py`](../examples/python/recipes/assembly_create_edit.py) · [`AssemblyCreateEdit.cs`](../examples/csharp/Recipes/AssemblyCreateEdit.cs) (Recipes menu 22) · payloads [`assembly-create.json`](../examples/payloads/json/assembly-create.json), [`assembly-edit-component.json`](../examples/payloads/json/assembly-edit-component.json), [`assembly-delete-component.json`](../examples/payloads/json/assembly-delete-component.json). Modes `create`, `set-flag`, `set-qty`, `delete-component`; `create` checks `assembly_hdr` and `assembly_line` first and stops on an item that already has an assembly or is already a component. Every mode reads `assembly_hdr` and `assembly_line` back over OData.
+
+> **Credit:** verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by [Alex Westemeier](https://github.com/AWestemeier). **Python and C# examples run on play 26.1.5950.0, 2026-10-10:** each created an assembly (two components, `production_order_processing` `OFF`) on a throwaway item made with the Inventory REST API, set `production_order_processing` to `ON`, changed one component's quantity from 2 to 5, and deleted the other component — every step confirmed by the OData read-back. The component-of-another-assembly refusals above were re-run on the same build.
 
 #### Defaults and Disabled Fields on Create
 
@@ -2963,7 +3041,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3121,7 +3199,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string ItemId = "WIDGET-001";                    // must ALREADY exist in inventory
@@ -3495,7 +3573,7 @@ A `location_id` is **never** supplied by the caller — every way of trying land
 |---|---|
 | `Keys: ["id", "company_id"]`, `id` = a specific new number (e.g. `99999`) | **Refused**: `General Exception: Enter a valid ID or leave ID blank. DataElement: tp_1_dw_1, Column: id, Value: 99999` |
 | `Keys: ["id", "company_id"]`, `id` = `""` (blank) | **False success** — `Succeeded: 1`, the response even echoes back `id: "0"` — but nothing is created *or* updated. `location_id` **0** is a pre-existing reserved row on every tenant tested; the write silently no-ops against it (confirmed by re-reading both `location` and `address` before and after — neither changed) |
-| `Keys: []` (no key fields at all — `id` absent from the payload entirely, not just blank) | **Succeeds**, and P21 assigns a real, unused `location_id` (verified: `65329`), with `location_type` auto-set to `1330` |
+| `Keys: []` (no key fields at all — `id` absent from the payload entirely, not just blank) | **Succeeds**, and P21 assigns a real, unused `location_id` (verified on a test tenant), with `location_type` auto-set to `1330` |
 
 The working create, in full:
 
@@ -3603,7 +3681,8 @@ Same service, same element, same three-field key — the keyed `Status: "New"` u
 |---|---|---|
 | Lock | `pick_locked_flag` and/or `put_locked_flag` = `ON` | **Not needed** — both flags are enabled columns. Creation only needs it because it sends system columns such as `frozen_flag` |
 | Unlock | the same flags = `OFF` | Not needed |
-| Delete | `delete_flag` = `ON` | **Send it** (payload top level) |
+| Delete | `delete_flag` = `ON` | Not needed on 26.1.5950.0 — the delete and its restore both landed without it. The production run credited below sent it at the payload top level; if your build answers `Column is disabled: delete_flag`, add it there and read back |
+| Restore | `delete_flag` = `OFF` | Not needed |
 
 ```json
 { "Name": "BinLocation", "UseCodeValues": false,
@@ -3621,9 +3700,13 @@ Same service, same element, same three-field key — the keyed `Status: "New"` u
 }
 ```
 
-- **Verify a delete in the database.** A skipped delete reports no error. Read `bin.delete_flag` (SQL, or the `p21_view_bin` view) after the run and treat any bin still at `N` as a failure. The delete is a soft delete: flipping `delete_flag` back to `OFF` restores the bin.
+- **Verify a delete by reading it back.** A skipped delete reports no error. Read `delete_flag` after the run and treat any bin still at `N` as a failure. No SQL is needed: the raw `bin` table is [unreachable over OData](02-OData-API.md#one-object-name-is-unreachable-regardless-of-surface-bin), but the **`p21_view_bin` view** (`/odataservice/odata/view/p21_view_bin`) carries `delete_flag`, `pick_locked_flag` and `put_locked_flag` as `Y`/`N`. The delete is a soft delete: flipping `delete_flag` back to `OFF` restores the bin.
 - **Only lock or delete a bin that is not in use**: no `inv_bin` row with `quantity > 0`, and no `inv_loc.primary_bin` pointing at it. Locking or deleting a bin in active use strands stock and putaways. Clear primary-bin claims first ([set-primary-bin-supplier](recipes/set-primary-bin-supplier.md)).
 - Many Transactions per POST is fine, as with creation. Take a backup of the current flag values before a bulk run.
+
+**Runnable:** [`bin_lock_delete.py`](../examples/python/recipes/bin_lock_delete.py) · [`BinLockDelete.cs`](../examples/csharp/Recipes/BinLockDelete.cs) (Recipes menu 20) · payloads [`bin-lock.json`](../examples/payloads/json/bin-lock.json), [`bin-delete.json`](../examples/payloads/json/bin-delete.json). Modes `lock`, `unlock`, `delete`, `restore`; the scripts print the current flags first, refuse to lock or delete a bin that holds stock or is a primary bin, and read every bin back through `p21_view_bin`.
+
+> **Verified here:** Python and C# examples run on play 26.1.5950.0, 2026-10-10 — lock, unlock, delete and restore on throwaway bins, each confirmed by the `p21_view_bin` read-back, none with `IgnoreDisabled`.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — lock and delete verified on play and production, July 2026 (thousands of bins, zero silent skips after SQL verification); not re-run here.
 
@@ -3728,7 +3811,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -3848,7 +3931,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string PickTicketNo = "123456";                  // must NOT be invoiced yet
@@ -4053,7 +4136,7 @@ The P21 client uses the same window logic, so it cannot delete these tickets eit
 
 ### PurchaseOrder Service — Creating a PO
 
-The buy-side counterpart to `Order`, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO **998302**, confirmed in `po_hdr`/`po_line`.
+The buy-side counterpart to `Order`, and just as clean: one stateless POST, no session. Verified on a 26.1 tenant (August 2026) — PO **500101**, confirmed in `po_hdr`/`po_line`.
 
 ```json
 {
@@ -4062,7 +4145,7 @@ The buy-side counterpart to `Order`, and just as clean: one stateless POST, no s
     { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
       "Rows": [{ "Edits": [
         {"Name": "location_id",    "Value": "40"},
-        {"Name": "vendor_id",      "Value": "22026"},
+        {"Name": "vendor_id",      "Value": "99001"},
         {"Name": "buyer_id",       "Value": "829"},
         {"Name": "order_date",     "Value": "08/20/2026"},
         {"Name": "required_date",  "Value": "08/25/2026"},
@@ -4096,12 +4179,12 @@ Field mappings, each confirmed by read-back:
 
 ### PurchaseOrderReceipt Service — Receiving a PO
 
-**The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **5706613** against PO 998302, with nothing but a header:
+**The Transaction API can receive a PO** — verified on 26.1 (August 2026), receipt **7000100** against PO 500101, with nothing but a header:
 
 ```json
 { "Name": "TABPAGE_1.tp_1_dw_po", "Type": "Form", "Keys": [],
   "Rows": [{ "Edits": [
-    {"Name": "po_no",       "Value": "998302"},
+    {"Name": "po_no",       "Value": "500101"},
     {"Name": "receive_all", "Value": "Y"}
   ], "RelativeDateEdits": [] }] },
 { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": [],
@@ -4120,7 +4203,7 @@ Field mappings, each confirmed by read-back:
 
 ### ConvertPOToVoucher Service — Vouching a Receipt
 
-Step three of **build → receive → vouch**, and another clean one-POST. Verified on 26.1 (August 2026) — voucher **1775027** against receipt 5706613, with the receipt line flipping to `vouch_complete='Y'`, `qty_vouched=2`.
+Step three of **build → receive → vouch**, and another clean one-POST. Verified on 26.1 (August 2026) — voucher **8000100** against receipt 7000100, with the receipt line flipping to `vouch_complete='Y'`, `qty_vouched=2`.
 
 - **Form `TABPAGE_1.tp_1_dw_1`** (keys `["voucher_no"]`, leave the value empty to create): `po_no`, `invoice_no`, `invoice_date`, `invoice_amount`, `vendor_id`.
 - **List `TABPAGE_17.tp_17_dw_17`** — keyed **`["receipt_number", "line_number", "po_no"]`**, which is exactly the `KeyFields` triple this service publishes (see [What the definition already tells you](#what-the-definition-already-tells-you)). Per row: `unit_qty_invoiced`, `unit_cost_display`.
@@ -4135,9 +4218,9 @@ Step three of **build → receive → vouch**, and another clean one-POST. Verif
 
 ### Vendor Service — Creating a Vendor (and Its Supplier)
 
-Create the **vendor** first. Saving it creates the same-ID **supplier** and the `vendor_supplier` link for you; creating the supplier first is a dead end.
+Create the **vendor** first. Saving it creates the same-ID **supplier**, its division, and the `vendor_supplier` link for you; creating the supplier first is a dead end.
 
-> Payload shape only. Full runnable version — same endpoint and response checks: [Create Order](#create-order).
+> Runnable: [`vendor_create.py`](../examples/python/recipes/vendor_create.py) · [`VendorCreate.cs`](../examples/csharp/Recipes/VendorCreate.cs) (Recipes menu 21) · payload [`vendor-create.json`](../examples/payloads/json/vendor-create.json). Both read back `address`, `vendor`, `supplier` and `vendor_supplier` over OData.
 
 ```json
 {
@@ -4146,7 +4229,6 @@ Create the **vendor** first. Saving it creates the same-ID **supplier** and the 
     { "Name": "TABPAGE_1.tp_1_dw_1", "Type": "Form", "Keys": ["company_id", "id"],
       "Rows": [{ "Edits": [
         {"Name": "company_id",           "Value": "ACME"},
-        {"Name": "id",                   "Value": "100500"},
         {"Name": "vendor",               "Value": "ON"},
         {"Name": "name",                 "Value": "Example Vendor"},
         {"Name": "mail_address1",        "Value": "100 Main St"},
@@ -4169,7 +4251,7 @@ Create the **vendor** first. Saving it creates the same-ID **supplier** and the 
 | Field | Rule |
 |---|---|
 | `vendor` | **Must be `ON`.** Without it: *"To add a vendor, the vendor flag must be checked."* |
-| `id` | **A typed ID is accepted only if that ID already exists in `address`** (the keyspace that customers, suppliers, vendors and locations share). The verified create used an existing address ID (`100500` above). Per the same notes, a blank ID makes P21 number it from the address sequence — but a blank ID is a [false success on the `Location` service](#location-service-creating-a-warehouse), so read back before relying on it. The refusal reads *"Enter a valid ID or leave ID blank."* — the same rule, with the same message, applies to the Supplier and Location windows. To give a vendor the same ID as a location, create the location first (blank ID), then create the vendor with that ID |
+| `id` | **Leave it out** and P21 numbers the vendor from the `address` sequence; the new ID comes back in the result rows (`TABPAGE_1.tp_1_dw_1` → `id`). Unlike the [`Location` service's blank-ID false success](#location-service-creating-a-warehouse), this is a real create — verified below. **A typed ID is accepted only if that ID already exists in `address`** (the keyspace that customers, suppliers, vendors and locations share); any other typed ID fails *"Enter a valid ID or leave ID blank."* (`Failed: 1`, nothing written). The same rule, with the same message, applies to the Supplier and Location windows. To give a vendor the same ID as a location, create the location first (blank ID), then create the vendor with that ID |
 | `default_terms_id` | **The terms description** (`Net 30 Days`), not the terms ID — the ID fails *Invalid default_terms_id value* |
 | `currency_id` | **Omit it.** The ID is rejected (*Invalid currency_id value*); the default is the company currency |
 | `ap_account_no`, `name` | Required |
@@ -4180,7 +4262,7 @@ Create the **vendor** first. Saving it creates the same-ID **supplier** and the 
 - **The `Supplier` service silently substitutes the next number** when you type an ID that has no address row. Read back what was actually created.
 - Read back `vendor`, `supplier`, `vendor_supplier` (`primary_vendor = 'Y'`) and `address`.
 
-> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (vendor plus auto-created supplier); not re-run here.
+> **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on play, September 2026 (vendor plus auto-created supplier, created on an existing address ID). **Re-run here:** Python and C# examples run on play 26.1.5950.0, 2026-10-10 — blank-ID creates with `track_rebates` and both rebate accounts, each read back as an `address`, `vendor` (`track_rebates = 'Y'`, terms stored as the terms ID), `supplier` and `vendor_supplier` (`primary_vendor = 'Y'`) row with the same ID; a typed ID with no `address` row failed as described.
 
 ### RMA Service — Orders the `Order` Service Refuses
 
@@ -4432,6 +4514,8 @@ The `InventoryCostEdit` service is the **Edit Inventory Cost** window. It sets `
 
 Item Merge and Customer Merge run through `POST /api/v2/transaction` as the hidden menu services **`m_itemmerge`** and **`m_customermerge`**. Neither appears in `GET /api/v2/services`, but both return a definition from `GET /api/v2/definition/{name}` and run end to end. A merge is one-way: the source record is soft-deleted and its history is moved, rewritten, or deleted as the lists below describe. Test on a non-production tenant first, and resolve both IDs yourself before every call.
 
+> Runnable: [`item_customer_merge.py`](../examples/python/recipes/item_customer_merge.py) · [`ItemCustomerMerge.cs`](../examples/csharp/Recipes/ItemCustomerMerge.cs) (Recipes menu 25) · payloads [`item-merge.json`](../examples/payloads/json/item-merge.json), [`customer-merge.json`](../examples/payloads/json/customer-merge.json). Before posting, both resolve each ID **exactly** against a live record (`delete_flag = 'N'`) and refuse a merged-away or alternate-code ID; afterwards they decide success from the read-back — the source's `delete_flag`, `item_merge_audit` / `customer_merge_audit`, and for items the new `alternate_code` row — never from the customer merge's `Summary`.
+
 Discovery notes:
 
 - `window_x_menu` maps `m_inv_frame/m_system/m_itemmerge` to the window `w_item_merge_maint`. Customer merge has no menu row; `m_customermerge` answers `/definition` anyway.
@@ -4551,7 +4635,7 @@ Measured by comparing row counts and sums before and after, across every table k
 
 Read these to confirm what a merge did: `item_merge_audit`, `temp_inv_mast_merge`, `scheduled_inv_mast_merge`, `customer_merge_audit`, `temp_customer_merge`, and `audit_trail` (`source_area_cd` 1314 and 1327 for item merges). The stored procedures behind both windows (`p21_merge_items*`, `p21_merge_inv_mast_records_mult_app`, `p21_merge_customers_app`, `p21_merge_mult_customers`) exist, but reading their source needs `VIEW DEFINITION`.
 
-> **Credit:** *@mrwuss* — verified on play 26.1, September 2026: successful item and customer merges plus every error case above, each with before-and-after row counts and sums ([#168](https://github.com/mrwuss/p21-api-documentation/issues/168)). The alternate-code resolution was found through two merges that ran on items other than the ones named.
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026: successful item and customer merges plus every error case above, each with before-and-after row counts and sums ([#168](https://github.com/mrwuss/p21-api-documentation/issues/168)). The alternate-code resolution was found through two merges that ran on items other than the ones named. **Examples run here:** Python and C# on play 26.1.5950.0, 2026-10-10, each merging one throwaway item into another and one throwaway customer into another, all four created for the run. Each item merge returned `Succeeded: 1` (the whole Python run took about 11 seconds) and read back as described (source `delete_flag = 'Y'` with the *Item Merged* description, an `item_merge_audit` row *Successfully merged*, and the source ID as an `alternate_code` on the target). Each customer merge returned `Failed: 1` with the `History is not available` message and read back as committed (`customer_merge_audit` *Merge was Successful.*, source `delete_flag = 'Y'`).
 
 ## PDF Report Generation
 
@@ -4610,15 +4694,15 @@ The payload follows the standard TransactionSet format. Report-specific criteria
                     {"Name": "reprint_flag", "Value": "<po_hdr.printed: Y or N>"}
                 ]
             }],
-            "Type": 0
+            "Type": "Form"
         }],
-        "Status": 0
+        "Status": "New"
     }],
     "UseCodeValues": false
 }
 ```
 
-Constants that apply to every report payload: `Status` and `Type` are **numeric `0`** (not the `"New"` record-edit shape) and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
+Constants that apply to every report payload: `Status` is `"New"` — the [same rule as every Transaction API payload](#status-new-is-the-only-value-the-enum-accepts) — `Type` is `"Form"`, and the DataElement carries `Keys: []`. Get the criteria field names from `GET /api/v2/definition/{service_name}` and default values from `GET /api/v2/defaults/{service_name}`.
 
 > **`UseCodeValues` requirements vary per report service.** `m_reprintpurchaseorders` works with `UseCodeValues: false` (as above), but `m_picktickets` **requires `UseCodeValues: true` with code values** — e.g. `create_pick_ticket_type` must be the code `"P"`; the display label `"Production Order"` is rejected, and `UseCodeValues: false` returns HTTP 500. When a report errors on seemingly-correct criteria, retry with `UseCodeValues: true` and the code values from the service's definition (`ValidValues`).
 
@@ -4643,7 +4727,7 @@ A first print (`N`) on an approved PO marks it printed: `po_hdr.printed` changes
 
 The definition lists `ValidValues` `ON`/`OFF` for `reprint_flag`; the verified calls sent `Y`/`N` with `UseCodeValues: false`.
 
-> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with `Y` on repeated attempts and succeeded with `N` ([#162](https://github.com/mrwuss/p21-api-documentation/issues/162)).
+> **Credit:** *@mrwuss* — verified on play 26.1, September 2026, across seven POs: every never-printed PO failed with `Y` on repeated attempts and succeeded with `N` ([#162](https://github.com/mrwuss/p21-api-documentation/issues/162)). Re-run on play 26.1.5950.0, 2026-10-10, with the [examples below](#example-generate-and-save-a-po-reprint) and their repo files: each language printed a never-printed PO (`N`), the read-back showed `printed` flipped to `Y`, and a second run on the same PO (`Y`) returned the reprint. Sending `N` for a printed PO returned the empty-bodied 500 on both attempts.
 
 #### An empty 5xx has several causes — and is usually transient
 
@@ -4656,7 +4740,7 @@ So an empty-bodied 5xx here is **not** a signal that your payload is wrong. It h
 | **Transient report-engine fault** (most common) | The identical request succeeds seconds later. Retry before investigating anything else. |
 | **Bad criteria** — e.g. a `company_id` that doesn't exist | Deterministic: every attempt fails. Verified on Play 26.1 — a wrong `company_id` returns an empty 500, not a useful message. |
 | **`reprint_flag` doesn't match the PO's print history** (`m_reprintpurchaseorders`) — `Y` on a PO with `po_hdr.printed = 'N'`, or `N` on one with `'Y'` | Deterministic for that PO. Read `po_hdr.printed` and send it as `reprint_flag`; re-read it before each retry, because it can change between attempts — see [`reprint_flag` must match the PO's `po_hdr.printed`](#reprint_flag-must-match-the-pos-po_hdrprinted). |
-| **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, so treat a blanket failure like that as an environment property, not a payload bug. |
+| **The record isn't printable**, or report generation isn't available in that environment | Deterministic. On the Play tenant at 26.1.5910.3 **every** report returned an empty 500 — `m_reprintpurchaseorders` and `m_reprintpicktickets`, criteria straight from each service's own `/defaults`, both `UseCodeValues` settings, and six `Accept` variants — while `/definition` and `/defaults` for those same services returned 200. The same payload shape works in production, and on that same Play tenant at 26.1.5950.0 `m_reprintpurchaseorders` prints normally, so treat a blanket failure like that as an environment property, not a payload bug. |
 
 **Retry idempotent report calls.** Generating a PDF reads data and emits a document; running it twice costs latency, not correctness. The production integration uses **3 attempts with a 0.5 s × attempt backoff**, which covers the observed fault rate without masking a real outage.
 
@@ -4698,6 +4782,7 @@ The response is a **JSON array** (even for a single document). Each element cont
 - Response is a **JSON array**, not a single object -- even when generating one document
 - `DocumentData` contains the base64-encoded PDF bytes (~150KB for a typical PO)
 - `FileName` includes the `.pdf` extension (e.g., `"PO500100 PURCHASE_ORDER.pdf"`)
+- **Don't parse the PO number out of `DocumentId`/`FileName`.** On play 26.1.5950.0 the number in them was a document sequence that went up by one on every call (`PO<nnnnnnn> PURCHASE_ORDER`), not the PO number, while the PDF itself was the requested PO. Name saved files from your own `po_no` when you need to find them again.
 - `DocumentFormat` value `5` corresponds to PDF format
 - `DocumentContentType` is `"application/pdf"`
 - **Success is per document, and HTTP 200 does not imply it.** Each element carries its own `ResponseStatus.StatusCode` — a **string** (`"Success"` / `"Failure"`), not an HTTP code. Treat a document as good only when `StatusCode == "Success"` **and** `DocumentData` is non-empty; otherwise read `ResponseStatus.Message` for the reason. A 200 can carry a failed document, and a multi-document request can mix both, so check every element rather than the first.
@@ -4728,7 +4813,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -4812,9 +4897,9 @@ with httpx.Client(verify=VERIFY_SSL, timeout=120, follow_redirects=True) as clie
                         {"Name": "reprint_flag", "Value": reprint_flag},
                     ]
                 }],
-                "Type": 0,
+                "Type": "Form",
             }],
-            "Status": 0,
+            "Status": "New",
         }],
         "UseCodeValues": False,
     }
@@ -4851,7 +4936,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string CompanyId = "ACME";
@@ -4902,10 +4987,10 @@ var payload = new
                             }
                         }
                     },
-                    Type = 0
+                    Type = "Form"
                 }
             },
-            Status = 0
+            Status = "New"
         }
     },
     UseCodeValues = false
@@ -5003,6 +5088,10 @@ static string ReadField(string payload, string field)
 ```
 <!-- /tabs -->
 
+> **End-to-end files** (runnable from the repo with a `.env`, dry-run by default; they add the retry with a `printed` re-read before each attempt, check every document, and read `printed` back after the print): [`examples/python/recipes/reprint_purchase_order.py`](../examples/python/recipes/reprint_purchase_order.py) · [`examples/csharp/Recipes/ReprintPurchaseOrder.cs`](../examples/csharp/Recipes/ReprintPurchaseOrder.cs). Payload file: [`reprint-purchase-order-pdf.json`](../examples/payloads/json/reprint-purchase-order-pdf.json).
+>
+> Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each against one never-printed PO and then the same PO once printed. All eight runs saved a one-page PDF of the requested PO.
+
 > **Credit:** Jeff Poss discovered the `/api/v2/process/pdfreport` endpoint and payload structure.
 
 ### Example: Generate a Production-Order Pick Ticket (m_picktickets)
@@ -5019,11 +5108,11 @@ POST /api/v2/process/pdfreport
   "UseCodeValues": true,
   "Transactions": [
     {
-      "Status": 0,
+      "Status": "New",
       "DataElements": [
         {
           "Keys": [],
-          "Type": 0,
+          "Type": "Form",
           "Name": "TABPAGE_1.tp_1_dw_1",
           "Rows": [{ "Edits": [
             { "Name": "create_pick_ticket_type", "Value": "P" },
@@ -5041,14 +5130,14 @@ POST /api/v2/process/pdfreport
 Every one of these is required to make it fire:
 
 - Endpoint **`/api/v2/process/pdfreport`** (not `/api/v2/transaction` — see the wrong-endpoint trap above).
-- `Status` and `Type` numeric **`0`**, `Keys: []`.
+- `Status: "New"`, `Type: "Form"`, `Keys: []`. This example was verified with the integers `0`/`0`, which bind to the same enum members; the switch to the strings was verified on `m_reprintpurchaseorders` (see [the `pdfreport` note under Status](#status-new-is-the-only-value-the-enum-accepts)) and not re-run here, because each run creates a pick ticket.
 - `create_pick_ticket_type` = the **code** `"P"` (Production Order) with **`UseCodeValues: true`** — the label is rejected, and `UseCodeValues: false` returns HTTP 500.
 - `location_id` = the location whose inventory the components pick from. No date range needed.
 - **Prerequisite:** the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
 
-The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
+The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`, where `<nnn>` is a document counter, **not** the pick-ticket number). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other; find its number in `prod_pick_ticket_hdr` (filter on `prod_order_number`) — see [generate-pick-ticket-pdf § Verify](recipes/generate-pick-ticket-pdf.md#verify).
 
-For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status`/`Type: 0`, `Keys: []`, and the `DocumentData` extraction stay the same.
+For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status: "New"`, `Type: "Form"`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified end-to-end (report run → pick ticket row created → PDF returned → ticket confirmed and completed).
 
@@ -5125,7 +5214,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -5207,7 +5296,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 const string SpUid = "12345";              // from the P21 Stored Procedure Executor UI
@@ -5496,19 +5585,20 @@ var response = await httpClient.PostAsync(
 // HTTP 200 does NOT mean the transaction succeeded
 response.EnsureSuccessStatusCode();
 
-var result = JObject.Parse(await response.Content.ReadAsStringAsync());
+using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
 // Always check the Summary
-var succeeded = (int)result["Summary"]!["Succeeded"]!;
-var failed = (int)result["Summary"]!["Failed"]!;
+var summary = result.RootElement.GetProperty("Summary");
+var succeeded = summary.GetProperty("Succeeded").GetInt32();
+var failed = summary.GetProperty("Failed").GetInt32();
 
 if (failed > 0)
 {
     Console.WriteLine($"Transaction failed ({failed} failures)");
-    var messages = result["Messages"] as JArray;
-    if (messages != null)
+    if (result.RootElement.TryGetProperty("Messages", out var messages) &&
+        messages.ValueKind == JsonValueKind.Array)
     {
-        foreach (var msg in messages)
+        foreach (var msg in messages.EnumerateArray())
             Console.WriteLine($"  Error: {msg}");
     }
 }

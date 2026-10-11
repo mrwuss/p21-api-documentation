@@ -23,11 +23,7 @@
                 },
                 {
                   "Name": "job_no",
-                  "Value": "31"
-                },
-                {
-                  "Name": "end_date",
-                  "Value": "2030-01-01"
+                  "Value": "1001"
                 }
               ],
               "RelativeDateEdits": []

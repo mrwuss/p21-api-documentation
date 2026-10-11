@@ -21,7 +21,7 @@ Verified live, 26.1.5950.0:
       verified writes -- see docs/03-Transaction-API.md.
 
 Usage:
-    python examples/python/rest/purchase_order_read.py 998310
+    python examples/python/rest/purchase_order_read.py 500100
 """
 
 import argparse

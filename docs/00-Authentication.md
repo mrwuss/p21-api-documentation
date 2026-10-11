@@ -46,7 +46,7 @@ Use when you have a P21 username and password. The user must be:
 **Request:**
 ```http
 POST /api/security/token/v2 HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Content-Type: application/json
 Accept: application/json
 
@@ -73,7 +73,7 @@ Accept: application/json
 **Request:**
 ```http
 POST /api/security/token HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 username: api_user
 password: your_password
 Content-Type: application/json
@@ -93,7 +93,7 @@ Accept: application/json
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -129,7 +129,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -231,7 +231,7 @@ Returns a token tied to the consumer key with no P21 user context. Sufficient fo
 
 ```http
 POST /api/security/token/v2 HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Content-Type: application/json
 Accept: application/json
 
@@ -264,7 +264,7 @@ Adding `username` to the request associates the token with a P21 user identity. 
 
 ```http
 POST /api/security/token/v2 HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Content-Type: application/json
 Accept: application/json
 
@@ -353,7 +353,7 @@ You are not authorized to access API. Please contact administrator to get access
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"                       # your P21 server
+BASE_URL = "https://play.example.com"                       # your P21 server
 CONSUMER_KEY = "00000000-1111-2222-3333-444444444444"          # from SOA Admin
 USERNAME = "apiuser"                                           # "" to omit (required for Interactive API)
 VERIFY_SSL = False                                              # True once you trust the cert chain
@@ -368,7 +368,7 @@ def get_consumer_token(
     """Get token using consumer key authentication.
 
     Args:
-        base_url: P21 server URL (e.g., "https://play.p21server.com")
+        base_url: P21 server URL (e.g., "https://play.example.com")
         consumer_key: Consumer key GUID from SOA Admin
         username: Optional P21 username (required for Interactive API)
 
@@ -410,7 +410,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";                // your P21 server
+const string BaseUrl = "https://play.example.com";                // your P21 server
 const string ConsumerKey = "00000000-1111-2222-3333-444444444444";  // from SOA Admin
 const string Username = "apiuser";                                   // "" to omit (required for Interactive API)
 // ---------------------------------------------------------------------------
@@ -583,7 +583,7 @@ Include the token in the `Authorization` header for all API requests:
 
 ```http
 GET /odataservice/odata/table/supplier HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
 Accept: application/json
 ```
@@ -597,7 +597,7 @@ Accept: application/json
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -645,7 +645,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -749,7 +749,7 @@ import time
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 # ---------------------------------------------------------------------------
@@ -845,7 +845,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -957,7 +957,7 @@ The Interactive and Transaction APIs require the UI server URL, which is obtaine
 
 ```http
 GET /api/ui/router/v1/?urlType=external HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Authorization: Bearer {token}
 Accept: application/json
 ```
@@ -965,7 +965,7 @@ Accept: application/json
 **Response:**
 ```json
 {
-    "Url": "https://play.p21server.com/uiserver0"
+    "Url": "https://play.example.com/uiserver0"
 }
 ```
 
@@ -1001,7 +1001,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1062,7 +1062,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -1142,7 +1142,7 @@ static async Task<JsonElement> GetTokenV2Async(
 
 ```http
 GET /uiserver0/ui/common/v1/serverinfo HTTP/1.1
-Host: play.p21server.com
+Host: play.example.com
 Authorization: Bearer {token}
 Accept: application/json
 ```
@@ -1157,7 +1157,7 @@ Like the token and router endpoints, it serves **DataContract XML by default** b
     "Monitoring/fullversion": "26.1.5940.0",
     "Monitoring/shortversion": "26.1",
     "Monitoring/isproduction": null,
-    "Monitoring/cloudroleinstance": "3694.prophet21play.production",
+    "Monitoring/cloudroleinstance": "1234.prophet21play.production",
     "Version/Application Version": "26.1.5940.0",
     "Version/Build Framework": ".NET Core"
   }
@@ -1166,7 +1166,7 @@ Like the token and router endpoints, it serves **DataContract XML by default** b
 
 Twelve keys in total on 26.1.5940.0 — the rest are `Monitoring/*` telemetry (`accountid`, `cloudrolename`, `configurationid`, `telemetrykey`, `tracelevel`) plus `Session/State`.
 
-> **`Monitoring/cloudroleinstance` says "production" on a play tenant** (`3694.prophet21play.production`) — it names the Azure role instance, not the business environment. Do not pattern-match on it to decide whether you are pointed at live data; use `Monitoring/isproduction`, and read the caveat on it below.
+> **`Monitoring/cloudroleinstance` says "production" on a play tenant** (`1234.prophet21play.production`) — it names the Azure role instance, not the business environment. Do not pattern-match on it to decide whether you are pointed at live data; use `Monitoring/isproduction`, and read the caveat on it below.
 
 > **Gotcha — `Monitoring/shortversion`/`fullversion` are not reliably populated, and it varies by build.** These are the keys whose names suggest version detection, and they are the ones to *not* depend on:
 >
@@ -1196,7 +1196,7 @@ Two keys are useful in practice:
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1252,7 +1252,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------
@@ -1350,7 +1350,7 @@ import re
 import httpx
 
 # ---- EDIT THESE -----------------------------------------------------------
-BASE_URL = "https://play.p21server.com"   # your P21 server
+BASE_URL = "https://play.example.com"   # your P21 server
 USERNAME = "apiuser"
 PASSWORD = "your-password"
 VERIFY_SSL = False                        # True once you trust the cert chain
@@ -1402,7 +1402,7 @@ using System.Text;
 using System.Text.Json;
 
 // ---- EDIT THESE -----------------------------------------------------------
-const string BaseUrl = "https://play.p21server.com";   // your P21 server
+const string BaseUrl = "https://play.example.com";   // your P21 server
 const string Username = "apiuser";
 const string Password = "your-password";
 // ---------------------------------------------------------------------------

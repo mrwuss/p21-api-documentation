@@ -73,8 +73,8 @@ def main() -> None:
         description="Post a WMS inventory adjustment (docs/15 inventory/inventoryadjustments)"
     )
     parser.add_argument("--execute", action="store_true", help="Actually POST (default: dry run)")
-    parser.add_argument("--item-id", default="GBY")
-    parser.add_argument("--location-id", default="40")
+    parser.add_argument("--item-id", default="WIDGET-001")
+    parser.add_argument("--location-id", default="10")
     parser.add_argument("--quantity", type=float, default=1,
                         help="SIGNED DELTA -- positive adds, negative removes")
     parser.add_argument("--uom", default="EA")

@@ -84,8 +84,8 @@ def main() -> None:
     parser.add_argument("--async-create", action="store_true",
                         help="POST to .../async and poll for completion instead of the sync route")
     parser.add_argument("--company-id", default="ACME")
-    parser.add_argument("--location-id", type=int, default=20)
-    parser.add_argument("--vendor-id", type=int, default=25753)
+    parser.add_argument("--location-id", type=int, default=10)
+    parser.add_argument("--vendor-id", type=int, default=10050)
     parser.add_argument("--buyer-id", default="812",
                         help="Required in practice -- an empty value fails create. "
                              "Find a real one via GET /api/purchasing/purchaseorders/{po_no} "

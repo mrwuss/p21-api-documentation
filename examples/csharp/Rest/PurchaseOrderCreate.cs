@@ -36,9 +36,9 @@ public static class PurchaseOrderCreate
         var po = JObject.Parse(await templateResp.Content.ReadAsStringAsync());
 
         po["CompanyNo"] = "ACME";
-        po["LocationId"] = 20;
-        po["VendorId"] = 25753;
-        po["SupplierId"] = 25753;
+        po["LocationId"] = 10;
+        po["VendorId"] = 10050;
+        po["SupplierId"] = 10050;
         po["PoType"] = "S";
         po["OrderDate"] = "2026-09-12T00:00:00";
         po["DateDue"] = "2026-09-19T00:00:00";

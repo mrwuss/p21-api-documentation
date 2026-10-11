@@ -11,6 +11,10 @@
             <Row>
               <Edits>
                 <Edit>
+                  <Name>quote</Name>
+                  <Value>OFF</Value>
+                </Edit>
+                <Edit>
                   <Name>customer_id</Name>
                   <Value>100198</Value>
                 </Edit>

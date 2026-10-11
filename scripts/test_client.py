@@ -2,7 +2,7 @@
 Verification test for the P21 API client.
 
 Requires environment variables (via .env file in project root):
-    P21_BASE_URL      - P21 server URL (e.g., https://play.p21server.com)
+    P21_BASE_URL      - P21 server URL (e.g., https://play.example.com)
     P21_USERNAME      - API username (optional if P21_CONSUMER_KEY is set)
     P21_PASSWORD      - API password (optional if P21_CONSUMER_KEY is set)
     P21_CONSUMER_KEY  - Consumer key for service account auth (optional)

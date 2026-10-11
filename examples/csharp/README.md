@@ -50,7 +50,8 @@ Entity/                     # Entity API examples (net8.0)
 Production/                 # Production & Labor examples (net8.0)
 Rest/                       # Other REST families (net8.0) -- docs/15-Other-REST-Families.md
                             #   (menu-driven; task create gated behind typing EXECUTE)
-Recipes/                    # End-to-end recipe programs (net8.0), one class per docs/recipes page
+Recipes/                    # End-to-end recipe programs (net8.0), one class per docs/recipes page,
+                            #   plus write-path classes for reference-doc sections (menu 16-32)
                             #   (menu-driven; writes gated behind typing EXECUTE)
 ```
 
@@ -58,7 +59,7 @@ Recipes/                    # End-to-end recipe programs (net8.0), one class per
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.p21server.com`) |
+| `P21_BASE_URL` | Yes | P21 server URL (e.g., `https://play.example.com`) |
 | `P21_USERNAME` | Yes* | P21 API username |
 | `P21_PASSWORD` | Yes* | P21 API password |
 | `P21_CONSUMER_KEY` | No | Consumer key (used only if username/password are not set) |

@@ -927,10 +927,10 @@
 </code></pre></div>
 
 <p>Examples:
-- <code>https://play.p21server.com/api/entity/customers</code>
-- <code>https://play.p21server.com/api/entity/vendors</code>
-- <code>https://play.p21server.com/api/entity/contacts</code>
-- <code>https://play.p21server.com/api/entity/addresses</code></p>
+- <code>https://play.example.com/api/entity/customers</code>
+- <code>https://play.example.com/api/entity/vendors</code>
+- <code>https://play.example.com/api/entity/contacts</code>
+- <code>https://play.example.com/api/entity/addresses</code></p>
 <blockquote>
 <p><strong>Warning:</strong> Customer/vendor/contact/address records are served <strong>only</strong> from <code>/api/entity/</code> — category-style URLs for those records (e.g., <code>/api/sales/customers</code>) return 404. But do <strong>not</strong> generalize that to "category URLs don't work": <code>/api/sales/orders</code> <strong>exists and responds</strong> (verified July 2026 — see <a href="#other-rest-endpoint-families">Other REST Endpoint Families</a>), and <code>/api/inventory/parts</code> is fully functional (<a href="11-Inventory-REST-API.html">Inventory REST API</a>). All of these are endpoint families of the same REST API.</p>
 </blockquote>
@@ -977,7 +977,7 @@
 <h3 id="composite-keys">Composite Keys</h3>
 <p>Customers and Vendors require a <strong>composite key</strong> combining <code>CompanyId</code> and the entity ID, separated by an underscore:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10</span>
-<span class="err">/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485</span>
+<span class="err">/api/entity/vendors/ACME_99001        # CompanyId=ACME, VendorId=99001</span>
 </code></pre></div>
 
 <ul>
@@ -1107,7 +1107,7 @@
 <h2 id="authentication">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
 <div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/entity/customers/ACME_10</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.example.com</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
@@ -1156,7 +1156,7 @@
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;TermsId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
@@ -1398,7 +1398,7 @@
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerAddress&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CorpAddressId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;MailAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Industrial Parkway&quot;</span><span class="p">,</span>
@@ -1435,7 +1435,7 @@
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;UserDefinedFields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
@@ -1448,12 +1448,12 @@
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">]</span>
 </code></pre></div>
@@ -1502,7 +1502,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1545,7 +1545,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
@@ -1612,7 +1612,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1655,7 +1655,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
@@ -1722,7 +1722,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1759,7 +1759,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
     <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
     <span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="c1"># 10: ABC Supply Company</span>
+    <span class="c1"># 10: ACME Supply Company</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -1768,7 +1768,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME_10&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// {CompanyId}_{CustomerId}</span>
@@ -1792,7 +1792,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">customer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">customer</span><span class="p">.</span><span class="n">RootElement</span><span class="p">;</span>
 <span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{root.GetProperty(&quot;</span><span class="n">CustomerId</span><span class="s">&quot;)}: {root.GetProperty(&quot;</span><span class="n">CustomerName</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
-<span class="c1">// 10: ABC Supply Company</span>
+<span class="c1">// 10: ACME Supply Company</span>
 
 <span class="c1">// --- helpers ---------------------------------------------------------------</span>
 
@@ -1839,7 +1839,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1890,7 +1890,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME_10&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// {CompanyId}_{CustomerId}</span>
@@ -1963,7 +1963,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2014,7 +2014,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">NamePrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ABC&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// customers whose name starts with this</span>
@@ -2089,7 +2089,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2135,7 +2135,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ContactId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1&quot;</span><span class="p">;</span>
@@ -2206,7 +2206,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2276,7 +2276,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
@@ -2375,7 +2375,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2435,7 +2435,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
@@ -4299,7 +4299,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -4398,7 +4398,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">;</span>
@@ -4578,7 +4578,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <tr>
 <td>Assembly lines</td>
 <td>Untested</td>
-<td>Auto-answers the explode prompt <strong>No</strong> — use the <a href="recipes/order-with-assembly.html">order-with-assembly</a> recipe instead</td>
+<td>Explodes the assembly with no prompt to answer on 26.1.5950.0 (<a href="03-Transaction-API.html#order-service-gotchas">03 § Order Service Gotchas</a>) — use the <a href="recipes/order-with-assembly.html">order-with-assembly</a> recipe to choose the answer</td>
 </tr>
 </tbody>
 </table></div>
@@ -4721,10 +4721,10 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 </code></pre></div>
 
 <p>Examples:
-- <code>https://play.p21server.com/api/entity/customers</code>
-- <code>https://play.p21server.com/api/entity/vendors</code>
-- <code>https://play.p21server.com/api/entity/contacts</code>
-- <code>https://play.p21server.com/api/entity/addresses</code></p>
+- <code>https://play.example.com/api/entity/customers</code>
+- <code>https://play.example.com/api/entity/vendors</code>
+- <code>https://play.example.com/api/entity/contacts</code>
+- <code>https://play.example.com/api/entity/addresses</code></p>
 <blockquote>
 <p><strong>Warning:</strong> Customer/vendor/contact/address records are served <strong>only</strong> from <code>/api/entity/</code> — category-style URLs for those records (e.g., <code>/api/sales/customers</code>) return 404. But do <strong>not</strong> generalize that to "category URLs don't work": <code>/api/sales/orders</code> <strong>exists and responds</strong> (verified July 2026 — see <a href="#other-rest-endpoint-families">Other REST Endpoint Families</a>), and <code>/api/inventory/parts</code> is fully functional (<a href="11-Inventory-REST-API.html">Inventory REST API</a>). All of these are endpoint families of the same REST API.</p>
 </blockquote>
@@ -4771,7 +4771,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <h3 id="composite-keys_1">Composite Keys</h3>
 <p>Customers and Vendors require a <strong>composite key</strong> combining <code>CompanyId</code> and the entity ID, separated by an underscore:</p>
 <div class="highlight"><pre><span></span><code><span class="err">/api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10</span>
-<span class="err">/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=28485</span>
+<span class="err">/api/entity/vendors/ACME_99001        # CompanyId=ACME, VendorId=99001</span>
 </code></pre></div>
 
 <ul>
@@ -4901,7 +4901,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <h2 id="authentication_1">Authentication</h2>
 <p>Include the Bearer token in the Authorization header:</p>
 <div class="highlight"><pre><span></span><code><span class="nf">GET</span> <span class="nn">/api/entity/customers/ACME_10</span> <span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span>
-<span class="na">Host</span><span class="o">:</span> <span class="l">play.p21server.com</span>
+<span class="na">Host</span><span class="o">:</span> <span class="l">play.example.com</span>
 <span class="na">Authorization</span><span class="o">:</span> <span class="l">Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</span>
 <span class="na">Accept</span><span class="o">:</span> <span class="l">application/json</span>
 </code></pre></div>
@@ -4950,7 +4950,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;TermsId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
@@ -5192,7 +5192,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerAddress&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CorpAddressId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;MailAddress1&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;123 Industrial Parkway&quot;</span><span class="p">,</span>
@@ -5229,7 +5229,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;SalesrepId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;200&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;CreditStatus&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GOOD&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;UserDefinedFields&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
@@ -5242,12 +5242,12 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span>
 <span class="w">    </span><span class="p">},</span>
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="nt">&quot;CompanyId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="nt">&quot;CustomerId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ABC Supply Company&quot;</span>
+<span class="w">        </span><span class="nt">&quot;CustomerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ACME Supply Company&quot;</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">]</span>
 </code></pre></div>
@@ -5296,7 +5296,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -5339,7 +5339,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
@@ -5406,7 +5406,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -5449,7 +5449,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
@@ -5516,7 +5516,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -5553,7 +5553,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
     <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
     <span class="n">customer</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;CustomerName&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="c1"># 10: ABC Supply Company</span>
+    <span class="c1"># 10: ACME Supply Company</span>
 </code></pre></div>
 </div>
   <div class="tab-panel" data-lang="csharp">
@@ -5562,7 +5562,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME_10&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// {CompanyId}_{CustomerId}</span>
@@ -5586,7 +5586,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">var</span><span class="w"> </span><span class="n">customer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonDocument</span><span class="p">.</span><span class="n">Parse</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="n">resp</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="n">ReadAsStringAsync</span><span class="p">());</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">customer</span><span class="p">.</span><span class="n">RootElement</span><span class="p">;</span>
 <span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;{root.GetProperty(&quot;</span><span class="n">CustomerId</span><span class="s">&quot;)}: {root.GetProperty(&quot;</span><span class="n">CustomerName</span><span class="s">&quot;)}&quot;</span><span class="p">);</span>
-<span class="c1">// 10: ABC Supply Company</span>
+<span class="c1">// 10: ACME Supply Company</span>
 
 <span class="c1">// --- helpers ---------------------------------------------------------------</span>
 
@@ -5633,7 +5633,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -5684,7 +5684,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME_10&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// {CompanyId}_{CustomerId}</span>
@@ -5757,7 +5757,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -5808,7 +5808,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">NamePrefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ABC&quot;</span><span class="p">;</span><span class="w">                        </span><span class="c1">// customers whose name starts with this</span>
@@ -5883,7 +5883,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -5929,7 +5929,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ContactId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1&quot;</span><span class="p">;</span>
@@ -6000,7 +6000,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -6070,7 +6070,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
@@ -6169,7 +6169,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -6229,7 +6229,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
@@ -8093,7 +8093,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -8192,7 +8192,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">;</span>
@@ -8372,7 +8372,7 @@ UI-server redirect to resolve (that only applies to Transaction and Interactive)
 <tr>
 <td>Assembly lines</td>
 <td>Untested</td>
-<td>Auto-answers the explode prompt <strong>No</strong> — use the <a href="recipes/order-with-assembly.html">order-with-assembly</a> recipe instead</td>
+<td>Explodes the assembly with no prompt to answer on 26.1.5950.0 (<a href="03-Transaction-API.html#order-service-gotchas">03 § Order Service Gotchas</a>) — use the <a href="recipes/order-with-assembly.html">order-with-assembly</a> recipe to choose the answer</td>
 </tr>
 </tbody>
 </table></div>

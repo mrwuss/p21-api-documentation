@@ -17,9 +17,9 @@ public static class PartScan
         using var _ = http;
         Console.WriteLine($"Server: {baseUrl}");
 
-        Console.Write("Search term [GBY]: ");
+        Console.Write("Search term [WIDGET-001]: ");
         var term = Console.ReadLine()?.Trim();
-        term = string.IsNullOrEmpty(term) ? "GBY" : term;
+        term = string.IsNullOrEmpty(term) ? "WIDGET-001" : term;
 
         // Trailing slash before the query string matters -- the bare
         // form without it 307-redirects.

@@ -12,7 +12,7 @@ namespace P21Examples.Recipes;
 
 public static class UpdateOrderLines
 {
-    private const string OrderNo = "1013938";
+    private const string OrderNo = "1001234";
 
     // (handle, item, qty): existing handle -> update; new handle -> insert.
     private static readonly (string Handle, string ItemId, string Qty)[] Lines =
