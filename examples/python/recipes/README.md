@@ -19,6 +19,13 @@ End-to-end runnable Python versions of the [cookbook recipes](../../../docs/reci
 | `create_requisition_po.py` | [create-requisition-po.md](../../../docs/recipes/create-requisition-po.md) |
 | `reassign_salesrep.py` | [reassign-salesrep.md](../../../docs/recipes/reassign-salesrep.md) |
 | `update_supplier_contact.py` | [update-supplier-contact.md](../../../docs/recipes/update-supplier-contact.md) |
+| `purchase_receive_vouch.py` | [purchase-receive-vouch.md](../../../docs/recipes/purchase-receive-vouch.md) |
+| `sales_order_to_invoice.py` | [sales-order-to-invoice.md](../../../docs/recipes/sales-order-to-invoice.md) |
+| `dispose_zero_value_stock.py` | [dispose-zero-value-stock.md](../../../docs/recipes/dispose-zero-value-stock.md) |
+| `new_assembled_part.py` | [new-assembled-part.md](../../../docs/recipes/new-assembled-part.md) |
+| `rebate_assembly_program.py` | [rebate-assembly-program.md](../../../docs/recipes/rebate-assembly-program.md) |
+
+The five runbook scripts above take their record IDs as command-line options (`--help` lists them) and share [`runbook_common.py`](runbook_common.py) — one connection, Transaction POSTs judged by `Summary`, OData read-backs, and the Interactive session from `order_with_assembly.py` with longer timeouts. Each step is read back before the next one starts, and a mismatch stops the run.
 
 ## Setup
 
