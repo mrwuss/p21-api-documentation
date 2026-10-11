@@ -220,19 +220,27 @@ General Exception: Column is disabled: note
 
 Add `IgnoreDisabled: true` — payload otherwise byte-identical — and it returns `Summary: {"Failed": 0, "Succeeded": 1}`, `Status: "Passed"` and no messages, while a `/transaction/get` read-back shows the note **unchanged**. The echoed transaction drops the `LINE_NOTE.line_note` element entirely and returns only `TABPAGE_1.order`, so nothing in the response marks the omission.
 
-**A fourth surface: `SalesPricePage`'s price-book link** (26.1.5950.0, 2026-10-10). Writing `USED BY.price_book_x_page` with `price_book_price_book_id` is refused loudly without the flag — `Column is disabled: price_book_price_book_id`. With `IgnoreDisabled: true` it returns `Succeeded: 1`, drops the element from the echoed response, and writes no `price_page_x_book` row. The link that does work goes through the `SalesPriceBook` service instead — see [Creating a Page Through the Transaction API](08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api). Originally reported by [Alex Westemeier](https://github.com/AWestemeier); confirmed here.
-
 > **Don't key off the column name in the loud form.** Which column the unflagged refusal names is just the first disabled one the transaction reaches, so it moves with your payload: the 5950.0 re-run sent `note_id` in `Keys` **and** in `Edits` and got `Column is disabled: note_id` instead. Same refusal, same false success under the flag — only the named column differs. Match on `Column is disabled:`, not on the column.
 
-That was three unrelated services showing the same false success, which is what marked this as a platform behavior rather than a `JobContractPricing` quirk.
+Two unrelated services showing the same false success is what first marked this as a platform behavior rather than a `JobContractPricing` quirk.
 
-**A fourth service, and the same signature again** (26.1.5940.0, 2026-08-30). The `ProductionOrder` window's header-note grid — `PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab`, keyed `note_uid` — behaves identically. Without the flag:
+**A third service, fourth surface, and the same signature again** (26.1.5940.0, 2026-08-30). The `ProductionOrder` window's header-note grid — `PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab`, keyed `note_uid` — behaves identically. Without the flag:
 
 ```text
 General Exception: Column is disabled: note
 ```
 
 With `IgnoreDisabled: true`: `Summary: {"Failed": 0, "Succeeded": 1}`, `Status: "Passed"`, no messages, the echoed transaction reduced to `TABPAGE_1.tp_1_dw_1` alone — and the note's `date_last_modified` still reading its original value five weeks earlier. Row *creation* on the same grid behaves the same way (`Column is disabled: topic` without the flag, clean false success with it), with or without `Keys`. The working path for those notes is the [Interactive popup](04-Interactive-API.md#production-order-notes-header).
+
+**A fourth service, fifth surface: `SalesPricePage`'s price-book link** (26.1.5950.0, 2026-10-10). Writing `USED BY.price_book_x_page` with `price_book_price_book_id` is refused loudly without the flag — `Column is disabled: price_book_price_book_id`. With `IgnoreDisabled: true` it returns `Succeeded: 1`, drops the element from the echoed response, and writes no `price_page_x_book` row. The link that does work goes through the `SalesPriceBook` service instead — see [Creating a Page Through the Transaction API](08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api). Originally reported by [Alex Westemeier](https://github.com/AWestemeier); confirmed here.
+
+In all, **five surfaces across four services** return the same false success under the flag:
+
+1. `JobContractPricing` — `VALUES.values` (all three write paths).
+2. `JobContractPricing` — the header column `corp_address_id`.
+3. `Order` — `LINE_NOTE.line_note`.
+4. `ProductionOrder` — the header-note grid `PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab`.
+5. `SalesPricePage` — the price-book link `USED BY.price_book_x_page`.
 
 **The contrast case matters as much as the failures.** On the same build, minutes apart, `IgnoreDisabled: true` genuinely unlocked a write: inserting a location supplier row on the `Item` window (`SUPPLIER_X_LOCATION.supplier_x_location`, keyed on **both** `location_id` and `supplier_id`) returned `Succeeded: 1` and the row was really there on read-back. The control — same element, `Keys: ["supplier_id"]` alone and no flag — failed loudly with `Column is disabled: location_id` and wrote nothing. So the flag's two outcomes are not split by service, or by window, or by anything you can see in the request: [the same service](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert) produces both.
 
