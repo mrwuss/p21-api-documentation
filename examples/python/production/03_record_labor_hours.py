@@ -55,7 +55,8 @@ def build_timeentry_payload(
     technician_id: str,
     entry_date: str,
     prod_order_number: int,
-    service_labor_id: str,
+    item_id: str,
+    component_labor_id: str,
     start_time: str,
     end_time: str,
     time_worked: float,
@@ -78,7 +79,8 @@ def build_timeentry_payload(
             performed the work - this is a contact record ID
         entry_date: Date of the labor entry (YYYY-MM-DD format)
         prod_order_number: Production order number to record hours against
-        service_labor_id: Service/labor code identifier
+        item_id: The assembly line's item on that production order
+        component_labor_id: The labor component on that assembly line
         start_time: Start time of work (HH:MM format)
         end_time: End time of work (HH:MM format)
         time_worked: Total hours worked (decimal, e.g., 2.5 for 2h 30m)
@@ -135,10 +137,15 @@ def build_timeentry_payload(
                                         "Name": "prod_order_number",
                                         "Value": str(prod_order_number),
                                     },
-                                    # Service/labor code (defines the type of work)
+                                    # Strict order: prod_order_number -> item_id
+                                    # -> component_labor_id -> start_time -> end_time.
+                                    # Downstream fields stay disabled otherwise.
+                                    # The assembly line's item:
+                                    {"Name": "item_id", "Value": item_id},
+                                    # The labor component on that line:
                                     {
-                                        "Name": "service_labor_id",
-                                        "Value": service_labor_id,
+                                        "Name": "component_labor_id",
+                                        "Value": component_labor_id,
                                     },
                                     # Start time of the labor period
                                     {"Name": "start_time", "Value": start_time},
@@ -184,26 +191,35 @@ def submit_transaction(
     return response.json()
 
 
-def read_back_labor(config, headers: dict, prod_order_number: int) -> list:
-    """Read back labor rows via OData (prod_order_line_comp_labor).
+def read_labor_hours(config, headers: dict, prod_order_number: int) -> float:
+    """Total labor hours recorded on a production order, read over OData.
 
-    Read-back is the only proof of persistence. transaction/get on
-    TimeEntry is awkward (technician-scoped header), so an OData query
-    on the production order is the simplest verification.
+    Labor rows (prod_order_line_comp_labor) hang off the order's components
+    by prod_order_line_component_uid; they carry no prod_order_number of
+    their own. Time accumulates, so compare the total before and after.
+    POST /transaction/get on TimeEntry is technician-scoped and returns no
+    labor values, so it is not a usable read-back here.
     """
-    response = httpx.get(
-        f"{config.odata_url}/table/prod_order_line_comp_labor",
-        params={
-            "$filter": f"prod_order_number eq {prod_order_number}",
-            "$top": 10,
-        },
-        headers=headers,
-        verify=config.verify_ssl,
-        follow_redirects=True,
-        timeout=30.0,
-    )
-    response.raise_for_status()
-    return response.json().get("value", [])
+    def odata(table: str, flt: str, select: str) -> list:
+        response = httpx.get(
+            f"{config.odata_url}/table/{table}",
+            params={"$filter": flt, "$select": select},
+            headers=headers, verify=config.verify_ssl,
+            follow_redirects=True, timeout=30.0,
+        )
+        response.raise_for_status()
+        return response.json().get("value", [])
+
+    total = 0.0
+    for comp in odata("prod_order_line_component",
+                      f"prod_order_number eq {prod_order_number}",
+                      "prod_order_line_component_uid"):
+        for row in odata("prod_order_line_comp_labor",
+                         f"prod_order_line_component_uid eq "
+                         f"{comp['prod_order_line_component_uid']}",
+                         "hours_worked"):
+            total += float(row.get("hours_worked") or 0)
+    return total
 
 
 def main() -> None:
@@ -230,16 +246,17 @@ def main() -> None:
     # Using obviously fake values to prevent accidental real transactions.
     entry_date = datetime.now().strftime("%Y-%m-%d")
     start_time = "08:00"
-    end_time = "10:30"
-    time_worked = 2.5  # 2 hours 30 minutes
-    prod_order_number = 1001
+    end_time = "12:00"
+    time_worked = 4.0
+    prod_order_number = 1000123
 
     print("\nBuilding labor entry:")
     print("  Company:          ACME")
     print("  Technician:       300 (a contact ID, not a user ID)")
     print(f"  Date:             {entry_date}")
     print(f"  Production Order: {prod_order_number}")
-    print("  Service/Labor ID: LABOR-STD")
+    print("  Assembly item:    ASSY-100")
+    print("  Labor component:  LABOR-SHOP")
     print(f"  Time:             {start_time} - {end_time} ({time_worked}h)")
     print("  Labor Type:       Rate")
 
@@ -248,7 +265,8 @@ def main() -> None:
         technician_id="300",  # contact ID, not a user ID
         entry_date=entry_date,
         prod_order_number=prod_order_number,
-        service_labor_id="LABOR-STD",
+        item_id="ASSY-100",            # the assembly line's item
+        component_labor_id="LABOR-SHOP",
         start_time=start_time,
         end_time=end_time,
         time_worked=time_worked,
@@ -284,6 +302,9 @@ def main() -> None:
         print("\n" + "=" * 60)
         print("Labor hours recording example complete (dry run)!")
         return
+
+    hours_before = read_labor_hours(config, headers, prod_order_number)
+    print(f"\nLabor hours on production order {prod_order_number} before: {hours_before:.4f}")
 
     # ------------------------------------------------------------------
     # Submit the transaction
@@ -334,31 +355,19 @@ def main() -> None:
             print("\n  SUCCESS: Labor hours recorded!")
 
             # Verify with a read-back - the only proof of persistence
-            print("\n  Verifying via OData (prod_order_line_comp_labor)...")
-            try:
-                rows = read_back_labor(config, headers, prod_order_number)
-                if rows:
-                    print(f"  VERIFIED: {len(rows)} labor row(s) on production order "
-                          f"{prod_order_number}:")
-                    for row in rows[:3]:
-                        print(f"    technician {row.get('technician_id')}: "
-                              f"{row.get('time_worked')} on {row.get('entry_date')}")
-                else:
-                    print(f"  WARNING: no labor rows found for production order "
-                          f"{prod_order_number}.")
-                    print("  Verify manually via OData:")
-                    print("    GET /odataservice/odata/table/prod_order_line_comp_labor"
-                          f"?$filter=prod_order_number eq {prod_order_number}")
-            except httpx.HTTPStatusError as e:
-                print(f"  Read-back failed: HTTP {e.response.status_code}")
-                print("  Verify manually via OData table prod_order_line_comp_labor")
+            hours_after = read_labor_hours(config, headers, prod_order_number)
+            print(f"\n  Read-back: {hours_before:.4f} -> {hours_after:.4f} labor hours "
+                  f"(+{hours_after - hours_before:.4f}, expected +{time_worked:.4f})")
+            if abs((hours_after - hours_before) - time_worked) > 0.01:
+                print("  WARNING: the recorded hours do not match -- check the labor grid")
         else:
             print("\n  FAILED: Labor entry not created")
             print("  Check messages above for details.")
             print("\n  Common failure reasons:")
             print("    - Invalid technician_id (must exist in P21)")
             print("    - Invalid prod_order_number (must be an open production order)")
-            print("    - Invalid service_labor_id (must be a valid labor code)")
+            print("    - item_id is not an assembly line on that production order")
+            print("    - component_labor_id is not a labor component on that line")
             print("    - Missing required fields (run 02_get_timeentry_definition.py)")
 
         # Always show full response for debugging

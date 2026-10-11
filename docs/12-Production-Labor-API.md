@@ -113,7 +113,9 @@ GET /api/v2/definition/TimeEntry
 
 ### Example: Record Labor Hours
 
-The example below posts labor by `service_labor_id` without `item_id` — the **service-labor variant**. To record labor against a specific production-order assembly line and labor component, use the production-order grid path (`prod_order_number` → `item_id` → `component_labor_id` → `start_time` → `end_time`) described in [Quick Time Entry](#time-entry-against-a-production-order-quick-time-entry).
+The example below records labor against one production-order assembly line and its labor component, entering the grid fields in the required order: `prod_order_number` → `item_id` → `component_labor_id` → `start_time` → `end_time` (see [Quick Time Entry](#time-entry-against-a-production-order-quick-time-entry)). `component_labor_id` is the labor ID (`service_labor.service_labor_id`), not the item ID of the labor line; an item ID there fails with `Invalid Labor ID`.
+
+The runnable pair [`03_record_labor_hours.py`](../examples/python/production/03_record_labor_hours.py) and `examples/csharp/Production/RecordLaborHours.cs` (Production menu 4) send the same fields and read the result back over OData: labor rows in `prod_order_line_comp_labor` carry no `prod_order_number`, so the examples sum `hours_worked` across the order's `prod_order_line_component` rows before and after the post. `POST /transaction/get` on `TimeEntry` returned the grid key and no labor values, so it is not a usable read-back. Python and C# examples run on play 26.1.5950.0, 2026-10-10: each added 0.1 hour (6 minutes) to an open production order, confirmed by the before/after totals. A second keyless entry for the same technician and `entry_date` failed with `Column is disabled: prod_order_number`; the C# run used a different `entry_date`.
 
 This is one step of the full production order lifecycle — see the [Production Order Runbook](recipes/production-order-runbook.md#stage-2-log-labor-before-printing) for the end-to-end sequence, and the standalone [record-labor-time recipe](recipes/record-labor-time.md) for a complete, paste-and-run version of this call (using the `item_id`/`component_labor_id` variant).
 
@@ -152,7 +154,8 @@ payload = {
                 "Rows": [{
                     "Edits": [
                         {"Name": "prod_order_number", "Value": "1001"},
-                        {"Name": "service_labor_id", "Value": "LABOR01"},
+                        {"Name": "item_id", "Value": "ASSY-100"},
+                        {"Name": "component_labor_id", "Value": "LABOR-SHOP"},
                         {"Name": "start_time", "Value": "2026-03-06T08:00:00"},
                         {"Name": "end_time", "Value": "2026-03-06T12:00:00"},
                         {"Name": "time_worked", "Value": "4:00"},
@@ -219,7 +222,8 @@ var payload = new
                             Edits = new[]
                             {
                                 new { Name = "prod_order_number", Value = "1001" },
-                                new { Name = "service_labor_id", Value = "LABOR01" },
+                                new { Name = "item_id", Value = "ASSY-100" },
+                                new { Name = "component_labor_id", Value = "LABOR-SHOP" },
                                 new { Name = "start_time", Value = "2026-03-06T08:00:00" },
                                 new { Name = "end_time", Value = "2026-03-06T12:00:00" },
                                 new { Name = "time_worked", Value = "4:00" },

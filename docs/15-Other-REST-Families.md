@@ -743,7 +743,7 @@ Middleware self-description: build number, configuration id, and (via child rout
 ### Verified read
 
 ```jsonc
-// GET /api/environment/systems
+// GET /api/environment/systems/
 {"list": [{
   "Id": "ERP_SYSTEM", "Type": "Prophet 21", "Version": "0026.0001.5950.0000",
   "Properties": {"list": [
@@ -755,6 +755,8 @@ Middleware self-description: build number, configuration id, and (via child rout
 ```
 
 `Version` and `database_schema_version` both carry the full build number in a dotted four-segment form (`0026.0001.5950.0000`) rather than the `26.1.5950.0` shape `serverinfo` and session-create use — the same build, a different string format. Match on the trailing two segments if you need to compare against those other sources.
+
+**Runnable:** [`environment_systems.py`](../examples/python/rest/environment_systems.py) · `examples/csharp/Rest/EnvironmentSystems.cs` (Rest menu 10). Both request the trailing-slash form `/api/environment/systems/`; without the slash the route 307-redirects, which `httpx` follows with the header intact but .NET `HttpClient` follows without `Authorization`. Python and C# examples run on play 26.1.5950.0, 2026-10-10.
 
 ---
 

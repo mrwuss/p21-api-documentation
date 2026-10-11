@@ -21,7 +21,6 @@ Usage:
 import argparse
 import base64
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -126,37 +125,28 @@ def save_documents(documents: list[dict]) -> None:
               f"{'-- verified %PDF header' if is_pdf else '-- WARNING: not a PDF'}")
 
 
-def read_ticket_status(ui_server: str, headers: dict, verify_ssl: bool,
-                       ticket_no: str) -> None:
-    """Read the new ticket back via /transaction/get and print its status.
+def read_tickets(config, headers: dict) -> dict[int, dict]:
+    """Production pick tickets on PROD_ORDER, read over OData.
+
+    The report's FileName number (PPT<nnn>) is a document counter, not the
+    ticket number, so the new ticket is found by comparing the order's
+    prod_pick_ticket_hdr rows before and after the run.
 
     Args:
-        ui_server: UI server URL.
+        config: Loaded P21Config.
         headers: Auth headers.
-        verify_ssl: Whether to verify SSL certificates.
-        ticket_no: Production pick-ticket number (from the PDF FileName).
-    """
-    get_payload = {
-        "ServiceName": "ProductionOrderPicking",
-        "TransactionStates": [{
-            "DataElementName": "TP_PRODPICKTICKETCONF.tp_prodpickticketconf",
-            "Keys": [{"Name": "prod_pick_ticket_number", "Value": ticket_no}],
-        }],
-    }
-    resp = httpx.post(f"{ui_server}/api/v2/transaction/get",
-                      headers=headers, json=get_payload, verify=verify_ssl,
-                      follow_redirects=True, timeout=60)
-    resp.raise_for_status()
 
-    for txn in resp.json().get("Transactions", []):
-        for de in txn.get("DataElements", []):
-            for row in de.get("Rows", []):
-                fields = {e["Name"]: e["Value"] for e in row.get("Edits", [])}
-                if "row_status_flag" in fields:
-                    # 702 = Open, 1962 = Confirmed, 1268 = Completed
-                    print(f"Ticket {fields.get('prod_pick_ticket_number')} "
-                          f"for prod order {fields.get('prod_order_number')}: "
-                          f"status {fields.get('row_status_flag')}")
+    Returns:
+        dict[int, dict]: Ticket rows keyed by prod_pick_ticket_number.
+    """
+    resp = httpx.get(
+        f"{config.base_url}/odataservice/odata/table/prod_pick_ticket_hdr",
+        params={"$filter": f"prod_order_number eq {PROD_ORDER}",
+                "$select": "prod_pick_ticket_number,location_id,row_status_flag"},
+        headers=headers, verify=config.verify_ssl, follow_redirects=True, timeout=60,
+    )
+    resp.raise_for_status()
+    return {row["prod_pick_ticket_number"]: row for row in resp.json().get("value", [])}
 
 
 def main() -> None:
@@ -188,15 +178,19 @@ def main() -> None:
     ui_server = get_ui_server_url(config.base_url, token_data["AccessToken"], config.verify_ssl)
     print(f"UI Server: {ui_server}")
 
+    before = read_tickets(config, headers)
     documents = run_report(ui_server, headers, config.verify_ssl, payload)
     save_documents(documents)
 
-    # --- Read the new ticket back (number comes from the FileName) ---
-    file_name = documents[0].get("FileName", "")
-    match = re.match(r"PPT(\d+)", file_name)
-    if not match:
-        raise SystemExit(f"Could not extract ticket number from '{file_name}'")
-    read_ticket_status(ui_server, headers, config.verify_ssl, match.group(1))
+    # --- Read-back: m_picktickets CREATED a ticket row; find it over OData ---
+    after = read_tickets(config, headers)
+    new = [after[n] for n in sorted(set(after) - set(before))]
+    if not new:
+        raise SystemExit(f"No new pick ticket on production order {PROD_ORDER}")
+    for ticket in new:
+        # row_status_flag: 702 = Open, 1962 = Confirmed, 1268 = Completed
+        print(f"New ticket {ticket['prod_pick_ticket_number']} at location "
+              f"{ticket['location_id']}: status {ticket['row_status_flag']}")
 
 
 if __name__ == "__main__":

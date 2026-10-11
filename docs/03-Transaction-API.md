@@ -5135,7 +5135,7 @@ Every one of these is required to make it fire:
 - `location_id` = the location whose inventory the components pick from. No date range needed.
 - **Prerequisite:** the production order's form must already be printed (`prod_order_hdr.printed = 'Y'`) — run a `ProductionOrder` transaction with `print_form = ON` first.
 
-The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other.
+The response is the standard document array; the PDF is base64 at `[0].DocumentData` (`FileName` like `"PPT<nnn> PRODUCTION_PICK_TICKET.pdf"`, where `<nnn>` is a document counter, **not** the pick-ticket number). Side effect: the pick-ticket row now exists in P21 at that location and can be confirmed/completed like any other; find its number in `prod_pick_ticket_hdr` (filter on `prod_order_number`) — see [generate-pick-ticket-pdf § Verify](recipes/generate-pick-ticket-pdf.md#verify).
 
 For any *other* report, swap `Name` and the criteria `Edits` (field names from `GET /api/v2/definition/{name}`); the endpoint, `Status: "New"`, `Type: "Form"`, `Keys: []`, and the `DocumentData` extraction stay the same.
 
