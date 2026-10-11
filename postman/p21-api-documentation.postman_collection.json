@@ -3,9 +3,7 @@
 		"_postman_id": "457d010c-841f-40a7-a8aa-0a4988297a64",
 		"name": "p21-api-documentation",
 		"description": "[https://github.com/mrwuss/p21-api-documentation](https://github.com/mrwuss/p21-api-documentation)",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "47200877",
-		"_collection_link": "https://go.postman.co/collection/47200877-457d010c-841f-40a7-a8aa-0a4988297a64?source=collection_link"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
@@ -185,7 +183,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$filter=customer_id eq '100'&$select=customer_id,customer_name,date_created",
+							"raw": "{{P21_BASE_URL}}/odataservice/odata/table/customer?$filter=customer_id eq 100198&$select=customer_id,customer_name,date_created",
 							"host": [
 								"{{P21_BASE_URL}}"
 							],
@@ -198,7 +196,7 @@
 							"query": [
 								{
 									"key": "$filter",
-									"value": "customer_id eq '100'",
+									"value": "customer_id eq 100198",
 									"type": "text"
 								},
 								{
@@ -207,7 +205,8 @@
 									"type": "text"
 								}
 							]
-						}
+						},
+						"description": "customer_id is numeric: compare it to a bare number. Quoting it ('100198') is a type mismatch that returns HTTP 404. See docs/02-OData-API.md."
 					},
 					"response": []
 				},
@@ -223,7 +222,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{P21_BASE_URL}}/odataservice/odata/table/part?$top=10&$skip=20&$orderby=item_id desc",
+							"raw": "{{P21_BASE_URL}}/odataservice/odata/table/inv_mast?$top=10&$skip=20&$orderby=item_id desc&$select=item_id,item_desc",
 							"host": [
 								"{{P21_BASE_URL}}"
 							],
@@ -231,7 +230,7 @@
 								"odataservice",
 								"odata",
 								"table",
-								"part"
+								"inv_mast"
 							],
 							"query": [
 								{
@@ -247,6 +246,11 @@
 								{
 									"key": "$orderby",
 									"value": "item_id desc",
+									"type": "text"
+								},
+								{
+									"key": "$select",
+									"value": "item_id,item_desc",
 									"type": "text"
 								}
 							]
@@ -424,7 +428,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"Name\": \"Order\",\r\n  \"UseCodeValues\": false,\r\n  \"Transactions\": [\r\n    {\r\n      \"Status\": \"New\",\r\n      \"DataElements\": [\r\n        {\r\n          \"Name\": \"FORM.form\",\r\n          \"Type\": \"Form\",\r\n          \"Keys\": [],\r\n          \"Rows\": [\r\n            {\r\n              \"Edits\": [\r\n                {\"Name\": \"order_no\", \"Value\": \"\"},\r\n                {\"Name\": \"customer_id\", \"Value\": \"1001\"}\r\n              ],\r\n              \"RelativeDateEdits\": []\r\n            }\r\n          ]\r\n        }\r\n      ]\r\n    }\r\n  ]\r\n}",
+							"raw": "{\n  \"Name\": \"Order\",\n  \"UseCodeValues\": false,\n  \"Transactions\": [\n    {\n      \"Status\": \"New\",\n      \"DataElements\": [\n        {\n          \"Name\": \"TABPAGE_1.order\",\n          \"Type\": \"Form\",\n          \"Keys\": [],\n          \"Rows\": [\n            {\n              \"Edits\": [\n                {\n                  \"Name\": \"quote\",\n                  \"Value\": \"OFF\"\n                },\n                {\n                  \"Name\": \"customer_id\",\n                  \"Value\": \"100198\"\n                },\n                {\n                  \"Name\": \"sales_loc_id\",\n                  \"Value\": \"10\"\n                },\n                {\n                  \"Name\": \"source_loc_id\",\n                  \"Value\": \"10\"\n                },\n                {\n                  \"Name\": \"order_date\",\n                  \"Value\": \"2030-01-05\"\n                },\n                {\n                  \"Name\": \"requested_date\",\n                  \"Value\": \"2030-01-06\"\n                },\n                {\n                  \"Name\": \"po_no\",\n                  \"Value\": \"PO-TEST-001\"\n                },\n                {\n                  \"Name\": \"taker\",\n                  \"Value\": \"JSMITH\"\n                },\n                {\n                  \"Name\": \"ship_to_id\",\n                  \"Value\": \"200\"\n                },\n                {\n                  \"Name\": \"contact_id\",\n                  \"Value\": \"300\"\n                }\n              ],\n              \"RelativeDateEdits\": []\n            }\n          ]\n        },\n        {\n          \"Name\": \"TP_ITEMS.items\",\n          \"Type\": \"List\",\n          \"Keys\": [],\n          \"Rows\": [\n            {\n              \"Edits\": [\n                {\n                  \"Name\": \"oe_order_item_id\",\n                  \"Value\": \"WIDGET-001\"\n                },\n                {\n                  \"Name\": \"unit_quantity\",\n                  \"Value\": \"5\"\n                }\n              ],\n              \"RelativeDateEdits\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -442,7 +446,7 @@
 								"transaction"
 							]
 						},
-						"description": "Posts to /api/v2/transaction (not to /services). The Name field in the body identifies the service. See scripts/transaction/03_create_single.py for a working example."
+						"description": "Creates a sales order: the header is TABPAGE_1.order (quote = OFF first, or it saves as a quote) and the lines are TP_ITEMS.items. Check Summary.Succeeded, not the HTTP status. Same payload as examples/payloads/json/create-sales-order.json; see docs/recipes/create-sales-order.md."
 					},
 					"response": []
 				}

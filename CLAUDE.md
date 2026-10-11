@@ -76,7 +76,7 @@ p21-api-documentation/
 │       ├── json/                # One .json per documented task
 │       └── xml/                 # DataContract-correct XML counterparts
 │
-├── postman/                     # Postman collection for all APIs
+├── postman/                     # Postman collection (auth, OData, Transaction, Interactive, Entity, other REST families)
 │
 └── scripts/                     # Repo tooling (NOT API examples)
     ├── fetch_definitions.py     # Fetch + sanitize service definitions into definitions/
