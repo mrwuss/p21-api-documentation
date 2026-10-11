@@ -6,6 +6,7 @@
    "FieldMap": [],
    "IgnoreDisabled": false,
    "Name": "ShipTo",
+   "OnBehalfOf": null,
    "Parameters": null,
    "Query": null,
    "TransactionSplitMethod": 0,
@@ -1019,17 +1020,12 @@
           },
           {
            "IgnoreIfEmpty": true,
+           "Name": "service_location_id",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
            "Name": "consigned_location_id",
-           "Value": ""
-          },
-          {
-           "IgnoreIfEmpty": true,
-           "Name": "service_center_desc",
-           "Value": ""
-          },
-          {
-           "IgnoreIfEmpty": true,
-           "Name": "freight_desc",
            "Value": ""
           },
           {
@@ -1039,12 +1035,27 @@
           },
           {
            "IgnoreIfEmpty": true,
+           "Name": "pda_oelist_criteria_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "freight_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
+           "Name": "service_center_desc",
+           "Value": ""
+          },
+          {
+           "IgnoreIfEmpty": true,
            "Name": "location_name",
            "Value": ""
           },
           {
            "IgnoreIfEmpty": true,
-           "Name": "pda_oelist_criteria_desc",
+           "Name": "service_location_id_desc",
            "Value": ""
           },
           {
@@ -3149,26 +3160,18 @@
       ]
      },
      {
+      "DataType": "Decimal",
+      "DbColumnName": "ship_to.service_location_id",
+      "Label": "Default Service Location ID",
+      "Name": "service_location_id",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
       "DataType": "Char",
       "DbColumnName": "consigned_location_id",
       "Label": "Consignment Location ID",
       "Name": "consigned_location_id",
-      "Required": false,
-      "ValidValues": null
-     },
-     {
-      "DataType": "Char",
-      "DbColumnName": "service_center.service_center_desc",
-      "Label": "",
-      "Name": "service_center_desc",
-      "Required": false,
-      "ValidValues": null
-     },
-     {
-      "DataType": "Char",
-      "DbColumnName": "freight_code.freight_desc",
-      "Label": "",
-      "Name": "freight_desc",
       "Required": false,
       "ValidValues": null
      },
@@ -3182,6 +3185,30 @@
      },
      {
       "DataType": "Char",
+      "DbColumnName": "pda_oelist_criteria.pda_oelist_criteria_desc",
+      "Label": "",
+      "Name": "pda_oelist_criteria_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "freight_code.freight_desc",
+      "Label": "",
+      "Name": "freight_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
+      "DbColumnName": "service_center.service_center_desc",
+      "Label": "",
+      "Name": "service_center_desc",
+      "Required": false,
+      "ValidValues": null
+     },
+     {
+      "DataType": "Char",
       "DbColumnName": "address.name",
       "Label": "",
       "Name": "location_name",
@@ -3190,9 +3217,9 @@
      },
      {
       "DataType": "Char",
-      "DbColumnName": "pda_oelist_criteria.pda_oelist_criteria_desc",
+      "DbColumnName": "service_location_id_desc",
       "Label": "",
-      "Name": "pda_oelist_criteria_desc",
+      "Name": "service_location_id_desc",
       "Required": false,
       "ValidValues": null
      },

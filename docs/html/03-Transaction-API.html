@@ -1008,6 +1008,11 @@
 <td>No</td>
 <td>Additional service-specific parameters</td>
 </tr>
+<tr>
+<td><code>OnBehalfOf</code></td>
+<td>No</td>
+<td>Present in the service-definition template on 26.1.5950.0 (absent from definitions fetched on earlier 26.1 builds). <strong>No observed effect:</strong> a real username, a nonexistent username and an empty string were all accepted with <code>Succeeded: 1</code> and no message, and the record's <code>last_maintained_by</code> stayed the token's own user every time. Whether it changes permission checks (Buyer ID, user-gated columns) is untested. Don't rely on it to act as another user — use that user's token. <em>(play, 26.1.5950.0, 2026-10-11 — @mrwuss)</em></td>
+</tr>
 </tbody>
 </table></div>
 <h3 id="transaction-fields">Transaction Fields</h3>
@@ -6199,6 +6204,7 @@ You cannot delete it. DataElement: customersalesrep, Column: row_status_flag, Va
 <p>Full payload, Python and C#: <a href="recipes/create-ship-to.html">recipe: create-ship-to</a>.</p>
 <blockquote>
 <p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, September 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/182">#182</a>).</p>
+<p><strong>Schema change on 26.1.5950.0:</strong> the <code>ShipTo</code> definition gained <code>TABPAGE_OEOPTIONS.tabpage_oeoptions.service_location_id</code> (and its <code>_desc</code>), absent from the definition fetched on an earlier 26.1 build. Not exercised here. <em>(definition refresh, 2026-10-11)</em></p>
 </blockquote>
 <h3 id="salesrep-service-editing-a-reps-name-and-email">Salesrep Service — Editing a Rep's Name and Email</h3>
 <p>The <code>Salesrep</code> service is the write surface for a salesrep's own contact record (the <code>contacts</code> row where <code>salesrep = 'Y'</code>). Verified against P21 26.1 in production (2026-08-11): a misspelled rep name and its email corrected in one transaction, <code>Status: "Passed"</code>, confirmed by read-after-write against <code>contacts</code>.</p>

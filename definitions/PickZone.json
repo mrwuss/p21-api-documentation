@@ -6,6 +6,7 @@
    "FieldMap": [],
    "IgnoreDisabled": false,
    "Name": "PickZone",
+   "OnBehalfOf": null,
    "Parameters": null,
    "Query": null,
    "TransactionSplitMethod": 0,

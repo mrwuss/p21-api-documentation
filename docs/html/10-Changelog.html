@@ -655,6 +655,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-11-v1292">2026-10-11 — v1.29.2</a></li>
 <li><a href="#2026-10-11-v1291">2026-10-11 — v1.29.1</a></li>
 <li><a href="#2026-10-11-v1290">2026-10-11 — v1.29.0</a></li>
 <li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>
@@ -756,6 +757,14 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-11-v1292">2026-10-11 — v1.29.2</h2>
+<p>Refreshed every service definition in <code>definitions/</code> against play 26.1.5950.0 (most were last fetched on an earlier 26.1 build).</p>
+<ul>
+<li><strong>docs:</strong> <strong><a href="03-Transaction-API.html#transactionset-fields"><code>OnBehalfOf</code></a></strong> is a new top-level property in every Transaction API definition template. On 26.1.5950.0 it is accepted with any value — real user, nonexistent user, empty — and has no observed effect: <code>last_maintained_by</code> stays the token's user. Effect on permission checks untested</li>
+<li><strong>docs:</strong> the <code>ShipTo</code> definition gained <code>service_location_id</code> on the OE Options tab</li>
+<li><strong>chore:</strong> all 42 definitions re-fetched and sanitized; the three that a too-broad local scrub list had blocked (an Epicor field label names a document-management product) fetched and checked by hand</li>
+</ul>
+<p>All <em>@mrwuss</em>.</p>
 <h2 id="2026-10-11-v1291">2026-10-11 — v1.29.1</h2>
 <p>Closed the remaining "not re-run here" notes that a play tenant can answer. All re-run on play 26.1.5950.0; the notes now say exactly what was re-run and what still rests on the original report.</p>
 <ul>
@@ -1701,6 +1710,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-11-v1292">2026-10-11 — v1.29.2</a></li>
 <li><a href="#2026-10-11-v1291">2026-10-11 — v1.29.1</a></li>
 <li><a href="#2026-10-11-v1290">2026-10-11 — v1.29.0</a></li>
 <li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>

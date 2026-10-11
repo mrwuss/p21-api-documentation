@@ -18,6 +18,16 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-11 — v1.29.2
+
+Refreshed every service definition in `definitions/` against play 26.1.5950.0 (most were last fetched on an earlier 26.1 build).
+
+- **docs:** **[`OnBehalfOf`](03-Transaction-API.md#transactionset-fields)** is a new top-level property in every Transaction API definition template. On 26.1.5950.0 it is accepted with any value — real user, nonexistent user, empty — and has no observed effect: `last_maintained_by` stays the token's user. Effect on permission checks untested
+- **docs:** the `ShipTo` definition gained `service_location_id` on the OE Options tab
+- **chore:** all 42 definitions re-fetched and sanitized; the three that a too-broad local scrub list had blocked (an Epicor field label names a document-management product) fetched and checked by hand
+
+All *@mrwuss*.
+
 ## 2026-10-11 — v1.29.1
 
 Closed the remaining "not re-run here" notes that a play tenant can answer. All re-run on play 26.1.5950.0; the notes now say exactly what was re-run and what still rests on the original report.
