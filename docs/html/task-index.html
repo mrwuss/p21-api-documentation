@@ -898,7 +898,7 @@
 </tr>
 <tr>
 <td><strong>Append many lines</strong> to a saved order · <strong>cancel</strong> an order · <strong>release a Hold</strong> · <code>Ambiguous data detected</code> / <code>'X' has been deleted</code></td>
-<td><a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">03 § Order Service — Line Appends, Cancels, Holds, and Item Lookup</a></td>
+<td><a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">03 § Order Service — Line Appends, Cancels, Holds, and Item Lookup</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/order_append_hold_cancel.py"><code>order_append_hold_cancel.py</code></a> / <code>OrderAppendHoldCancel.cs</code></td>
 </tr>
 <tr>
 <td><strong>Order with hundreds of lines is slow</strong> — split it</td>
@@ -942,7 +942,7 @@
 </tr>
 <tr>
 <td>Confirm a <strong>direct ship</strong> (<code>DirectShipConfirmation</code>)</td>
-<td><a href="04-Interactive-API.html#the-interactive-path-works">04 § The Interactive path works</a> · <a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">04 § DirectShipConfirmation writes its ship date down</a> — overwrites <code>supplier_ship_date</code> on every line; checkboxes take <code>ON</code>/<code>OFF</code></td>
+<td><a href="04-Interactive-API.html#the-interactive-path-works">04 § The Interactive path works</a> (runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/direct_ship_confirmation.py"><code>direct_ship_confirmation.py</code></a>) · <a href="04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">04 § DirectShipConfirmation writes its ship date down</a> — overwrites <code>supplier_ship_date</code> on every line; checkboxes take <code>ON</code>/<code>OFF</code></td>
 </tr>
 <tr>
 <td><strong>Receive</strong> a PO / receipt won't post (bin errors)</td>
@@ -1104,7 +1104,12 @@
 <tr>
 <td>Job contract: <strong>attach a ship-to</strong> (pricing follows the ship-to grid, not the header)</td>
 <td>—</td>
-<td><a href="03-Transaction-API.html#attaching-a-ship-to-to-an-existing-contract">03 § Attaching a ship-to</a></td>
+<td><a href="03-Transaction-API.html#attaching-a-ship-to-to-an-existing-contract">03 § Attaching a ship-to</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/contract_shipto_line_no.py"><code>contract_shipto_line_no.py</code></a> / <code>ContractShipToLineNo.cs</code></td>
+</tr>
+<tr>
+<td>Job contract: <strong>update one of two lines with the same <code>item_id</code></strong> (select by <code>line_no</code>; no <code>end_date</code>, no header re-save)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#commission-costs">03 § Commission Costs</a> · <a href="03-Transaction-API.html#updating-an-existing-contract">03 § Updating an Existing Contract</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/contract_shipto_line_no.py"><code>contract_shipto_line_no.py update-line</code></a></td>
 </tr>
 <tr>
 <td>Job contract: <strong>edit an expired contract</strong> / <em>"You may not change the end date of this record"</em></td>
@@ -1119,7 +1124,7 @@
 <tr>
 <td><strong>Assembly / BOM</strong> definition — create (Transaction on a plain item, Interactive when the item is already a component) and edit</td>
 <td><a href="recipes/new-assembled-part.html">new-assembled-part</a></td>
-<td><a href="03-Transaction-API.html#part-assembly-creation-workflow">03 § Part + Assembly Creation Workflow</a> · <a href="03-Transaction-API.html#assembly-service">03 § Assembly Service</a></td>
+<td><a href="03-Transaction-API.html#part-assembly-creation-workflow">03 § Part + Assembly Creation Workflow</a> · <a href="03-Transaction-API.html#assembly-service">03 § Assembly Service</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/assembly_create_edit.py"><code>assembly_create_edit.py</code></a> / <code>AssemblyCreateEdit.cs</code></td>
 </tr>
 <tr>
 <td>Assembly create: <code>production_order_processing</code> came back <code>ON</code> / <code>Column is disabled: item_desc</code></td>
@@ -1169,7 +1174,7 @@
 <tr>
 <td><strong>Merge two items or two customers</strong> (<code>m_itemmerge</code> / <code>m_customermerge</code>) — and what history moves, changes, or is lost</td>
 <td>—</td>
-<td><a href="03-Transaction-API.html#item-merge-and-customer-merge-m_itemmerge-m_customermerge">03 § Item Merge and Customer Merge</a> — customer merge reports <code>Failed: 1</code> when it succeeds; merged item IDs resolve through alternate codes</td>
+<td><a href="03-Transaction-API.html#item-merge-and-customer-merge-m_itemmerge-m_customermerge">03 § Item Merge and Customer Merge</a> — customer merge reports <code>Failed: 1</code> when it succeeds; merged item IDs resolve through alternate codes · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/item_customer_merge.py"><code>item_customer_merge.py</code></a> / <code>ItemCustomerMerge.cs</code></td>
 </tr>
 <tr>
 <td><strong>Create warehouse bins</strong></td>
@@ -1177,9 +1182,9 @@
 <td><a href="03-Transaction-API.html#binlocation-service-creating-bins">03 § BinLocation Service</a></td>
 </tr>
 <tr>
-<td><strong>Lock, unlock or delete bins</strong> (a skipped delete reports no error — verify in SQL)</td>
+<td><strong>Lock, unlock or delete bins</strong> (a skipped delete reports no error — read back through the <code>p21_view_bin</code> OData view)</td>
 <td>—</td>
-<td><a href="03-Transaction-API.html#locking-unlocking-and-deleting-bins">03 § Locking, Unlocking, and Deleting Bins</a></td>
+<td><a href="03-Transaction-API.html#locking-unlocking-and-deleting-bins">03 § Locking, Unlocking, and Deleting Bins</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/bin_lock_delete.py"><code>bin_lock_delete.py</code></a> / <code>BinLockDelete.cs</code></td>
 </tr>
 <tr>
 <td><strong>Create a new warehouse/location</strong> — a specific <code>id</code> is refused, a blank one false-succeeds at <code>location_id=0</code></td>
@@ -1204,12 +1209,12 @@
 <tr>
 <td><strong>Create a sales price page through the Transaction API</strong> + link it to a price book (<code>USED BY</code> cannot link)</td>
 <td>—</td>
-<td><a href="08-SalesPricePage-Codes.html#creating-a-page-through-the-transaction-api">08 § Creating a Page Through the Transaction API</a></td>
+<td><a href="08-SalesPricePage-Codes.html#creating-a-page-through-the-transaction-api">08 § Creating a Page Through the Transaction API</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/sales_price_page_create_link.py"><code>sales_price_page_create_link.py</code></a></td>
 </tr>
 <tr>
 <td><strong>Edit a supplier/item purchase page in place</strong> (exact keys, full field set, labels not codes)</td>
 <td>—</td>
-<td><a href="08-SalesPricePage-Codes.html#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">08 § Editing a Supplier/Item Purchase Page</a></td>
+<td><a href="08-SalesPricePage-Codes.html#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">08 § Editing a Supplier/Item Purchase Page</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/purchase_pricing_page_edit.py"><code>purchase_pricing_page_edit.py</code></a></td>
 </tr>
 <tr>
 <td>Break fields named differently per service (<code>calculation_value1</code> vs <code>value1</code>)</td>
@@ -1294,7 +1299,7 @@
 <tr>
 <td><strong>Create a vendor</strong> (and its auto-created supplier; ID rule; rebate tracking)</td>
 <td><a href="recipes/rebate-assembly-program.html">rebate-assembly-program</a></td>
-<td><a href="03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">03 § Vendor Service</a></td>
+<td><a href="03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">03 § Vendor Service</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/vendor_create.py"><code>vendor_create.py</code></a> / <code>VendorCreate.cs</code></td>
 </tr>
 <tr>
 <td><strong>Change an item's average cost</strong> / write residual cost down (<code>InventoryCostEdit</code>)</td>
@@ -1334,7 +1339,7 @@
 <tr>
 <td>Update a <strong>supplier's cost or list price</strong> over REST (<code>Suppliers.list[].Cost</code> / <code>ListPrice</code>; restamps every <code>inv_loc</code>)</td>
 <td>—</td>
-<td><a href="11-Inventory-REST-API.html#updating-a-suppliers-cost-supplierslistcost">11 § Updating a Supplier's Cost</a></td>
+<td><a href="11-Inventory-REST-API.html#updating-a-suppliers-cost-supplierslistcost">11 § Updating a Supplier's Cost</a> · runnable (<code>ListPrice</code> + <code>Stockable</code>): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/inventory_update_list_price_stockable.py"><code>inventory_update_list_price_stockable.py</code></a></td>
 </tr>
 <tr>
 <td><strong>Clone an existing item</strong> under a new ID (REST GET → strip → POST)</td>
@@ -1421,19 +1426,19 @@
 </tr>
 <tr>
 <td><strong>Enable, disable or re-scope a DynaChange business rule</strong> through the API</td>
-<td><a href="04-Interactive-API.html#managing-business-rules-through-the-dynachange-organizer">04 § Managing Business Rules Through the DynaChange Organizer</a> — the <code>dc.organizer.rule</code> tool on any open window</td>
+<td><a href="04-Interactive-API.html#managing-business-rules-through-the-dynachange-organizer">04 § Managing Business Rules Through the DynaChange Organizer</a> — the <code>dc.organizer.rule</code> tool on any open window · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/dynachange_rule_toggle.py"><code>dynachange_rule_toggle.py</code></a></td>
 </tr>
 <tr>
-<td>Interactive order saved as a <strong>quote</strong> / <code>disposition</code> looks disabled / wizard made an RFQ</td>
-<td><a href="04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">04 § Set <code>quote</code> to <code>OFF</code> first</a></td>
+<td>Interactive order saved as a <strong>quote</strong> / <code>disposition</code> looks disabled / wizard made an RFQ · build a direct-ship PO</td>
+<td><a href="04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">04 § Set <code>quote</code> to <code>OFF</code> first</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/order_entry_quote_off.py"><code>order_entry_quote_off.py</code></a></td>
 </tr>
 <tr>
 <td><strong>Create an item in the Item window</strong> (unit flags, one location per session)</td>
-<td><a href="04-Interactive-API.html#creating-an-item-in-the-item-window">04 § Creating an Item in the Item Window</a></td>
+<td><a href="04-Interactive-API.html#creating-an-item-in-the-item-window">04 § Creating an Item in the Item Window</a> — Units of Measure tab can be <code>Column is disabled</code> for your role (not reproducible on play)</td>
 </tr>
 <tr>
-<td><strong>Add a price library to a customer</strong> · library order (<code>sequence_number</code>) not kept</td>
-<td><a href="04-Interactive-API.html#customer-window-adding-a-price-library">04 § Customer Window: Adding a Price Library</a></td>
+<td><strong>Add a price library to a customer</strong> · library order (<code>sequence_number</code>)</td>
+<td><a href="04-Interactive-API.html#customer-window-adding-a-price-library">04 § Customer Window: Adding a Price Library</a> — edit order decides the sequence · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/customer_price_library.py"><code>customer_price_library.py</code></a></td>
 </tr>
 <tr>
 <td>Answer a <code>w_message</code> dialog — it's fully controllable, not just auto-answered</td>
@@ -1737,89 +1742,89 @@
 <tr>
 <th>Doc</th>
 <th>Scope</th>
-<th>Size</th>
+<th>Size (line counts as of 2026-10-10)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><a href="00-Authentication.html">00-Authentication</a></td>
 <td>Tokens (v2/consumer key), permissions, UI server URL</td>
-<td>large</td>
+<td>large (~1,500 lines)</td>
 </tr>
 <tr>
 <td><a href="01-API-Selection-Guide.html">01-API-Selection-Guide</a></td>
 <td>Which API for which job</td>
-<td>small — read whole</td>
+<td>small (~400 lines) — read whole</td>
 </tr>
 <tr>
 <td><a href="02-OData-API.html">02-OData-API</a></td>
 <td>Read-only queries</td>
-<td>large</td>
+<td>large (~1,900 lines)</td>
 </tr>
 <tr>
 <td><a href="03-Transaction-API.html">03-Transaction-API</a></td>
 <td>Stateless create/update + service reference + PDF reports</td>
-<td>very large — use anchors</td>
+<td>very large (~5,700 lines) — use anchors</td>
 </tr>
 <tr>
 <td><a href="04-Interactive-API.html">04-Interactive-API</a></td>
 <td>Stateful window driving, popups, traps</td>
-<td>very large — use anchors</td>
+<td>very large (~4,300 lines) — use anchors</td>
 </tr>
 <tr>
 <td><a href="05-Entity-API.html">05-Entity-API</a></td>
 <td>REST CRUD on 4 entities</td>
-<td>medium</td>
+<td>very large (~4,700 lines) — use anchors</td>
 </tr>
 <tr>
 <td><a href="06-Error-Handling.html">06-Error-Handling</a></td>
 <td>Errors across all APIs</td>
-<td>large</td>
+<td>large (~1,400 lines)</td>
 </tr>
 <tr>
 <td><a href="07-Session-Pool-Troubleshooting.html">07-Session-Pool-Troubleshooting</a></td>
 <td>One deep-dive: session pool contamination</td>
-<td>medium — single topic</td>
+<td>small (~500 lines) — single topic, read whole</td>
 </tr>
 <tr>
 <td><a href="08-SalesPricePage-Codes.html">08-SalesPricePage-Codes</a></td>
 <td>SalesPricePage field codes/order</td>
-<td>medium — single service</td>
+<td>very large (~2,800 lines) — single service, use anchors</td>
 </tr>
 <tr>
 <td><a href="09-Batch-Processing-Patterns.html">09-Batch-Processing-Patterns</a></td>
 <td>Interactive bulk patterns + async client</td>
-<td>very large</td>
+<td>very large (~5,400 lines) — use anchors</td>
 </tr>
 <tr>
 <td><a href="10-Changelog.html">10-Changelog</a></td>
 <td>Doc change history</td>
-<td>small</td>
+<td>medium (~800 lines) — newest first</td>
 </tr>
 <tr>
 <td><a href="11-Inventory-REST-API.html">11-Inventory-REST-API</a></td>
 <td><code>/api/inventory/parts</code> read/append/update</td>
-<td>large</td>
+<td>very large (~2,700 lines) — use anchors</td>
 </tr>
 <tr>
 <td><a href="12-Production-Labor-API.html">12-Production-Labor-API</a></td>
 <td>Production services + end-to-end lifecycle</td>
-<td>large</td>
+<td>large (~1,100 lines)</td>
 </tr>
 <tr>
 <td><a href="13-UDT-Service-API.html">13-UDT-Service-API</a></td>
 <td>User-defined table CRUD</td>
-<td>large</td>
+<td>large (~1,800 lines)</td>
 </tr>
 <tr>
 <td><a href="14-Breaking-Changes.html">14-Breaking-Changes</a></td>
 <td>P21 version breaking-change registry (check before upgrading)</td>
-<td>small — read whole</td>
+<td>small (~500 lines) — read whole</td>
 </tr>
 <tr>
 <td><a href="15-Other-REST-Families.html">15-Other-REST-Families</a></td>
 <td>Sixteen more REST families: UDF metadata, GL, CRM tasks/opportunities/consignment orders, PO headers, inventory (adjustments/movement/counts/scan/serial info), file storage, system info, customer form templates, service orders, exchange rates</td>
-<td>large</td>
+<td>large (~1,100 lines)</td>
 </tr>
 <tr>
 <td><a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/README.md"><code>definitions/</code></a></td>

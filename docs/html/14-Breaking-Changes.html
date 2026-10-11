@@ -657,7 +657,7 @@
 <li><a href="#overview">Overview</a></li>
 <li><a href="#p21-20261">P21 2026.1</a><ul>
 <li><a href="#3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: SessionId → Id</a></li>
-<li><a href="#4-put-v2tab-no-longer-accepts-tabname">4. PUT /v2/tab no longer accepts TabName</a></li>
+<li><a href="#4-put-v2tab-binds-only-pagename-tabname-is-ignored">4. PUT /v2/tab binds only PageName; TabName is ignored</a></li>
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
 <li><a href="#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">6. Batched /v2/change is not atomic — it is sequential and fail-fast</a></li>
 <li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>
@@ -702,7 +702,7 @@
 <tbody>
 <tr>
 <td><a href="#p21-20261">2026.1</a></td>
-<td><code>SessionId</code> → <code>Id</code> · <code>TabName</code> no longer accepted on <code>/v2/tab</code> · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>batched changes are sequential and fail-fast</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong> · <strong><code>IgnoreDisabled</code> reports success on writes that write nothing</strong> · <strong>a bad <code>DatawindowName</code> eats the next request on that window</strong></td>
+<td><code>SessionId</code> → <code>Id</code> · <code>/v2/tab</code> binds only <code>PageName</code> (<code>TabName</code> ignored) · <strong>silent-false-success on nonexistent-record loads</strong> · <strong>batched changes are sequential and fail-fast</strong> · <strong>UDT update/delete can't target rows (delete silently no-ops)</strong> · <strong><code>IgnoreDisabled</code> reports success on writes that write nothing</strong> · <strong>a bad <code>DatawindowName</code> eats the next request on that window</strong></td>
 <td><a href="#1-interactive-api-returns-an-empty-http-500-without-an-explicit-accept-applicationjson-header">Empty 500 without <code>Accept: application/json</code></a> and the <a href="#2-ghost-sessions-the-failed-create-still-half-creates-the-session-alternating-500409">ghost sessions</a> it caused — both fixed in <strong>26.1.5940.0</strong></td>
 <td>High — four data-integrity hazards</td>
 </tr>
@@ -732,8 +732,8 @@
 <p><code>POST /api/ui/interactive/sessions/</code> returns the session identifier under <strong><code>Id</code></strong> on 2026.1; 2025.2 returned <strong><code>SessionId</code></strong>.</p>
 <p><strong>Mitigation:</strong> read both (<code>data.get("Id") or data.get("SessionId")</code> / the C# equivalent) so one client works across versions.</p>
 <p>Still <code>Id</code> on 26.1.5950.0, with no <code>SessionId</code> key present at all — the rename was permanent, not a transitional build.</p>
-<h3 id="4-put-v2tab-no-longer-accepts-tabname">4. <code>PUT /v2/tab</code> no longer accepts <code>TabName</code></h3>
-<p>2026.1 binds <strong><code>PageName</code></strong> (PagePath structure) only; 2025.2 also tolerated <code>TabName</code> in the body. Requests still sending <code>TabName</code> stop working.</p>
+<h3 id="4-put-v2tab-binds-only-pagename-tabname-is-ignored">4. <code>PUT /v2/tab</code> binds only <code>PageName</code>; <code>TabName</code> is ignored</h3>
+<p>2026.1 binds <strong><code>PageName</code></strong> (PagePath structure) only; 2025.2 also tolerated <code>TabName</code> in the body. A request that sends <code>TabName</code> alone stops working (HTTP 400, below); <code>TabName</code> sent alongside <code>PageName</code> is ignored.</p>
 <div class="highlight"><pre><span></span><code><span class="err">PUT</span><span class="w"> </span><span class="err">/api/ui/i</span><span class="kc">ntera</span><span class="err">c</span><span class="kc">t</span><span class="err">ive/v</span><span class="mi">2</span><span class="err">/</span><span class="kc">ta</span><span class="err">b</span>
 <span class="p">{</span><span class="nt">&quot;WindowId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{windowId}&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;PageName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TP_ITEMS&quot;</span><span class="p">}</span>
 </code></pre></div>
@@ -898,16 +898,24 @@
 </code></pre></div>
 
 <p>Add <code>IgnoreDisabled: true</code> — payload otherwise byte-identical — and it returns <code>Summary: {"Failed": 0, "Succeeded": 1}</code>, <code>Status: "Passed"</code> and no messages, while a <code>/transaction/get</code> read-back shows the note <strong>unchanged</strong>. The echoed transaction drops the <code>LINE_NOTE.line_note</code> element entirely and returns only <code>TABPAGE_1.order</code>, so nothing in the response marks the omission.</p>
-<p><strong>A fourth surface: <code>SalesPricePage</code>'s price-book link</strong> (26.1.5950.0, 2026-10-10). Writing <code>USED BY.price_book_x_page</code> with <code>price_book_price_book_id</code> is refused loudly without the flag — <code>Column is disabled: price_book_price_book_id</code>. With <code>IgnoreDisabled: true</code> it returns <code>Succeeded: 1</code>, drops the element from the echoed response, and writes no <code>price_page_x_book</code> row. The link that does work goes through the <code>SalesPriceBook</code> service instead — see <a href="08-SalesPricePage-Codes.html#creating-a-page-through-the-transaction-api">Creating a Page Through the Transaction API</a>. Originally reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>; confirmed here.</p>
 <blockquote>
 <p><strong>Don't key off the column name in the loud form.</strong> Which column the unflagged refusal names is just the first disabled one the transaction reaches, so it moves with your payload: the 5950.0 re-run sent <code>note_id</code> in <code>Keys</code> <strong>and</strong> in <code>Edits</code> and got <code>Column is disabled: note_id</code> instead. Same refusal, same false success under the flag — only the named column differs. Match on <code>Column is disabled:</code>, not on the column.</p>
 </blockquote>
-<p>That was three unrelated services showing the same false success, which is what marked this as a platform behavior rather than a <code>JobContractPricing</code> quirk.</p>
-<p><strong>A fourth service, and the same signature again</strong> (26.1.5940.0, 2026-08-30). The <code>ProductionOrder</code> window's header-note grid — <code>PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab</code>, keyed <code>note_uid</code> — behaves identically. Without the flag:</p>
+<p>Two unrelated services showing the same false success is what first marked this as a platform behavior rather than a <code>JobContractPricing</code> quirk.</p>
+<p><strong>A third service, fourth surface, and the same signature again</strong> (26.1.5940.0, 2026-08-30). The <code>ProductionOrder</code> window's header-note grid — <code>PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab</code>, keyed <code>note_uid</code> — behaves identically. Without the flag:</p>
 <div class="highlight"><pre><span></span><code>General Exception: Column is disabled: note
 </code></pre></div>
 
 <p>With <code>IgnoreDisabled: true</code>: <code>Summary: {"Failed": 0, "Succeeded": 1}</code>, <code>Status: "Passed"</code>, no messages, the echoed transaction reduced to <code>TABPAGE_1.tp_1_dw_1</code> alone — and the note's <code>date_last_modified</code> still reading its original value five weeks earlier. Row <em>creation</em> on the same grid behaves the same way (<code>Column is disabled: topic</code> without the flag, clean false success with it), with or without <code>Keys</code>. The working path for those notes is the <a href="04-Interactive-API.html#production-order-notes-header">Interactive popup</a>.</p>
+<p><strong>A fourth service, fifth surface: <code>SalesPricePage</code>'s price-book link</strong> (26.1.5950.0, 2026-10-10). Writing <code>USED BY.price_book_x_page</code> with <code>price_book_price_book_id</code> is refused loudly without the flag — <code>Column is disabled: price_book_price_book_id</code>. With <code>IgnoreDisabled: true</code> it returns <code>Succeeded: 1</code>, drops the element from the echoed response, and writes no <code>price_page_x_book</code> row. The link that does work goes through the <code>SalesPriceBook</code> service instead — see <a href="08-SalesPricePage-Codes.html#creating-a-page-through-the-transaction-api">Creating a Page Through the Transaction API</a>. Originally reported by <a href="https://github.com/AWestemeier">Alex Westemeier</a>; confirmed here.</p>
+<p>In all, <strong>five surfaces across four services</strong> return the same false success under the flag:</p>
+<ol>
+<li><code>JobContractPricing</code> — <code>VALUES.values</code> (all three write paths).</li>
+<li><code>JobContractPricing</code> — the header column <code>corp_address_id</code>.</li>
+<li><code>Order</code> — <code>LINE_NOTE.line_note</code>.</li>
+<li><code>ProductionOrder</code> — the header-note grid <code>PROD_ORDER_HDR_NOTE_TAB.prod_order_hdr_note_tab</code>.</li>
+<li><code>SalesPricePage</code> — the price-book link <code>USED BY.price_book_x_page</code>.</li>
+</ol>
 <p><strong>The contrast case matters as much as the failures.</strong> On the same build, minutes apart, <code>IgnoreDisabled: true</code> genuinely unlocked a write: inserting a location supplier row on the <code>Item</code> window (<code>SUPPLIER_X_LOCATION.supplier_x_location</code>, keyed on <strong>both</strong> <code>location_id</code> and <code>supplier_id</code>) returned <code>Succeeded: 1</code> and the row was really there on read-back. The control — same element, <code>Keys: ["supplier_id"]</code> alone and no flag — failed loudly with <code>Column is disabled: location_id</code> and wrote nothing. So the flag's two outcomes are not split by service, or by window, or by anything you can see in the request: <a href="03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">the same service</a> produces both.</p>
 <p>So <code>IgnoreDisabled</code> has two outcomes that are <strong>indistinguishable in the response</strong>: it genuinely unlocks the write (as it does for contract BINS quantities, JOBPRICECOST commission fields and the location supplier insert above), or it swallows the refusal and writes nothing. You cannot tell which you got without reading the record back.</p>
 <p><strong>Mitigation:</strong> always read back after any write that used <code>IgnoreDisabled: true</code>, on any service — whether updating an existing line, inserting a new line, or creating a brand-new contract. Treat <code>Status: "Passed"</code> under <code>IgnoreDisabled</code> as <strong>unverified</strong> until a read-back confirms the value actually changed; per the control above, the Transaction API cannot currently be relied on to write <code>VALUES.values</code> at all, on any of the three paths. See <a href="03-Transaction-API.html#ignoredisabled">Transaction API § IgnoreDisabled</a> and <a href="04-Interactive-API.html#verifying-writes-dont-trust-save-status-alone">Verifying Writes</a> for the same read-back discipline applied elsewhere in this repo.</p>
@@ -952,7 +960,7 @@ PUT /v2/change  {  the same valid change again }    → 200  Status: 1, value ap
 {
   &quot;Id&quot;: &quot;3c2aca0b-...&quot;,
   &quot;Properties&quot;: [{&quot;Name&quot;: &quot;Telemetry&quot;, &quot;Properties&quot;: {
-      &quot;fullversion&quot;: &quot;26.1.5950.0&quot;, &quot;shortversion&quot;: &quot;26.1&quot;, &quot;configurationid&quot;: &quot;3694&quot;, ...
+      &quot;fullversion&quot;: &quot;26.1.5950.0&quot;, &quot;shortversion&quot;: &quot;26.1&quot;, &quot;configurationid&quot;: &quot;1234&quot;, ...
   }}]
 }
 </code></pre></div>
@@ -1167,7 +1175,7 @@ after a SHIP_TO field write → [&#39;SHIP_TO.ship_to&#39;,     &#39;TABPAGE_17.
 <li><a href="#overview">Overview</a></li>
 <li><a href="#p21-20261">P21 2026.1</a><ul>
 <li><a href="#3-session-create-response-field-renamed-sessionid-id">3. Session-create response field renamed: SessionId → Id</a></li>
-<li><a href="#4-put-v2tab-no-longer-accepts-tabname">4. PUT /v2/tab no longer accepts TabName</a></li>
+<li><a href="#4-put-v2tab-binds-only-pagename-tabname-is-ignored">4. PUT /v2/tab binds only PageName; TabName is ignored</a></li>
 <li><a href="#5-silent-false-success-loading-a-nonexistent-record-returns-status-2-with-an-empty-window">5. Silent false success: loading a nonexistent record returns Status: 2 with an empty window</a></li>
 <li><a href="#6-batched-v2change-is-not-atomic-it-is-sequential-and-fail-fast">6. Batched /v2/change is not atomic — it is sequential and fail-fast</a></li>
 <li><a href="#7-udt-service-updatedelete-cannot-target-rows-in-a-udt-created-on-20261">7. UDT Service update/delete cannot target rows in a UDT created on 2026.1</a></li>

@@ -8,7 +8,7 @@ Mirrors: docs/15-Other-REST-Families.md#filehandler
 
 Key facts:
     - This is a real network file share, not a sandbox -- verified files
-      landed at \\fileserver01\data\Internal\Computer\P21\Scripts\Play on the
+      landed at \\fileserver\share\P21\Scripts on the
       test tenant, the middleware's own configured default path. Treat
       this family as filesystem access.
     - Upload/download take/return raw bytes, not JSON -- only

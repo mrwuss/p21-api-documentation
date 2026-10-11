@@ -753,7 +753,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -919,7 +919,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
@@ -1193,9 +1193,13 @@ Interactive for create workflows and the Transaction API for keyed updates.</p>
 <li><strong>Link the page to its book immediately after the create.</strong> An unlinked page is invisible to customer pricing, and order lines priced in the gap never pick the page up later. Do the create and the link back to back in one run.</li>
 <li><strong>Link through <code>SalesPriceBook</code>, not through the page.</strong> <code>SalesPriceBook</code> · <code>FORM.form</code> keyed <code>price_book_id</code>, plus a <code>LIST.list_detail</code> row keyed <code>price_page_uid</code>, creates the <code>price_page_x_book</code> row. The page's own <code>USED BY.price_book_x_page</code> element cannot do it: sending <code>price_book_price_book_id</code> there fails cleanly with <code>Column is disabled: price_book_price_book_id</code> — and with <code>IgnoreDisabled: true</code> it reports <code>Succeeded: 1</code>, drops the element from the response and writes <strong>no</strong> link row (<a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a>). Read <code>price_page_x_book</code> back after the link. The Interactive alternative is <a href="04-Interactive-API.html#example-linking-price-page-to-price-book">Linking Price Page to Price Book</a>.</li>
 <li><strong>Unlink</strong> with the same <code>SalesPriceBook</code> <code>LIST.list_detail</code> row and <code>row_status_flag</code> = <code>Delete</code>. That <strong>physically deletes</strong> the <code>price_page_x_book</code> row — it is not a soft delete.</li>
+<li><strong>Omit <code>strategic_price_applies_to_cd</code> on create too.</strong> Sending it (<code>Core</code>) failed the whole transaction with <code>Column is disabled: strategic_price_applies_to_cd</code>; left out, the page stored <code>2636</code> (<em>Core</em>) anyway.</li>
+<li><strong>The new <code>price_page_uid</code> comes back in the create response</strong> — the first <code>Edit</code> of <code>FORM.form</code> in <code>Results</code> carries it. Read it there and feed it straight into the link.</li>
+<li>To retire a throwaway page afterwards, send <code>SalesPricePage</code> · <code>FORM.form</code> keyed <code>price_page_uid</code> with <code>row_status_flag</code> = <code>Delete</code>; the row stays, stored as <code>700</code>.</li>
 </ul>
+<p><strong>Runnable example:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/sales_price_page_create_link.py"><code>sales_price_page_create_link.py</code></a> and <code>examples/csharp/Recipes/SalesPricePageCreateLink.cs</code> (Recipes menu 26) create the page, link it, read <code>price_page</code> and <code>price_page_x_book</code> back over OData, and optionally unlink and soft-delete it. Payloads: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/sales-price-page-create.json"><code>sales-price-page-create.json</code></a> and <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/sales-price-book-link.json"><code>sales-price-book-link.json</code></a>. Python and C# examples run on play 26.1.5950.0, 2026-10-10: create, link, read-back, unlink and page delete all confirmed. The run linked to a book that was itself created through <code>SalesPriceBook</code> · <code>FORM.form</code> keyed <code>price_book_id</code> (<code>price_book_id</code>, <code>price_book_description</code>, <code>row_status_flag</code> = <code>Active</code>), in no library, so the test page could not reach customer pricing.</p>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — create plus book link verified on play, then production, July 2026; the create is not re-run here. The book-link behavior (both elements, with and without <code>IgnoreDisabled</code>) and the unlink: verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by Alex Westemeier.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — create plus book link verified on play, then production, July 2026. The create was re-run here with the examples above on 26.1.5950.0 (October 2026). The book-link behavior (both elements, with and without <code>IgnoreDisabled</code>) and the unlink: verified here by the maintainer on 26.1.5950.0 (October 2026), originally reported by Alex Westemeier.</p>
 </blockquote>
 <hr />
 <h2 id="calculation-method-values-tab">Calculation Method (VALUES Tab)</h2>
@@ -1467,7 +1471,7 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 </tbody>
 </table></div>
 <blockquote>
-<p>⚠️ <strong>The 212–214 rows are unverified and probably wrong.</strong> They are not page types (see <a href="#price-page-type-form-tab">Price Page Type</a>), but they reuse page-type numbers, and <code>code_p21</code> gives each <code>code_no</code> one description. The verified calc-method codes elsewhere are <code>Difference</code>=228, <code>Mark up</code>=229 and <code>Percentage</code>=230 (<a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">03 § Labels vs What the Database Stores</a>). Before you interpret a stored <code>commission_cost_calc_method_cd</code> other than 211, join it to <code>code_p21</code>. Writes are unaffected: you send the display value.</p>
+<p>⚠️ <strong>The 212–214 rows are unverified and probably wrong.</strong> They are not page types (see <a href="#price-page-type-form-tab">Price Page Type</a>), but they reuse page-type numbers, and <code>code_p21</code> gives each <code>code_no</code> one description. The verified calc-method codes elsewhere are <code>Difference</code>=228, <code>Mark up</code>=229 and <code>Percentage</code>=230 (<a href="03-Transaction-API.html#labels-vs-what-the-database-stores-code_p21">03 § Labels vs What the Database Stores</a>). Before you interpret a stored <code>commission_cost_calc_method_cd</code> other than 211, join it to <code>code_p21</code>. Writes are unaffected: you send the display value. These rows came from the page-type table, where an earlier version of this page listed <code>212</code> as <em>Difference</em>; they were moved here because a calculation method is where <em>Difference</em> belongs, not because the codes were confirmed. Stored data cannot settle them: on play 26.1.5950.0 (2026-10-10) every <code>price_page</code> and <code>job_price_line</code> row stores <code>211</code>.</p>
 </blockquote>
 <hr />
 <h2 id="discovery-method">Discovery Method</h2>
@@ -1521,11 +1525,11 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
-<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;45556&quot;</span>                  <span class="c1"># an existing page to probe</span>
+<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;100011&quot;</span>                  <span class="c1"># an existing page to probe</span>
 <span class="n">DISPLAY_VALUE</span> <span class="o">=</span> <span class="s2">&quot;Mark Up&quot;</span>                 <span class="c1"># the dropdown label under test</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
@@ -1642,10 +1646,10 @@ Full runnable version: <a href="#example-creating-a-price-page">Example: Creatin
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;45556&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// an existing page to probe</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100011&quot;</span><span class="p">;</span><span class="w">                   </span><span class="c1">// an existing page to probe</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">DisplayValue</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Mark Up&quot;</span><span class="p">;</span><span class="w">                 </span><span class="c1">// the dropdown label under test</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
@@ -1888,11 +1892,11 @@ services above.</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
-<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;45556&quot;</span>                  <span class="c1"># the page whose tiers you are setting</span>
+<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;100011&quot;</span>                  <span class="c1"># the page whose tiers you are setting</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
@@ -2031,10 +2035,10 @@ services above.</p>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;45556&quot;</span><span class="p">;</span><span class="w">        </span><span class="c1">// the page whose tiers you are setting</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100011&quot;</span><span class="p">;</span><span class="w">        </span><span class="c1">// the page whose tiers you are setting</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
@@ -2248,7 +2252,7 @@ services above.</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2404,7 +2408,7 @@ services above.</p>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
@@ -2584,7 +2588,7 @@ services above.</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -2654,7 +2658,7 @@ services above.</p>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">SupplierId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;10050&quot;</span><span class="p">;</span><span class="w">                     </span><span class="c1">// numeric -- no quotes in the filter</span>
@@ -2776,11 +2780,11 @@ services above.</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
-<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;45556&quot;</span>                  <span class="c1"># the page whose tiers you are setting</span>
+<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;100011&quot;</span>                  <span class="c1"># the page whose tiers you are setting</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
 
@@ -2932,10 +2936,10 @@ services above.</p>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;45556&quot;</span><span class="p">;</span><span class="w">        </span><span class="c1">// the page whose tiers you are setting</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100011&quot;</span><span class="p">;</span><span class="w">        </span><span class="c1">// the page whose tiers you are setting</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
 <span class="kt">var</span><span class="w"> </span><span class="n">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HttpClientHandler</span>
@@ -3152,11 +3156,11 @@ services above.</p>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
-<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;45556&quot;</span>                  <span class="c1"># the page whose COSTS tab you are setting</span>
+<span class="n">PRICE_PAGE_UID</span> <span class="o">=</span> <span class="s2">&quot;100011&quot;</span>                  <span class="c1"># the page whose COSTS tab you are setting</span>
 <span class="n">COMMISSION_COST_VALUE</span> <span class="o">=</span> <span class="s2">&quot;1.01&quot;</span>            <span class="c1"># 1.01 = pass-through costing, 1% margin</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
@@ -3288,10 +3292,10 @@ services above.</p>
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;45556&quot;</span><span class="p">;</span><span class="w">        </span><span class="c1">// the page whose COSTS tab you are setting</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">PricePageUid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100011&quot;</span><span class="p">;</span><span class="w">        </span><span class="c1">// the page whose COSTS tab you are setting</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CommissionCostValue</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1.01&quot;</span><span class="p">;</span><span class="w">  </span><span class="c1">// 1.01 = pass-through costing, 1% margin</span>
 <span class="c1">// ---------------------------------------------------------------------------</span>
 
@@ -3659,7 +3663,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 </table></div>
 <p><code>SalesPriceBook</code>'s <code>LIST.list_detail</code> exposes <code>calculation_value1</code>, <code>calculation_value2</code>, <code>break1</code>, and <code>other_cost_value</code> as a read-back summary of each page in the book — a convenient way to see a book's pages without opening each one.</p>
 <blockquote>
-<p><strong>The purchase-side write path is not re-verified here.</strong> Everything above is read from the service definitions and confirmed by a live read in this repo. The one write that has been reported verified is below; treat the other two services as unproven until you have tested them in your own environment.</p>
+<p><strong>Only one purchase-side write is verified.</strong> Everything above is read from the service definitions and confirmed by a live read in this repo. The <code>PurchasePricingPageSupplierItem</code> create and in-place edit below are verified, and <code>PurchasePricingBook</code> · <code>FORM.form</code> created a book (<code>company_id</code>, <code>purchase_pricing_book_id</code>, <code>purchase_pricing_book_desc</code>) on play 26.1.5950.0. Treat the supplier and discount-group page services as unproven until you have tested them in your own environment.</p>
 </blockquote>
 <h3 id="editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">Editing a Supplier/Item Purchase Page (<code>PurchasePricingPageSupplierItem</code>)</h3>
 <p>Creates and in-place edits on <code>PurchasePricingPageSupplierItem</code> have been verified at batch scale (a couple of hundred pages edited, no duplicates, no errors):</p>
@@ -3673,8 +3677,15 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <li>Quantity-break pages are <code>pricing_method</code> <code>None</code> + <code>calculation_type</code> <code>Fixed Price</code>, with tiers in <code>value{n}</code> / <code>break{n}</code>.</li>
 </ul>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — create and in-place edit verified on play, July 2026; not re-run here.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — create and in-place edit verified on play, July 2026.</p>
 </blockquote>
+<p><strong>Re-run on play 26.1.5950.0 (October 2026)</strong> against a throwaway book and page. The create and the in-place price edit both worked as described, and <code>Status: "Edit"</code> was HTTP 400. Two results differ from the list above:</p>
+<ul>
+<li><strong>Only <code>effective_date</code> behaved as an identity key.</strong> Changing <code>effective_date</code> created a second page. Changing only <code>expiration_date</code> re-dated the <strong>existing</strong> page in place (same <code>purchase_pricing_page_uid</code>) instead of creating a new one. Send both dates exactly as stored either way — but don't rely on a changed <code>expiration_date</code> to create a page.</li>
+<li><strong>A keys-plus-<code>price</code> edit also succeeded</strong> on this build, with <code>totaling_basis</code> and the other header fields left out; the page kept its stored values. The required-field failure above was not reproduced. The example still mirrors the full field set, because that is what works on both builds.</li>
+<li><code>purchase_pricing_book_id</code> has a short length limit: a 12-character ID failed <em>"The length of the data exceeds the maximum length for the purchase_pricing_book_id field"</em>; an 8-character ID was accepted.</li>
+</ul>
+<p><strong>Runnable example:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/purchase_pricing_page_edit.py"><code>purchase_pricing_page_edit.py</code></a> and <code>examples/csharp/Recipes/PurchasePricingPageEdit.cs</code> (Recipes menu 27) read the page over OData, map the stored codes to labels, change the price, post <code>Status: "New"</code> with the exact keys, and confirm the same <code>purchase_pricing_page_uid</code> carries the new price with no duplicate. Payload: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/purchase-pricing-page-edit.json"><code>purchase-pricing-page-edit.json</code></a>. Python and C# examples run on play 26.1.5950.0, 2026-10-10.</p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -3687,7 +3698,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -3792,7 +3803,7 @@ of <code>1.01</code>. Full runnable version: <a href="#accessing-the-costs-tab">
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span><span class="w">                       </span><span class="c1">// the five key fields below</span>

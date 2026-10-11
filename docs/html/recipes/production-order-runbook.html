@@ -770,7 +770,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -828,10 +828,10 @@
         <span class="c1"># m_picktickets REQUIRES code values; False returns HTTP 500</span>
         <span class="s2">&quot;UseCodeValues&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
         <span class="s2">&quot;Transactions&quot;</span><span class="p">:</span> <span class="p">[{</span>
-            <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>        <span class="c1"># reports use numeric 0, not &quot;New&quot;</span>
+            <span class="s2">&quot;Status&quot;</span><span class="p">:</span> <span class="s2">&quot;New&quot;</span><span class="p">,</span>
             <span class="s2">&quot;DataElements&quot;</span><span class="p">:</span> <span class="p">[{</span>
                 <span class="s2">&quot;Keys&quot;</span><span class="p">:</span> <span class="p">[],</span>
-                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;Type&quot;</span><span class="p">:</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;Name&quot;</span><span class="p">:</span> <span class="s2">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
                 <span class="s2">&quot;Rows&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;Edits&quot;</span><span class="p">:</span> <span class="p">[</span>
                     <span class="c1"># code &quot;P&quot; = Production Order</span>
@@ -896,7 +896,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.RegularExpressions</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ProdOrder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1000123&quot;</span><span class="p">;</span><span class="w">     </span><span class="c1">// production order number</span>
@@ -927,13 +927,13 @@
 <span class="w">    </span><span class="p">{</span>
 <span class="w">        </span><span class="k">new</span>
 <span class="w">        </span><span class="p">{</span>
-<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">    </span><span class="c1">// reports use numeric 0, not &quot;New&quot;</span>
+<span class="w">            </span><span class="n">Status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;New&quot;</span><span class="p">,</span>
 <span class="w">            </span><span class="n">DataElements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
 <span class="w">            </span><span class="p">{</span>
 <span class="w">                </span><span class="k">new</span>
 <span class="w">                </span><span class="p">{</span>
 <span class="w">                    </span><span class="n">Keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span>
-<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">Type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span>
 <span class="w">                    </span><span class="n">Name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;TABPAGE_1.tp_1_dw_1&quot;</span><span class="p">,</span>
 <span class="w">                    </span><span class="n">Rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">object</span><span class="p">[]</span>
 <span class="w">                    </span><span class="p">{</span>
@@ -1081,7 +1081,7 @@
 <li><strong>Labor must be on a pick ticket before completion.</strong> Labor added after printing, without a reprint, sits at <code>qty_on_pick_tickets = 0</code> and completion fails with <em>"components have a quantity used of 0"</em> (Stage 2).</li>
 <li><strong><code>bin_cd</code> and <code>unit_quantity</code> are two separate change calls</strong> at completion — one combined call drops the quantity → <em>"sum of bin quantity ... does not equal quantity made"</em> (Stage 5).</li>
 <li><strong><code>print_pick_ticket</code> emits only at the make location</strong> — components stocked elsewhere need <code>m_picktickets</code> at the stock <code>location_id</code> (Stage 3).</li>
-<li><strong><code>m_picktickets</code> needs <code>UseCodeValues: true</code></strong> and the code <code>"P"</code>; the display label is rejected, <code>UseCodeValues: false</code> returns HTTP 500. <code>Status</code>/<code>Type</code> numeric <code>0</code>, <code>Keys: []</code>.</li>
+<li><strong><code>m_picktickets</code> needs <code>UseCodeValues: true</code></strong> and the code <code>"P"</code>; the display label is rejected, <code>UseCodeValues: false</code> returns HTTP 500. <code>Status: "New"</code>, <code>Type: "Form"</code>, <code>Keys: []</code>.</li>
 <li><strong>Reports go to <code>/api/v2/process/pdfreport</code>.</strong> <code>/api/v2/transaction</code> accepts the payload, returns <code>Succeeded</code>, and emits nothing.</li>
 <li><strong>Status codes:</strong> <code>702</code> Open, <code>1962</code> Confirmed, <code>1268</code> Completed — a <code>1962</code> alone does not prove stock moved (see shell confirm).</li>
 <li><strong>Auto-create nets against stock</strong> — stock on hand means no production order spawns; salesrep must be valid at the sales location; order date must differ from required date (Stage 1).</li>

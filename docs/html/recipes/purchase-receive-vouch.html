@@ -654,8 +654,10 @@
     <div class="page-toc">
         <div class="toc">
 <ul>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#path-a-bring-items-into-stock">Path A — bring items into stock</a></li>
 <li><a href="#path-b-drop-ship">Path B — drop ship</a></li>
+<li><a href="#the-wizard-step-in-code">The wizard step, in code</a></li>
 <li><a href="#failed-can-mean-already-committed">⚠️ "Failed" can mean "already committed"</a></li>
 <li><a href="#not-covered-here">Not covered here</a></li>
 </ul>
@@ -666,8 +668,18 @@
 <h1 id="purchasing-stock-po-receipt-voucher-and-drop-ship">Purchasing: Stock PO → Receipt → Voucher, and Drop Ship</h1>
 <p>The two buy-side paths that end in a vendor voucher in AP: bringing items into stock (create the PO, receive it, vouch it), and drop ship, where the vendor ships straight to the customer (sales order line → direct-ship PO → confirmation → voucher).</p>
 <p><strong>API:</strong> Transaction + Interactive · <strong>Services:</strong> <code>PurchaseOrder</code>, <code>PurchaseOrderReceipt</code>, <code>ConvertPOToVoucher</code>, <code>Order</code> (+ its PO wizard), <code>DirectShipConfirmation</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#purchaseorder-service-creating-a-po">PurchaseOrder</a> · <a href="../03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">PurchaseOrderReceipt</a> · <a href="../03-Transaction-API.html#convertpotovoucher-service-vouching-a-receipt">ConvertPOToVoucher</a> · <a href="../04-Interactive-API.html#driving-an-in-window-wizard-direct-ship-po-generation">Driving an In-Window Wizard</a></p>
-<p>This page is a <strong>checklist</strong>, not a script: it strings together sections of the manual that each carry the payload and the traps. For a different PO type, see <a href="create-requisition-po.html">create-requisition-po</a>.</p>
-<p><strong>Status legend:</strong> <strong>Verified</strong> = run with a read-back on a play tenant (August–October 2026), by the credited contributor and, where marked, re-verified in this repo; <strong>Inferred</strong> = follows from verified behavior but was not run as its own step.</p>
+<p>Every step on this page is a step in one runnable program, in Python and C#, that runs it and reads it back before the next step starts: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/purchase_receive_vouch.py"><code>examples/python/recipes/purchase_receive_vouch.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/PurchaseReceiveVouch.cs"><code>examples/csharp/Recipes/PurchaseReceiveVouch.cs</code></a> (menu item 33). Both are dry runs until you pass <code>--execute</code> or type <code>EXECUTE</code>. For a different PO type, see <a href="create-requisition-po.html">create-requisition-po</a>.</p>
+<p><strong>Status legend:</strong> <strong>Run on play 26.1.5950.0, 2026-10-10</strong> = the step ran in both the Python and the C# runbook against a play tenant on that build and date, with a read-back of the tables named below. <strong>Verified</strong> = run with a read-back on a play tenant (August–October 2026) by the credited contributor.</p>
+<h2 id="run-it">Run it</h2>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>examples/python/recipes/purchase_receive_vouch.py<span class="w">                 </span><span class="c1"># dry run: payloads + call plan</span>
+python<span class="w"> </span>examples/python/recipes/purchase_receive_vouch.py<span class="w"> </span>--path<span class="w"> </span>A<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--location<span class="w"> </span><span class="m">10</span><span class="w"> </span>--vendor<span class="w"> </span>SUP-100<span class="w"> </span>--buyer<span class="w"> </span><span class="m">100</span><span class="w"> </span>--item<span class="w"> </span>ITEM-001<span class="w"> </span>--qty<span class="w"> </span><span class="m">2</span><span class="w"> </span>--price<span class="w"> </span><span class="m">6</span>.55<span class="w"> </span>--execute
+python<span class="w"> </span>examples/python/recipes/purchase_receive_vouch.py<span class="w"> </span>--path<span class="w"> </span>B<span class="w"> </span>--auth<span class="w"> </span>consumer<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--location<span class="w"> </span><span class="m">10</span><span class="w"> </span>--customer<span class="w"> </span>CUST-100<span class="w"> </span>--ship-to<span class="w"> </span>CUST-100<span class="w"> </span>--contact<span class="w"> </span><span class="m">300</span><span class="w"> </span>--taker<span class="w"> </span>JSMITH<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--ds-item<span class="w"> </span>ITEM-002<span class="w"> </span>--ds-qty<span class="w"> </span><span class="m">3</span><span class="w"> </span>--ds-price<span class="w"> </span><span class="m">4</span>.00<span class="w"> </span>--ds-po-cost<span class="w"> </span><span class="m">2</span>.50<span class="w"> </span>--execute
+</code></pre></div>
+
+<p>Path B needs an API user with a <strong>Buyer ID</strong>. <code>--auth consumer</code> (C#: answer <code>y</code> at the consumer-key prompt) writes as <code>P21_CONSUMER_USERNAME</code> through <code>P21_CONSUMER_KEY</code> — use it when that is the user with the Buyer ID. A consumer key's <a href="../00-Authentication.html#api-scopes">API Scope</a> can withhold OData tables: in the verification run <code>inventory_receipts_hdr</code> answered <code>401</code> to the consumer-key token while its Transaction and Interactive writes went through, so the runbooks read back with the password login when one is configured.</p>
 <h2 id="path-a-bring-items-into-stock">Path A — bring items into stock</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -676,6 +688,7 @@
 <th>Step</th>
 <th>Surface</th>
 <th>Read-back</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
@@ -684,24 +697,27 @@
 <td>Create the PO</td>
 <td>Transaction <code>PurchaseOrder</code></td>
 <td><code>po_hdr</code> (<code>approved</code>), <code>po_line</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 <tr>
 <td>A2</td>
 <td>Receive it</td>
 <td>Transaction <code>PurchaseOrderReceipt</code> when every line has a usable primary bin; otherwise Interactive</td>
 <td><code>inventory_receipts_hdr</code> / <code>_line</code>, <code>po_line.qty_received</code>, <code>inv_bin</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10 (Transaction path)</td>
 </tr>
 <tr>
 <td>A3</td>
 <td>Vouch the vendor invoice</td>
 <td>Transaction <code>ConvertPOToVoucher</code></td>
 <td><code>apinv_hdr</code>, <code>apinv_line</code>, receipt lines <code>vouch_complete = 'Y'</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>A1 — Create (Verified, re-verified here).</strong> Header <code>TABPAGE_1.tp_1_dw_1</code>: <code>location_id</code>, <code>vendor_id</code>, <code>buyer_id</code> (an employee <strong>number</strong>, stored in <code>po_hdr.requested_by</code>), <code>order_date</code>, <code>required_date</code> (genuinely required), optional <code>external_po_no</code> to tag the run. Lines <code>TABPAGE_17.tp_17_dw_17</code>: <code>item_id</code>, <code>unit_quantity</code>, <code>unit_of_measure</code>, <code>pricing_unit</code>, and the price in <strong><code>unit_price_display</code></strong> — not <code>unit_price</code>. Omit <code>division_id</code> and <code>company_id</code>; they default. <a href="../03-Transaction-API.html#purchaseorder-service-creating-a-po">Manual</a>.</p>
-<p><strong>A2 — Receive (Verified, both surfaces).</strong> Header <code>TABPAGE_1.tp_1_dw_po</code>: <code>po_no</code>, then <code>receive_all</code> = <code>Y</code>. That is the whole Transaction payload <strong>when every line's item has a usable primary bin</strong> (re-verified here). When a line has none — typically a primary bin of <code>0</code> that is put-locked — the Transaction API cannot address the bin grid, because its rows land on whichever line is selected. Drive the window instead: for each such line, find its row in <code>tp_17_dw_17</code> (the column <code>ufc_inv_loc_primary_bin</code> shows <code>0</code>), <code>select_row</code> it, change to <code>TABPAGE_BIN</code>, set <code>bin_cd</code> and <code>unit_quantity</code> on <code>tabpage_bin</code>, then save. The receipt number is not in the window after the save; find it by <code>po_number</code> in <code>inventory_receipts_hdr</code> (lines use <code>line_number</code>, not <code>line_no</code>). <a href="../03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">Manual</a>.</p>
-<p><strong>A3 — Vouch (Verified, re-verified here).</strong> Header <code>TABPAGE_1.tp_1_dw_1</code> (key <code>voucher_no</code>, left empty): <code>po_no</code>, <code>invoice_no</code>, <code>invoice_date</code>, <code>invoice_amount</code> (the real invoice total — it must equal the vouched lines or P21 holds the variance), <code>vendor_id</code>. Lines keyed <code>receipt_number</code> + <code>line_number</code> + <code>po_no</code>: <code>unit_qty_invoiced</code>, <code>unit_cost_display</code>. <strong>Send nothing else</strong> — <code>company_id</code>, <code>branch_id</code>, <code>period</code>, <code>year_for_period</code> are marked required and are disabled columns. The voucher lands approved and unpaid. <a href="../03-Transaction-API.html#convertpotovoucher-service-vouching-a-receipt">Manual</a>.</p>
+<p><strong>A1 — Create (Verified; run on play 26.1.5950.0, 2026-10-10).</strong> Header <code>TABPAGE_1.tp_1_dw_1</code>: <code>location_id</code>, <code>vendor_id</code>, <code>buyer_id</code> (an employee <strong>number</strong>, stored in <code>po_hdr.requested_by</code>), <code>order_date</code>, <code>required_date</code> (genuinely required), optional <code>external_po_no</code> to tag the run. Lines <code>TABPAGE_17.tp_17_dw_17</code>: <code>item_id</code>, <code>unit_quantity</code>, <code>unit_of_measure</code>, <code>pricing_unit</code>, and the price in <strong><code>unit_price_display</code></strong> — not <code>unit_price</code>. Omit <code>division_id</code> and <code>company_id</code>; they default. The new <code>po_no</code> comes back in the header's result row. <a href="../03-Transaction-API.html#purchaseorder-service-creating-a-po">Manual</a>.</p>
+<p><strong>A2 — Receive (Verified, both surfaces; Transaction path run on play 26.1.5950.0, 2026-10-10).</strong> Header <code>TABPAGE_1.tp_1_dw_po</code>: <code>po_no</code>, then <code>receive_all</code> = <code>Y</code>. That is the whole Transaction payload <strong>when every line's item has a usable primary bin</strong>; the new <code>receipt_number</code> comes back on the same element's result row. When a line has none — typically a primary bin of <code>0</code> that is put-locked — the Transaction API cannot address the bin grid, because its rows land on whichever line is selected. Drive the window instead: for each such line, find its row in <code>tp_17_dw_17</code> (the column <code>ufc_inv_loc_primary_bin</code> shows <code>0</code>), <code>select_row</code> it, change to <code>TABPAGE_BIN</code>, set <code>bin_cd</code> and <code>unit_quantity</code> on <code>tabpage_bin</code>, then save. The receipt number is not in the window after the save; find it by <code>po_number</code> in <code>inventory_receipts_hdr</code> (lines use <code>line_number</code>, not <code>line_no</code>). <a href="../03-Transaction-API.html#purchaseorderreceipt-service-receiving-a-po">Manual</a>. The runbooks implement the Transaction path only: give the item a usable primary bin first (<a href="set-primary-bin-supplier.html">set-primary-bin-supplier</a>), or receive in the window as described.</p>
+<p><strong>A3 — Vouch (Verified; run on play 26.1.5950.0, 2026-10-10).</strong> Header <code>TABPAGE_1.tp_1_dw_1</code> (key <code>voucher_no</code>, left empty): <code>po_no</code>, <code>invoice_no</code>, <code>invoice_date</code>, <code>invoice_amount</code> (the real invoice total — it must equal the vouched lines or P21 holds the variance), <code>vendor_id</code>. Lines keyed <code>receipt_number</code> + <code>line_number</code> + <code>po_no</code>: <code>unit_qty_invoiced</code>, <code>unit_cost_display</code>. <strong>Send nothing else</strong> — <code>company_id</code>, <code>branch_id</code>, <code>period</code>, <code>year_for_period</code> are marked required and are disabled columns. The voucher lands approved and unpaid. The runbooks build one line per <code>inventory_receipts_line</code> row (<code>qty_received</code>, <code>unit_cost</code>). <a href="../03-Transaction-API.html#convertpotovoucher-service-vouching-a-receipt">Manual</a>.</p>
 <h2 id="path-b-drop-ship">Path B — drop ship</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -710,6 +726,7 @@
 <th>Step</th>
 <th>Surface</th>
 <th>Read-back</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
@@ -718,45 +735,165 @@
 <td>Sales order with a direct-ship line (<code>disposition</code> = <code>D</code>), saved</td>
 <td>Interactive <code>Order</code></td>
 <td><code>oe_line.disposition = 'D'</code>, <code>po_cost</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 <tr>
 <td>B2</td>
 <td>Re-open the order, <code>c_create_po</code> = <code>ON</code>, save → PO wizard: <code>cb_next</code>, <code>cb_finish</code></td>
 <td>Interactive <code>Order</code> + wizard response window</td>
 <td><code>po_hdr</code> (<code>po_type = 'D'</code>), <code>oe_line_po</code> (<code>connection_type = 'P'</code>)</td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 <tr>
 <td>B3</td>
 <td>Vendor ships; confirm the direct ship — receipt <strong>and</strong> customer invoice</td>
-<td>Interactive <code>DirectShipConfirmation</code> (see note)</td>
+<td>Interactive <code>DirectShipConfirmation</code></td>
 <td><code>inventory_receipts_hdr</code> (type <code>P</code>), <code>po_line</code> complete, <code>oe_line.qty_invoiced</code>, <code>invoice_hdr</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 <tr>
 <td>B4</td>
 <td>Vouch the vendor invoice against that receipt</td>
 <td>Transaction <code>ConvertPOToVoucher</code> (as A3)</td>
 <td>as A3</td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
 </tr>
 </tbody>
 </table></div>
-<p><strong>B1 — The direct-ship line (Verified).</strong> <code>disposition</code> can be set <strong>only while the line is being entered</strong>, in the window — never on a saved line, never through the Transaction API. <strong>Set <code>quote</code> = <code>OFF</code> first</strong>: in quote mode <code>disposition</code> looks disabled and the wizard later builds an RFQ instead of a PO (<a href="../04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">details</a>). The header needs <code>contact_id</code>. Key the deal's buy price into the line's <code>po_cost</code>: it flows to the PO line's price, and without it the PO inherits the supplier's standard cost.</p>
-<p><strong>B2 — Two saves, then the wizard (Verified, re-verified here).</strong> Requesting the PO in the same save that creates the order derails — a new order's save stacks other prompts ahead of the wizard. Save the order, re-open it, set <code>c_create_po</code> = <code>ON</code>, save. The response window is the wizard only if its tools include <code>cb_finish</code>; check before pressing anything.</p>
+<p><strong>B1 — The direct-ship line (Verified; run on play 26.1.5950.0, 2026-10-10).</strong> <code>disposition</code> can be set <strong>only while the line is being entered</strong>, in the window — never on a saved line, never through the Transaction API. <strong>Set <code>quote</code> = <code>OFF</code> first</strong>: in quote mode <code>disposition</code> looks disabled and the wizard later builds an RFQ instead of a PO (<a href="../04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">details</a>). The header needs <code>contact_id</code>. Key the deal's buy price into the line's <code>po_cost</code>: it flows to the PO line's price, and without it the PO inherits the supplier's standard cost. The window clears after the save; find the order by its customer <code>po_no</code> and the newest <code>oe_hdr_uid</code>.</p>
+<blockquote>
+<p><strong>For a user with a Buyer ID, this first save can open the PO wizard by itself.</strong> In the verification runs the API user's <em>Create PO from OE</em> setting was <em>Create All</em>, and saving the new order — without <code>c_create_po</code> — raised the wizard (<code>cb_finish</code> in its tools). The runbooks cancel it with <code>cb_cancel</code> before <code>cb_next</code>, so nothing is committed, and create the PO deliberately in B2. A user without a Buyer ID saw no wizard at this point.</p>
+</blockquote>
+<p><strong>B2 — Two saves, then the wizard (Verified; run on play 26.1.5950.0, 2026-10-10).</strong> Save the order, re-open it by <code>order_no</code>, set <code>c_create_po</code> = <code>ON</code>, save. The response window is the wizard only if its tools include <code>cb_finish</code>; check before pressing anything. Page 1 (<code>items</code>) shows the line, <code>qty_to_purchase</code>, the supplier and <code>quote_item = N</code>; after <code>cb_next</code>, page 2 (<code>po_print</code>) shows the new <code>po_no</code> and <code>po_type = D</code>.</p>
 <ul>
-<li>The API user needs a <strong>Buyer ID</strong> in User Maintenance, or the trigger refuses.</li>
+<li>The API user needs a <strong>Buyer ID</strong> in User Maintenance, or the trigger refuses: <code>To create a PO, you must have a valid Buyer ID.</code> (seen again in the verification run with a password user that has none).</li>
 <li><code>supplier_id</code> on the wizard is disabled to the API: it defaults to the item's primary supplier. When supplier choice matters, a person creates the PO.</li>
 <li><strong>The PO is committed at <code>cb_next</code>, before <code>cb_finish</code>.</strong> An abandoned wizard is not a no-op — go and look for the PO.</li>
 </ul>
-<p><strong>B3 — Confirm the direct ship (Verified — see note).</strong> Interactive <code>DirectShipConfirmation</code>: set <code>TABPAGE_1.tp_1_dw_po.po_no</code>, <code>receive_all</code> = <code>ON</code>, save. One save writes the receipt, completes the PO lines, invoices the sales-order lines and creates the customer's invoice. <strong>Do not</strong> try <code>PurchaseOrderReceipt</code> on a direct-ship PO; it refuses because the linked sales lines are locked. The confirmation also <strong>overwrites <code>po_line.supplier_ship_date</code> on every line</strong> — capture it first if you confirm partials (<a href="../04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">details</a>).</p>
+<p><strong>B3 — Confirm the direct ship (Verified; run on play 26.1.5950.0, 2026-10-10).</strong> Interactive <code>DirectShipConfirmation</code>: set <code>TABPAGE_1.tp_1_dw_po.po_no</code>, <code>receive_all</code> = <code>ON</code>, save. <code>shipment_date</code>, <code>period</code> and <code>year_for_period</code> pre-fill. One save writes the receipt, completes the PO lines, invoices the sales-order lines and creates the customer's invoice — with no popups, and as either a password user or the consumer-key user. <strong>Do not</strong> try <code>PurchaseOrderReceipt</code> on a direct-ship PO; it refuses because the linked sales lines are locked. The confirmation also <strong>overwrites <code>po_line.supplier_ship_date</code> on every line</strong> — capture it first if you confirm partials (<a href="../04-Interactive-API.html#directshipconfirmation-writes-its-ship-date-down-onto-every-line">details</a>).</p>
 <blockquote>
-<p><strong>Note — which surface.</strong> The Interactive path above is verified on play 26.1 (October 2026). A Transaction API path (<code>receive_all</code> = <code>Y</code>, <code>print_invoice</code> = <code>N</code>, <code>fax_invoice</code> = <code>N</code>) was reported working on another play tenant in August 2026, but returned an empty no-op result on 26.1.5940.0 in this repo — see <a href="../04-Interactive-API.html#the-write-path-is-not-reproduced-here">The write path is not reproduced here</a>. On either surface, <strong>never send <code>c_email_invoice</code></strong>: it is disabled, and a transaction that tripped on it reported <code>Failed</code> <strong>after</strong> writing the receipt, the PO completion and the customer invoice.</p>
+<p><strong>Note — which surface.</strong> The Interactive path above is the one the runbooks run. A Transaction API path (<code>receive_all</code> = <code>Y</code>, <code>print_invoice</code> = <code>N</code>, <code>fax_invoice</code> = <code>N</code>) was reported working on another play tenant in August 2026, but returned an empty no-op result on 26.1.5940.0 in this repo — see <a href="../04-Interactive-API.html#the-write-path-is-not-reproduced-here">The write path is not reproduced here</a>. On either surface, <strong>never send <code>c_email_invoice</code></strong>: it is disabled, and a transaction that tripped on it reported <code>Failed</code> <strong>after</strong> writing the receipt, the PO completion and the customer invoice.</p>
 </blockquote>
-<p><strong>B4 — Vouch (Inferred from A3).</strong> A direct-ship vendor invoice vouches like any other, against the receipt B3 created. A direct-ship PO "with no receipt yet" means the sales side has not confirmed the shipment — it is not a receiving task.</p>
+<p><strong>B4 — Vouch (run on play 26.1.5950.0, 2026-10-10).</strong> A direct-ship vendor invoice vouches like any other, against the receipt B3 created: the same <code>ConvertPOToVoucher</code> payload as A3, with the PO's <code>vendor_id</code>. A direct-ship PO "with no receipt yet" means the sales side has not confirmed the shipment — it is not a receiving task.</p>
+<h2 id="the-wizard-step-in-code">The wizard step, in code</h2>
+<p>B2 is the step with the most ways to go wrong, so here it is from the runbooks. <code>session</code> is the response-window-enabled Interactive session from the shared helpers (<a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/runbook_common.py"><code>runbook_common.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/RunbookSteps.cs"><code>RunbookSteps.cs</code></a>); the rest of each step is in the files.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_po_from_order</span><span class="p">(</span><span class="n">rb</span><span class="p">:</span> <span class="n">P21Runbook</span><span class="p">,</span> <span class="n">order_no</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;B2: re-open the saved order, c_create_po ON, save, and drive the PO wizard.</span>
+
+<span class="sd">    The wizard is identified by its buttons (cb_finish present) before</span>
+<span class="sd">    anything is pressed. The PO is committed at cb_next, before cb_finish.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">B2 - Re-open, c_create_po = ON, save, PO wizard (Interactive Order)&quot;</span><span class="p">)</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">rb</span><span class="o">.</span><span class="n">session</span><span class="p">()</span>
+    <span class="n">window_id</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">open_window</span><span class="p">(</span><span class="s2">&quot;Order&quot;</span><span class="p">)</span>
+    <span class="n">wizard_po</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;order_no&quot;</span><span class="p">,</span> <span class="n">order_no</span><span class="p">)</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">change</span><span class="p">(</span><span class="n">window_id</span><span class="p">,</span> <span class="s2">&quot;TABPAGE_1&quot;</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="s2">&quot;c_create_po&quot;</span><span class="p">,</span> <span class="s2">&quot;ON&quot;</span><span class="p">)</span>  <span class="c1"># needs a Buyer ID</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">save_raw</span><span class="p">(</span><span class="n">window_id</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_blocked</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+                <span class="k">break</span>
+            <span class="k">for</span> <span class="n">popup_id</span> <span class="ow">in</span> <span class="n">popup_ids</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+                <span class="n">tools</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">tools</span><span class="p">(</span><span class="n">popup_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s2">&quot;cb_finish&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">:</span>          <span class="c1"># some other prompt: proceed</span>
+                    <span class="n">pick</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;cb_ok&quot;</span><span class="p">,</span> <span class="s2">&quot;cb_1&quot;</span><span class="p">,</span> <span class="s2">&quot;cb_yes&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">tools</span><span class="p">)</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">popup_id</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">session</span><span class="o">.</span><span class="n">rows</span><span class="p">(</span><span class="n">popup_id</span><span class="p">,</span> <span class="s2">&quot;items&quot;</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    wizard page 1: </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;item_id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> qty </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;qty_to_purchase&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+                          <span class="sa">f</span><span class="s2">&quot;supplier </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;supplier_id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> quote_item=</span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;quote_item&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">session</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">popup_id</span><span class="p">,</span> <span class="s2">&quot;cb_next&quot;</span><span class="p">)</span>    <span class="c1"># &lt;-- the PO is committed HERE</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">session</span><span class="o">.</span><span class="n">rows</span><span class="p">(</span><span class="n">popup_id</span><span class="p">,</span> <span class="s2">&quot;po_print&quot;</span><span class="p">):</span>
+                    <span class="n">wizard_po</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;po_no&quot;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    wizard page 2: po_no </span><span class="si">{</span><span class="n">wizard_po</span><span class="si">}</span><span class="s2">, po_type </span><span class="si">{</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;po_type&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">click</span><span class="p">(</span><span class="n">popup_id</span><span class="p">,</span> <span class="s2">&quot;cb_finish&quot;</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">session</span><span class="o">.</span><span class="n">cleanup</span><span class="p">(</span><span class="n">window_id</span><span class="p">)</span>
+    <span class="n">link</span> <span class="o">=</span> <span class="n">rb</span><span class="o">.</span><span class="n">one</span><span class="p">(</span><span class="s2">&quot;oe_line_po&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;order_number eq &#39;</span><span class="si">{</span><span class="n">order_no</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;order_number,line_number,po_no,po_line_number,connection_type&quot;</span><span class="p">)</span>
+    <span class="n">check</span><span class="p">(</span><span class="s2">&quot;oe_line_po.connection_type&quot;</span><span class="p">,</span> <span class="n">link</span><span class="p">[</span><span class="s2">&quot;connection_type&quot;</span><span class="p">],</span> <span class="s2">&quot;P&quot;</span><span class="p">)</span>
+    <span class="n">po_no</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">link</span><span class="p">[</span><span class="s2">&quot;po_no&quot;</span><span class="p">])</span>
+    <span class="n">hdr</span> <span class="o">=</span> <span class="n">rb</span><span class="o">.</span><span class="n">one</span><span class="p">(</span><span class="s2">&quot;po_hdr&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;po_no eq </span><span class="si">{</span><span class="n">po_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;po_no,po_type,approved,external_po_no&quot;</span><span class="p">)</span>
+    <span class="n">check</span><span class="p">(</span><span class="s2">&quot;po_hdr.po_type&quot;</span><span class="p">,</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;po_type&quot;</span><span class="p">],</span> <span class="s2">&quot;D&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">wizard_po</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">wizard_po</span><span class="p">)</span> <span class="o">!=</span> <span class="n">po_no</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Wizard showed PO </span><span class="si">{</span><span class="n">wizard_po</span><span class="si">}</span><span class="s2">, oe_line_po links </span><span class="si">{</span><span class="n">po_no</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">po_no</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;</span>
+<span class="c1">/// B2: re-open the saved order, c_create_po ON, save, drive the wizard.</span>
+<span class="c1">/// The wizard is identified by its buttons (cb_finish) before anything is</span>
+<span class="c1">/// pressed; the PO is committed at cb_next, before cb_finish.</span>
+<span class="c1">/// &lt;/summary&gt;</span>
+<span class="k">private</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CreatePoFromOrderAsync</span><span class="p">(</span><span class="n">Runbook</span><span class="w"> </span><span class="n">rb</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">orderNo</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">SessionAsync</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">windowId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">OpenAsync</span><span class="p">(</span><span class="s">&quot;Order&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">string?</span><span class="w"> </span><span class="n">wizardPo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">null</span><span class="p">;</span>
+<span class="w">    </span><span class="k">try</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">orderNo</span><span class="p">);</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">ChangeAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;TABPAGE_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;c_create_po&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="p">);</span><span class="w"> </span><span class="c1">// needs a Buyer ID</span>
+<span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">SaveRawAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">);</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">RunbookSession</span><span class="p">.</span><span class="n">IsBlocked</span><span class="p">(</span><span class="n">result</span><span class="p">);</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">popupId</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">RunbookSession</span><span class="p">.</span><span class="n">PopupIds</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="kt">var</span><span class="w"> </span><span class="n">tools</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">ToolsAsync</span><span class="p">(</span><span class="n">popupId</span><span class="p">);</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">tools</span><span class="p">.</span><span class="n">Contains</span><span class="p">(</span><span class="s">&quot;cb_finish&quot;</span><span class="p">))</span><span class="w">       </span><span class="c1">// some other prompt: proceed</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">ClickAsync</span><span class="p">(</span><span class="n">popupId</span><span class="p">,</span>
+<span class="w">                        </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;cb_ok&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_1&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_yes&quot;</span><span class="w"> </span><span class="p">}.</span><span class="n">First</span><span class="p">(</span><span class="n">tools</span><span class="p">.</span><span class="n">Contains</span><span class="p">));</span>
+<span class="w">                    </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">RowsAsync</span><span class="p">(</span><span class="n">popupId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;items&quot;</span><span class="p">))</span>
+<span class="w">                    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;    wizard page 1: {row[&quot;</span><span class="n">item_id</span><span class="s">&quot;]} qty {row[&quot;</span><span class="n">qty_to_purchase</span><span class="s">&quot;]} &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                                      </span><span class="s">$&quot;supplier {row[&quot;</span><span class="n">supplier_id</span><span class="s">&quot;]} quote_item={row[&quot;</span><span class="n">quote_item</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">                </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">ClickAsync</span><span class="p">(</span><span class="n">popupId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_next&quot;</span><span class="p">);</span><span class="w">   </span><span class="c1">// &lt;-- the PO is committed HERE</span>
+<span class="w">                </span><span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">RowsAsync</span><span class="p">(</span><span class="n">popupId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_print&quot;</span><span class="p">))</span>
+<span class="w">                </span><span class="p">{</span>
+<span class="w">                    </span><span class="n">wizardPo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">row</span><span class="p">[</span><span class="s">&quot;po_no&quot;</span><span class="p">];</span>
+<span class="w">                    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">$&quot;    wizard page 2: po_no {wizardPo}, po_type {row[&quot;</span><span class="n">po_type</span><span class="s">&quot;]}&quot;</span><span class="p">);</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">ClickAsync</span><span class="p">(</span><span class="n">popupId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;cb_finish&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">finally</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="n">session</span><span class="p">.</span><span class="n">CloseAsync</span><span class="p">(</span><span class="n">windowId</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">OneAsync</span><span class="p">(</span><span class="s">&quot;oe_line_po&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;order_number eq &#39;{orderNo}&#39;&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;order_number,line_number,po_no,connection_type&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Check</span><span class="p">(</span><span class="s">&quot;oe_line_po.connection_type&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">link</span><span class="p">[</span><span class="s">&quot;connection_type&quot;</span><span class="p">],</span><span class="w"> </span><span class="s">&quot;P&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">poNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">link</span><span class="p">[</span><span class="s">&quot;po_no&quot;</span><span class="p">]</span><span class="o">!</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">var</span><span class="w"> </span><span class="n">hdr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">OneAsync</span><span class="p">(</span><span class="s">&quot;po_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">$&quot;po_no eq {poNo}&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;po_no,po_type&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">Check</span><span class="p">(</span><span class="s">&quot;po_hdr.po_type&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">hdr</span><span class="p">[</span><span class="s">&quot;po_type&quot;</span><span class="p">],</span><span class="w"> </span><span class="s">&quot;D&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wizardPo</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="k">null</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">wizardPo</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">poNo</span><span class="p">)</span>
+<span class="w">        </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;Wizard showed PO {wizardPo}, oe_line_po links {poNo}&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">poNo</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+<blockquote>
+<p><strong>Payload files</strong> (validator-verified, JSON only): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/purchase-order-create.json">A1 PO</a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/purchase-order-receipt.json">A2 receipt</a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/convert-po-to-voucher.json">A3/B4 voucher</a> — see <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/README.md">payloads README</a>. B1–B3 are Interactive window steps and have no single payload.</p>
+</blockquote>
 <h2 id="failed-can-mean-already-committed">⚠️ "Failed" can mean "already committed"</h2>
 <p>Twice on this path a call reported failure after the work was done: the wizard commits the PO at <code>cb_next</code>, and a direct-ship confirmation that tripped on a disabled column had already written the receipt and the invoices. <strong>Treat a failure as "go and read the tables", never as "nothing happened".</strong> See <a href="../03-Transaction-API.html#what-failed-actually-guarantees">What <code>Failed</code> actually guarantees</a>.</p>
 <h2 id="not-covered-here">Not covered here</h2>
-<p>Changing or closing a stock PO after creation, receipts for lot- or serial-tracked items, partial receipts across several receipts, and vouchers without a PO (<code>VoucherByItem</code>, <code>ConvertVendorInvoiceToVoucher</code>) — none verified.</p>
+<p>Changing or closing a stock PO after creation, receipts for lot- or serial-tracked items, partial receipts across several receipts, the Interactive bin-grid receipt for lines without a usable primary bin (described in A2, not in the runbooks), and vouchers without a PO (<code>VoucherByItem</code>, <code>ConvertVendorInvoiceToVoucher</code>) — none run here.</p>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — both paths verified on play, August 2026, with the Interactive receipt, the wizard, the Transaction direct-ship confirmation and the voucher; not re-run here except where marked. Path A's Transaction receipt and voucher and the wizard were re-verified in this repo (August 2026); the Interactive direct-ship confirmation and the quote-mode correction: <em>@mrwuss</em>, play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>).</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — both paths verified on play, August 2026, with the Interactive receipt, the wizard, the Transaction direct-ship confirmation and the voucher. Path A's Transaction receipt and voucher and the wizard were re-verified in this repo (August 2026); the Interactive direct-ship confirmation and the quote-mode correction: <em>@mrwuss</em>, play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). Runnable Python and C# runbooks for both paths: run end to end on play 26.1.5950.0, 2026-10-10.</p>
 </blockquote>
     </main>
 
@@ -765,8 +902,10 @@
         <div class="page-toc" id="page-toc">
             <div class="toc">
 <ul>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#path-a-bring-items-into-stock">Path A — bring items into stock</a></li>
 <li><a href="#path-b-drop-ship">Path B — drop ship</a></li>
+<li><a href="#the-wizard-step-in-code">The wizard step, in code</a></li>
 <li><a href="#failed-can-mean-already-committed">⚠️ "Failed" can mean "already committed"</a></li>
 <li><a href="#not-covered-here">Not covered here</a></li>
 </ul>

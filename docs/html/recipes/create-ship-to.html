@@ -817,6 +817,9 @@
 </code></pre></div>
 
 <p>Here <code>200</code> is the rep you want and <code>100</code> is the customer's primary rep that the ship-to would otherwise inherit. For every other field the service accepts, load <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/ShipTo.json"><code>definitions/ShipTo.json</code></a>.</p>
+<blockquote>
+<p><strong>Payload file</strong> (validator-verified): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/create-ship-to.json">JSON</a>.</p>
+</blockquote>
 <h2 id="complete-example">Complete example</h2>
 <p>The example reads the customer's primary rep over OData, so it adds the retire row only when that rep differs from the one you want.</p>
 <div class="code-tabs">
@@ -831,7 +834,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -1027,7 +1030,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json.Nodes</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CompanyId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ACME&quot;</span><span class="p">;</span>
@@ -1250,12 +1253,15 @@
 </code></pre></div>
 </div>
 </div>
-<p>The element placement, the code conventions and the add-then-retire rep rows are what was verified. The complete examples build the same payload; they were not run separately.</p>
+<p>Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each creating a ship-to on a test customer whose primary rep differed from the wanted one. The read-back showed the ship-to on the right customer, branch, terms, invoice type, tax group and preferred location; the physical and mailing address and phone on its <code>address</code> row; and exactly one live rep, the wanted one, primary at <code>100</code>, with the inherited rep retired (<code>delete_flag = 'Y'</code>). The Python file was also run with the inherited rep as the wanted rep: the salesrep grid was left out and the ship-to kept that rep, primary at <code>100</code>.</p>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>, dry-run by default): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/create_ship_to.py"><code>examples/python/recipes/create_ship_to.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/CreateShipTo.cs"><code>examples/csharp/Recipes/CreateShipTo.cs</code></a>. The programs above are self-contained; the files use the repo's shared <code>common</code> / <code>P21Examples.Common</code> helpers and also read the new ship-to's <code>address</code> row back.</p>
+</blockquote>
 <h2 id="gotchas-verified-live-on-play-261-september-2026">Gotchas (verified live on play 26.1, September 2026)</h2>
 <ul>
 <li><strong>Send <code>UseCodeValues: true</code> with stored codes.</strong> Under <code>false</code>, <code>terms_id</code> demands the terms <em>description</em> rather than the code. With <code>true</code>, send the codes the database stores: <code>terms_id</code> as its code, <code>invoice_type</code> as <code>IN</code>, <code>tax_group_id</code> as the group's ID.</li>
 <li><strong>Flags are <code>Y</code>/<code>N</code> under <code>UseCodeValues: true</code>.</strong> The definition and the defaults template show <code>ON</code>/<code>OFF</code> — that is the <code>false</code>-mode form. Sending <code>primary_salesrep: "ON"</code> with <code>UseCodeValues: true</code> fails with <code>Invalid primary_salesrep value: ON</code>.</li>
-<li><strong>The inherited rep must be retired in the same call</strong> when you want a different rep, or the commission total fails — see <a href="#the-ship-to-inherits-the-customers-primary-rep">The ship-to inherits the customer's primary rep</a>. The retire is soft: the inherited rep's row stays in <code>ship_to_salesrep</code> with <code>delete_flag = 'Y'</code>.</li>
+<li><strong>The inherited rep must be retired in the same call</strong> when you want a different rep, or the commission total fails — see <a href="#the-ship-to-inherits-the-customers-primary-rep">The ship-to inherits the customer's primary rep</a>. The retire is soft: the inherited rep's row stays in <code>ship_to_salesrep</code> with <code>delete_flag = 'Y'</code>, <code>primary_salesrep = 'N'</code>, and its <code>commission_percentage</code> still <code>100</code>. Filter on <code>delete_flag</code> before summing commission.</li>
 <li><strong><code>salesrep_id</code> and <code>ship_to_name</code> are not on <code>TABPAGE_1.shiptomain</code>.</strong> Both fail with <code>Invalid column name</code>. The rep goes on <code>TABPAGE_SALESREP.tabpage_salesrep</code>; the ship-to's name is <code>address_name</code>.</li>
 <li><strong>Read back with OData.</strong> <code>POST /api/v2/transaction/get</code> against <code>ShipTo</code> has returned an empty-body HTTP 500 (<a href="reassign-salesrep.html">reassign-salesrep</a>). The OData keys <code>customer_id</code> and <code>ship_to_id</code> are numeric — don't quote them.</li>
 <li><strong>HTTP 200 ≠ success.</strong> Check <code>Summary.Succeeded</code> and <code>Results.Transactions[].Status == "Passed"</code>.</li>

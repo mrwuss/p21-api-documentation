@@ -41,6 +41,17 @@ Every example added in v1.27.0–v1.28.0 now runs. Each new write path has a Pyt
 
 All *@mrwuss*.
 
+**Full-repo alignment pass (#187–#194)**
+
+- **fix:** PDF report payloads now send `Status: "New"` like every other transaction — verified on play — instead of the integer the docs forbid. Closes [#187](https://github.com/mrwuss/p21-api-documentation/issues/187)
+- **fix:** [Breaking Changes entry 8](14-Breaking-Changes.md#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing) counts five `IgnoreDisabled` false-success surfaces, consistently with 03. Closes [#188](https://github.com/mrwuss/p21-api-documentation/issues/188)
+- **fix:** contract `end_date` and `reprint_flag` guidance aligned across recipes and payloads. Closes [#189](https://github.com/mrwuss/p21-api-documentation/issues/189)
+- **fix:** [update order lines](recipes/update-order-lines.md) is a standalone program; doc snippets use System.Text.Json. Closes [#190](https://github.com/mrwuss/p21-api-documentation/issues/190)
+- **fix:** Python and C# pairs that did different things now agree (labor hours, pick-ticket read-back, environment call); the Interactive `ActiveRow` is 1-based, which broke the order-with-assembly read-back. Transaction API order creates send `quote = OFF` (without it some users save a quote), and an assembly item on an order explodes into a `P` line with components. Closes [#191](https://github.com/mrwuss/p21-api-documentation/issues/191)
+- **fix:** Postman requests corrected, export metadata stripped, coverage stated accurately. Closes [#192](https://github.com/mrwuss/p21-api-documentation/issues/192)
+- **fix:** placeholders-only policy written into CONTRIBUTING; tenant values (GL accounts, journal text, item and bin codes, evidence record numbers, a file-server path) replaced; `example.com` and `ACME` used throughout. Closes [#193](https://github.com/mrwuss/p21-api-documentation/issues/193)
+- **docs:** repo metadata matches the tree (program counts, doc sizes, structure tables, schema definitions for `InventoryCostEdit`, `Vendor`, `m_itemmerge`, `m_customermerge`). Closes [#194](https://github.com/mrwuss/p21-api-documentation/issues/194)
+
 ## 2026-10-10 — v1.28.0
 
 The first sweep of the maintainer's working notes against these docs: eleven gaps filed (#175–#185) and closed here. All verified against production or play 26.1 during real work; identifiers are placeholders.

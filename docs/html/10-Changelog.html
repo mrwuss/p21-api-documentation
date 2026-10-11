@@ -655,6 +655,7 @@
         <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-11-v1290">2026-10-11 — v1.29.0</a></li>
 <li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>
 <li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>
 <li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>
@@ -754,6 +755,37 @@
 </ul>
 </blockquote>
 <hr />
+<h2 id="2026-10-11-v1290">2026-10-11 — v1.29.0</h2>
+<p>Every example added in v1.27.0–v1.28.0 now runs. Each new write path has a Python and a C# example in <code>examples/</code>, run with <code>--execute</code> / <code>EXECUTE</code> against play 26.1.5950.0 and confirmed by read-back, and the five checklist runbooks are now end-to-end programs. Running them corrected several published claims.</p>
+<p><strong>Published code, now run (Python and C#)</strong></p>
+<ul>
+<li><strong>fix:</strong> <a href="11-Inventory-REST-API.html#cloning-an-existing-item">Cloning an item</a> also drops the item-level <code>UserDefinedFields</code> block; <a href="recipes/create-ship-to.html">create a ship-to</a>, <a href="recipes/inventory-cost-edit.html">inventory cost edit</a> (no GL posts when nothing is on hand) and the <a href="03-Transaction-API.html#reprint_flag-must-match-the-pos-po_hdrprinted">PO reprint</a> (<code>DocumentId</code> is a per-call number, not the PO number) all run as published, now with repo files and payloads</li>
+</ul>
+<p><strong>New runnable examples for documented write paths</strong></p>
+<ul>
+<li><strong>feat:</strong> Transaction API — <a href="03-Transaction-API.html#locking-unlocking-and-deleting-bins">bins</a>, <a href="03-Transaction-API.html#vendor-service-creating-a-vendor-and-its-supplier">vendor create</a>, <a href="03-Transaction-API.html#assembly-service">assembly create and edit</a>, contract ship-to and <code>line_no</code> updates, <a href="03-Transaction-API.html#order-service-line-appends-cancels-holds-and-item-lookup">order append, hold release and cancel</a>, <a href="03-Transaction-API.html#item-merge-and-customer-merge-m_itemmerge-m_customermerge">item and customer merge</a></li>
+<li><strong>feat:</strong> pricing and Interactive — <a href="08-SalesPricePage-Codes.html#creating-a-page-through-the-transaction-api">price page create and book link</a>, <a href="08-SalesPricePage-Codes.html#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem">purchase page edit</a>, <a href="11-Inventory-REST-API.html#updating-existing-location-fields">ListPrice and Stockable</a>, <a href="04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">order entry with quote OFF</a>, DirectShipConfirmation, <a href="04-Interactive-API.html#customer-window-adding-a-price-library">customer price library</a>, <a href="04-Interactive-API.html#managing-business-rules-through-the-dynachange-organizer">DynaChange rule toggle</a></li>
+<li><strong>feat:</strong> runnable runbooks — <a href="recipes/purchase-receive-vouch.html">stock PO and drop ship</a>, <a href="recipes/sales-order-to-invoice.html">sales order to invoice</a>, <a href="recipes/dispose-zero-value-stock.html">zero-value disposal</a>, <a href="recipes/new-assembled-part.html">new assembled part</a>, <a href="recipes/rebate-assembly-program.html">rebate-tracked assembly</a>; steps the API can't reach stay marked manual</li>
+</ul>
+<p><strong>Corrections found by running the code</strong></p>
+<ul>
+<li><strong>fix:</strong> Bin delete and contract ship-to attach work without <code>IgnoreDisabled</code>; a blank vendor ID is a real create (the ID comes back in the result); <code>allow_disassembly</code> is disabled while <code>production_order_processing</code> is OFF; component quantity lands in <code>assembly_line.quantity</code>; <code>line_no</code> can select a contract line but not insert one; appending an item already on an order edits that line; a cancel leaves <code>qty_canceled</code> at 0</li>
+<li><strong>fix:</strong> <code>strategic_price_applies_to_cd</code> is disabled on price page create; changing only a purchase page's <code>expiration_date</code> re-dates it in place; the customer price-library sequence you send is kept when <code>price_library_id</code> is set first</li>
+<li><strong>fix:</strong> the direct-ship PO wizard opens in a new order's first save, needs a user with a Buyer ID, and doesn't open for an intercompany supplier; <code>DirectShipConfirmation</code> overwrites <code>po_line.supplier_ship_date</code> (now confirmed live)</li>
+<li><strong>docs:</strong> creating an item in the Interactive Item window is not reachable on play (every unit-of-measure column is disabled for both API users); <code>customer.job_pricing</code> can't be turned on through either API</li>
+</ul>
+<p>All <em>@mrwuss</em>.</p>
+<p><strong>Full-repo alignment pass (#187–#194)</strong></p>
+<ul>
+<li><strong>fix:</strong> PDF report payloads now send <code>Status: "New"</code> like every other transaction — verified on play — instead of the integer the docs forbid. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/187">#187</a></li>
+<li><strong>fix:</strong> <a href="14-Breaking-Changes.html#8-ignoredisabled-true-reports-success-on-writes-that-write-nothing">Breaking Changes entry 8</a> counts five <code>IgnoreDisabled</code> false-success surfaces, consistently with 03. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/188">#188</a></li>
+<li><strong>fix:</strong> contract <code>end_date</code> and <code>reprint_flag</code> guidance aligned across recipes and payloads. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/189">#189</a></li>
+<li><strong>fix:</strong> <a href="recipes/update-order-lines.html">update order lines</a> is a standalone program; doc snippets use System.Text.Json. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/190">#190</a></li>
+<li><strong>fix:</strong> Python and C# pairs that did different things now agree (labor hours, pick-ticket read-back, environment call); the Interactive <code>ActiveRow</code> is 1-based, which broke the order-with-assembly read-back. Transaction API order creates send <code>quote = OFF</code> (without it some users save a quote), and an assembly item on an order explodes into a <code>P</code> line with components. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/191">#191</a></li>
+<li><strong>fix:</strong> Postman requests corrected, export metadata stripped, coverage stated accurately. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/192">#192</a></li>
+<li><strong>fix:</strong> placeholders-only policy written into CONTRIBUTING; tenant values (GL accounts, journal text, item and bin codes, evidence record numbers, a file-server path) replaced; <code>example.com</code> and <code>ACME</code> used throughout. Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/193">#193</a></li>
+<li><strong>docs:</strong> repo metadata matches the tree (program counts, doc sizes, structure tables, schema definitions for <code>InventoryCostEdit</code>, <code>Vendor</code>, <code>m_itemmerge</code>, <code>m_customermerge</code>). Closes <a href="https://github.com/mrwuss/p21-api-documentation/issues/194">#194</a></li>
+</ul>
 <h2 id="2026-10-10-v1280">2026-10-10 — v1.28.0</h2>
 <p>The first sweep of the maintainer's working notes against these docs: eleven gaps filed (#175–#185) and closed here. All verified against production or play 26.1 during real work; identifiers are placeholders.</p>
 <ul>
@@ -1654,6 +1686,7 @@
             <div class="toc">
 <ul>
 <li><a href="#p21-breaking-change-alerts">⚠ P21 Breaking-Change Alerts</a></li>
+<li><a href="#2026-10-11-v1290">2026-10-11 — v1.29.0</a></li>
 <li><a href="#2026-10-10-v1280">2026-10-10 — v1.28.0</a></li>
 <li><a href="#2026-10-10-v1271">2026-10-10 — v1.27.1</a></li>
 <li><a href="#2026-10-10-v1270">2026-10-10 — v1.27.0</a></li>

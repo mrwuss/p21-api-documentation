@@ -678,14 +678,14 @@ Routes to a real network file share — not a P21 business object at all, but a 
 
 ### The path is a real network share, not a sandbox
 
-`GET /api/filehandler/files` on the play tenant returned real files sitting at `\\fileserver01\data\Internal\Computer\P21\Scripts\Play` — the middleware's own configured default storage path, not a scoped or virtualized location. An uploaded file landed at the identical path:
+`GET /api/filehandler/files` on the play tenant returned real files sitting at `\\fileserver\share\P21\Scripts` — the middleware's own configured default storage path, not a scoped or virtualized location. An uploaded file landed at the identical path:
 
 ```jsonc
 // POST /api/filehandler/file?fileName=zz_api_doc_test.txt   (body = raw bytes)
 // Content-Type header not required -- the body is read as a stream regardless
 HTTP 200  // XML by default -- send Accept: application/json for the JSON shape shown below
 {"ResourceKind": 0, "Name": "zz_api_doc_test.txt",
- "Path": "\\\\fileserver01\\data\\Internal\\Computer\\P21\\Scripts\\Play",
+ "Path": "\\\\fileserver\\share\\P21\\Scripts",
  "SizeInBytes": 84, "FullPath": "...\\zz_api_doc_test.txt", "Properties": [...]}
 ```
 

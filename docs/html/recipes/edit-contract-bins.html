@@ -671,7 +671,7 @@
 <ul>
 <li>The contract, its lines, and its bins already exist. Know the contract's <code>job_no</code>, the <code>customer_id</code>/<code>ship_to_id</code> combination, and per bin the line's <code>item_id</code> and the <code>contract_bin_id</code> (e.g. <code>A01-02</code>).</li>
 <li>The BINS grid lives on a sub-tab that is normally disabled until a parent row is selected — which the stateless Transaction API cannot do. <code>IgnoreDisabled: true</code> at the <strong>payload top level</strong> is what unlocks it.</li>
-<li>No <code>end_date</code> is required on this path — it works on <strong>expired</strong> contracts too, unlike line-field updates.</li>
+<li>No <code>end_date</code> is required on this path — it works on <strong>expired</strong> contracts too, as line-field updates do when <code>end_date</code> is omitted (<a href="../03-Transaction-API.html#updating-an-existing-contract">Updating an Existing Contract</a>).</li>
 </ul>
 <h2 id="payload">Payload</h2>
 <p>One POST, batchable: repeat the <code>JOBPRICELINE</code> + <code>BINS.bins</code> pair per bin inside the same Transaction. The <code>JOBPRICELINE</code> element only <em>selects</em> the line (by <code>item_id</code>); the <code>BINS.bins</code> element carries the edits.</p>
@@ -686,7 +686,7 @@
                 // Load the contract header. job_no is unique across renewals.
                 &quot;Name&quot;: &quot;FORM.d_dw_job_price_hdr&quot;, &quot;Type&quot;: &quot;Form&quot;, &quot;Keys&quot;: [],
                 &quot;Rows&quot;: [{&quot;Edits&quot;: [
-                    {&quot;Name&quot;: &quot;job_no&quot;,      &quot;Value&quot;: &quot;31&quot;},
+                    {&quot;Name&quot;: &quot;job_no&quot;,      &quot;Value&quot;: &quot;1001&quot;},
                     {&quot;Name&quot;: &quot;customer_id&quot;, &quot;Value&quot;: &quot;100198&quot;},
                     {&quot;Name&quot;: &quot;ship_to_id&quot;,  &quot;Value&quot;: &quot;200&quot;}
                 ]}]
@@ -731,12 +731,12 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
 <span class="n">CONTRACT_NO</span> <span class="o">=</span> <span class="s2">&quot;JOB-1001&quot;</span>
-<span class="n">JOB_NO</span> <span class="o">=</span> <span class="s2">&quot;31&quot;</span>                             <span class="c1"># unique across renewals</span>
+<span class="n">JOB_NO</span> <span class="o">=</span> <span class="s2">&quot;1001&quot;</span>                             <span class="c1"># unique across renewals</span>
 <span class="n">CUSTOMER_ID</span> <span class="o">=</span> <span class="s2">&quot;100198&quot;</span>
 <span class="n">SHIP_TO_ID</span> <span class="o">=</span> <span class="s2">&quot;200&quot;</span>
 <span class="c1"># Per bin: the line&#39;s item_id, the bin id, and the new quantities.</span>
@@ -864,11 +864,11 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ContractNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;JOB-1001&quot;</span><span class="p">;</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">JobNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;31&quot;</span><span class="p">;</span><span class="w">              </span><span class="c1">// unique across renewals</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">JobNo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;1001&quot;</span><span class="p">;</span><span class="w">              </span><span class="c1">// unique across renewals</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">CustomerId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;100198&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ShipToId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;200&quot;</span><span class="p">;</span>
 <span class="c1">// Per bin: the line&#39;s item_id, the bin id, and the new quantities.</span>
@@ -1062,7 +1062,7 @@
 <li><strong><code>IgnoreDisabled</code> goes at the payload top level</strong> (alongside <code>Name</code>/<code>Transactions</code>). Inside a Transaction object it is <strong>silently ignored</strong> and every transaction fails with <code>Column is disabled: &lt;column&gt;</code>.</li>
 <li><strong>Select the line by <code>item_id</code></strong> (the <code>JOBPRICELINE</code> key). Selecting by <code>line_no</code> alone fails with <em>"Sequence contains no matching element."</em> If the same item appears on multiple lines, add <code>line_no</code> as a second key.</li>
 <li><strong>Batching is fine here</strong> — repeat the <code>JOBPRICELINE</code> + <code>BINS.bins</code> pair per bin inside the same Transaction. Unlike line inserts, bin edits don't collide on the header.</li>
-<li><strong>No <code>end_date</code> required on this path</strong> — it works on <strong>expired</strong> contracts too, unlike line-field updates.</li>
+<li><strong>No <code>end_date</code> required on this path</strong> — it works on <strong>expired</strong> contracts too, as line-field updates do when <code>end_date</code> is omitted.</li>
 <li><strong><code>Status: "New"</code> even for an existing contract</strong> — <a href="../03-Transaction-API.html#status-new-is-the-only-value-the-enum-accepts"><code>"New"</code> is the only value the enum accepts</a>; <code>"Existing"</code> is HTTP 400 on 26.1.5940.0, HTTP 500 <code>NullReferenceException</code> on older builds.</li>
 <li><strong>HTTP 200 can still carry <code>Summary.Failed &gt; 0</code></strong> — check <code>Summary</code> and <code>Messages</code>, never the HTTP status.</li>
 <li><strong>Interactive fallback</strong> (slower; use when a Transaction-API edge case appears or the work needs window logic) — the EXISTING-contract unlock sequence from <a href="../04-Interactive-API.html#tab-unlock-sequences">Tab Unlock Sequences</a>:</li>

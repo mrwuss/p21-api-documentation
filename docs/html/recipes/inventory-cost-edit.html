@@ -668,7 +668,7 @@
 </details>
 <h1 id="write-off-small-residual-inventory-cost-edit-inventory-cost">Write Off Small Residual Inventory Cost (Edit Inventory Cost)</h1>
 <p>Set an item's moving average cost at one location to a token value — the usual first half of disposing of stock nobody wants — through the <code>InventoryCostEdit</code> service, then read the new cost back.</p>
-<p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>InventoryCostEdit</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service</a> · <strong>Next step:</strong> <a href="dispose-zero-value-stock.html">dispose-zero-value-stock</a></p>
+<p><strong>API:</strong> Transaction · <strong>Service:</strong> <code>InventoryCostEdit</code> · <strong>Deep dive:</strong> <a href="../03-Transaction-API.html#inventorycostedit-service-changing-an-items-average-cost">InventoryCostEdit Service</a> · <strong>Full schema:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/InventoryCostEdit.json">InventoryCostEdit.json</a> · <strong>Next step:</strong> <a href="dispose-zero-value-stock.html">dispose-zero-value-stock</a></p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>The item (here <code>WIDGET-001</code>) has an <code>inv_loc</code> row at the location (here <code>10</code>). Items with no row at the location cannot be edited; skip them.</li>
@@ -709,6 +709,9 @@
 </tr>
 </tbody>
 </table></div>
+<blockquote>
+<p><strong>Payload file</strong> (validator-clean): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/inventory-cost-edit.json">JSON</a>.</p>
+</blockquote>
 <h2 id="complete-example">Complete example</h2>
 <p>Reads the current cost over OData, skips the item if it is already at the target, posts the cost edit, and reads the cost back.</p>
 <div class="code-tabs">
@@ -723,7 +726,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 
 <span class="c1"># ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.p21server.com&quot;</span>   <span class="c1"># your P21 server</span>
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;https://play.example.com&quot;</span>   <span class="c1"># your P21 server</span>
 <span class="n">USERNAME</span> <span class="o">=</span> <span class="s2">&quot;apiuser&quot;</span>
 <span class="n">PASSWORD</span> <span class="o">=</span> <span class="s2">&quot;your-password&quot;</span>
 <span class="n">VERIFY_SSL</span> <span class="o">=</span> <span class="kc">False</span>                        <span class="c1"># True once you trust the cert chain</span>
@@ -862,7 +865,7 @@
 <span class="k">using</span><span class="w"> </span><span class="nn">System.Text.Json</span><span class="p">;</span>
 
 <span class="c1">// ---- EDIT THESE -----------------------------------------------------------</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.p21server.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">BaseUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://play.example.com&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// your P21 server</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;apiuser&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;your-password&quot;</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">ItemId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;WIDGET-001&quot;</span><span class="p">;</span>
@@ -1036,6 +1039,9 @@
 </code></pre></div>
 </div>
 </div>
+<blockquote>
+<p><strong>End-to-end files</strong> (runnable from the repo with a <code>.env</code>, dry-run by default): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/inventory_cost_edit.py"><code>examples/python/recipes/inventory_cost_edit.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/InventoryCostEdit.cs"><code>examples/csharp/Recipes/InventoryCostEdit.cs</code></a>. The programs above are self-contained; the files use the repo's shared <code>common</code> / <code>P21Examples.Common</code> helpers.</p>
+</blockquote>
 <h2 id="running-it-for-many-items">Running it for many items</h2>
 <ul>
 <li><strong>Build the item list from live <code>inv_loc</code> at run time</strong>, not from a count spreadsheet. Quantities drift, items get merged, and keyed sheets carry typos.</li>
@@ -1055,9 +1061,10 @@
 <li><code>inv_loc.moving_average_cost</code> = the new cost at the location (the example's read-back), <code>last_maintained_by</code> = your API user.</li>
 <li>One <code>audit_trail</code> row with <code>column_changed = 'moving_average_cost'</code>.</li>
 <li>A GL pair under journal <code>IC</code>, description <code>Cost Edit - &lt;old&gt; TO &lt;new&gt;</code>: inventory account against your offset account, amount <code>qty_on_hand × (old − new)</code>; sub-cent rounding posts to a separate rounding account. Reconcile the batch total against the sum of the per-item amounts.</li>
+<li><strong>With nothing on hand there is no GL pair.</strong> An edit at a location with <code>qty_on_hand = 0</code> changes <code>inv_loc</code> and writes its <code>audit_trail</code> row, and posts nothing to <code>gl</code>. That makes a zero-stock location the low-impact place to try the service.</li>
 </ul>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — service shape, ordering rule and GL behavior verified on play (about a thousand items in one run) and on production, September 2026; not re-run here. The runnable program on this page is assembled from that verified payload and has not itself been run against a tenant.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — service shape, ordering rule and GL behavior verified on play (about a thousand items in one run) and on production, September 2026. Python and C# examples run on play 26.1.5950.0, 2026-10-10: both programs above and both repo files, each editing a throwaway item's cost at a location with nothing on hand, in an open fiscal period. Each run was confirmed by the <code>inv_loc.moving_average_cost</code> read-back and one <code>audit_trail</code> row (<code>table_changed = 'inv_loc'</code>, old and new value), with no <code>inv_tran</code> row. Because nothing was on hand, these runs posted no GL; the GL pair described under Verify is from the September runs, not re-checked here. The <code>account_no</code> dash, period-order and period-zero failures in Gotchas are also from those runs.</p>
 </blockquote>
     </main>
 

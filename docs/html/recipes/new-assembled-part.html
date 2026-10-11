@@ -655,15 +655,17 @@
         <div class="toc">
 <ul>
 <li><a href="#inputs">Inputs</a></li>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#runbook">Runbook</a><ul>
-<li><a href="#step-0-price-it-first-inferred-method-verified-use">Step 0 — Price it first (Inferred method, Verified use)</a></li>
-<li><a href="#step-1-item-and-its-first-location-interactive-item-verified">Step 1 — Item and its first location (Interactive Item) (Verified)</a></li>
-<li><a href="#step-2-the-other-locations-transaction-item-verified">Step 2 — The other locations (Transaction Item) (Verified)</a></li>
-<li><a href="#step-3-bom-and-assembly-flags-assembly-verified-here">Step 3 — BOM and assembly flags (Assembly) (Verified here)</a></li>
-<li><a href="#step-4-the-contract-line-transaction-jobcontractpricing-verified">Step 4 — The contract line (Transaction JobContractPricing) (Verified)</a></li>
-<li><a href="#step-5-first-production-order-productionorder-verified">Step 5 — First production order (ProductionOrder) (Verified)</a></li>
+<li><a href="#step-0-price-it-first-inferred-method-run-on-play-26159500-2026-10-10">Step 0 — Price it first (Inferred method; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-1-item-and-its-first-location-inventory-rest-in-the-runbooks-interactive-item-window-verified-on-production-manual-here">Step 1 — Item and its first location (Inventory REST in the runbooks; Interactive Item window: Verified on production, manual here)</a></li>
+<li><a href="#step-2-the-other-locations-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 2 — The other locations (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-3-bom-and-assembly-flags-assembly-verified-here-run-on-play-26159500-2026-10-10">Step 3 — BOM and assembly flags (Assembly) (Verified here; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-4-the-contract-line-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 4 — The contract line (Transaction JobContractPricing) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-5-first-production-order-productionorder-verified-create-run-on-play-26159500-2026-10-10-the-rest-manual">Step 5 — First production order (ProductionOrder) (Verified; create run on play 26.1.5950.0, 2026-10-10; the rest manual)</a></li>
 </ul>
 </li>
+<li><a href="#steps-3-and-4-in-code">Steps 3 and 4, in code</a></li>
 <li><a href="#checks-that-caught-real-mistakes">Checks that caught real mistakes</a></li>
 </ul>
 </div>
@@ -672,44 +674,196 @@
 </details>
 <h1 id="new-assembled-part-item-job-contract-production-order">New Assembled Part: Item → Job Contract → Production Order</h1>
 <p>Set up a brand-new assembled part end to end — the item and its locations, its bill of materials, its line on a customer's job contract, and its first build-to-stock production order — by copying a similar "template" part that already exists.</p>
-<p><strong>API:</strong> Interactive + Transaction · <strong>Services:</strong> <code>Item</code>, <code>Assembly</code>, <code>JobContractPricing</code>, <code>ProductionOrder</code> · <strong>Deep dive:</strong> <a href="../04-Interactive-API.html#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a> · <a href="../03-Transaction-API.html#assembly-service">Assembly Service</a> · <a href="../03-Transaction-API.html#jobcontractpricing-service">JobContractPricing Service</a> · <a href="../12-Production-Labor-API.html#production-order-lifecycle-end-to-end">Production Order Lifecycle</a></p>
-<p>This page is a <strong>checklist</strong>, not a script. Each step names the surface, the fields that matter and the read-back. If the part belongs to a supplier-rebate program, do this page and then the rebate steps in <a href="rebate-assembly-program.html">rebate-assembly-program</a>.</p>
-<p><strong>Status legend:</strong> <strong>Verified</strong> = run end to end with a read-back by the credited contributor on production (two parts, September 2026); <strong>Verified here</strong> = re-tested by the maintainer on 26.1.5950.0; <strong>Inferred</strong> = follows from verified behavior but was not run as its own step.</p>
+<p><strong>API:</strong> Inventory REST + Transaction + Interactive · <strong>Services:</strong> <code>Item</code>, <code>Assembly</code>, <code>JobContractPricing</code>, <code>ProductionOrder</code> · <strong>Deep dive:</strong> <a href="../04-Interactive-API.html#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a> · <a href="../11-Inventory-REST-API.html#minimum-create-payload">Minimum Create Payload</a> · <a href="../03-Transaction-API.html#assembly-service">Assembly Service</a> · <a href="../03-Transaction-API.html#jobcontractpricing-service">JobContractPricing Service</a> · <a href="../12-Production-Labor-API.html#production-order-lifecycle-end-to-end">Production Order Lifecycle</a></p>
+<p>Steps 0–5 are one runnable program, in Python and C#, that runs each step and reads it back before the next: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/new_assembled_part.py"><code>examples/python/recipes/new_assembled_part.py</code></a> · <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/csharp/Recipes/NewAssembledPart.cs"><code>examples/csharp/Recipes/NewAssembledPart.cs</code></a> (menu item 36). Both are dry runs until you pass <code>--execute</code> or type <code>EXECUTE</code>. If the part belongs to a supplier-rebate program, run this page and then <a href="rebate-assembly-program.html">rebate-assembly-program</a>.</p>
+<p><strong>Status legend:</strong> <strong>Run on play 26.1.5950.0, 2026-10-10</strong> = the step ran in both the Python and the C# runbook against a play tenant on that build and date, with a read-back. <strong>Manual</strong> = not run by the runbooks; a person does it, or another page's program does. <strong>Verified</strong> = run end to end with a read-back by the credited contributor on production (two parts, September 2026); <strong>Inferred</strong> = follows from verified behavior but was not run as its own step.</p>
 <h2 id="inputs">Inputs</h2>
 <ul>
 <li>The new part number (here <code>ASSY-002</code>) and a <strong>template part</strong> in the same family (here <code>ASSY-001</code>) with a known-good BOM, contract line and locations.</li>
-<li>The customer's job contract (<code>job_no</code> <code>JOB-001</code>, <code>contract_no</code> <code>CONTRACT-001</code>), and its pricing rule (price from cost and target margin — a business input, not something P21 derives).</li>
+<li>The customer's job contract (<code>job_no</code> <code>JOB-001</code>, <code>contract_no</code> <code>CONTRACT-001</code>), and its pricing rule (price from cost and target margin — a business input, not something P21 derives). The contract's customer must have <strong>Job/Contract Pricing</strong> enabled; on the test tenant <code>customer.job_pricing</code> could not be turned on through either API — the Transaction API refused it (<code>Column is disabled: job_pricing</code>; with <code>IgnoreDisabled: true</code> it reported <code>Succeeded: 1</code> and wrote nothing) and so did the Interactive <code>Customer</code> window.</li>
 <li>The locations the part needs: here sales location <code>10</code>, a parts location <code>20</code> and a make (WIP) location <code>30</code>.</li>
+<li>Any <strong>header fields your production orders require.</strong> On the test tenant two user-defined header columns were required, and the save named them one at a time (<em>"'…' is a required column."</em>). Pass them with <code>--header-field name=value</code>.</li>
 </ul>
+<h2 id="run-it">Run it</h2>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>examples/python/recipes/new_assembled_part.py<span class="w">            </span><span class="c1"># dry run: payloads + plan</span>
+python<span class="w"> </span>examples/python/recipes/new_assembled_part.py<span class="w"> </span>--company<span class="w"> </span>ACME<span class="w"> </span>--item<span class="w"> </span>ASSY-002<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--description<span class="w"> </span><span class="s2">&quot;Assembly, Example, 2-Port&quot;</span><span class="w"> </span>--template<span class="w"> </span>ASSY-001<span class="w"> </span>--supplier<span class="w"> </span>SUP-100<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--division<span class="w"> </span>SUP-100<span class="w"> </span>--product-group<span class="w"> </span>PG-01<span class="w"> </span>--sales-location<span class="w"> </span><span class="m">10</span><span class="w"> </span>--other-locations<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="m">30</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--make-location<span class="w"> </span><span class="m">30</span><span class="w"> </span>--parts-location<span class="w"> </span><span class="m">20</span><span class="w"> </span>--job-no<span class="w"> </span>JOB-001<span class="w"> </span>--contract-no<span class="w"> </span>CONTRACT-001<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--margin<span class="w"> </span><span class="m">0</span>.30<span class="w"> </span>--qty-to-make<span class="w"> </span><span class="m">1</span><span class="w"> </span>--header-field<span class="w"> </span><span class="nv">ufc_prod_order_hdr_ud_example</span><span class="o">=</span>VALUE<span class="w"> </span>--execute
+</code></pre></div>
+
 <h2 id="runbook">Runbook</h2>
-<h3 id="step-0-price-it-first-inferred-method-verified-use">Step 0 — Price it first (Inferred method, Verified use)</h3>
-<p>Work out the component cost from the template's BOM and the new part's differences, then the price from your pricing rule. <strong>Check the method against a neighbor already on the contract</strong>: it must reproduce that line's commission cost to the cent. If it does not, stop — the BOM or the rule is wrong.</p>
-<h3 id="step-1-item-and-its-first-location-interactive-item-verified">Step 1 — Item and its first location (Interactive <code>Item</code>) (Verified)</h3>
-<p>The Transaction API cannot create an item; the Interactive window can (<a href="../04-Interactive-API.html#creating-an-item-in-the-item-window">steps</a>). Pass <code>item_desc</code> explicitly rather than copying the template's — a template's description can carry its own typo. Set all four unit flags on the Units of Measure row, answer <strong>Yes</strong> to the product-group GL prompt, fill the location's supplier row, save. <strong>Only one location per session.</strong> (The <a href="../11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a> is the alternative when you do not need the window's prompts.)</p>
-<h3 id="step-2-the-other-locations-transaction-item-verified">Step 2 — The other locations (Transaction <code>Item</code>) (Verified)</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Surface</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Price it from the template's BOM</td>
+<td>OData</td>
+<td>Run on play 26.1.5950.0, 2026-10-10 (the neighbor check is manual)</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Item and its first location</td>
+<td>Inventory REST create (the Interactive <code>Item</code> window: manual — see below)</td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The other locations</td>
+<td>Transaction <code>Item</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>3</td>
+<td>BOM and assembly flags</td>
+<td>Transaction <code>Assembly</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>4</td>
+<td>The contract line</td>
+<td>Transaction <code>JobContractPricing</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>5</td>
+<td>First production order — create</td>
+<td>Interactive <code>ProductionOrder</code></td>
+<td>Run on play 26.1.5950.0, 2026-10-10</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Print, pick, confirm, complete</td>
+<td>See <a href="production-order-runbook.html">production-order-runbook</a></td>
+<td>Manual</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="step-0-price-it-first-inferred-method-run-on-play-26159500-2026-10-10">Step 0 — Price it first (Inferred method; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>Work out the component cost from the template's BOM and the new part's differences, then the price from your pricing rule. The runbooks read the template's live <code>assembly_line</code> rows, drop charge lines (<code>other_charge_item = 'Y'</code>), stop if a component's unit is not its <code>inv_mast.base_unit</code>, and sum <code>quantity</code> × <code>inv_loc.moving_average_cost</code> at the parts location; price = cost ÷ (1 − margin). <strong>Check the method against a neighbor already on the contract</strong> (manual): it must reproduce that line's commission cost to the cent. If it does not, stop — the BOM or the rule is wrong.</p>
+<h3 id="step-1-item-and-its-first-location-inventory-rest-in-the-runbooks-interactive-item-window-verified-on-production-manual-here">Step 1 — Item and its first location (Inventory REST in the runbooks; Interactive <code>Item</code> window: Verified on production, manual here)</h3>
+<p><strong>Runbooks: the <a href="../11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a></strong> — <code>ItemId</code> (uppercase it yourself), <code>ItemDesc</code> (passed explicitly, 40 characters at most), one location with its product group, one supplier with its division, and the location–supplier row as primary. Read back <code>inv_mast.item_desc</code>. The created location came back <code>stockable = 'N'</code>.</p>
+<p><strong>The Interactive <code>Item</code> window</strong> (<a href="../04-Interactive-API.html#creating-an-item-in-the-item-window">steps</a>) is the path the contributor used on production: pass <code>item_desc</code> explicitly rather than copying the template's, set all four unit flags on the Units of Measure row, answer <strong>Yes</strong> to the product-group GL prompt, fill the location's supplier row, save — <strong>one location per session</strong>. It could not be run on the test tenant: after a new <code>item_id</code>, <strong>every column on the Units of Measure grid (<code>TABPAGE_2.tp_2_dw_2</code>) was disabled</strong> for both API users tried (<code>Column is disabled: unit_id</code>, and the same for each unit flag), so the save failed <em>"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."</em> — the DynaChange screen-version lock described <a href="../04-Interactive-API.html#creating-an-item-in-the-item-window">on that section</a>. Use the window when your role can edit that grid and you need its prompts.</p>
+<h3 id="step-2-the-other-locations-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 2 — The other locations (Transaction <code>Item</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>One POST per location, <code>Status: "New"</code>, <code>IgnoreDisabled: true</code> at the payload top level: <code>TABPAGE_1.tp_1_dw_1</code> (<code>item_id</code>) → <code>TABPAGE_17.invloclist</code> (<code>location_id</code>, <code>company_id</code>, <code>stockable</code>) → <code>TABPAGE_18.inv_loc_detail</code> (groups, tax group, <code>track_bins</code>) → <code>SUPPLIER_X_LOCATION.supplier_x_location</code> keyed on <strong>both</strong> <code>location_id</code> and <code>supplier_id</code> (<a href="../03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">why</a>). Make the make and parts locations stockable.</p>
-<p>Read back <code>inv_loc</code> per location (GL accounts and primary supplier included).</p>
-<h3 id="step-3-bom-and-assembly-flags-assembly-verified-here">Step 3 — BOM and assembly flags (<code>Assembly</code>) (Verified here)</h3>
-<p>A <strong>new</strong> part number is not yet a component of anything, so the Transaction API creates the assembly: header <code>TABPAGE_1.assemblyhdr</code> (<code>inv_mast_item_id</code>) plus one <code>TABPAGE_17.tp_17_dw_17</code> row per component (<code>item_id_service_labor_id</code>, <code>quantity</code>, <code>unit_of_measure</code>). If the item <strong>is</strong> already a component of another assembly, the Transaction create fails and you must use the Interactive window (<a href="../03-Transaction-API.html#part-assembly-creation-workflow">details</a>).</p>
+<p>Read back <code>inv_loc</code> per location (GL accounts and primary supplier included). In the verification runs the new location's supplier row became its primary supplier without a separate flip.</p>
+<h3 id="step-3-bom-and-assembly-flags-assembly-verified-here-run-on-play-26159500-2026-10-10">Step 3 — BOM and assembly flags (<code>Assembly</code>) (Verified here; run on play 26.1.5950.0, 2026-10-10)</h3>
+<p>A <strong>new</strong> part number is not yet a component of anything, so the Transaction API creates the assembly: header <code>TABPAGE_1.assemblyhdr</code> (<code>inv_mast_item_id</code>, and <code>production_order_processing</code> sent explicitly) plus one <code>TABPAGE_17.tp_17_dw_17</code> row per component (<code>item_id_service_labor_id</code>, <code>quantity</code>, <code>unit_of_measure</code>). Set the other header flags with a second keyed <code>Status: "New"</code> POST. If the item <strong>is</strong> already a component of another assembly, the Transaction create fails and you must use the Interactive window (<a href="../03-Transaction-API.html#part-assembly-creation-workflow">details</a>).</p>
 <ul>
 <li><strong>Copy only physical components</strong> from the template. Leave out charge lines (labor, burden, other charge items) if your costing replaces them.</li>
 <li><strong>Component UOM must match the component's base unit</strong> — a mismatch was the most common defect found in copied BOMs.</li>
 <li>Header flags for a build-to-stock part: <code>production_order_processing</code> <code>ON</code>, <code>print_incomplete_assemblies</code> <code>ON</code>, <code>ship_incomplete_assemblies</code> <code>ON</code>, <code>auto_create_prod_order</code> <code>OFF</code> (<a href="../12-Production-Labor-API.html#assembly-behavior-flags">what each does</a>).</li>
 </ul>
-<p>Read back <code>assembly_hdr</code> and <code>assembly_line</code> (<code>quantity</code>, unit, no charge lines).</p>
-<h3 id="step-4-the-contract-line-transaction-jobcontractpricing-verified">Step 4 — The contract line (Transaction <code>JobContractPricing</code>) (Verified)</h3>
+<p>Read back <code>assembly_hdr</code> and <code>assembly_line</code> (<code>quantity</code>, unit, no charge lines). The per-component quantity is <code>assembly_line.quantity</code>; <code>qty_needed</code> stayed <code>0</code> on every row created this way.</p>
+<h3 id="step-4-the-contract-line-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 4 — The contract line (Transaction <code>JobContractPricing</code>) (Verified; run on play 26.1.5950.0, 2026-10-10)</h3>
 <p>One line per POST (inserts collide when batched). Header <code>FORM.d_dw_job_price_hdr</code> with <code>Keys: []</code> and <code>job_no</code> + <code>contract_no</code> in <code>Edits</code>; <code>JOBPRICELINE.jobpriceline</code> keyed on <code>item_id</code> with <strong><code>pricing_method</code> = <code>Price</code> before <code>price</code></strong> (the other order silently saves $0); <code>JOBPRICECOST.jobpricecost</code> with <code>commission_cost_type_cd</code> = <code>Value</code> and the commission cost, plus — for a rebate program — <code>other_cost_type_cd</code> = <code>Value</code> and the rebated cost. <code>IgnoreDisabled: true</code> at the top level for the cost fields. <a href="../03-Transaction-API.html#commission-costs">Manual</a>.</p>
 <p>Read back <code>job_price_line</code>. A line already <strong>bound</strong> to a sales order re-reads its cost from the contract at invoicing, so the other cost can be set later; an order line entered before this contract line existed <strong>never</strong> binds (<a href="../03-Transaction-API.html#binding-happens-once-at-line-entry">details</a>).</p>
-<h3 id="step-5-first-production-order-productionorder-verified">Step 5 — First production order (<code>ProductionOrder</code>) (Verified)</h3>
-<p>Interactive <code>ProductionOrder</code>: header <code>source_loc_id</code> (make) <strong>before</strong> <code>inventory_location_id</code> (parts), in separate calls, then any required header UD fields; the assembly line on <code>TABPAGE_17.tp_17_dw_17</code> (<code>assembly_item_id</code>, <code>qty_to_make</code>); save. Then print the form, run the pick ticket <strong>only when every component is fully allocated</strong>, confirm the pick promptly, and complete when built. Every trap on the way: <a href="../12-Production-Labor-API.html#production-order-gotchas-field-verified">12 § Production Order Gotchas</a> and the <a href="production-order-runbook.html">production-order-runbook</a>.</p>
+<h3 id="step-5-first-production-order-productionorder-verified-create-run-on-play-26159500-2026-10-10-the-rest-manual">Step 5 — First production order (<code>ProductionOrder</code>) (Verified; create run on play 26.1.5950.0, 2026-10-10; the rest manual)</h3>
+<p>Interactive <code>ProductionOrder</code>: header <code>source_loc_id</code> (make) <strong>before</strong> <code>inventory_location_id</code> (parts), in separate calls, then any required header UD fields; the assembly line on <code>TABPAGE_17.tp_17_dw_17</code> (<code>assembly_item_id</code>, <code>qty_to_make</code>); save. The window clears after the save — find the order through <code>prod_order_line</code> by the item's <code>inv_mast_uid</code> (newest <code>prod_order_number</code>), then read <code>prod_order_hdr.source_location_id</code> and <code>inventory_location_id</code> back.</p>
+<p>Then print the form, run the pick ticket <strong>only when every component is fully allocated</strong>, confirm the pick promptly, and complete when built — the runbooks stop at the create; every trap on the way is in <a href="../12-Production-Labor-API.html#production-order-gotchas-field-verified">12 § Production Order Gotchas</a> and the <a href="production-order-runbook.html">production-order-runbook</a>.</p>
+<h2 id="steps-3-and-4-in-code">Steps 3 and 4, in code</h2>
+<p>The two payload builders from the runbooks; the step sequencing and read-backs are in the files.</p>
+<div class="code-tabs">
+  <div class="tab-buttons">
+    <button class="tab-btn active" data-lang="python">Python</button>
+    <button class="tab-btn" data-lang="csharp">C#</button>
+  </div>
+  <div class="tab-panel active" data-lang="python">
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_assembly_payloads</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">components</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Step 3: create with the minimum, then set the header flags in a second keyed POST.</span>
+
+<span class="sd">    production_order_processing is sent explicitly on the create (its default</span>
+<span class="sd">    can be ON); item_desc and prorate_cost_by are disabled on create.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">create</span> <span class="o">=</span> <span class="n">payload</span><span class="p">(</span><span class="s2">&quot;Assembly&quot;</span><span class="p">,</span> <span class="p">[</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;TABPAGE_1.assemblyhdr&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;inv_mast_item_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;inv_mast_item_id&quot;</span><span class="p">,</span> <span class="n">item</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;production_order_processing&quot;</span><span class="p">,</span> <span class="s2">&quot;ON&quot;</span><span class="p">)]]),</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;TABPAGE_17.tp_17_dw_17&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;item_id_service_labor_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;item_id_service_labor_id&quot;</span><span class="p">,</span> <span class="n">c</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">]),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;quantity&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="s1">&#39;quantity&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;unit_of_measure&quot;</span><span class="p">,</span> <span class="n">c</span><span class="p">[</span><span class="s2">&quot;uom&quot;</span><span class="p">])]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">components</span><span class="p">]),</span>
+    <span class="p">])</span>
+    <span class="n">flags</span> <span class="o">=</span> <span class="n">payload</span><span class="p">(</span><span class="s2">&quot;Assembly&quot;</span><span class="p">,</span> <span class="p">[</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;TABPAGE_1.assemblyhdr&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;inv_mast_item_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;inv_mast_item_id&quot;</span><span class="p">,</span> <span class="n">item</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;print_incomplete_assemblies&quot;</span><span class="p">,</span> <span class="s2">&quot;ON&quot;</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;ship_incomplete_assemblies&quot;</span><span class="p">,</span> <span class="s2">&quot;ON&quot;</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;auto_create_prod_order&quot;</span><span class="p">,</span> <span class="s2">&quot;OFF&quot;</span><span class="p">)]]),</span>
+    <span class="p">])</span>
+    <span class="k">return</span> <span class="n">create</span><span class="p">,</span> <span class="n">flags</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_contract_payload</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">commission_cost</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Step 4: ONE line per POST; pricing_method BEFORE price; IgnoreDisabled for the cost.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">payload</span><span class="p">(</span><span class="s2">&quot;JobContractPricing&quot;</span><span class="p">,</span> <span class="p">[</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;FORM.d_dw_job_price_hdr&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[],</span>      <span class="c1"># Keys stay empty</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;company_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">company</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;contract_no&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">contract_no</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;job_no&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">job_no</span><span class="p">)]]),</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;JOBPRICELINE.jobpriceline&quot;</span><span class="p">,</span> <span class="s2">&quot;List&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">item</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;uom&quot;</span><span class="p">,</span> <span class="s2">&quot;EA&quot;</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;pricing_method&quot;</span><span class="p">,</span> <span class="s2">&quot;Price&quot;</span><span class="p">),</span> <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="n">price</span><span class="p">)]]),</span>
+        <span class="n">element</span><span class="p">(</span><span class="s2">&quot;JOBPRICECOST.jobpricecost&quot;</span><span class="p">,</span> <span class="s2">&quot;Form&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+                <span class="p">[[</span><span class="n">edit</span><span class="p">(</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">item</span><span class="p">),</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;commission_cost_type_cd&quot;</span><span class="p">,</span> <span class="s2">&quot;Value&quot;</span><span class="p">),</span>      <span class="c1"># type BEFORE value</span>
+                  <span class="n">edit</span><span class="p">(</span><span class="s2">&quot;commission_cost_value&quot;</span><span class="p">,</span> <span class="n">commission_cost</span><span class="p">)]]),</span>
+    <span class="p">],</span> <span class="n">ignore_disabled</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+</div>
+  <div class="tab-panel" data-lang="csharp">
+<div class="highlight"><pre><span></span><code><span class="c1">/// &lt;summary&gt;Step 3: create with the minimum (production_order_processing sent</span>
+<span class="c1">/// explicitly), then the header flags in a second keyed POST.&lt;/summary&gt;</span>
+<span class="k">private</span><span class="w"> </span><span class="nf">static</span><span class="w"> </span><span class="p">(</span><span class="n">JObject</span><span class="w"> </span><span class="n">Create</span><span class="p">,</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="n">Flags</span><span class="p">)</span><span class="w"> </span><span class="n">BuildAssemblyPayloads</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">Item</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Qty</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">Uom</span><span class="p">)</span><span class="o">&gt;</span><span class="w"> </span><span class="n">components</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="p">(</span><span class="n">Payload</span><span class="p">(</span><span class="s">&quot;Assembly&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;TABPAGE_1.assemblyhdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;inv_mast_item_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;inv_mast_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;production_order_processing&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;TABPAGE_17.tp_17_dw_17&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;item_id_service_labor_id&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">            </span><span class="n">components</span><span class="p">.</span><span class="n">Select</span><span class="p">(</span><span class="n">c</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">            </span><span class="p">{</span>
+<span class="w">                </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;item_id_service_labor_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">Item</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;quantity&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">Qty</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;unit_of_measure&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">Uom</span><span class="p">),</span>
+<span class="w">            </span><span class="p">}).</span><span class="n">ToArray</span><span class="p">())),</span>
+<span class="w">     </span><span class="n">Payload</span><span class="p">(</span><span class="s">&quot;Assembly&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">false</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;TABPAGE_1.assemblyhdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;inv_mast_item_id&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;inv_mast_item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;print_incomplete_assemblies&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="p">),</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;ship_incomplete_assemblies&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ON&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;auto_create_prod_order&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;OFF&quot;</span><span class="p">),</span>
+<span class="w">        </span><span class="p">})));</span>
+
+<span class="c1">/// &lt;summary&gt;Step 4: ONE line per POST; pricing_method BEFORE price; IgnoreDisabled for the cost.&lt;/summary&gt;</span>
+<span class="k">private</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="n">JObject</span><span class="w"> </span><span class="nf">BuildContractPayload</span><span class="p">(</span>
+<span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">company</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">contractNo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">jobNo</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">price</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">commissionCost</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span>
+<span class="w">    </span><span class="n">Payload</span><span class="p">(</span><span class="s">&quot;JobContractPricing&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;FORM.d_dw_job_price_hdr&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Array</span><span class="p">.</span><span class="n">Empty</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="p">(),</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w">   </span><span class="c1">// Keys stay empty</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;company_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">company</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;contract_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">contractNo</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;job_no&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">jobNo</span><span class="p">)</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;JOBPRICELINE.jobpriceline&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;List&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;item_id&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;uom&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;EA&quot;</span><span class="p">),</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;pricing_method&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Price&quot;</span><span class="p">),</span><span class="w"> </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;price&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">price</span><span class="p">),</span><span class="w">   </span><span class="c1">// pricing_method FIRST</span>
+<span class="w">        </span><span class="p">}),</span>
+<span class="w">        </span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;JOBPRICECOST.jobpricecost&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s">&quot;item_id&quot;</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="k">new</span><span class="p">[]</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">),</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;commission_cost_type_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Value&quot;</span><span class="p">),</span><span class="w">                </span><span class="c1">// type BEFORE value</span>
+<span class="w">            </span><span class="n">Edit</span><span class="p">(</span><span class="s">&quot;commission_cost_value&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">commissionCost</span><span class="p">),</span>
+<span class="w">        </span><span class="p">}));</span>
+</code></pre></div>
+</div>
+</div>
 <h2 id="checks-that-caught-real-mistakes">Checks that caught real mistakes</h2>
 <ul>
 <li>A template whose own description disagreed with its own dimensions — always pass the new description explicitly.</li>
-<li>Component UOMs that did not match the component's base unit.</li>
+<li>Component UOMs that did not match the component's base unit (the runbooks stop on one).</li>
 <li>A pick ticket run on a short order — the partial ticket had to be cancelled (<code>row_status_flag</code> = <code>"Canceled"</code>).</li>
 </ul>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — runbook done on production for two parts, September 2026; not re-run here except step 3's Transaction create, which was verified here by the maintainer on 26.1.5950.0 (October 2026).</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — runbook done on production for two parts, September 2026, through the Interactive <code>Item</code> window. Step 3's Transaction create was verified by the maintainer on 26.1.5950.0 (October 2026). Runnable Python and C# runbook (REST item create, steps 0–5 create): run end to end on play 26.1.5950.0, 2026-10-10.</p>
 </blockquote>
     </main>
 
@@ -719,15 +873,17 @@
             <div class="toc">
 <ul>
 <li><a href="#inputs">Inputs</a></li>
+<li><a href="#run-it">Run it</a></li>
 <li><a href="#runbook">Runbook</a><ul>
-<li><a href="#step-0-price-it-first-inferred-method-verified-use">Step 0 — Price it first (Inferred method, Verified use)</a></li>
-<li><a href="#step-1-item-and-its-first-location-interactive-item-verified">Step 1 — Item and its first location (Interactive Item) (Verified)</a></li>
-<li><a href="#step-2-the-other-locations-transaction-item-verified">Step 2 — The other locations (Transaction Item) (Verified)</a></li>
-<li><a href="#step-3-bom-and-assembly-flags-assembly-verified-here">Step 3 — BOM and assembly flags (Assembly) (Verified here)</a></li>
-<li><a href="#step-4-the-contract-line-transaction-jobcontractpricing-verified">Step 4 — The contract line (Transaction JobContractPricing) (Verified)</a></li>
-<li><a href="#step-5-first-production-order-productionorder-verified">Step 5 — First production order (ProductionOrder) (Verified)</a></li>
+<li><a href="#step-0-price-it-first-inferred-method-run-on-play-26159500-2026-10-10">Step 0 — Price it first (Inferred method; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-1-item-and-its-first-location-inventory-rest-in-the-runbooks-interactive-item-window-verified-on-production-manual-here">Step 1 — Item and its first location (Inventory REST in the runbooks; Interactive Item window: Verified on production, manual here)</a></li>
+<li><a href="#step-2-the-other-locations-transaction-item-verified-run-on-play-26159500-2026-10-10">Step 2 — The other locations (Transaction Item) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-3-bom-and-assembly-flags-assembly-verified-here-run-on-play-26159500-2026-10-10">Step 3 — BOM and assembly flags (Assembly) (Verified here; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-4-the-contract-line-transaction-jobcontractpricing-verified-run-on-play-26159500-2026-10-10">Step 4 — The contract line (Transaction JobContractPricing) (Verified; run on play 26.1.5950.0, 2026-10-10)</a></li>
+<li><a href="#step-5-first-production-order-productionorder-verified-create-run-on-play-26159500-2026-10-10-the-rest-manual">Step 5 — First production order (ProductionOrder) (Verified; create run on play 26.1.5950.0, 2026-10-10; the rest manual)</a></li>
 </ul>
 </li>
+<li><a href="#steps-3-and-4-in-code">Steps 3 and 4, in code</a></li>
 <li><a href="#checks-that-caught-real-mistakes">Checks that caught real mistakes</a></li>
 </ul>
 </div>

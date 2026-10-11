@@ -100,7 +100,7 @@ Customers and Vendors require a **composite key** combining `CompanyId` and the 
 
 ```http
 /api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
-/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=99001
+/api/entity/vendors/ACME_99001        # CompanyId=ACME, VendorId=99001
 ```
 
 - `CompanyId` is a **string** (e.g., `"ACME"`), not numeric
@@ -2411,7 +2411,7 @@ Customers and Vendors require a **composite key** combining `CompanyId` and the 
 
 ```http
 /api/entity/customers/ACME_10          # CompanyId=ACME, CustomerId=10
-/api/entity/vendors/ACME_28485        # CompanyId=ACME, VendorId=99001
+/api/entity/vendors/ACME_99001        # CompanyId=ACME, VendorId=99001
 ```
 
 - `CompanyId` is a **string** (e.g., `"ACME"`), not numeric
