@@ -18,6 +18,10 @@ All notable changes to this documentation project are listed below, grouped by d
 
 ---
 
+## 2026-10-11 — v1.29.3
+
+- **docs:** **[The fix for "Required value missing for Jurisdiction ID (for Order Header Tax)"](03-Transaction-API.md#order-service-gotchas)** on a Transaction API order create: send a `TP_TAX.tp_tax` row keyed `jurisdiction_id`; the header `taxable` column is disabled, so tax can't be switched off instead. Verified on play 26.1.5950.0. Closes [#197](https://github.com/mrwuss/p21-api-documentation/issues/197) — *@mrwuss*
+
 ## 2026-10-11 — v1.29.2
 
 Refreshed every service definition in `definitions/` against play 26.1.5950.0 (most were last fetched on an earlier 26.1 build).
