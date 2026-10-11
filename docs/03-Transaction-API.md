@@ -1574,7 +1574,14 @@ static string ReadField(string payload, string field)
 All verified live (credit: [Alex Westemeier](https://github.com/AWestemeier)):
 
 - **Send `quote` = `OFF` as the first header edit.** On play 26.1.5950.0, 2026-10-10, an `Order` create without it saved a **quote** (`oe_hdr.projected_order = 'Y'`) for the password user, and a pick ticket for it was then refused. With `quote = OFF` the same payload saved a real order (`projected_order = 'N'`). This is the Transaction API side of [Set `quote` to `OFF` first](04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode); read `projected_order` back after the save.
-- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A ship-to with no tax jurisdiction fails the same way even with `source_loc_id` set, once the order is real (`quote = OFF`) and a line is taxable; a quote saves without it. A realistic header sets `quote`, `customer_id`, `sales_loc_id`, `source_loc_id`, `order_date`, `requested_date`, `po_no`, `taker`, `ship_to_id`, and `contact_id`.
+- **`source_loc_id` is effectively required.** Omitting it fails with a *"Jurisdiction ID for Order Header Tax"* error — the tax jurisdiction does not auto-populate through the API the way it does in the UI. A ship-to with no tax jurisdiction fails the same way even with `source_loc_id` set, once the order is real (`quote = OFF`) and a line is taxable; a quote saves without it. A realistic header sets `quote`, `customer_id`, `sales_loc_id`, `source_loc_id`, `order_date`, `requested_date`, `po_no`, `taker`, `ship_to_id`, and `contact_id`. **Fix:** send the jurisdiction yourself as a `TP_TAX.tp_tax` List row keyed `jurisdiction_id` (for example the ship-to's state code) in the same transaction — the order then saves with the matching `oe_hdr_tax` row. The header's own `taxable` column is disabled (`Column is disabled: taxable`), so you can't switch tax off instead. *(play, 26.1.5950.0, 2026-10-11 — closes [#197](https://github.com/mrwuss/p21-api-documentation/issues/197))*
+
+  ```json
+  {"Name": "TP_TAX.tp_tax", "Type": "List", "Keys": ["jurisdiction_id"],
+   "Rows": [{"Edits": [{"Name": "jurisdiction_id", "Value": "KS"}], "RelativeDateEdits": []}]}
+  ```
+
+  Add it to the order's `DataElements` after the header element; the value is any valid `tax_jurisdiction.jurisdiction_id`.
 - **`requested_date` must be after `order_date`.** The same date trips a date-cascade prompt, which the stateless API can't answer.
 - **`company_id` is a disabled column** on the Order window — don't send it.
 - **DynaChange prompts are auto-answered with the default** (usually "No"), which silently discards the affected line — e.g. *"order line does not have a PO Cost… proceed? [No]"*. On multi-item orders the remaining lines then cascade-fail. This is a P21 configuration matter (exempt the rule for the API user, or fix the data), not something a payload change can work around — see [DynaChange and Popup Handling](#dynachange-and-popup-handling).
