@@ -1,0 +1,98 @@
+{
+  "Name": "PurchasePricingPageSupplierItem",
+  "UseCodeValues": false,
+  "Transactions": [
+    {
+      "Status": "New",
+      "DataElements": [
+        {
+          "Name": "TABPAGE_1.tp_1_dw_1",
+          "Type": "Form",
+          "Keys": [
+            "company_id",
+            "purchase_pricing_book_id",
+            "supplier_id",
+            "inv_mast_item_id",
+            "effective_date",
+            "expiration_date"
+          ],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "company_id",
+                  "Value": "ACME"
+                },
+                {
+                  "Name": "purchase_pricing_book_id",
+                  "Value": "PB-2026"
+                },
+                {
+                  "Name": "supplier_id",
+                  "Value": "100"
+                },
+                {
+                  "Name": "inv_mast_item_id",
+                  "Value": "ITEM-001"
+                },
+                {
+                  "Name": "effective_date",
+                  "Value": "2030-01-01"
+                },
+                {
+                  "Name": "expiration_date",
+                  "Value": "2030-12-31"
+                },
+                {
+                  "Name": "pricing_description",
+                  "Value": "ITEM-001 supplier price"
+                },
+                {
+                  "Name": "contract_number",
+                  "Value": "CONTRACT-1"
+                },
+                {
+                  "Name": "pricing_method",
+                  "Value": "Price"
+                },
+                {
+                  "Name": "price",
+                  "Value": "4.75"
+                },
+                {
+                  "Name": "totaling_method",
+                  "Value": "Item"
+                },
+                {
+                  "Name": "totaling_basis",
+                  "Value": "Piece"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        },
+        {
+          "Name": "TABPAGE_2.tp_2_dw_2",
+          "Type": "Form",
+          "Keys": [],
+          "Rows": [
+            {
+              "Edits": [
+                {
+                  "Name": "calculation_type",
+                  "Value": "Multiplier"
+                },
+                {
+                  "Name": "value1",
+                  "Value": "1"
+                }
+              ],
+              "RelativeDateEdits": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

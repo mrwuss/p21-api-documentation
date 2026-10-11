@@ -44,6 +44,22 @@ python examples/python/recipes/bin_lock_delete.py lock A01-02-03 --location 10
 python examples/python/recipes/order_append_hold_cancel.py append 1001234 --line ITEM-001:2 --line ITEM-002:3
 ```
 
+### Reference-doc examples
+
+These have no recipe page; each runs the write path of a reference-doc section and links back to it. The Interactive ones share [`common/interactive_session.py`](../common/interactive_session.py); the C# versions share `examples/csharp/Recipes/InteractiveHelpers.cs`.
+
+| Script | C# (Recipes menu) | Doc section |
+|--------|-------------------|-------------|
+| `sales_price_page_create_link.py` | `SalesPricePageCreateLink.cs` (16) | [08 § Creating a Page Through the Transaction API](../../../docs/08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api) |
+| `purchase_pricing_page_edit.py` | `PurchasePricingPageEdit.cs` (17) | [08 § Editing a Supplier/Item Purchase Page](../../../docs/08-SalesPricePage-Codes.md#editing-a-supplieritem-purchase-page-purchasepricingpagesupplieritem) |
+| `inventory_update_list_price_stockable.py` | `InventoryUpdateListPriceStockable.cs` (18) | [11 § Updating Existing Location Fields](../../../docs/11-Inventory-REST-API.md#updating-existing-location-fields) |
+| `order_entry_quote_off.py` | `OrderEntryQuoteOff.cs` (19) | [04 § Set `quote` to `OFF` first](../../../docs/04-Interactive-API.md#set-quote-to-off-first-the-window-can-open-in-quote-mode) |
+| `direct_ship_confirmation.py` | `DirectShipConfirmation.cs` (20) | [04 § The Interactive path works](../../../docs/04-Interactive-API.md#the-interactive-path-works) |
+| `customer_price_library.py` | `CustomerPriceLibrary.cs` (21) | [04 § Customer Window: Adding a Price Library](../../../docs/04-Interactive-API.md#customer-window-adding-a-price-library) |
+| `dynachange_rule_toggle.py` | `DynaChangeRuleToggle.cs` (22) | [04 § Managing Business Rules Through the DynaChange Organizer](../../../docs/04-Interactive-API.md#managing-business-rules-through-the-dynachange-organizer) |
+
+`purchase_pricing_page_edit.py` reads the page before its dry run, so that dry run needs credentials. The Interactive scripts print their planned calls as the dry run.
+
 ## Setup
 
 ```bash

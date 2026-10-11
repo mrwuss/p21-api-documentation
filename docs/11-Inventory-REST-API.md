@@ -676,7 +676,7 @@ The GET -> Modify -> PUT pattern also works for **updating fields on existing `i
 
 **Verified writable fields:** `Sellable`, `Stockable`, `ProductGroupId`, `PurchaseDiscountGroup`, `SalesDiscountGroup`, `ReplenishmentLocation`, `PrimaryBin` (see [Location-Append & Update Gotchas](#location-append-update-gotchas-verified-at-scale) — `PrimaryBin` verified across 276 rows; the bin must already exist at that location)
 
-`Stockable` on an existing `inv_loc` row was verified on production 26.1 (October 2026) by SQL read-back of `inv_loc.stockable` ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)).
+`Stockable` on an existing `inv_loc` row was verified on production 26.1 (October 2026) by SQL read-back of `inv_loc.stockable` ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)). Re-run on play with a runnable example — see [`ListPrice` below](#updating-a-suppliers-cost-supplierslistcost).
 
 > **`ProductGroupId` and the location's GL accounts.** Through the Transaction API `Item` service, a location's product-group change rewrites its GL, revenue, and COS accounts to the target group's defaults — see [03 § Changing a Location's Product Group Re-Syncs Its GL Accounts](03-Transaction-API.md#changing-a-locations-product-group-re-syncs-its-gl-accounts). Whether this PUT does the same was not tested; snapshot the three account columns before a product-group change here too, and compare after.
 
@@ -698,6 +698,8 @@ If something downstream keys off `inv_loc.date_last_modified` (a sync job, a "re
 **`ListPrice` is writable the same way.** Change `Suppliers.list[n].ListPrice` in the same GET → modify → PUT round trip and P21 writes `inventory_supplier.list_price`. The SQL read-back matched the value sent exactly on every item tested.
 
 > **Credit:** *@mrwuss* — verified on production 26.1, October 2026, with SQL read-back ([#175](https://github.com/mrwuss/p21-api-documentation/issues/175)).
+
+**Runnable example (`ListPrice` + `Stockable`):** [`inventory_update_list_price_stockable.py`](../examples/python/recipes/inventory_update_list_price_stockable.py) and `examples/csharp/Recipes/InventoryUpdateListPriceStockable.cs` (Recipes menu 18) GET the item with `extendedproperties=Locations,Suppliers,LocationSuppliers,UnitsOfMeasure`, change one supplier's `ListPrice` and one location's `Stockable` (`Y`/`N`) in that payload, PUT it back, and verify through both the REST GET and OData (`inventory_supplier.list_price`, `inv_loc.stockable`). They then PUT the original values back and verify the restore. The C# version parses the GET with dates left as strings, so the PUT sends them back unchanged. Python and C# examples run on play 26.1.5950.0, 2026-10-10, on a throwaway item: change and restore both read back exactly.
 
 This API is the recommended path for `inv_loc` modifications generally: the Interactive API's Item window keeps its location GL account fields (TABPAGE_24) **read-only**, so they cannot be edited there either.
 

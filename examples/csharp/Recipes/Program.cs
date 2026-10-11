@@ -53,6 +53,13 @@ while (true)
     Console.WriteLine("  23. Contract Ship-To/line_no   - Attach ship-to; update a line by line_no");
     Console.WriteLine("  24. Order Append/Hold/Cancel   - Multi-line append, release Hold, cancel");
     Console.WriteLine("  25. Item/Customer Merge        - m_itemmerge / m_customermerge (one-way)");
+    Console.WriteLine("  26. Sales Price Page + Book    - SalesPricePage create, SalesPriceBook link/unlink");
+    Console.WriteLine("  27. Purchase Pricing Page Edit - PurchasePricingPageSupplierItem in-place edit");
+    Console.WriteLine("  28. Inventory ListPrice/Stock  - Inventory REST PUT of ListPrice + Stockable");
+    Console.WriteLine("  29. Order Entry, quote OFF     - Order window quote check (+ direct-ship wizard)");
+    Console.WriteLine("  30. Direct Ship Confirmation   - DirectShipConfirmation window, receive_all");
+    Console.WriteLine("  31. Customer Price Library     - Customer window TABPAGE_7 add/remove + sequence");
+    Console.WriteLine("  32. DynaChange Rule Toggle     - dc.organizer.rule disable/re-enable");
     Console.WriteLine();
     Console.WriteLine("  Q. Quit");
     Console.WriteLine();
@@ -163,6 +170,34 @@ while (true)
 
             case "25":
                 await ItemCustomerMerge.RunAsync();
+                break;
+
+            case "26":
+                await SalesPricePageCreateLink.RunAsync();
+                break;
+
+            case "27":
+                await PurchasePricingPageEdit.RunAsync();
+                break;
+
+            case "28":
+                await InventoryUpdateListPriceStockable.RunAsync();
+                break;
+
+            case "29":
+                await OrderEntryQuoteOff.RunAsync();
+                break;
+
+            case "30":
+                await DirectShipConfirmation.RunAsync();
+                break;
+
+            case "31":
+                await CustomerPriceLibrary.RunAsync();
+                break;
+
+            case "32":
+                await DynaChangeRuleToggle.RunAsync();
                 break;
 
             case "Q":

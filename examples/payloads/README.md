@@ -30,6 +30,9 @@ Placeholders (`ACME`, `WIDGET-001`, customer `100198`, …) are generic — subs
 | Update a supplier's email / central phone | [json](json/update-supplier-contact.json) | [xml](xml/update-supplier-contact.xml) | `POST /api/v2/transaction` |
 | Create a ship-to (add the wanted rep, retire the inherited one) | [json](json/create-ship-to.json) | — | `POST /api/v2/transaction` |
 | Edit an item's moving average cost at one location (posts to the GL) | [json](json/inventory-cost-edit.json) | — | `POST /api/v2/transaction` |
+| Create an item-level sales price page (FORM + COSTS + VALUES) | [json](json/sales-price-page-create.json) | — | `POST /api/v2/transaction` |
+| Link a sales price page to a price book (add `row_status_flag: "Delete"` to the `LIST.list_detail` row to unlink) | [json](json/sales-price-book-link.json) | — | `POST /api/v2/transaction` |
+| Edit a supplier/item purchase pricing page in place (exact keys, full field set) | [json](json/purchase-pricing-page-edit.json) | — | `POST /api/v2/transaction` |
 | Retrieve a record (get request) | [json](json/transaction-get-contract.json) | [xml](xml/transaction-get-contract.xml) | `POST /api/v2/transaction/get` |
 | Create a CRM task | [json](json/sales-task-create.json) | — | `POST /api/sales/tasks/` |
 | Generate a production pick ticket PDF | [json](json/generate-pick-ticket-pdf.json) | — | `POST /api/v2/process/pdfreport` |
@@ -66,4 +69,4 @@ XML versions of the two **report** payloads are omitted: the `/api/v2/process/pd
 
 ## Where these come from
 
-Each payload is the canonical example from its [recipe page](../../docs/recipes/README.md), which carries the gotchas, the runnable code, and the verify read-back. For **every field** a service accepts, load its schema from [`definitions/`](../../definitions/README.md).
+Each payload is the canonical example from its [recipe page](../../docs/recipes/README.md), which carries the gotchas, the runnable code, and the verify read-back. The three pricing payloads come from [doc 08](../../docs/08-SalesPricePage-Codes.md#creating-a-page-through-the-transaction-api) instead, and their runnable code is listed in the [recipes README](../python/recipes/README.md#reference-doc-examples). For **every field** a service accepts, load its schema from [`definitions/`](../../definitions/README.md).

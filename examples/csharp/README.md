@@ -51,7 +51,7 @@ Production/                 # Production & Labor examples (net8.0)
 Rest/                       # Other REST families (net8.0) -- docs/15-Other-REST-Families.md
                             #   (menu-driven; task create gated behind typing EXECUTE)
 Recipes/                    # End-to-end recipe programs (net8.0), one class per docs/recipes page,
-                            #   plus write-path classes for docs/03 sections (menu 16-21)
+                            #   plus write-path classes for reference-doc sections (menu 16-32)
                             #   (menu-driven; writes gated behind typing EXECUTE)
 ```
 
