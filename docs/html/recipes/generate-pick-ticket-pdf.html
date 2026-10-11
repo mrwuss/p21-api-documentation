@@ -713,7 +713,34 @@
 </blockquote>
 <p><strong><code>m_reprintpicktickets</code></strong> — pick-ticket reprint. DataElement name is <code>TABPAGE_1.tp_1_dw_1</code> (datawindow <code>d_reprint_pick_ticket_criteria</code>); the <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/m_reprintpicktickets.json">definition</a> marks <code>company_id</code>, <code>location_id</code>, and <code>print_qty</code> required, with ranges <code>beg_pick_ticket_no</code>/<code>end_pick_ticket_no</code> (sales-order tickets) and <code>beg_prod_pick_ticket_no</code>/<code>end_prod_pick_ticket_no</code> (production tickets). Its <code>pick_ticket_type</code> takes the display values <code>Sales Order</code>, <code>Production Order</code> or <code>Both</code>, and <code>print_dea_pick_tickets</code> takes <code>Yes</code>, <code>No</code> or <code>Only</code> (from the live definition, 2026-08-11).</p>
 <blockquote>
-<p><strong><code>UseCodeValues</code> for this service is unconfirmed.</strong> It could not be settled on the Play tenant at 26.1.5910.3, where <em>every</em> report returned an empty HTTP 500 — including <code>m_reprintpurchaseorders</code>, which runs at production volume elsewhere and prints normally on the same tenant at 26.1.5950.0. <code>m_reprintpicktickets</code> has not been re-tested on 5950.0. If you hit an error here, try <code>UseCodeValues: true</code> with code values from the definition; and read <a href="../03-Transaction-API.html#an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes</a> first, because a 5xx here is most often a transient report-engine fault that a retry clears, not a payload problem.</p>
+<p><strong><code>UseCodeValues: false</code> with the display values works on 26.1.5950.0.</strong> A scratch test on play 26.1.5950.0, 2026-10-10, reprinted one sales-order pick ticket (<code>beg_pick_ticket_no</code> = <code>end_pick_ticket_no</code>, <code>company_id</code>, <code>location_id</code>, <code>print_qty</code> = <code>1</code>, <code>pick_ticket_type</code> = <code>Sales Order</code>) and got HTTP 200 with one document, <code>StatusCode</code> <code>Success</code>, a one-page PDF of that ticket and order (<code>FileName</code> <code>PT&lt;nnn&gt; PICK_TICKET.pdf</code>, a document counter, not the ticket number). Results by setting:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>UseCodeValues</code></th>
+<th><code>pick_ticket_type</code></th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>false</code></td>
+<td><code>Sales Order</code>, or omitted</td>
+<td>PDF</td>
+</tr>
+<tr>
+<td><code>true</code></td>
+<td><code>S</code>, or omitted</td>
+<td>PDF</td>
+</tr>
+<tr>
+<td><code>true</code></td>
+<td><code>Sales Order</code></td>
+<td>Empty HTTP 500 on three attempts in a row; a label under <code>UseCodeValues: true</code> is a deterministic failure, not a transient one</td>
+</tr>
+</tbody>
+</table></div>
+<p>A <strong>direct-ship</strong> pick ticket (the one <code>DirectShipConfirmation</code> creates) returned HTTP 200 with an empty array <code>[]</code> — no document and no error — on every attempt, while a stock ticket from the same location printed. Check for an empty array as well as for a failed <code>ResponseStatus</code>. The production-ticket case is under <a href="#verify">Verify</a>. Before you treat any other 5xx as a payload problem, read <a href="../03-Transaction-API.html#an-empty-5xx-has-several-causes-and-is-usually-transient">An empty 5xx has several causes</a>; on the Play tenant at 26.1.5910.3 <em>every</em> report returned an empty HTTP 500.</p>
 </blockquote>
 <p>For any <em>other</em> report, swap <code>Name</code> and the criteria <code>Edits</code> (field names from <code>GET /api/v2/definition/{name}</code>); the endpoint, <code>Status</code>/<code>Type: 0</code>, <code>Keys: []</code>, and the <code>DocumentData</code> extraction stay the same.</p>
 <h2 id="complete-example">Complete example</h2>

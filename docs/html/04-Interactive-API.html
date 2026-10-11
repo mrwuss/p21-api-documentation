@@ -3966,7 +3966,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <ul>
 <li><code>quote</code> was <code>Y</code> on every open, for both the password user and a consumer-key user, and <code>N</code> after the change; every order saved as <code>projected_order = 'N'</code>.</li>
 <li>The save raised <code>w_message</code> prompts that the examples answer <strong>Yes</strong> (<code>cb_1</code>): <em>"The order line does not have a PO Cost specified. Proceed?"</em> on a line with no cost, and <em>"profit percentage … is greater than the acceptable limit"</em> on a line whose <code>po_cost</code> left a high margin. The prompt text is not in <code>GET /v2/data</code> for a <code>w_message</code>; it appears in the 400 error of any call the open prompt blocks.</li>
-<li><strong>Direct ship in one save.</strong> With <code>quote = OFF</code>, <code>disposition = D</code> and <code>po_cost</code> set at line entry and <code>c_create_po = ON</code> on the header of the <strong>new</strong> order, the first save opened the wizard directly (<code>quote_item = N</code>), and <code>cb_next</code> / <code>cb_finish</code> built a <code>po_type = 'D'</code> PO linked with <code>connection_type = 'P'</code>. That contradicts step 1 of <a href="#the-flow">The flow</a> below for this build; the two-phase sequence was not re-tested with an outside supplier.</li>
+<li><strong>Direct ship in one save.</strong> With <code>quote = OFF</code>, <code>disposition = D</code> and <code>po_cost</code> set at line entry and <code>c_create_po = ON</code> on the header of the <strong>new</strong> order, the first save opened the wizard directly (<code>quote_item = N</code>), and <code>cb_next</code> / <code>cb_finish</code> built a <code>po_type = 'D'</code> PO linked with <code>connection_type = 'P'</code>. That contradicts step 1 of <a href="#the-flow">The flow</a> below for this build. The two-phase sequence works too: the Python and C# <a href="recipes/purchase-receive-vouch.html">purchase-receive-vouch</a> runbooks save the order first, re-open it, set <code>c_create_po</code> and drive the wizard (B2), and built <code>po_type = 'D'</code> POs for an outside supplier on play 26.1.5950.0, 2026-10-10.</li>
 <li><strong>The wizard did not open for an internal supplier.</strong> When the item's primary supplier at the location was the company's own intercompany supplier, the save succeeded with <strong>no</strong> wizard and <strong>no</strong> PO, whether <code>c_create_po</code> was set on the new order or on the re-opened one. Changing the primary supplier to an outside supplier, with everything else the same, made the wizard open.</li>
 <li><code>c_create_po</code> needs a user with a Buyer ID. The password user without one got <code>Status: 2</code>, <em>"To create a PO, you must have a valid Buyer ID."</em>; the examples take a consumer-key option (<code>P21_CONSUMER_KEY</code> + <code>P21_CONSUMER_USERNAME</code>) to run as a user who has one.</li>
 </ul>
@@ -4006,20 +4006,34 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <p>For a full confirmation this is reasonable: the supplier really did ship on that date. For a <strong>partial</strong> one it is destructive. The open balance keeps a <code>supplier_ship_date</code> describing a shipment that covered only part of the line, and the original promise is not preserved anywhere — P21 has nowhere to record a reforecast for the unshipped quantity. <code>date_due</code> is untouched and remains the usable line-level expectation.</p>
 <p><strong>The behavior is confined to direct ship.</strong> Verified against a 26.1 tenant (August 2026), all history: <code>inventory_receipts_hdr.shipment_date</code> is populated on <strong>100% of <code>po_type = 'D'</code> receipts (233,070) and 0% of every other type (454,809)</strong> — 687,879 receipts, zero exceptions either way. Read-side detail, sample rows and the query to find affected lines: <a href="02-OData-API.html#po_linesupplier_ship_date-is-last-shipment-observed-on-direct-ship-pos-not-a-supplier-promise">OData § <code>po_line.supplier_ship_date</code></a>.</p>
 <p><strong>If you are confirming partials through the API, capture <code>supplier_ship_date</code> before the first confirmation</strong> and keep it in your own store. There is no P21-side way to recover it afterwards.</p>
-<h5 id="the-write-path-is-not-reproduced-here">The write path is not reproduced here</h5>
-<p>The confirmation is documented elsewhere as <em>"one TAPI POST keyed by <code>po_no</code>"</em>, and <strong>we could not reproduce that</strong>. On a 26.1.5940.0 tenant every <code>POST /api/v2/transaction</code> against <code>DirectShipConfirmation</code> returned a clean but empty result — no rejection, no message, nothing done:</p>
+<h5 id="the-transaction-api-path-works-on-26159500">The Transaction API path works on 26.1.5950.0</h5>
+<p>The confirmation is documented elsewhere as <em>"one TAPI POST keyed by <code>po_no</code>"</em>. On play <strong>26.1.5950.0</strong> (2026-10-10) that worked: one POST confirmed a direct ship in full.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DirectShipConfirmation&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;UseCodeValues&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Transactions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;New&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;DataElements&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TABPAGE_1.tp_1_dw_po&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;po_no&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;po_no&quot;</span><span class="p">,</span><span class="w">         </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;500100&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;receive_all&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ON&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;print_invoice&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OFF&quot;</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fax_invoice&quot;</span><span class="p">,</span><span class="w">   </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OFF&quot;</span><span class="p">}</span>
+<span class="w">      </span><span class="p">],</span><span class="w"> </span><span class="nt">&quot;RelativeDateEdits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="p">}]</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Payload file (validator-clean): <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/payloads/json/direct-ship-confirmation.json"><code>direct-ship-confirmation.json</code></a>. This was a scratch test; there is no Python or C# example for this path. The response was <code>Summary</code> <code>Succeeded: 1</code>, with the new receipt number echoed as <code>receipt_number</code> on <code>TABPAGE_1.tp_1_dw_po</code>. <code>shipment_date</code>, <code>period</code> and <code>year_for_period</code> were not sent; they defaulted to today and the current fiscal period. Each run was against a fresh <code>po_type = 'D'</code> PO, built with <a href="#set-quote-to-off-first-the-window-can-open-in-quote-mode"><code>order_entry_quote_off.py</code></a> in direct-ship mode and linked through <code>oe_line_po</code>. The read-back matched the <a href="#the-interactive-path-works">Interactive path</a>: <code>po_line.complete</code> <code>Y</code> with <code>qty_received</code> = <code>qty_ordered</code>, <code>po_line.supplier_ship_date</code> set to the confirmation date, <code>oe_line.qty_invoiced</code> = <code>qty_ordered</code> with <code>complete</code> <code>Y</code>, and one new <code>invoice_hdr</code> row for the order. The two runs sent the checkboxes as <code>Y</code>/<code>N</code> and as <code>ON</code>/<code>OFF</code>; both were accepted with identical results. The definition publishes <code>ValidValues: ["ON", "OFF"]</code> for <code>receive_all</code>, <code>complete</code>, <code>print_invoice</code> and <code>fax_invoice</code>, so send <code>ON</code>/<code>OFF</code>. The token was a password user <strong>without</strong> a Buyer ID.</p>
+<p>On an earlier build, 26.1.5940.0, every <code>POST /api/v2/transaction</code> against <code>DirectShipConfirmation</code> returned a clean but empty result — no rejection, no message, nothing done:</p>
 <div class="highlight"><pre><span></span><code>HTTP 200
 {&quot;Results&quot;: {&quot;Transactions&quot;: []}, &quot;Messages&quot;: [],
  &quot;Summary&quot;: {&quot;Failed&quot;: 0, &quot;Succeeded&quot;: 0, &quot;Other&quot;: 0}}
 </code></pre></div>
 
-<p>Tried across <code>Status</code> variants, <code>receive_all</code> as both <code>Y</code>/<code>N</code> and <code>ON</code>/<code>OFF</code>, with and without <code>period</code> / <code>year_for_period</code>, and with a payload built from the tenant's own <code>/defaults</code> output. Target was an approved <code>po_type='D'</code> PO with one open line, linked to a sales order via <code>oe_line_po</code>.</p>
-<p>Two notes for whoever picks this up:</p>
+<p>That run tried <code>Status</code> variants, <code>receive_all</code> as both <code>Y</code>/<code>N</code> and <code>ON</code>/<code>OFF</code>, with and without <code>period</code> / <code>year_for_period</code>, and a payload built from the tenant's own <code>/defaults</code> output, against an approved <code>po_type='D'</code> PO with one open line. Whether the 5950.0 result reflects the build or a difference in that payload is not established. If you get the empty result, check <code>Summary.Succeeded</code> and read the PO back; do not assume a confirmation happened.</p>
 <ul>
-<li><strong>The checkbox fields take <code>ON</code>/<code>OFF</code>, not <code>Y</code>/<code>N</code>.</strong> <code>receive_all</code>, <code>complete</code>, <code>print_invoice</code> and <code>fax_invoice</code> all publish <code>ValidValues: ["ON", "OFF"]</code> and default to <code>"OFF"</code>. Getting this wrong is easy and was <em>not</em> the cause of the no-op, but fix it anyway.</li>
-<li>The path described elsewhere is <code>receive_all</code> on — a <strong>full</strong> confirmation. Nothing documents driving a <strong>partial</strong> one, which is the case that matters for the date overwrite. <code>TABPAGE_17.tp_17_dw_17</code> exposes <code>unit_quantity</code> and a <code>complete</code> bound to <code>po_line.complete</code>, so a partial looks expressible in principle.</li>
+<li><strong>Never send <code>c_email_invoice</code>.</strong> It is disabled, and a transaction that tripped on it reported <code>Failed</code> <strong>after</strong> writing the receipt, the PO completion and the customer invoice (reported by Alex Westemeier; not re-run here, because the failure leaves those documents behind).</li>
+<li><strong>Only a full confirmation (<code>receive_all</code> on) was run.</strong> Nothing here drives a <strong>partial</strong> one, which is the case that matters for the date overwrite. <code>TABPAGE_17.tp_17_dw_17</code> exposes <code>unit_quantity</code> and a <code>complete</code> bound to <code>po_line.complete</code>, so a partial looks expressible in principle.</li>
 </ul>
-<p>The date-overwrite behavior above rests on the field binding and on the receipt data. A live <strong>full</strong> confirmation through the Interactive window below then wrote the <code>shipment_date</code> into <code>po_line.supplier_ship_date</code>, as predicted; a <strong>partial</strong> confirmation is still not exercised here.</p>
+<p>The date-overwrite behavior above rests on the field binding and on the receipt data. A live <strong>full</strong> confirmation, through the Interactive window below and through the Transaction API above, then wrote the <code>shipment_date</code> into <code>po_line.supplier_ship_date</code>, as predicted; a <strong>partial</strong> confirmation is still not exercised here.</p>
 <h5 id="the-interactive-path-works">The Interactive path works</h5>
 <p>Driving the window instead of posting a transaction confirmed a direct ship on play 26.1 (October 2026):</p>
 <ol>
@@ -4036,7 +4050,7 @@ The API returns Status as an integer. String values (<code>"Success"</code>, <co
 <li>The confirmation ran as a user <strong>without</strong> a Buyer ID; only the PO creation needed one.</li>
 </ul>
 <blockquote>
-<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). The Transaction API path that returned an empty result on 26.1.5940.0 above is the same one <a href="https://github.com/AWestemeier">Alex Westemeier</a> reports working on his play tenant in August 2026 (<code>receive_all = 'Y'</code>, <code>print_invoice = 'N'</code>, <code>fax_invoice = 'N'</code>, and <strong>never</strong> <code>c_email_invoice</code>, which is disabled and fails the transaction <em>after</em> the documents are written). The difference is not explained.</p>
+<p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, October 2026 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). The Transaction API path <a href="#the-transaction-api-path-works-on-26159500">above</a> is the one <a href="https://github.com/AWestemeier">Alex Westemeier</a> reported working on his play tenant in August 2026 (<code>receive_all = 'Y'</code>, <code>print_invoice = 'N'</code>, <code>fax_invoice = 'N'</code>, and <strong>never</strong> <code>c_email_invoice</code>). It returned an empty result on 26.1.5940.0 and confirmed in full on 26.1.5950.0, 2026-10-10 (scratch test, read back as above).</p>
 </blockquote>
 <h3 id="setting-disposition-only-at-line-entry">Setting <code>disposition</code> — only at line entry</h3>
 <p><code>disposition</code> behaves as a <strong>disabled column everywhere except a line being entered</strong>. Verified three ways on 26.1:</p>
@@ -4224,7 +4238,35 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <li>Select the areas tab (<code>PageName: "TABPAGE_17"</code>) and run <strong><code>cb_selectall</code></strong> (<code>POST /v2/tools</code>) — this selects <strong>every</strong> area the note can display in. To pick a single area, select its row in the Available Areas grid (<code>tp_17_dw_dragdrop</code>) first and run <code>cb_select</code> (not separately verified).</li>
 <li>Save (<code>PUT /v2/data</code>, bare window-GUID body) — <code>savesucceeded</code>.</li>
 </ol>
-<p><code>CustomerNotepad</code> / <code>SupplierNotepad</code> / <code>VendorNotepad</code> publish the identical element shape (header form + <code>TABPAGE_17</code> area pair) and the same tools; only the header key field differs (<code>customer_id</code> / <code>supplier_id</code> / <code>vendor_id</code>). They have not been separately exercised here.</p>
+<p><code>CustomerNotepad</code> / <code>SupplierNotepad</code> / <code>VendorNotepad</code> publish the identical element shape (header form + <code>TABPAGE_17</code> area pair) and the same tools; only the header key field differs (<code>customer_id</code> / <code>supplier_id</code> / <code>vendor_id</code>; <code>CustomerNotepad</code> also takes <code>company_id</code>). The save's <code>savesucceeded</code> event carries the new note's ID as <code>__note_id</code>.</p>
+<p>Where the note lands, read back on play 26.1.5950.0:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Table</th>
+<th>Key back to the record</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ItemNotepad</code></td>
+<td><code>note</code> (<code>note_uid</code> = the note ID, <code>note_type_cd</code> = <code>1807</code>)</td>
+<td><code>document_uid</code> = <code>inv_mast_uid</code></td>
+</tr>
+<tr>
+<td><code>CustomerNotepad</code></td>
+<td><code>customer_notepad</code></td>
+<td><code>company_id</code>, <code>customer_id</code></td>
+</tr>
+<tr>
+<td><code>SupplierNotepad</code></td>
+<td><code>supplier_notepad</code></td>
+<td><code>supplier_id</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>The selected areas are rows in <code>note_area</code> (<code>note_id</code>, <code>area</code>, <code>delete_flag</code>) for all three.</p>
 <p>Field-level notes from the item, supplier and customer notepads:</p>
 <ul>
 <li><strong><code>mandatory</code> takes <code>Y</code>/<code>N</code> interactively</strong> but <code>ON</code>/<code>OFF</code> through the Transaction API.</li>
@@ -4234,7 +4276,7 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <li><strong>A note displays only while <code>row_status_flag</code> is Active and <code>expiration_date</code> is today or later.</strong> Match both when you look for "the note P21 shows" — superseded notes are often end-dated rather than deleted.</li>
 </ul>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026; not re-run here.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — add-with-areas plus a Transaction API edit verified on play for all three notepads, September 2026. <strong>Re-run here</strong> on play 26.1.5950.0, 2026-10-10 (scratch test, throwaway item, customer and supplier): for each of <code>ItemNotepad</code>, <code>CustomerNotepad</code> and <code>SupplierNotepad</code>, an Interactive add with <code>cb_selectall</code> saved, and a Transaction API edit keyed on <code>note_id</code> (<code>topic</code>, <code>note</code>, <code>mandatory</code> = <code>ON</code>) returned <code>Succeeded: 1</code> and read back changed (<code>mandatory</code> stored <code>Y</code>), with the <code>note_area</code> rows unchanged. Not re-run: single-area <code>cb_select</code>, <code>notepad_class</code>, the <code>TIMESTAMP</code> tab refusal, and <code>VendorNotepad</code>.</p>
 </blockquote>
 <h2 id="creating-an-item-in-the-item-window">Creating an Item in the Item Window</h2>
 <p>The Transaction API <a href="03-Transaction-API.html#item-service-gotchas">cannot create an item</a> (the Units of Measure tab is disabled until the item exists, and the item cannot save without a unit). The Interactive <code>Item</code> window can, because it sequences the tabs the way the UI does. The usual route is still the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a>; use this one when you need the window's own defaults and prompts.</p>
@@ -4332,9 +4374,17 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <td><code>sequence_number = 1</code>, then <code>price_library_id</code></td>
 <td>2, not 1</td>
 </tr>
+<tr>
+<td><strong>Existing</strong> row selected with <code>PUT /v2/row</code>, <code>sequence_number</code> changed from 3 to 1</td>
+<td><strong>1</strong> — the rows above it moved down one</td>
+</tr>
+<tr>
+<td><strong>Existing</strong> row selected with <code>PUT /v2/row</code>, <code>sequence_number</code> changed from 1 to 3</td>
+<td><strong>3</strong> — the rows below it moved up one</td>
+</tr>
 </tbody>
 </table></div>
-<p>Removing a row (select it with <code>PUT /v2/row</code>, then <code>row_status_flag</code> = <code>Delete</code>, save) <strong>physically deleted</strong> the <code>price_library_x_cust_x_cmpy</code> row and renumbered the remaining rows from 1. Changing an existing row's sequence was not re-tested. The production result above may differ by build or by edit order; if your run gives the order you need, the SQL fix is unnecessary. Read the sequence back either way.</p>
+<p>Removing a row (select it with <code>PUT /v2/row</code>, then <code>row_status_flag</code> = <code>Delete</code>, save) <strong>physically deleted</strong> the <code>price_library_x_cust_x_cmpy</code> row and renumbered the remaining rows from 1. The two existing-row rows of the table are a scratch test on play 26.1.5950.0, 2026-10-10, on a throwaway customer with three libraries: the window renumbered the grid as soon as the change landed, and the save kept that order. Both contradict <em>"Selecting an existing row and changing its sequence is overridden the same way"</em> above for this build. The production result above may differ by build or by edit order; if your run gives the order you need, the SQL fix is unnecessary. Read the sequence back either way.</p>
 <p>A new customer created through the Transaction <code>Customer</code> service came with one library row already on it (a tenant default), so check the grid before you add.</p>
 <p><strong>Runnable example:</strong> <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/customer_price_library.py"><code>customer_price_library.py</code></a> and <code>examples/csharp/Recipes/CustomerPriceLibrary.cs</code> (Recipes menu 31) add a library (<code>price_library_id</code>, then an optional <code>sequence_number</code>) or remove one, then read every row's sequence back over OData. Python and C# examples run on play 26.1.5950.0, 2026-10-10, add and remove, with the read-back results in the table above.</p>
 <h2 id="sales-order-entry-with-assembly-lines">Sales Order Entry with Assembly Lines</h2>
