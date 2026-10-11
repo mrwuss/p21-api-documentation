@@ -172,7 +172,7 @@ def main() -> None:
                 continue
             pdf = base64.b64decode(doc["DocumentData"])
             # FileName's number is a document number, not necessarily the PO number.
-            path = Path(args.output_dir) / doc.get("FileName", f"PO_{args.po_no}.pdf")
+            path = Path(args.output_dir) / Path(doc.get("FileName") or f"PO_{args.po_no}.pdf").name
             path.write_bytes(pdf)
             saved += 1
             print(f"  saved {path} ({path.stat().st_size} bytes, "

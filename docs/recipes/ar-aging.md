@@ -373,7 +373,7 @@ customer                                   past due          1-30         31-60 
 100198 ACME MANUFACTURING                    52,310        52,310             0             0             0       15
 100204 ACME WIDGETS INC                      31,940             0        31,940             0             0       46
 100311 ACME FABRICATION INC                  18,775         2,145        10,320         6,310             0       62
-100477 ACME HYDRAULICS                     7,268         1,120        -1,405           838         6,715      466
+100477 ACME HYDRAULICS                        7,268         1,120        -1,405           838         6,715      466
 ```
 
 ## Gotchas

@@ -360,8 +360,9 @@ static List<string> PopupIds(JsonElement r)
     if (!r.TryGetProperty("Events", out var events)) return ids;
     foreach (var e in events.EnumerateArray())
     {
-        if (e.GetProperty("Name").GetString() != "windowopened") continue;
-        foreach (var kv in e.GetProperty("Data").EnumerateArray())
+        if (!e.TryGetProperty("Name", out var n) || n.GetString() != "windowopened") continue;
+        if (!e.TryGetProperty("Data", out var dataArr) || dataArr.ValueKind != JsonValueKind.Array) continue;
+        foreach (var kv in dataArr.EnumerateArray())
         {
             if (kv.GetProperty("Key").GetString() == "windowid")
             {
@@ -501,10 +502,11 @@ try
     //    the save's events (savesucceeded __order_no), not GET /v2/data.
     foreach (var e in events)
     {
-        var data = e.GetProperty("Data").EnumerateArray().ToDictionary(
-            kv => kv.GetProperty("Key").GetString() ?? "",
-            kv => kv.GetProperty("Value").ToString());
-        var name = e.GetProperty("Name").GetString();
+        if (!e.TryGetProperty("Data", out var dataArr) || dataArr.ValueKind != JsonValueKind.Array) continue;
+        var data = dataArr.EnumerateArray().ToDictionary(
+            kv => kv.TryGetProperty("Key", out var k) ? k.GetString() ?? "" : "",
+            kv => kv.TryGetProperty("Value", out var v) ? v.ToString() : "");
+        var name = e.TryGetProperty("Name", out var n) ? n.GetString() : null;
         if (name == "savesucceeded" && !string.IsNullOrEmpty(data.GetValueOrDefault("__order_no")))
         {
             orderNo = data["__order_no"];

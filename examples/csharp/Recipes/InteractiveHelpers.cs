@@ -175,11 +175,22 @@ internal sealed class WindowSession : IAsyncDisposable
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException($"{what}: HTTP {(int)response.StatusCode} {Trim(text)}");
         var result = string.IsNullOrWhiteSpace(text) ? new JObject() : JObject.Parse(text);
-        if ((int?)result["Status"] == Failure)
+        if (StatusCode(result) == Failure)
             throw new InvalidOperationException(
                 $"{what}: {string.Join(" | ", (result["Messages"] as JArray ?? new JArray()).Select(m => (string?)m["Text"] ?? m.ToString()))}");
         return result;
     }
+
+    /// <summary>Result Status as the enum integer; the server may send the int or its name.</summary>
+    public static int? StatusCode(JObject result) => result["Status"] switch
+    {
+        JValue { Type: JTokenType.Integer } v => (int)v,
+        JValue { Type: JTokenType.String } v => (string?)v switch
+        {
+            "None" => 0, "Success" => Success, "Failure" => Failure, "Blocked" => Blocked, _ => null,
+        },
+        _ => null,
+    };
 
     private static string Trim(string s) => s.Length > 400 ? s[..400] : s;
 }

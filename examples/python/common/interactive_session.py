@@ -24,6 +24,13 @@ from __future__ import annotations
 import httpx
 
 SUCCESS, FAILURE, BLOCKED = 1, 2, 3  # ResultStatus enum (0 = None)
+_STATUS_NAMES = {"None": 0, "Success": SUCCESS, "Failure": FAILURE, "Blocked": BLOCKED}
+
+
+def status_code(result: dict) -> int | None:
+    """Result Status as the enum integer; the server may send the int or its name."""
+    value = result.get("Status")
+    return _STATUS_NAMES.get(value) if isinstance(value, str) else value
 
 
 def popup_ids(result: dict) -> list[str]:
@@ -86,7 +93,7 @@ class InteractiveSession:
         if response.status_code >= 400:
             raise RuntimeError(f"{what}: HTTP {response.status_code} {response.text[:400]}")
         result = response.json() if response.text else {}
-        if isinstance(result, dict) and result.get("Status") == FAILURE:
+        if isinstance(result, dict) and status_code(result) == FAILURE:
             texts = [m.get("Text", m) if isinstance(m, dict) else m
                      for m in result.get("Messages") or []]
             raise RuntimeError(f"{what}: {texts}")

@@ -1725,7 +1725,7 @@ def read_field(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if dw.get("Name") == datawindow and field in columns and rows:
-            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)][columns.index(field)]  # ActiveRow is 1-based
     return None
 
 
@@ -2272,7 +2272,7 @@ def read_field(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if dw.get("Name") == datawindow and field in columns and rows:
-            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)][columns.index(field)]  # ActiveRow is 1-based
     return None
 
 
@@ -4542,7 +4542,7 @@ def read_field_anywhere(
         columns = dw.get("Columns", [])
         rows = dw.get("Data", [])
         if field in columns and rows:
-            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)]  # ActiveRow is 1-based[columns.index(field)]
+            return rows[max((dw.get("ActiveRow") or 1) - 1, 0)][columns.index(field)]  # ActiveRow is 1-based
     return None
 
 

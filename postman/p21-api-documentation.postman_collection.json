@@ -1362,7 +1362,7 @@
 							"query": [
 								{
 									"key": "locationId",
-									"value": "40"
+									"value": "10"
 								},
 								{
 									"key": "reason",
@@ -1484,7 +1484,7 @@
 							"query": [
 								{
 									"key": "location",
-									"value": "40"
+									"value": "10"
 								},
 								{
 									"key": "itemId",
@@ -1554,7 +1554,7 @@
 						"description": "Stages a cycle count -- does NOT change inv_loc.qty_on_hand. ItemId must be repeated on the BIN sub-record, not just the line, or the create fails with an error that does not name the real cause.",
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"LocationId\": 40,\n  \"CountDate\": \"2026-09-12T00:00:00\",\n  \"Lines\": {\n    \"list\": [\n      {\n        \"ItemId\": \"WIDGET-001\",\n        \"UnitQuantity\": 5.0,\n        \"UnitOfMeasure\": \"EA\",\n        \"Bins\": {\n          \"list\": [\n            {\n              \"ItemId\": \"WIDGET-001\",\n              \"BinCd\": \"A01-01-01\",\n              \"UnitQuantity\": 5.0,\n              \"UnitOfMeasure\": \"EA\"\n            }\n          ]\n        }\n      }\n    ]\n  }\n}",
+							"raw": "{\n  \"LocationId\": 10,\n  \"CountDate\": \"2026-09-12T00:00:00\",\n  \"Lines\": {\n    \"list\": [\n      {\n        \"ItemId\": \"WIDGET-001\",\n        \"UnitQuantity\": 5.0,\n        \"UnitOfMeasure\": \"EA\",\n        \"Bins\": {\n          \"list\": [\n            {\n              \"ItemId\": \"WIDGET-001\",\n              \"BinCd\": \"A01-01-01\",\n              \"UnitQuantity\": 5.0,\n              \"UnitOfMeasure\": \"EA\"\n            }\n          ]\n        }\n      }\n    ]\n  }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1710,7 +1710,7 @@
 						"description": "Check opportunity_status/opportunity_stage/opportunity_type/opportunity_step over OData first -- all empty on the verification tenant, which blocks any create regardless of payload (a tenant configuration gap, not an API defect).",
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"OpportunityName\": \"ZZ API DOC TEST - safe to delete\",\n  \"CompanyId\": \"ACME\",\n  \"CustomerId\": 100198,\n  \"LocationId\": 40\n}",
+							"raw": "{\n  \"OpportunityName\": \"ZZ API DOC TEST - safe to delete\",\n  \"CompanyId\": \"ACME\",\n  \"CustomerId\": 100198,\n  \"LocationId\": 10\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1750,7 +1750,7 @@
 						"description": "Fails 'Contract ID is required.' without a real consignment contract number -- add \"ContractId\" once you have one. No consignment_contract-named OData object was found; JobContractPricing may be the source.",
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"CustomerId\": 100198,\n  \"CompanyId\": \"ACME\",\n  \"LocationId\": 40,\n  \"PoNo\": \"ZZ-CUO-TEST\",\n  \"OrderDate\": \"2026-09-12T00:00:00\"\n}",
+							"raw": "{\n  \"CustomerId\": 100198,\n  \"CompanyId\": \"ACME\",\n  \"LocationId\": 10,\n  \"PoNo\": \"ZZ-CUO-TEST\",\n  \"OrderDate\": \"2026-09-12T00:00:00\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"

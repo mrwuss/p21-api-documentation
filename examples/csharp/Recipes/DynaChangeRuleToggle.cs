@@ -62,11 +62,13 @@ Planned calls:
         await s.StartAsync(responseWindows: true);
         var host = await s.OpenWindowAsync(o.HostService);
         string? organizer = null;
+        int index = 0;
+        var restore = false;
         try
         {
             organizer = WindowSession.PopupIds(await s.RunToolAsync(host, "dc.organizer.rule"))[0];
             var rows = await s.RowsAsync(organizer, "list");
-            var index = rows.FindIndex(r => r["rule_name"] == o.RuleName && r["field_name"] == o.FieldName
+            index = rows.FindIndex(r => r["rule_name"] == o.RuleName && r["field_name"] == o.FieldName
                                             && r["window_title"] == o.WindowTitle) + 1;
             if (index == 0)
             {
@@ -75,24 +77,43 @@ Planned calls:
             }
 
             await SetStatusAsync(s, organizer, index, flipped);
+            restore = true;
             var now = (int)(await StatusAsync(http, baseUrl, o))[0]["row_status_flag"]!;
             Console.WriteLine($"Set {flipped}: row_status_flag={now} -> {(Label[now] == flipped ? "OK" : "NOT APPLIED")}");
 
             Console.WriteLine();
             Console.Write($"Type LEAVE to keep it {flipped}, anything else = restore {original}: ");
             if (Console.ReadLine()?.Trim() == "LEAVE")
+            {
+                restore = false;
                 return;
+            }
             await SetStatusAsync(s, organizer, index, original);
+            restore = false;
             now = (int)(await StatusAsync(http, baseUrl, o))[0]["row_status_flag"]!;
             Console.WriteLine($"Restored {original}: row_status_flag={now} -> {(Label[now] == original ? "OK" : "NOT RESTORED")}");
         }
         finally
         {
+            if (restore && organizer is not null && index > 0)
+            {
+                try                                                  // never leave the rule flipped on an error
+                {
+                    await SetStatusAsync(s, organizer, index, original);
+                    Console.WriteLine($"Restored {original} after an error");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"RESTORE FAILED: set the rule back to {original} by hand ({ex.Message})");
+                }
+            }
             if (organizer is not null)
                 await s.RunToolAsync(organizer, "cb_cancel");
             await s.CloseWindowAsync(host);
         }
     }
+
+    private static string Lit(string value) => "'" + value.Replace("'", "''") + "'";   // OData string literal
 
     private static async Task SetStatusAsync(WindowSession s, string organizer, int row, string status)
     {
@@ -103,6 +124,6 @@ Planned calls:
 
     private static Task<Newtonsoft.Json.Linq.JArray> StatusAsync(HttpClient http, string baseUrl, Options o) =>
         InteractiveHelpers.ODataAsync(http, baseUrl, "p21_view_business_rule",
-            $"rule_name eq '{o.RuleName}' and field_name eq '{o.FieldName}' and window_title eq '{o.WindowTitle}'",
+            $"rule_name eq {Lit(o.RuleName)} and field_name eq {Lit(o.FieldName)} and window_title eq {Lit(o.WindowTitle)}",
             view: true, select: "business_rule_uid,row_status_flag,date_last_modified");
 }

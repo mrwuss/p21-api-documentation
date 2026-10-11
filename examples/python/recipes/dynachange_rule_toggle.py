@@ -45,8 +45,10 @@ LABEL = {704: "Active", 705: "Inactive"}
 
 def rule_status(http: httpx.Client, base_url: str, args: argparse.Namespace) -> list[dict]:
     """Read the matching rule(s) from the p21_view_business_rule OData view."""
-    flt = (f"rule_name eq '{args.rule_name}' and field_name eq '{args.field_name}' "
-           f"and window_title eq '{args.window_title}'")
+    def lit(value: str) -> str:
+        return "'" + value.replace("'", "''") + "'"          # OData string literal
+    flt = (f"rule_name eq {lit(args.rule_name)} and field_name eq {lit(args.field_name)} "
+           f"and window_title eq {lit(args.window_title)}")
     r = http.get(f"{base_url}/odataservice/odata/view/p21_view_business_rule",
                  params={"$filter": flt,
                          "$select": "business_rule_uid,row_status_flag,date_last_modified"})
@@ -108,6 +110,8 @@ Re-run with --execute.""")
         s.start(response_windows=True)
         host = s.open_window(args.host_service)
         organizer = None
+        index = None
+        restore = False
         try:
             organizer = popup_ids(s.run_tool(host, "dc.organizer.rule"))[0]
             rows = s.rows(organizer, "list")
@@ -119,16 +123,24 @@ Re-run with --execute.""")
                 raise SystemExit("Rule not in the organizer list (internal rules are not listed)")
 
             set_status(s, organizer, index, flipped)
+            restore = not args.leave
             now = rule_status(http, config.base_url, args)[0]["row_status_flag"]
             print(f"Set {flipped}: row_status_flag={now} -> "
                   f"{'OK' if LABEL[now] == flipped else 'NOT APPLIED'}")
 
             if not args.leave:
                 set_status(s, organizer, index, original)
+                restore = False
                 now = rule_status(http, config.base_url, args)[0]["row_status_flag"]
                 print(f"Restored {original}: row_status_flag={now} -> "
                       f"{'OK' if LABEL[now] == original else 'NOT RESTORED'}")
         finally:
+            if restore and organizer and index:
+                try:                                          # never leave the rule flipped on an error
+                    set_status(s, organizer, index, original)
+                    print(f"Restored {original} after an error")
+                except Exception as exc:  # noqa: BLE001 - report and keep cleaning up
+                    print(f"RESTORE FAILED: set the rule back to {original} by hand ({exc})")
             if organizer:
                 s.run_tool(organizer, "cb_cancel")
             s.close_window(host)

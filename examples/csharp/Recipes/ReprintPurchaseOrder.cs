@@ -97,7 +97,7 @@ public static class ReprintPurchaseOrder
             }
             var pdf = Convert.FromBase64String(data);
             // FileName's number is a document number, not necessarily the PO number.
-            var fileName = doc["FileName"]?.ToString() ?? $"PO_{poNo}.pdf";
+            var fileName = Path.GetFileName(doc["FileName"]?.ToString() ?? $"PO_{poNo}.pdf");
             await File.WriteAllBytesAsync(fileName, pdf);
             saved++;
             var isPdf = pdf.Length > 4 && Encoding.ASCII.GetString(pdf, 0, 4) == "%PDF";
