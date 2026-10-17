@@ -4,6 +4,8 @@ Read the SQL behind any P21 window through the API, the way **Help > SQL Informa
 
 **API:** Interactive (`POST /v2/tools`, tool `m_sqlinformation`) + the web client's `ui/full` surface · **Service:** any window with a service name (`Item` here) · **Deep dive:** [04 § P21 SQL Information](../04-Interactive-API.md#5-p21-sql-information) · [04 § The ui/full Surface](../04-Interactive-API.md#the-uifull-surface-the-web-clients-own-rest-api)
 
+> **Already done for seven windows.** The result of this method for Order, Item, Shipping, Purchase Order, Production Order, Customer and Assembly is published as [Window Field-to-Table Maps](../16-Window-Field-Maps.md) — check there before you read a window yourself.
+
 ## Prerequisites
 
 - P21 credentials — the complete example below authenticates itself; nothing to install but `httpx` (Python) or a bare `net8.0`-or-later console project (C#).

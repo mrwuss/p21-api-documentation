@@ -613,6 +613,7 @@
             <summary>More</summary>
             <ul class="nav-pages">
             <li><a href="../15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            <li><a href="../16-Window-Field-Maps.html">Window Field-to-Table Maps</a></li>
             </ul>
         </details>
         <details class="nav-group" open>
@@ -671,6 +672,9 @@
 <h1 id="read-a-windows-sql-sql-information">Read a Window's SQL (SQL Information)</h1>
 <p>Read the SQL behind any P21 window through the API, the way <strong>Help &gt; SQL Information</strong> shows it in the client: the datawindow's full <code>SELECT</code>, its column → <code>table.column</code> map, and, for one field, the database column, its datatype, and the table a save updates. Use it to find the <code>DatawindowName</code> and <code>FieldName</code> an Interactive or Transaction call needs, or to write an OData or SQL query that matches what a window shows.</p>
 <p><strong>API:</strong> Interactive (<code>POST /v2/tools</code>, tool <code>m_sqlinformation</code>) + the web client's <code>ui/full</code> surface · <strong>Service:</strong> any window with a service name (<code>Item</code> here) · <strong>Deep dive:</strong> <a href="../04-Interactive-API.html#5-p21-sql-information">04 § P21 SQL Information</a> · <a href="../04-Interactive-API.html#the-uifull-surface-the-web-clients-own-rest-api">04 § The ui/full Surface</a></p>
+<blockquote>
+<p><strong>Already done for seven windows.</strong> The result of this method for Order, Item, Shipping, Purchase Order, Production Order, Customer and Assembly is published as <a href="../16-Window-Field-Maps.html">Window Field-to-Table Maps</a> — check there before you read a window yourself.</p>
+</blockquote>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>P21 credentials — the complete example below authenticates itself; nothing to install but <code>httpx</code> (Python) or a bare <code>net8.0</code>-or-later console project (C#).</li>
