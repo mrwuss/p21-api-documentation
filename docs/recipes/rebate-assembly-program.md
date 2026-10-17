@@ -2,7 +2,7 @@
 
 Set up a customer program where assembled parts are sold on a job contract and their components carry a supplier rebate — so that each invoice books cost at the **rebated** value and P21 writes the rebate receivable automatically, instead of the rebate being reconciled by hand.
 
-**API:** Transaction + Interactive · **Services:** `JobContractPricing`, `Vendor`, `Item`, `Assembly`, `Order`, `Shipping` · **Deep dive:** [How Contract Costs Reach the Order and the Invoice](../03-Transaction-API.md#how-contract-costs-reach-the-order-and-the-invoice) · [Vendor Service](../03-Transaction-API.md#vendor-service-creating-a-vendor-and-its-supplier) · [Rebate prerequisites](../03-Transaction-API.md#rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor)
+**API:** Transaction + Interactive · **Services:** `JobContractPricing`, `Vendor`, `Item`, `Assembly`, `Order`, `Shipping` · **Deep dive:** [How Contract Costs Reach the Order and the Invoice](../03-Transaction-API.md#how-contract-costs-reach-the-order-and-the-invoice) · [Vendor Service](../03-Transaction-API.md#vendor-service-creating-a-vendor-and-its-supplier) · [Rebate prerequisites](../03-Transaction-API.md#rebate-prerequisites-other-cost-below-actual-a-rebate-tracking-vendor)
 
 This page is a template you fill in per program. The API-reachable steps, for one assembled part, are one runnable program in Python and C# that runs each step and reads it back before the next: [`examples/python/recipes/rebate_assembly_program.py`](../../examples/python/recipes/rebate_assembly_program.py) · [`examples/csharp/Recipes/RebateAssemblyProgram.cs`](../../examples/csharp/Recipes/RebateAssemblyProgram.cs) (menu item 37). Both are dry runs until you pass `--execute` or type `EXECUTE`. Adding a single new part to a running program: [new-assembled-part](new-assembled-part.md).
 
@@ -79,7 +79,7 @@ Read back `inv_loc.primary_supplier_id` at the ship-from location — the flag w
 
 ### Step 5 — Price and cost the contract lines (Transaction `JobContractPricing`) (Verified; run on play 26.1.5950.0, 2026-10-10)
 
-One line per POST. For each assembly: `pricing_method` = `Price` **before** `price`; `commission_cost_type_cd` = `Value` with the true cost; **`other_cost_type_cd` = `Value` with the rebated component cost**. [Payload](../03-Transaction-API.md#commission-costs).
+One line per POST. For each assembly: `pricing_method` = `Price` **before** `price`; `commission_cost_type_cd` = `Value` with the true cost; **`other_cost_type_cd` = `Value` with the rebated component cost**. [Payload](../03-Transaction-API.md#commission-costs). If the supplier pays a fixed amount per unit instead, set the other cost to `Source` / `Average Cost` / `Difference` with the rebate as a **positive** value; the accrual then stays exactly that amount as moving average moves ([details](../03-Transaction-API.md#a-fixed-per-unit-rebate-source-average-cost-difference)).
 
 Attach every ship-to that orders to the contract ([details](../03-Transaction-API.md#attaching-a-ship-to-to-an-existing-contract)) — pricing follows the ship-to grid, not the contract header. The runbooks send the ship-to as a keyed `CUSTOMER_SHIP_TO.customer_ship_to` row in the same POST and read `job_price_customer_shipto` back; in the verification runs the ship-to was already on the contract, so attaching a *new* one was not exercised.
 
@@ -96,10 +96,10 @@ On a test order shipped and invoiced (the runbooks check the first three automat
 - `invoice_line.unit_price` = the contract price; `commission_cost` = the contract value × its multiplier; `oe_line.job_price_hdr_uid` = the contract.
 - `invoice_line.cogs_amount` = the contract's **other cost** value, not the moving average.
 - A `vendor_rebate` row for the invoice line: vendor = the rebate vendor, base cost = moving average, after-rebate cost = the contract value, due = the difference.
-- GL for the invoice (manual): the Sales Journal books COGS at the full moving average, then a Rebate Journal entry debits the rebate receivable (re-suffixed to the sales location) and credits COGS — net COGS = the contract value.
+- GL for the invoice: the Sales Journal books COGS at the full moving average, then a Rebate Journal entry debits the rebate receivable (re-suffixed to the sales location) and credits COGS — net COGS = the contract value. The full entry, line by line: [The GL flow of a contract rebate](../03-Transaction-API.md#the-gl-flow-of-a-contract-rebate).
 - No charge lines on the exploded order.
 
-If COGS dropped but **no** `vendor_rebate` row appeared, the primary supplier at the ship-from location is not the Track Rebates vendor (step 4). The same mechanics apply to assemblies built on production orders, linked or build-to-stock.
+If COGS dropped but **no** `vendor_rebate` row appeared, the line's supplier is not the Track Rebates vendor: `vendor_rebate.vendor_id` is `oe_line.supplier_id`, stamped at entry from the primary supplier at the ship-from location (step 4). The parent line accrues the same way whether the assembly was built on a production order linked to the sale, built to stock, or sold as a plain stock line; a kit parent on a contract whose own supplier does not track rebates instead lets its components accrue from their own rebate pages, with no parent row (a parent supplier that tracks rebates is untested). Verified on play 26.1.5950.0, 2026-10-17: [Rebates on assembled parents](../03-Transaction-API.md#rebates-on-assembled-parents-production-orders-build-to-stock-and-kits) · [GL flow](../03-Transaction-API.md#the-gl-flow-of-a-contract-rebate).
 
 ## Steps 4 and 5, in code
 
@@ -185,7 +185,7 @@ private static JObject BuildContractPayload(
 
 Margin reports on a program like this go wrong in two ways, even when the setup above is correct:
 
-- **Kit parent `commission_cost` ignores rebate pages.** A kit parent line rolls up its components' pre-rebate `sales_cost` into `commission_cost`, even when rebate price pages lower the components' own cost. On `assembly = 'B'` parents, `other_cost` and COGS get the rebated rollup. On `assembly = 'P'` parents, the invoice posts both `commission_cost` and `other_cost` at the pre-rebate rollup. A report on `commission_cost` shows the program at a loss.
+- **Kit parent `commission_cost` ignores rebate pages.** A kit parent line rolls up its components' pre-rebate `sales_cost` into `commission_cost`, even when rebate price pages lower the components' own cost. On `assembly = 'B'` parents, `other_cost` and COGS get the rebated rollup. On `assembly = 'P'` parents, the invoice posts both `commission_cost` and `other_cost` at the pre-rebate rollup. A report on `commission_cost` shows the program at a loss. A contract line with commission cost type `Value` on the kit parent replaces the rollup: the parent's `commission_cost` is then the contract value ([verified](../03-Transaction-API.md#rebates-on-assembled-parents-production-orders-build-to-stock-and-kits)).
 - **Component lines carry COGS too.** Summing cost over every invoice line counts each kit twice. `invoice_line.invoice_line_uid_parent` ≠ 0 marks a component line; take cost from the parents or from the components, not both.
 
 Detail and an OData query: [02 § Kit and assembly lines](../02-OData-API.md#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too).

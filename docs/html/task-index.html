@@ -1131,6 +1131,21 @@
 <td><a href="03-Transaction-API.html#how-contract-costs-reach-the-order-and-the-invoice">03 § How Contract Costs Reach the Order and the Invoice</a></td>
 </tr>
 <tr>
+<td><strong>Rebates on assembled parents</strong> — production orders (linked or build-to-stock) and kits; which vendor gets the rebate (<code>vendor_rebate.vendor_id</code> = <code>oe_line.supplier_id</code>)</td>
+<td><a href="recipes/rebate-assembly-program.html">rebate-assembly-program</a></td>
+<td><a href="03-Transaction-API.html#rebates-on-assembled-parents-production-orders-build-to-stock-and-kits">03 § Rebates on assembled parents</a></td>
+</tr>
+<tr>
+<td><strong>A fixed per-unit rebate</strong> on a contract line (other cost <code>Source</code> / <code>Average Cost</code> / <code>Difference</code>, positive value)</td>
+<td><a href="recipes/rebate-assembly-program.html">rebate-assembly-program</a></td>
+<td><a href="03-Transaction-API.html#a-fixed-per-unit-rebate-source-average-cost-difference">03 § A fixed per-unit rebate</a></td>
+</tr>
+<tr>
+<td><strong>GL entries of a rebated invoice</strong> (Sales Journal at moving average, Rebate Journal pair)</td>
+<td>—</td>
+<td><a href="03-Transaction-API.html#the-gl-flow-of-a-contract-rebate">03 § The GL flow of a contract rebate</a></td>
+</tr>
+<tr>
 <td><strong>Assembly / BOM</strong> definition — create (Transaction on a plain item, Interactive when the item is already a component) and edit</td>
 <td><a href="recipes/new-assembled-part.html">new-assembled-part</a></td>
 <td><a href="03-Transaction-API.html#part-assembly-creation-workflow">03 § Part + Assembly Creation Workflow</a> · <a href="03-Transaction-API.html#assembly-service">03 § Assembly Service</a> · runnable: <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/examples/python/recipes/assembly_create_edit.py"><code>assembly_create_edit.py</code></a> / <code>AssemblyCreateEdit.cs</code></td>

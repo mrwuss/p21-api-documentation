@@ -3475,15 +3475,203 @@ successfully. Do you want to continue to retrieve? [Response: No]
 <blockquote>
 <p><strong>Credit:</strong> <em>@mrwuss</em> — verified on play 26.1, October 2026 (entry and invoice), with supporting production observations (<a href="https://github.com/mrwuss/p21-api-documentation/issues/169">#169</a>). An earlier round of this test ran in quote mode by accident — see <a href="04-Interactive-API.html#set-quote-to-off-first-the-window-can-open-in-quote-mode">Set <code>quote</code> to <code>OFF</code> first</a>; only the results re-confirmed on real orders are shown here.</p>
 </blockquote>
-<h5 id="rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor">Rebate prerequisites (other cost <code>Value</code> + a rebate-tracking vendor)</h5>
+<h5 id="rebate-prerequisites-other-cost-below-actual-a-rebate-tracking-vendor">Rebate prerequisites (other cost below actual + a rebate-tracking vendor)</h5>
 <p>For a contract-priced line to write a supplier rebate at invoice, both of these must hold:</p>
 <ol>
-<li>The bound contract line carries <strong>other cost type <code>Value</code></strong> (<code>other_cost_type_cd</code> = <code>Value</code>, <code>other_cost_value</code> = the rebated cost) below the actual cost.</li>
-<li>The item's <strong>primary supplier at the line's ship-from location</strong> belongs to a vendor with <strong>Track Rebates</strong> on. <code>oe_line.supplier_id</code> is stamped at entry from the primary supplier at <code>source_loc_id</code>, not the sales location — the sales location's primary supplier is irrelevant.</li>
+<li>The bound contract line carries an <strong>other cost below the line's actual cost</strong>. Two settings do this: other cost type <code>Value</code> (<code>other_cost_type_cd</code> = <code>Value</code>, <code>other_cost_value</code> = the rebated cost), or type <code>Source</code> with source <code>Average Cost</code> and method <code>Difference</code>, which gives a fixed rebate per unit (<a href="#a-fixed-per-unit-rebate-source-average-cost-difference">below</a>).</li>
+<li>The <strong>line's supplier</strong> belongs to a vendor with <strong>Track Rebates</strong> on. <code>vendor_rebate.vendor_id</code> is <code>oe_line.supplier_id</code>, and P21 stamps <code>oe_line.supplier_id</code> at entry from the item's primary supplier at the line's ship-from location (<code>source_loc_id</code>), not the sales location. The sales location's primary supplier is irrelevant. A line-level supplier override was not tested.</li>
 </ol>
-<p>Then at invoice, <code>invoice_line.cogs_amount</code> = the contract value, a <code>vendor_rebate</code> row is written for the difference, and GL posts the sale at MAC plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable. Setting only the other cost lowers COGS but writes no rebate. The same holds for assemblies built on production orders. Creating the vendor: <a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service</a>. The end-to-end setup: <a href="recipes/rebate-assembly-program.html">recipe: rebate-assembly-program</a>.</p>
+<p>Then at invoice, <code>invoice_line.cogs_amount</code> = the contract's other cost, a <code>vendor_rebate</code> row is written for the difference, and GL posts the sale at moving average plus a Rebate Journal entry that moves the difference to the vendor's rebate receivable (<a href="#the-gl-flow-of-a-contract-rebate">GL flow</a>). Setting only the other cost, with a supplier that does not track rebates, lowers COGS but writes no rebate. Creating the vendor: <a href="#vendor-service-creating-a-vendor-and-its-supplier">Vendor Service</a>. The end-to-end setup: <a href="recipes/rebate-assembly-program.html">recipe: rebate-assembly-program</a>.</p>
+<p><code>vendor_rebate</code> amounts are <strong>extended for the line</strong>, not per unit. On a two-unit line, <code>base_cost</code>, <code>after_rebate_cost</code> and <code>rebate_due</code> were each twice the one-unit values, and <code>rebate_due</code> = <code>base_cost</code> − <code>after_rebate_cost</code>.</p>
 <blockquote>
-<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — rebate trigger proven end to end on play, September 2026. <strong>Re-run here</strong> with the Python and C# <a href="recipes/rebate-assembly-program.html">rebate runbook</a> (play 26.1.5950.0, 2026-10-10): with other cost type <code>Value</code> on the contract line and the Track Rebates vendor's supplier primary at the ship-from location, the invoice line's <code>cogs_amount</code> equalled the contract value and a <code>vendor_rebate</code> row was written for that vendor with <code>after_rebate_cost</code> = the contract value. In those runs the ship-from and sales locations were the same location, so the ship-from-not-sales rule rests on the original report, as do the other-cost-only case (no rebate), the Rebate Journal GL entry (read by a person, not the runbooks) and assemblies built on production orders.</p>
+<p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — rebate trigger proven end to end on play, September 2026. <strong>Re-run here</strong> with the Python and C# <a href="recipes/rebate-assembly-program.html">rebate runbook</a> (play 26.1.5950.0, 2026-10-10), and again on 2026-10-17 with the ship-from location different from the sales location (<a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>): across nine invoices for three different suppliers, every <code>vendor_rebate.vendor_id</code> equalled its <code>oe_line.supplier_id</code>. Not re-run: the other-cost-only case with a non-tracking supplier.</p>
+</blockquote>
+<h5 id="rebates-on-assembled-parents-production-orders-build-to-stock-and-kits">Rebates on assembled parents: production orders, build-to-stock and kits</h5>
+<p>The contract line goes on the <strong>parent</strong> item, and the accrual follows the parent line, whether the unit was built for the order, built to stock, or is a kit:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Parent line</th>
+<th>How the unit came to exist</th>
+<th>Parent <code>vendor_rebate</code> at invoice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>assembly = 'P'</code>, production order linked to the sales line (<code>prod_order_line_link</code> row)</td>
+<td>Built for the order</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>assembly = 'P'</code>, sold from stock</td>
+<td>Built to stock (no <code>prod_order_line_link</code> row)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>assembly = 'N'</code> (plain stock line of the assembled item)</td>
+<td>Built to stock</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>assembly = 'B'</code> (kit), parent's supplier <strong>does not</strong> track rebates</td>
+<td>Exploded at order entry</td>
+<td>No — the components accrue from their own rebate pages</td>
+</tr>
+</tbody>
+</table></div>
+<p>On the production-order and stock lines, the rebate row sits on the parent invoice line with the parent's supplier as vendor, and <code>cogs_amount</code> is the contract's other cost. The contract's <code>Value</code> costs also replace the rollup on the parent: <code>commission_cost</code> and <code>other_cost</code> read the contract values, not the <a href="02-OData-API.html#kit-and-assembly-lines-parent-cost-ignores-rebates-and-component-lines-carry-cogs-too">pre-rebate rollup</a> an assembly line carries without a contract cost.</p>
+<p><strong>Kit parent on a contract.</strong> With a contract line on an <code>assembly = 'B'</code> parent whose own supplier does not track rebates:</p>
+<ul>
+<li>The parent's <code>commission_cost</code> is the contract's commission value, <strong>not</strong> the pre-rebate rollup, and its <code>cogs_amount</code> is the contract's other cost.</li>
+<li>Each component that has a rebate price page and a rebate-tracking supplier writes its own <code>vendor_rebate</code> row, and those rows sum to the rollup minus the contract's other cost.</li>
+<li>The parent writes no <code>vendor_rebate</code> row, so the rebate is not counted twice.</li>
+</ul>
+<p>Not tested: a kit whose <strong>parent</strong> primary supplier also tracks rebates (whether parent and components then both accrue). The Transaction <code>Item</code> flip of the parent's primary supplier stopped on <em>Item Issues Detected</em>, and the Interactive <code>Item</code> window's <code>PUT /v2/change</code> of <code>primary_supplier</code> on the location supplier grid did not stage.</p>
+<blockquote>
+<p><strong>Components consumed by a production order do not accrue.</strong> In a read-only review of a production tenant's data (26.1, October 2026), component rebate pages accrued only on kit components. A production order issues its components at moving average, the finished good receives the pre-rebate rollup, and no component reaches an invoice line at the page cost. That is why a production-order or build-to-stock assembly needs its rebate on the <strong>parent's</strong> contract line. <em>(Reported in <a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>; a production observation, not re-run on play.)</em></p>
+<p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>), by reading the invoices back over OData: three build-to-stock production orders with no <code>prod_order_line_link</code> row, whose units were later sold on contract-bound lines (<code>assembly = 'P'</code> and <code>'N'</code>), and one linked production order. Each invoice wrote a parent <code>vendor_rebate</code> row. The kit case was a fresh order and invoice with the parent added to the contract — <em>@mrwuss</em></p>
+</blockquote>
+<h5 id="a-fixed-per-unit-rebate-source-average-cost-difference">A fixed per-unit rebate: Source + Average Cost + Difference</h5>
+<p>When the supplier pays a fixed amount per unit rather than bringing cost down to a fixed price, set the contract line's other cost to <strong><code>Source</code></strong>, source <strong><code>Average Cost</code></strong>, method <strong><code>Difference</code></strong>, with the rebate as the calculation value. The other cost is then the ship-from location's moving average minus the rebate, and the accrual stays exactly the rebate as moving average drifts.</p>
+<p><strong>Send the rebate as a positive number.</strong> <code>Difference</code> <em>subtracts</em> the calculation value: <code>20.00</code> gives moving average − 20.00; <code>-20.00</code> gives moving average <strong>+</strong> 20.00, a cost above actual.</p>
+<blockquote>
+<p>Payload shape only — drop this DataElement into a full program. Full runnable version: <a href="#updating-an-existing-contract">Updating an Existing Contract</a>. <code>item_id</code> is disabled on this element, so send <code>IgnoreDisabled: true</code> and read the line back.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JOBPRICECOST.jobpricecost&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Form&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;Keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;Rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">        </span><span class="nt">&quot;Edits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WIDGET-001&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;other_cost_type_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Source&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;other_cost_source_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Average Cost&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;other_cost_calc_method_cd&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Difference&quot;</span><span class="p">},</span>
+<span class="w">            </span><span class="p">{</span><span class="nt">&quot;Name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;other_cost_calc_value&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;Value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;20.00&quot;</span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>With <code>UseCodeValues: false</code> on the write, <code>job_price_line</code> reads back the system code values:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>other_cost_type_cd</code></td>
+<td><code>220</code> (Source)</td>
+</tr>
+<tr>
+<td><code>other_cost_source_cd</code></td>
+<td><code>203</code> (Average Cost)</td>
+</tr>
+<tr>
+<td><code>other_cost_calc_method_cd</code></td>
+<td><code>228</code> (Difference)</td>
+</tr>
+<tr>
+<td><code>other_cost_calc_value</code></td>
+<td><code>20</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Effect, for one unit at a ship-from moving average of 50.00:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>oe_line.other_cost</code> at entry</td>
+<td>30.00 (50.00 − 20.00)</td>
+</tr>
+<tr>
+<td><code>invoice_line.cogs_amount</code></td>
+<td>30.00</td>
+</tr>
+<tr>
+<td><code>vendor_rebate.base_cost</code> / <code>after_rebate_cost</code> / <code>rebate_due</code></td>
+<td>50.00 / 30.00 / <strong>20.00</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>A bound line re-reads the contract at invoice, as <a href="#binding-happens-once-at-line-entry">above</a>: a line entered while the value was <code>-20.00</code> (entry <code>other_cost</code> 70.00) invoiced at 30.00 once the contract was corrected to <code>20.00</code>. To restore the line to a <code>Value</code> type, send <code>other_cost_type_cd</code> = <code>Value</code> and <code>other_cost_value</code>; P21 resets the source and method codes.</p>
+<blockquote>
+<p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/201">#201</a>): a fresh order and invoice on a contract line set this way. The moving average had risen by nearly half since earlier invoices on the same contract line, and the accrual was still exactly the calculation value. The negative-value case is from the first run the same day (entry <code>other_cost</code> = moving average + the value) — <em>@mrwuss</em></p>
+</blockquote>
+<h5 id="the-gl-flow-of-a-contract-rebate">The GL flow of a contract rebate</h5>
+<p>One invoice line, one unit, sold at 15.00 from ship-from location <code>20</code> on a sale booked at location <code>10</code>; moving average 50.00, contract other cost 30.00, rebate 20.00. The invoice's GL entry (one <code>transaction_number</code>, <code>source</code> = the invoice number) held:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Journal</th>
+<th>Account</th>
+<th>Amount</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SJ</td>
+<td>Accounts receivable (location 10)</td>
+<td>+15.00</td>
+<td>The sale</td>
+</tr>
+<tr>
+<td>SJ</td>
+<td>Sales (location 10)</td>
+<td>−15.00</td>
+<td></td>
+</tr>
+<tr>
+<td>SJ</td>
+<td>COGS (location 10)</td>
+<td><strong>+50.00</strong></td>
+<td>Full moving average</td>
+</tr>
+<tr>
+<td>SJ</td>
+<td>Inventory (location 20)</td>
+<td>−50.00</td>
+<td>Stock relieved at the ship-from location</td>
+</tr>
+<tr>
+<td>SJ</td>
+<td>Inter-location clearing (location 20)</td>
+<td>+50.00</td>
+<td>Only when ship-from ≠ sales location</td>
+</tr>
+<tr>
+<td>SJ</td>
+<td>Inter-location clearing (location 10)</td>
+<td>−50.00</td>
+<td></td>
+</tr>
+<tr>
+<td>RJ</td>
+<td>Rebate receivable (location 10)</td>
+<td><strong>+20.00</strong></td>
+<td>The <code>vendor_rebate.rebate_due</code></td>
+</tr>
+<tr>
+<td>RJ</td>
+<td>COGS (location 10)</td>
+<td><strong>−20.00</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>Net COGS = 30.00 = <code>invoice_line.cogs_amount</code> = <code>vendor_rebate.after_rebate_cost</code>. The Sales Journal books COGS at the full moving average; the Rebate Journal (<code>journal_id</code> <code>RJ</code>) brings it down, and it posts only with a <code>vendor_rebate</code> row. Without a rebate-tracking supplier there is no RJ pair and no receivable. Read the whole entry with <a href="15-Other-REST-Families.html#accountinggl"><code>GET /api/accounting/gl/{transactionNumber}</code></a>, or over OData with <code>gl?$filter=source eq '{invoice_no}'</code>.</p>
+<blockquote>
+<p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17: the GL rows for the fixed-rebate invoice above, read over OData and through <code>accounting/gl</code>, matched line for line, and the RJ pair equalled <code>rebate_due</code> — <em>@mrwuss</em></p>
 </blockquote>
 <h4 id="updating-an-existing-contract">Updating an Existing Contract</h4>
 <p>Use <code>Status = "New"</code> to update existing contracts -- there is no separate "Update" or "Existing" status. The Transaction API distinguishes create from update by whether the FORM key fields land on an existing record:</p>
@@ -6007,7 +6195,7 @@ General Exception: This pick ticket has already been invoiced.
 </tr>
 <tr>
 <td><code>track_rebates</code></td>
-<td><code>ON</code> for a vendor that books supplier rebates — the second half of the <a href="#rebate-prerequisites-other-cost-value-a-rebate-tracking-vendor">rebate prerequisites</a>. The rebate receivable is re-suffixed to the sales location at posting</td>
+<td><code>ON</code> for a vendor that books supplier rebates — the second half of the <a href="#rebate-prerequisites-other-cost-below-actual-a-rebate-tracking-vendor">rebate prerequisites</a>. The rebate receivable is re-suffixed to the sales location at posting</td>
 </tr>
 </tbody>
 </table></div>
