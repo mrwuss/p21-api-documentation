@@ -1783,37 +1783,39 @@
 <h4 id="run-sql-information-through-the-api">Run SQL Information through the API</h4>
 <ol>
 <li>Open the window and select the tab that holds the datawindow (<code>PUT /v2/tab</code>). Some windows refuse the tool until a record is loaded — Order Entry answers <code>A valid customer ID must first be entered.</code> on the Items tab — so retrieve an existing record first. Do not save.</li>
-<li>Run the tool. <code>FieldName</code> is optional; <code>Row</code> is 1-based, and <code>0</code> works for a form:</li>
-</ol>
-<p><code>http
-   POST {ui_server}/api/ui/interactive/v2/tools
-   {"WindowId": "{windowId}", "ToolName": "m_sqlinformation",
-    "DatawindowName": "document_link", "FieldName": null, "Row": 0, "Text": null}</code></p>
-<p>The result is <code>Status</code> 3 with a <code>windowopened</code> event. Its <code>windowid</code> is the dialog (<code>w_sql_info_expanded_response</code>), titled <code>SQL Information for {Tab} Tab on {Window}</code>, with tab pages <code>SQL INFO</code>, <code>LIST</code>, <code>SQL INFORMATION REPORT</code>, <code>SQL</code>, and <code>COMBINED REPORT</code>.
-3. Read the <code>SQL INFO</code> text: <code>GET {ui_server}/ui/full/v1/grid/{popupId}/elements/state?dwName=sqlinfo&amp;activeRows=*</code> (or the Interactive <code>GET /v2/data?id={popupId}</code>, since <code>SQL INFO</code> is the active tab on open). <code>Data["SQL INFO.sqlinfo"][0].text</code> holds the datawindow name, the window class (<code>Window Name:</code>), and the URL handler menu class.
-4. Read the column map: select the page with <code>POST {ui_server}/ui/full/v2/window/page</code> <code>{"WindowId": "{popupId}", "PageName": "SQL INFORMATION REPORT"}</code>, then the same <code>elements/state</code> call with <code>dwName=showreport</code>. Each <code>info</code> row reads <code>Column N: {Label} = {table}.{column}</code>; computed columns come back as <code>{Label} = {expression}</code>.
-5. Read the <code>SELECT</code>: select the <code>SQL</code> page on the web client's surface. The SQL is in the response — there is no follow-up read:</p>
-<p><code>http
-   POST {ui_server}/ui/full/v2/window/page
-   {"WindowId": "{popupId}", "PageName": "SQL"}</code></p>
-<p><code>jsonc
-   {
-     "Result": {"TabDefinition": {
-       "Name": "SQL",
-       "Sections": [],
-       "TextBoxes": [{"Name": "mle_text", "Type": "TextBox",
-                      "Text": "--Document Links Tab on Item Maintenance\r\nSELECT document_link.document_link_uid ..."}]
-     }},
-     "Success": true, "State": "Normal"
-   }</code></p>
-<ol>
+<li>Run the tool with <code>POST {ui_server}/api/ui/interactive/v2/tools</code> (request below). <code>FieldName</code> is optional; <code>Row</code> is 1-based, and <code>0</code> works for a form. The result is <code>Status</code> 3 with a <code>windowopened</code> event. Its <code>windowid</code> is the dialog (<code>w_sql_info_expanded_response</code>), titled <code>SQL Information for {Tab} Tab on {Window}</code>, with tab pages <code>SQL INFO</code>, <code>LIST</code>, <code>SQL INFORMATION REPORT</code>, <code>SQL</code>, and <code>COMBINED REPORT</code>.</li>
+<li>Read the <code>SQL INFO</code> text: <code>GET {ui_server}/ui/full/v1/grid/{popupId}/elements/state?dwName=sqlinfo&amp;activeRows=*</code> (or the Interactive <code>GET /v2/data?id={popupId}</code>, since <code>SQL INFO</code> is the active tab on open). <code>Data["SQL INFO.sqlinfo"][0].text</code> holds the datawindow name, the window class (<code>Window Name:</code>), and the URL handler menu class.</li>
+<li>Read the column map: select the page with <code>POST {ui_server}/ui/full/v2/window/page</code> <code>{"WindowId": "{popupId}", "PageName": "SQL INFORMATION REPORT"}</code>, then the same <code>elements/state</code> call with <code>dwName=showreport</code>. Each <code>info</code> row reads <code>Column N: {Label} = {table}.{column}</code>; computed columns come back as <code>{Label} = {expression}</code>.</li>
+<li>Read the <code>SELECT</code>: select the <code>SQL</code> page on the web client's surface (request and answer below). The SQL is in the answer — there is no follow-up read.</li>
 <li>Close the dialog (<code>DELETE /v2/window?id={popupId}</code>), then the window.</li>
 </ol>
+<p>The tool request (step 2):</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {ui_server}/api/ui/interactive/v2/tools</span>
+<span class="err">{&quot;WindowId&quot;: &quot;{windowId}&quot;, &quot;ToolName&quot;: &quot;m_sqlinformation&quot;,</span>
+<span class="err"> &quot;DatawindowName&quot;: &quot;document_link&quot;, &quot;FieldName&quot;: null, &quot;Row&quot;: 0, &quot;Text&quot;: null}</span>
+</code></pre></div>
+
+<p>The <code>SQL</code> page request and its answer (step 5):</p>
+<div class="highlight"><pre><span></span><code><span class="err">POST {ui_server}/ui/full/v2/window/page</span>
+<span class="err">{&quot;WindowId&quot;: &quot;{popupId}&quot;, &quot;PageName&quot;: &quot;SQL&quot;}</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code>{
+  &quot;Result&quot;: {&quot;TabDefinition&quot;: {
+    &quot;Name&quot;: &quot;SQL&quot;,
+    &quot;Sections&quot;: [],
+    &quot;TextBoxes&quot;: [{&quot;Name&quot;: &quot;mle_text&quot;, &quot;Type&quot;: &quot;TextBox&quot;,
+                   &quot;Text&quot;: &quot;--Document Links Tab on Item Maintenance\r\nSELECT document_link.document_link_uid ...&quot;}]
+  }},
+  &quot;Success&quot;: true, &quot;State&quot;: &quot;Normal&quot;
+}
+</code></pre></div>
+
 <blockquote>
 <p><strong>The <code>SELECT</code> is not a datawindow, so the Interactive API never returns it.</strong> The <code>SQL</code> tab holds a text box (<code>mle_text</code>), and the Interactive window definition lists datawindows only. <code>PUT /v2/tab</code> to <code>SQL</code> succeeds, and <code>GET /v2/data</code> then returns the <code>showreport</code> rows from the previous tab. The web client's <code>POST /ui/full/v2/window/page</code> returns the tab's controls — text box included — and accepts the popup the Interactive API opened, with the same API token.</p>
 <p><strong>Grid rows come back empty on <code>ui/full</code> until you ask for them.</strong> <code>GET /ui/full/v2/data/data?id={popupId}&amp;dw=showreport</code> returns <code>[]</code> with <code>TotalRows: 8</code> in <code>DataInformation</code>. <code>GET /ui/full/v1/grid/{popupId}/elements/state?dwName=showreport&amp;activeRows=*</code> returns the rows, and <code>data/data</code> returns them too from then on.</p>
 </blockquote>
-<p><strong>Example output</strong> (Item window, Document Links tab, trimmed; the text arrives whitespace-collapsed on one line — the line breaks here are added):</p>
+<p><strong>Example output</strong> (Item window, Document Links tab, trimmed). The <code>SELECT</code> text keeps only a few line breaks (<code>\r\n</code> after the comment line and around some clauses); the columns are separated by runs of spaces. The line breaks and indentation here are added for reading:</p>
 <div class="highlight"><pre><span></span><code>SQL INFO:
   No column was selected
   DataWindow Name: document_link

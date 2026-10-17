@@ -13,19 +13,18 @@ Read the SQL behind any P21 window through the API, the way **Help > SQL Informa
 ## Call sequence
 
 1. `POST {ui_server}/api/ui/interactive/v2/window` `{"ServiceName": "Item"}`; `PUT /v2/tab` to the tab that holds the datawindow. Some datawindows need a loaded record first — the example's `load=` option changes the key field without saving.
-2. Run the tool. `FieldName` is optional; `Row` is 1-based on a grid, `0` on a form:
+2. Run the tool with `POST {ui_server}/api/ui/interactive/v2/tools` (body below). `FieldName` is optional; `Row` is 1-based on a grid, `0` on a form. The answer is `Status` 3 with a `windowopened` event; its `windowid` is the SQL Information dialog.
+3. Read the **SQL INFO** text on the web client's surface — `{ui_server}/ui/full`, no `/api/` prefix, the same bearer token: `GET /ui/full/v1/grid/{dialogId}/elements/state?dwName=sqlinfo&activeRows=*`.
+4. Read the **column map**: `POST /ui/full/v2/window/page` `{"WindowId": "{dialogId}", "PageName": "SQL INFORMATION REPORT"}`, then the same `elements/state` call with `dwName=showreport`.
+5. Read the **SELECT**: `POST /ui/full/v2/window/page` `{"WindowId": "{dialogId}", "PageName": "SQL"}`. The SQL is in that answer, at `Result.TabDefinition.TextBoxes[0].Text`.
+6. `DELETE /v2/window` for the dialog and the window, then end the session.
 
-   ```json
-   {"SessionId": "{sessionId}", "WindowId": "{windowId}", "ToolName": "m_sqlinformation",
-    "DatawindowName": "document_link", "FieldName": null, "Row": 0, "Text": null}
-   ```
+The tool request body (step 2):
 
-   The answer is `Status` 3 with a `windowopened` event; its `windowid` is the SQL Information dialog.
-3. Read the dialog on the web client's surface — `{ui_server}/ui/full`, no `/api/` prefix, the same bearer token:
-   - **SQL INFO** text: `GET /ui/full/v1/grid/{dialogId}/elements/state?dwName=sqlinfo&activeRows=*`
-   - **Column map**: `POST /ui/full/v2/window/page` `{"WindowId": "{dialogId}", "PageName": "SQL INFORMATION REPORT"}`, then the same `elements/state` call with `dwName=showreport`
-   - **SELECT**: `POST /ui/full/v2/window/page` `{"WindowId": "{dialogId}", "PageName": "SQL"}` — the SQL is in that answer, at `Result.TabDefinition.TextBoxes[0].Text`
-4. `DELETE /v2/window` for the dialog and the window, then end the session.
+```json
+{"SessionId": "{sessionId}", "WindowId": "{windowId}", "ToolName": "m_sqlinformation",
+ "DatawindowName": "document_link", "FieldName": null, "Row": 0, "Text": null}
+```
 
 ## Complete example
 
@@ -509,7 +508,7 @@ static string ReadField(string payload, string field)
 ```
 <!-- /tabs -->
 
-**Example output** — `Item tp_1_dw_1 tab=TABPAGE_1 field=item_id`, trimmed (the `SELECT` arrives whitespace-collapsed; the example breaks it at the client's column gaps):
+**Example output** — `Item tp_1_dw_1 tab=TABPAGE_1 field=item_id`, trimmed. The `SELECT` text keeps only a few line breaks and separates its columns with runs of spaces; the example breaks every run of three or more spaces onto a new line for reading. That also touches such runs inside string literals, so use the raw `Text` when you need the SQL exactly:
 
 ```text
 SQL Information for General Tab on Item Maintenance

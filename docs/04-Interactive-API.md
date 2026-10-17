@@ -747,43 +747,44 @@ Full runnable version: [Read a window's SQL (SQL Information)](recipes/window-sq
 #### Run SQL Information through the API
 
 1. Open the window and select the tab that holds the datawindow (`PUT /v2/tab`). Some windows refuse the tool until a record is loaded — Order Entry answers `A valid customer ID must first be entered.` on the Items tab — so retrieve an existing record first. Do not save.
-2. Run the tool. `FieldName` is optional; `Row` is 1-based, and `0` works for a form:
-
-   ```http
-   POST {ui_server}/api/ui/interactive/v2/tools
-   {"WindowId": "{windowId}", "ToolName": "m_sqlinformation",
-    "DatawindowName": "document_link", "FieldName": null, "Row": 0, "Text": null}
-   ```
-
-   The result is `Status` 3 with a `windowopened` event. Its `windowid` is the dialog (`w_sql_info_expanded_response`), titled `SQL Information for {Tab} Tab on {Window}`, with tab pages `SQL INFO`, `LIST`, `SQL INFORMATION REPORT`, `SQL`, and `COMBINED REPORT`.
+2. Run the tool with `POST {ui_server}/api/ui/interactive/v2/tools` (request below). `FieldName` is optional; `Row` is 1-based, and `0` works for a form. The result is `Status` 3 with a `windowopened` event. Its `windowid` is the dialog (`w_sql_info_expanded_response`), titled `SQL Information for {Tab} Tab on {Window}`, with tab pages `SQL INFO`, `LIST`, `SQL INFORMATION REPORT`, `SQL`, and `COMBINED REPORT`.
 3. Read the `SQL INFO` text: `GET {ui_server}/ui/full/v1/grid/{popupId}/elements/state?dwName=sqlinfo&activeRows=*` (or the Interactive `GET /v2/data?id={popupId}`, since `SQL INFO` is the active tab on open). `Data["SQL INFO.sqlinfo"][0].text` holds the datawindow name, the window class (`Window Name:`), and the URL handler menu class.
 4. Read the column map: select the page with `POST {ui_server}/ui/full/v2/window/page` `{"WindowId": "{popupId}", "PageName": "SQL INFORMATION REPORT"}`, then the same `elements/state` call with `dwName=showreport`. Each `info` row reads `Column N: {Label} = {table}.{column}`; computed columns come back as `{Label} = {expression}`.
-5. Read the `SELECT`: select the `SQL` page on the web client's surface. The SQL is in the response — there is no follow-up read:
-
-   ```http
-   POST {ui_server}/ui/full/v2/window/page
-   {"WindowId": "{popupId}", "PageName": "SQL"}
-   ```
-
-   ```jsonc
-   {
-     "Result": {"TabDefinition": {
-       "Name": "SQL",
-       "Sections": [],
-       "TextBoxes": [{"Name": "mle_text", "Type": "TextBox",
-                      "Text": "--Document Links Tab on Item Maintenance\r\nSELECT document_link.document_link_uid ..."}]
-     }},
-     "Success": true, "State": "Normal"
-   }
-   ```
-
+5. Read the `SELECT`: select the `SQL` page on the web client's surface (request and answer below). The SQL is in the answer — there is no follow-up read.
 6. Close the dialog (`DELETE /v2/window?id={popupId}`), then the window.
+
+The tool request (step 2):
+
+```http
+POST {ui_server}/api/ui/interactive/v2/tools
+{"WindowId": "{windowId}", "ToolName": "m_sqlinformation",
+ "DatawindowName": "document_link", "FieldName": null, "Row": 0, "Text": null}
+```
+
+The `SQL` page request and its answer (step 5):
+
+```http
+POST {ui_server}/ui/full/v2/window/page
+{"WindowId": "{popupId}", "PageName": "SQL"}
+```
+
+```jsonc
+{
+  "Result": {"TabDefinition": {
+    "Name": "SQL",
+    "Sections": [],
+    "TextBoxes": [{"Name": "mle_text", "Type": "TextBox",
+                   "Text": "--Document Links Tab on Item Maintenance\r\nSELECT document_link.document_link_uid ..."}]
+  }},
+  "Success": true, "State": "Normal"
+}
+```
 
 > **The `SELECT` is not a datawindow, so the Interactive API never returns it.** The `SQL` tab holds a text box (`mle_text`), and the Interactive window definition lists datawindows only. `PUT /v2/tab` to `SQL` succeeds, and `GET /v2/data` then returns the `showreport` rows from the previous tab. The web client's `POST /ui/full/v2/window/page` returns the tab's controls — text box included — and accepts the popup the Interactive API opened, with the same API token.
 >
 > **Grid rows come back empty on `ui/full` until you ask for them.** `GET /ui/full/v2/data/data?id={popupId}&dw=showreport` returns `[]` with `TotalRows: 8` in `DataInformation`. `GET /ui/full/v1/grid/{popupId}/elements/state?dwName=showreport&activeRows=*` returns the rows, and `data/data` returns them too from then on.
 
-**Example output** (Item window, Document Links tab, trimmed; the text arrives whitespace-collapsed on one line — the line breaks here are added):
+**Example output** (Item window, Document Links tab, trimmed). The `SELECT` text keeps only a few line breaks (`\r\n` after the comment line and around some clauses); the columns are separated by runs of spaces. The line breaks and indentation here are added for reading:
 
 ```text
 SQL INFO:
