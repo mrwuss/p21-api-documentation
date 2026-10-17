@@ -63,7 +63,7 @@ For C#: `cd examples/csharp && dotnet build`, then `dotnet run --project <Projec
 > **Start with the [Task Index](docs/INDEX.md)** — a "what do you want to do" → exact-section map. The docs below are the deep manual; the index gets you to the right 50 lines instead of the right 2,000.
 
 - **Getting started:** [Authentication](docs/00-Authentication.md) · [API Selection Guide](docs/01-API-Selection-Guide.md)
-- **API reference:** [OData](docs/02-OData-API.md) · [Transaction](docs/03-Transaction-API.md) · [Interactive](docs/04-Interactive-API.md) · [Entity](docs/05-Entity-API.md) · [Inventory REST](docs/11-Inventory-REST-API.md) · [Production & Labor](docs/12-Production-Labor-API.md) · [UDT Service](docs/13-UDT-Service-API.md) · [Other REST Families](docs/15-Other-REST-Families.md)
+- **API reference:** [OData](docs/02-OData-API.md) · [Transaction](docs/03-Transaction-API.md) · [Interactive](docs/04-Interactive-API.md) · [Entity](docs/05-Entity-API.md) · [Inventory REST](docs/11-Inventory-REST-API.md) · [Production & Labor](docs/12-Production-Labor-API.md) · [UDT Service](docs/13-UDT-Service-API.md) · [Other REST Families](docs/15-Other-REST-Families.md) · [Window field maps](docs/16-Window-Field-Maps.md)
 - **Troubleshooting:** [P21 Breaking Changes](docs/14-Breaking-Changes.md) · [Error Handling](docs/06-Error-Handling.md) · [Session Pool Issues](docs/07-Session-Pool-Troubleshooting.md)
 - **Reference:** [SalesPricePage Codes](docs/08-SalesPricePage-Codes.md) · [Batch Processing Patterns](docs/09-Batch-Processing-Patterns.md) · [Changelog](docs/10-Changelog.md)
 

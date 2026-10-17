@@ -22,6 +22,10 @@ Each `<ServiceName>.json` is the (sanitized) response of `GET {ui_server}/api/v2
 
 `_manifest.json` records the fetch date and any services that failed.
 
+## Field-to-table maps
+
+[`window-maps/`](window-maps/README.md) answers the next question after a definition: which table and column does a field write? Seven windows, every datawindow's `SELECT` and update table, each field resolved to `table.column`. See [Window Field-to-Table Maps](../docs/16-Window-Field-Maps.md).
+
 ## Sanitization (why some ValidValues are empty)
 
 Raw definitions embed **live instance data**, not just schema — `ValidValues` for lookup-backed dropdowns (carriers, payment terms, class codes, custom cost sources) are pulled from the source system's tables. Committed files are sanitized by `scripts/fetch_definitions.py`:

@@ -1,0 +1,1702 @@
+{
+ "service": "Assembly",
+ "title": "Assembly Maintenance",
+ "window_class": "w_assembly_maint_sheet",
+ "menu_class": "m_assemblymaintenance",
+ "definition": {
+  "TABPAGE_1.assemblyhdr": [
+   "inv_mast_item_id",
+   "revision_level",
+   "pricing_option",
+   "default_disposition",
+   "assembly_usage_accumulation",
+   "prorate_cost_by",
+   "allow_disassembly",
+   "cost_of_disassembly",
+   "hose_assembly_flag",
+   "hose_overall_length",
+   "hose_unit_of_measure",
+   "time_to_make",
+   "assembly_class_uid",
+   "production_order_processing",
+   "assembly_for_stock",
+   "allow_oe_add_components",
+   "auto_create_prod_order",
+   "price_return_to_stock_components",
+   "print_return_to_stock_components",
+   "print_compnts_on_pick_ticket",
+   "print_components_on_invoice",
+   "calc_component_service_level",
+   "print_incomplete_assemblies",
+   "ship_incomplete_assemblies",
+   "do_not_bulk_edit_flag",
+   "print_traveler_with_prodorder",
+   "delete_flag",
+   "pack_by",
+   "include_components_on_edi_856",
+   "exclude_prod_order_from_scp_flag",
+   "scheduling_type_cd",
+   "item_desc",
+   "copy_item_id",
+   "cf_dfflag"
+  ],
+  "DOCUMENT_LINK.document_link": [
+   "link_name",
+   "link_path",
+   "row_status_flag",
+   "mandatory_flag",
+   "user_print_flag",
+   "user_fax_flag",
+   "user_email_flag",
+   "outside_use_flag",
+   "send_outside_use_print_flag",
+   "document_link_uid",
+   "send_outside_use_email_flag",
+   "send_outside_use_fax_flag",
+   "source_area_cd",
+   "cf_rowind",
+   "cf_keylist",
+   "display_area",
+   "cf_firstind",
+   "cf_rowno"
+  ],
+  "ROUTING_TABPAGE.process": [
+   "process_code",
+   "process_name",
+   "cf_dfflag"
+  ],
+  "ROUTING_TABPAGE.stage_x_process": [
+   "stage_code",
+   "stage_description",
+   "comment",
+   "wip_item_id",
+   "process_process_name",
+   "viewed_line_note",
+   "backflush_flag",
+   "traveler_required_flag",
+   "process_uid",
+   "stage_uid",
+   "sequence_no",
+   "comment_process",
+   "cost",
+   "cost_type",
+   "stage_qty_uom",
+   "qty_unit_size",
+   "po_required",
+   "estimated_hours",
+   "rowind",
+   "line_number",
+   "cf_sum_estimatedhours",
+   "cf_dfflag"
+  ],
+  "PROCESSDETAIL_TABPAGE.processdetail_tabpage": [
+   "stage_code",
+   "stage_description",
+   "estimated_hours",
+   "cost",
+   "cost_type",
+   "cost_uom",
+   "cost_unit_size",
+   "wip_item_id",
+   "stage_qty_uom",
+   "qty_unit_size",
+   "row_status_flag",
+   "stage_wip_account_number",
+   "allow_partials",
+   "backflush_flag",
+   "traveler_required_flag",
+   "po_required",
+   "vendor_id",
+   "supplier_id",
+   "division_id",
+   "buyer_id",
+   "minimum_po_cost",
+   "stage_po_description",
+   "process_process_code",
+   "process_process_name",
+   "viewed_line_note",
+   "consolidatable_flag",
+   "vendor_name",
+   "division_name",
+   "buyer_name",
+   "supplier_name",
+   "account_desc",
+   "wip_item_desc",
+   "line_number",
+   "cf_dfflag"
+  ],
+  "ROUTENOTESTABPAGE.routenotestabpage": [
+   "note",
+   "note_id",
+   "notepad_class_id",
+   "topic"
+  ],
+  "PROCESSNOTESTABPAGE.processnotestabpage": [
+   "note",
+   "viewed_line_note",
+   "stage_code",
+   "stage_stage_uid",
+   "line_no",
+   "note_id",
+   "topic",
+   "notepad_class_id"
+  ],
+  "TP_ASSEMBLYITEMNOTES.tp_assemblyitemnotes": [
+   "note",
+   "note_uid",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "TIMESTAMP.timestamp": [
+   "date_created",
+   "date_last_modified",
+   "created_by",
+   "last_maintained_by"
+  ],
+  "TIMESTAMP.audit_trail": [
+   "item_id",
+   "column_description",
+   "old_value",
+   "new_value",
+   "date_created",
+   "created_by",
+   "cf_display_key",
+   "cf_sub_line_no",
+   "cf_line_no_visible",
+   "cf_item_id_visible"
+  ],
+  "TABPAGE_17.tp_17_dw_17": [
+   "item_id_service_labor_id",
+   "revision_level",
+   "component_type",
+   "operation_cd",
+   "qty_needed",
+   "component_cut_length",
+   "cut_length_edited_flag",
+   "quantity",
+   "unit_of_measure",
+   "date_offset_days",
+   "backflush_flag",
+   "loose_ship_flag",
+   "previous_operation",
+   "delete_flag",
+   "next_operation",
+   "item_desc",
+   "cf_expandableindicator",
+   "cf_prodorderflag",
+   "cf_yesorno",
+   "cf_dfflag"
+  ],
+  "DOCUMENT_LINK_DETAIL.document_link_detail_detail": [
+   "link_name",
+   "link_path",
+   "row_status_flag",
+   "mandatory_flag",
+   "user_print_flag",
+   "user_fax_flag",
+   "user_email_flag",
+   "outside_use_flag",
+   "send_outside_use_print_flag",
+   "document_link_uid",
+   "send_outside_use_email_flag",
+   "send_outside_use_fax_flag",
+   "source_area_cd",
+   "cf_rowind",
+   "cf_keylist",
+   "display_area",
+   "cf_firstind",
+   "cf_rowno"
+  ],
+  "TP_COMPONENTITEMNOTES.tp_componentitemnotes": [
+   "note",
+   "note_uid",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "TIMESTAMPDETAIL.timestampdetail": [
+   "date_created",
+   "date_last_modified",
+   "created_by",
+   "last_maintained_by"
+  ],
+  "TIMESTAMPDETAIL.timestampdetail_dw_audittrail": [
+   "line_no",
+   "item_id",
+   "column_description",
+   "old_value",
+   "new_value",
+   "date_created",
+   "created_by",
+   "cf_display_key",
+   "cf_sub_line_no",
+   "cf_line_no_visible",
+   "cf_item_id_visible"
+  ]
+ },
+ "tabs": [
+  {
+   "tab": "TABPAGE_1",
+   "text": "Assembly",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "assemblyhdr",
+     "fullname": "TABPAGE_1.assemblyhdr",
+     "update_table": "assembly_hdr",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "assembly_hdr",
+      "inv_mast",
+      "assembly_class"
+     ],
+     "select_sql": "SELECT inv_mast.item_id,\n    assembly_hdr.labor,\n    assembly_hdr.ship_partial_quantity,\n    assembly_hdr.ship_incomplete_assemblies,\n    assembly_hdr.print_compnts_on_pick_ticket,\n    assembly_hdr.print_components_on_invoice,\n    assembly_hdr.default_disposition,\n    assembly_hdr.overall_assembly_length,\n    assembly_hdr.backflush,\n    assembly_hdr.assembly_days,\n    assembly_hdr.disassembly_days,\n    assembly_hdr.labor_cost_multiplier,\n    assembly_hdr.allow_oe_add_components,\n    assembly_hdr.production_order_processing,\n    assembly_hdr.auto_create_prod_order,\n    assembly_hdr.pricing_option,\n    assembly_hdr.delete_flag,\n    inv_mast.item_desc,\n    inv_mast.serialized,\n    inv_mast.track_lots,\n    'N' track_bins,\n    assembly_hdr.class1,\n    assembly_hdr.class2,\n    assembly_hdr.class3,\n    assembly_hdr.class4,\n    assembly_hdr.class5,\n    assembly_hdr.date_created,\n    assembly_hdr.date_last_modified,\n    assembly_hdr.last_maintained_by,\n    assembly_hdr.print_incomplete_assemblies,\n    assembly_hdr.inv_mast_uid,\n    assembly_hdr.assembly_for_stock,\n    assembly_hdr.assembly_usage_accumulation,\n    assembly_hdr.calc_component_service_level,\n    assembly_hdr.allow_disassembly,\n    assembly_hdr.cost_of_disassembly,\n    assembly_hdr.prorate_cost_by,\n    assembly_hdr.print_return_to_stock_components,\n    assembly_hdr.price_return_to_stock_components,\n    '' copy_item_id,\n    '' copy_item_desc,\n    assembly_hdr.hose_assembly_flag,\n    assembly_hdr.hose_overall_length,\n    assembly_hdr.hose_unit_of_measure,\n    ''  revision_level\n    , COALESCE(inv_mast.use_revisions_flag, 'N') use_revisions_flag\n    , 0 item_revision_uid\n    ,assembly_hdr.process_uid\n    , 0 copy_item_revision_uid\n    ,assembly_hdr.print_traveler_with_prodorder\n    ,inv_mast.extended_desc\n    ,assembly_hdr.do_not_bulk_edit_flag\n    ,assembly_hdr.assembly_class_uid\n    ,assembly_hdr.pack_by\n    ,assembly_hdr.minutes_to_make\n    ,dbo.P21_fn_convert_minutes_to_hours_format(assembly_hdr.minutes_to_make) 'time_to_make'\n    ,assembly_hdr.include_components_on_edi_856\n    ,assembly_hdr.exclude_prod_order_from_scp_flag\n    FROM assembly_hdr\n    INNER JOIN inv_mast ON (inv_mast.inv_mast_uid = assembly_hdr.inv_mast_uid)\n    LEFT JOIN assembly_class\n    ON assembly_hdr.assembly_class_uid = assembly_class.assembly_class_uid\n    AND assembly_class.row_status_flag = 704\n\n  WHERE (inv_mast.item_id = :item_id)",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Item ID:",
+       "expr": "inv_mast.item_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Ship Incomplete Assemblies",
+       "expr": "assembly_hdr.ship_incomplete_assemblies",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Print Compnts On Pick Ticket",
+       "expr": "assembly_hdr.print_compnts_on_pick_ticket",
+       "kind": "table.column"
+      },
+      {
+       "n": 6,
+       "label": "Print Components On Invoice",
+       "expr": "assembly_hdr.print_components_on_invoice",
+       "kind": "table.column"
+      },
+      {
+       "n": 7,
+       "label": "Default Disposition:",
+       "expr": "assembly_hdr.default_disposition",
+       "kind": "table.column"
+      },
+      {
+       "n": 13,
+       "label": "Allow Oe Add Components",
+       "expr": "assembly_hdr.allow_oe_add_components",
+       "kind": "table.column"
+      },
+      {
+       "n": 14,
+       "label": "Production Order Processing",
+       "expr": "assembly_hdr.production_order_processing",
+       "kind": "table.column"
+      },
+      {
+       "n": 15,
+       "label": "Auto Create Prod Order",
+       "expr": "assembly_hdr.auto_create_prod_order",
+       "kind": "table.column"
+      },
+      {
+       "n": 16,
+       "label": "Pricing Option:",
+       "expr": "assembly_hdr.pricing_option",
+       "kind": "table.column"
+      },
+      {
+       "n": 17,
+       "label": "Delete Flag",
+       "expr": "assembly_hdr.delete_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 18,
+       "label": "Item Desc",
+       "expr": "inv_mast.item_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 30,
+       "label": "Print Incomplete Assemblies",
+       "expr": "assembly_hdr.print_incomplete_assemblies",
+       "kind": "table.column"
+      },
+      {
+       "n": 32,
+       "label": "Assembly For Stock",
+       "expr": "assembly_hdr.assembly_for_stock",
+       "kind": "table.column"
+      },
+      {
+       "n": 33,
+       "label": "Accumulate Usage:",
+       "expr": "assembly_hdr.assembly_usage_accumulation",
+       "kind": "table.column"
+      },
+      {
+       "n": 34,
+       "label": "Calc Component Service Level",
+       "expr": "assembly_hdr.calc_component_service_level",
+       "kind": "table.column"
+      },
+      {
+       "n": 35,
+       "label": "Allow Disassembly",
+       "expr": "assembly_hdr.allow_disassembly",
+       "kind": "table.column"
+      },
+      {
+       "n": 36,
+       "label": "Disassembly Cost:",
+       "expr": "assembly_hdr.cost_of_disassembly",
+       "kind": "table.column"
+      },
+      {
+       "n": 37,
+       "label": "Prorate Cost By:",
+       "expr": "assembly_hdr.prorate_cost_by",
+       "kind": "table.column"
+      },
+      {
+       "n": 38,
+       "label": "Print Return To Stock Components",
+       "expr": "assembly_hdr.print_return_to_stock_components",
+       "kind": "table.column"
+      },
+      {
+       "n": 39,
+       "label": "Price Return To Stock Components",
+       "expr": "assembly_hdr.price_return_to_stock_components",
+       "kind": "table.column"
+      },
+      {
+       "n": 40,
+       "label": "Copy Item Id",
+       "expr": "cc_copy_item_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 42,
+       "label": "Hose Assembly Flag",
+       "expr": "assembly_hdr.hose_assembly_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 43,
+       "label": "Overall Length:",
+       "expr": "assembly_hdr.hose_overall_length",
+       "kind": "table.column"
+      },
+      {
+       "n": 44,
+       "label": "Unit of Measure:",
+       "expr": "assembly_hdr.hose_unit_of_measure",
+       "kind": "table.column"
+      },
+      {
+       "n": 50,
+       "label": "Print Traveler With Prodorder",
+       "expr": "assembly_hdr.print_traveler_with_prodorder",
+       "kind": "table.column"
+      },
+      {
+       "n": 52,
+       "label": "Do Not Bulk Edit Flag",
+       "expr": "assembly_hdr.do_not_bulk_edit_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 53,
+       "label": "Assembly Class:",
+       "expr": "assembly_hdr.assembly_class_uid",
+       "kind": "table.column"
+      },
+      {
+       "n": 54,
+       "label": "Pack By:",
+       "expr": "assembly_hdr.pack_by",
+       "kind": "table.column"
+      },
+      {
+       "n": 56,
+       "label": "Time To Make:",
+       "expr": "time_to_make",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 57,
+       "label": "Include Components On Edi 856",
+       "expr": "assembly_hdr.include_components_on_edi_856",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "inv_mast_item_id": {
+       "column": "inv_mast.item_id",
+       "expression": null,
+       "basis": "probed"
+      },
+      "revision_level": {
+       "column": "item_revision.revision_level",
+       "expression": null,
+       "basis": "probed"
+      },
+      "pricing_option": {
+       "column": "assembly_hdr.pricing_option",
+       "expression": null,
+       "basis": "probed"
+      },
+      "default_disposition": {
+       "column": "assembly_hdr.default_disposition",
+       "expression": null,
+       "basis": "probed"
+      },
+      "assembly_usage_accumulation": {
+       "column": "assembly_hdr.assembly_usage_accumulation",
+       "expression": null,
+       "basis": "probed"
+      },
+      "prorate_cost_by": {
+       "column": "assembly_hdr.prorate_cost_by",
+       "expression": null,
+       "basis": "probed"
+      },
+      "allow_disassembly": {
+       "column": "assembly_hdr.allow_disassembly",
+       "expression": null,
+       "basis": "probed"
+      },
+      "cost_of_disassembly": {
+       "column": "assembly_hdr.cost_of_disassembly",
+       "expression": null,
+       "basis": "probed"
+      },
+      "hose_assembly_flag": {
+       "column": "assembly_hdr.hose_assembly_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "hose_overall_length": {
+       "column": "assembly_hdr.hose_overall_length",
+       "expression": null,
+       "basis": "probed"
+      },
+      "hose_unit_of_measure": {
+       "column": "assembly_hdr.hose_unit_of_measure",
+       "expression": null,
+       "basis": "probed"
+      },
+      "time_to_make": {
+       "column": null,
+       "expression": "dbo.P21_fn_convert_minutes_to_hours_format(assembly_hdr.minutes_to_make)",
+       "basis": "probed"
+      },
+      "assembly_class_uid": {
+       "column": "assembly_hdr.assembly_class_uid",
+       "expression": null,
+       "basis": "probed"
+      },
+      "production_order_processing": {
+       "column": "assembly_hdr.production_order_processing",
+       "expression": null,
+       "basis": "probed"
+      },
+      "assembly_for_stock": {
+       "column": "assembly_hdr.assembly_for_stock",
+       "expression": null,
+       "basis": "probed"
+      },
+      "allow_oe_add_components": {
+       "column": "assembly_hdr.allow_oe_add_components",
+       "expression": null,
+       "basis": "probed"
+      },
+      "auto_create_prod_order": {
+       "column": "assembly_hdr.auto_create_prod_order",
+       "expression": null,
+       "basis": "probed"
+      },
+      "price_return_to_stock_components": {
+       "column": "assembly_hdr.price_return_to_stock_components",
+       "expression": null,
+       "basis": "probed"
+      },
+      "print_return_to_stock_components": {
+       "column": "assembly_hdr.print_return_to_stock_components",
+       "expression": null,
+       "basis": "probed"
+      },
+      "print_compnts_on_pick_ticket": {
+       "column": "assembly_hdr.print_compnts_on_pick_ticket",
+       "expression": null,
+       "basis": "probed"
+      },
+      "print_components_on_invoice": {
+       "column": "assembly_hdr.print_components_on_invoice",
+       "expression": null,
+       "basis": "probed"
+      },
+      "calc_component_service_level": {
+       "column": "assembly_hdr.calc_component_service_level",
+       "expression": null,
+       "basis": "probed"
+      },
+      "print_incomplete_assemblies": {
+       "column": "assembly_hdr.print_incomplete_assemblies",
+       "expression": null,
+       "basis": "probed"
+      },
+      "ship_incomplete_assemblies": {
+       "column": "assembly_hdr.ship_incomplete_assemblies",
+       "expression": null,
+       "basis": "probed"
+      },
+      "do_not_bulk_edit_flag": {
+       "column": "assembly_hdr.do_not_bulk_edit_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "print_traveler_with_prodorder": {
+       "column": "assembly_hdr.print_traveler_with_prodorder",
+       "expression": null,
+       "basis": "probed"
+      },
+      "delete_flag": {
+       "column": "assembly_hdr.delete_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "pack_by": {
+       "column": "assembly_hdr.pack_by",
+       "expression": null,
+       "basis": "probed"
+      },
+      "include_components_on_edi_856": {
+       "column": "assembly_hdr.include_components_on_edi_856",
+       "expression": null,
+       "basis": "probed"
+      },
+      "exclude_prod_order_from_scp_flag": {
+       "column": "assembly_hdr.exclude_prod_order_from_scp_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "scheduling_type_cd": {
+       "column": "assembly_hdr.scheduling_type_cd",
+       "expression": null,
+       "basis": "probed"
+      },
+      "item_desc": {
+       "column": "inv_mast.item_desc",
+       "expression": null,
+       "basis": "probed"
+      },
+      "copy_item_id": {
+       "column": null,
+       "expression": "cc_copy_item_id",
+       "basis": "probed"
+      },
+      "cf_dfflag": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_2",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_3",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_4",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_5",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_6",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_7",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_8",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "DOCUMENT_LINK",
+   "text": "Document Links",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "document_link",
+     "fullname": "DOCUMENT_LINK.document_link",
+     "update_table": "document_link",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "document_link",
+      "document_link_area",
+      "inv_mast",
+      "document_link_entity_req"
+     ],
+     "select_sql": "SELECT document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,0 add_source_row_id\n    ,0 row_edited\n    ,0 C_SupplierID\n    ,Cast ('' AS VARCHAR(40)) C_ItemID\n    ,Cast ('' AS VARCHAR(8)) C_OrderNumber\n    ,0 C_OrderLineNumber\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,'N' user_print_flag\n    ,'N' user_fax_flag\n    ,'N' user_email_flag\n    ,'N' ship_to_print_flag\n    ,'N' ship_to_fax_flag\n    ,'N' ship_to_email_flag\n    ,0 number_of_copies\n    ,'N' require_lot_documentation_flag\n    ,document_link_area.display_area_cd\n    ,COALESCE (document_link_entity_req.send_outside_use_docs_flag, 'N') send_outside_use_docs_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_print_flag, 'N') send_outside_use_print_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_fax_flag, 'N') send_outside_use_fax_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_email_flag, 'N') send_outside_use_email_flag\n    ,document_link_entity_req.outside_use_number_of_copies\n    ,0 AS doc_link_file_handler_defaults_uid\n    ,NULL AS c_file_name\n    ,NULL AS c_file_path\n    ,'N' AS append_datetime_flag\n    ,'N' AS prompt_to_overwrite_flag  /*MAIN FROM CLAUSE*/  FROM\n    document_link\n    INNER JOIN document_link_area ON (document_link_area.document_link_uid = document_link.document_link_uid)\n    LEFT JOIN inv_mast ON (Cast(inv_mast.inv_mast_uid AS VARCHAR(50)) = document_link.key1_value)\n    AND (document_link.key1_cd = 'inv_mast_uid')\n    LEFT OUTER JOIN document_link_entity_req ON Cast(document_Link_Entity_req.Entity_Id AS VARCHAR(255)) = COALESCE(document_Link.Key2_Value, document_Link.Key1_Value)\n    AND ((document_link_entity_req.entity_type = 1307\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'customer_id')\n    OR (document_link_entity_req.entity_type = 1328\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'ship_to_id')\n    OR (document_link_entity_req.entity_type = 1333\n    AND document_link.key1_cd = 'supplier_id')\n    OR (document_link_entity_req.entity_type = 1370\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'location_id'))  /*MAIN WHERE CLAUSE*/  /*MAIN GROUP BY CLAUSE*/  GROUP  BY document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,document_link_area.display_area_cd\n    ,send_outside_use_docs_flag\n    ,send_outside_use_print_flag\n    ,send_outside_use_fax_flag\n    ,send_outside_use_email_flag\n    ,outside_use_number_of_copies\n    ,doc_link_file_handler_defaults_uid\n    ,c_file_name\n    ,c_file_path\n    ,append_datetime_flag\n    ,prompt_to_overwrite_flag",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Document Link Uid",
+       "expr": "document_link.document_link_uid",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Source Area",
+       "expr": "document_link.source_area_cd",
+       "kind": "table.column"
+      },
+      {
+       "n": 9,
+       "label": "Link Name",
+       "expr": "document_link.link_name",
+       "kind": "table.column"
+      },
+      {
+       "n": 10,
+       "label": "Link Path",
+       "expr": "document_link.link_path",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Status",
+       "expr": "document_link.row_status_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 25,
+       "label": "Mandatory",
+       "expr": "document_link.mandatory_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": null,
+       "label": "Document Linked to",
+       "expr": "IF ( key2_cd = 'lot_cd', if(isnull(key2_value),'',key2_value), IF ( key1_cd = 'inv_mast_uid', if(isnull(item_id),'',item_id), if(isnull(key1_value),'',key1_value) ) + IF ( IsNull(key2_value), '', '/' + key2_value + IF ( IsNull(key3_value), '', '/' + key3_value)) )",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "link_name": {
+       "column": "document_link.link_name",
+       "expression": null,
+       "basis": "column"
+      },
+      "link_path": {
+       "column": "document_link.link_path",
+       "expression": null,
+       "basis": "column"
+      },
+      "row_status_flag": {
+       "column": "document_link.row_status_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "mandatory_flag": {
+       "column": "document_link.mandatory_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "user_print_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "user_fax_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "user_email_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "outside_use_flag": {
+       "column": "document_link.outside_use_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_print_flag": {
+       "column": "document_link_entity_req.send_outside_use_print_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "document_link_uid": {
+       "column": "document_link.document_link_uid",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_email_flag": {
+       "column": "document_link_entity_req.send_outside_use_email_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "send_outside_use_fax_flag": {
+       "column": "document_link_entity_req.send_outside_use_fax_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "source_area_cd": {
+       "column": "document_link.source_area_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "cf_rowind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_keylist": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "display_area": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_firstind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_rowno": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "ROUTING_TABPAGE",
+   "text": "Routing",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "PROCESSDETAIL_TABPAGE",
+   "text": "Process Detail",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "ROUTENOTESTABPAGE",
+   "text": "Route Notes",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "PROCESSNOTESTABPAGE",
+   "text": "Process Notes",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TP_ASSEMBLYITEMNOTES",
+   "text": "Assembly Item Notes",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TIMESTAMP",
+   "text": "Audit Trail",
+   "select_status": "HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.",
+   "datawindows": [
+    {
+     "name": "timestamp",
+     "fullname": "TIMESTAMP.timestamp",
+     "update_table": null,
+     "update_table_note": null,
+     "external_source": true,
+     "main_tables": [],
+     "select_sql": "External source data; no SQL select associated with displayed data",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Date Created:",
+       "expr": "date_created",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 2,
+       "label": "Created By:",
+       "expr": "created_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 3,
+       "label": "Date Last Modified:",
+       "expr": "date_last_modified",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 4,
+       "label": "Last Maintained By:",
+       "expr": "last_maintained_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 5,
+       "label": "Last Pricing Service Date:",
+       "expr": "last_pricing_service_date",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      }
+     ],
+     "fields": {
+      "date_created": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "date_last_modified": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "created_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "last_maintained_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      }
+     }
+    },
+    {
+     "name": "audit_trail",
+     "fullname": "TIMESTAMP.audit_trail",
+     "update_table": "p21_view_audit_trail_assembly_hdr_<id>",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "p21_view_audit_trail_assembly_hdr_<id>"
+     ],
+     "select_sql": "SELECT audit_trail_uid,\n    source_area_cd,\n    table_changed,\n    column_changed,\n    column_description,\n    key1_cd,\n    key1_value,\n    key2_cd,\n    key2_value,\n    key3_cd,\n    key3_value,\n    line_no,\n    inv_mast_uid,\n    old_value,\n    new_value,\n    uid_value,\n    auxiliary_value,\n    date_created,\n    created_by,\n    code_sub_description,\n    item_id FROM p21_view_audit_trail_assembly_hdr_<id> ORDER BY date_created DESC, audit_trail_uid DESC",
+     "columns": [
+      {
+       "n": 5,
+       "label": "Column Changed",
+       "expr": "column_description",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 14,
+       "label": "Old Value",
+       "expr": "old_value",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 15,
+       "label": "New Value",
+       "expr": "new_value",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 18,
+       "label": "Date Created",
+       "expr": "date_created",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 19,
+       "label": "Created By",
+       "expr": "created_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 21,
+       "label": "'Item IDIF (source_area_cd",
+       "expr": "950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "Assembly Item ID",
+       "expr": "\"IF ((source_area_cd = 1763 and key1_cd = 'service_labor_uid'), item_id,  IF (source_area_cd = 950, key1_value,  IF (key2_cd = 'item_service_uid',  Item_id + ' / ALL / ALL',  IF ( key2_cd = 'lot_cd', key2_value,   IF ( Len(auxiliary_value) > 0 AND source_area_cd IN (1544, 1250, 2531), auxiliary_value,  IF (source_area_cd = 1314 and table_changed = 'inv_mast_strategic_pricing', item_id + '/' + key3_value + IF (IsNull(key2_value), '', '/' + auxiliary_value),  IF ( key1_cd = 'inv_mast_uid', item_id, key1_value ) + IF ( IsNull ( key2_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key2_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key2_value ), 'ALL', key2_value ) )  + IF ( IsNull (key3_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key3_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key3_value ), 'ALL', key3_value ) ) ) )  ) ) ) ) ) )\"",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "'Sub Line No",
+       "expr": "",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "item_id": {
+       "column": "p21_view_audit_trail_assembly_hdr_<id>.item_id",
+       "expression": null,
+       "basis": "probed"
+      },
+      "column_description": {
+       "column": "p21_view_audit_trail_assembly_hdr_<id>.column_description",
+       "expression": null,
+       "basis": "probed"
+      },
+      "old_value": {
+       "column": "p21_view_audit_trail_assembly_hdr_<id>.old_value",
+       "expression": null,
+       "basis": "probed"
+      },
+      "new_value": {
+       "column": "p21_view_audit_trail_assembly_hdr_<id>.new_value",
+       "expression": null,
+       "basis": "probed"
+      },
+      "date_created": {
+       "column": "p21_view_audit_trail_assembly_hdr_<id>.date_created",
+       "expression": null,
+       "basis": "probed"
+      },
+      "created_by": {
+       "column": "p21_view_audit_trail_assembly_hdr_<id>.created_by",
+       "expression": null,
+       "basis": "probed"
+      },
+      "cf_display_key": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_sub_line_no": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_line_no_visible": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_item_id_visible": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_17",
+   "text": "Components",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tp_17_dw_17",
+     "fullname": "TABPAGE_17.tp_17_dw_17",
+     "update_table": "assembly_line",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "assembly_line",
+      "assembly_hdr",
+      "inv_mast",
+      "service_labor",
+      "inv_mast_assem_info",
+      "operation",
+      "item_revision"
+     ],
+     "select_sql": "SELECT inv_mast_comp.item_id 'inv_mast_item_id',\n    COALESCE(service_labor.service_labor_desc, inv_mast_comp.item_desc) 'item_desc',\n    assembly_line.quantity ,\n    assembly_line.delete_flag ,\n    inv_mast.item_id ,\n    assembly_line.date_created ,\n    assembly_line.date_last_modified ,\n    assembly_line.last_maintained_by ,\n    assembly_line.sub_assembly ,\n    assembly_line.taxable ,\n    assembly_line.sequence_number ,\n    assembly_line.unit_of_measure ,\n    assembly_line.other_charge_item ,\n    inv_mast_comp.other_charge_item ,\n    assembly_line.component_inv_mast_uid ,\n    assembly_line.inv_mast_uid,\n    assembly_line.component_cut_length,\n    assembly_line.cut_length_edited_flag,\n    CASE assembly_hdr.hose_assembly_flag\n    WHEN 'Y' THEN\n    inv_mast_assem_info.component_type\n    ELSE\n    300\n    END component_type,\n    CASE assembly_hdr.hose_assembly_flag\n    WHEN 'Y' THEN\n    inv_mast_assem_info.hose_fitting_d_length\n    ELSE\n    0\n    END hose_fitting_d_length,\n    CASE assembly_hdr.hose_assembly_flag\n    WHEN 'Y' THEN\n    inv_mast_assem_info.hose_fitting_uom\n    ELSE\n    ' '\n    END hose_fitting_uom,\n    assembly_line.qty_needed,\n    COALESCE(operation.type, 1578) operation_type_cd,\n    service_labor.service_labor_id,\n    service_labor.service_labor_desc,\n    assembly_line.service_labor_uid,\n    assembly_line.operation_uid,\n    operation.operation_cd,\n    assembly_line.date_offset_days,\n    assembly_hdr.production_order_processing\n    ,COALESCE(drv_subassembly_hdr.production_order_processing, 'N') 'sub_assembly_prod_order_flag'\n    ,item_revision.revision_level\n    ,COALESCE(inv_mast_comp.use_revisions_flag, 'N') use_revisions_flag\n    ,component_item_revision_uid\n    ,assembly_item_revision_uid\n    ,assembly_line.backflush_flag\n    ,  ' ' viewed_line_note\n    ,assembly_line.assembly_line_uid\n    ,assembly_line.extended_desc\n    ,inv_mast_comp.tally_flag\n    ,'N' 'tally_info_specified'\n    ,assembly_line.loose_ship_flag\n    ,COALESCE(service_labor.service_labor_id, inv_mast_comp.item_id) 'item_id_service_labor_id'\n    ,assembly_line.operation_sequence\n    ,CASE WHEN service_labor.service_labor_uid IS NOT NULL THEN service_labor.service_labor_ext_desc ELSE inv_mast_comp.extended_desc END 'item_extended_desc'\n    ,assembly_line.previous_operation\n    ,assembly_line.next_operation  FROM\n    assembly_line\n    INNER JOIN assembly_hdr ON (assembly_hdr.inv_mast_uid = assembly_line.inv_mast_uid)\n    INNER JOIN inv_mast ON (inv_mast.inv_mast_uid = assembly_line.inv_mast_uid)\n    LEFT JOIN inv_mast AS inv_mast_comp ON (assembly_line.component_inv_mast_uid = inv_mast_comp.inv_mast_uid)\n    LEFT JOIN service_labor ON (assembly_line.service_labor_uid = service_labor.service_labor_uid)\n    LEFT JOIN inv_mast_assem_info ON (inv_mast_assem_info.inv_mast_uid = assembly_line.component_inv_mast_uid)\n    LEFT JOIN operation ON (assembly_line.operation_uid = operation.operation_uid)\n    LEFT JOIN item_revision ON item_revision.inv_mast_uid = assembly_line.component_inv_mast_uid\n    AND item_revision.item_revision_uid = assembly_line.component_item_revision_uid\n    LEFT JOIN ( SELECT assembly_hdr.production_order_processing ,assembly_hdr.inv_mast_uid\n    FROM assembly_hdr\n    ) AS drv_subassembly_hdr ON drv_subassembly_hdr.inv_mast_uid = assembly_line.component_inv_mast_uid\n    AND assembly_line.sub_assembly = 'Y'  WHERE  (assembly_line.inv_mast_uid = :al_InvMastUid) AND (assembly_item_revision_uid = :al_AssemblyItemUid)",
+     "columns": [
+      {
+       "n": 2,
+       "label": "Description",
+       "expr": "inv_mast_comp.item_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 3,
+       "label": "Qty Per Assembly",
+       "expr": "assembly_line.quantity",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Delete",
+       "expr": "assembly_line.delete_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 12,
+       "label": "UOM",
+       "expr": "assembly_line.unit_of_measure",
+       "kind": "table.column"
+      },
+      {
+       "n": 17,
+       "label": "Cut Length",
+       "expr": "assembly_line.component_cut_length",
+       "kind": "table.column"
+      },
+      {
+       "n": 18,
+       "label": "Edited",
+       "expr": "assembly_line.cut_length_edited_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 19,
+       "label": "ComponentType",
+       "expr": "inv_mast_assem_info.component_type",
+       "kind": "table.column"
+      },
+      {
+       "n": 22,
+       "label": "Qty Needed",
+       "expr": "assembly_line.qty_needed",
+       "kind": "table.column"
+      },
+      {
+       "n": 28,
+       "label": "Operation",
+       "expr": "operation.operation_cd",
+       "kind": "table.column"
+      },
+      {
+       "n": 29,
+       "label": "Date Offset No of Days",
+       "expr": "assembly_line.date_offset_days",
+       "kind": "table.column"
+      },
+      {
+       "n": 36,
+       "label": "Backflush",
+       "expr": "assembly_line.backflush_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 42,
+       "label": "LooseShip",
+       "expr": "assembly_line.loose_ship_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 43,
+       "label": "Item Id Service Labor Id",
+       "expr": "item_id_service_labor_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": null,
+       "label": "Cf Expandableindicator",
+       "expr": "if(sub_assembly = 'Y', '+', '')",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "item_id_service_labor_id": {
+       "column": null,
+       "expression": "COALESCE(service_labor.service_labor_id, inv_mast_comp.item_id)",
+       "basis": "probed"
+      },
+      "revision_level": {
+       "column": "item_revision.revision_level",
+       "expression": null,
+       "basis": "probed"
+      },
+      "component_type": {
+       "column": "inv_mast_assem_info.component_type",
+       "expression": null,
+       "basis": "probed"
+      },
+      "operation_cd": {
+       "column": "operation.operation_cd",
+       "expression": null,
+       "basis": "probed"
+      },
+      "qty_needed": {
+       "column": "assembly_line.qty_needed",
+       "expression": null,
+       "basis": "probed"
+      },
+      "component_cut_length": {
+       "column": "assembly_line.component_cut_length",
+       "expression": null,
+       "basis": "probed"
+      },
+      "cut_length_edited_flag": {
+       "column": "assembly_line.cut_length_edited_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "quantity": {
+       "column": "assembly_line.quantity",
+       "expression": null,
+       "basis": "probed"
+      },
+      "unit_of_measure": {
+       "column": "assembly_line.unit_of_measure",
+       "expression": null,
+       "basis": "probed"
+      },
+      "date_offset_days": {
+       "column": "assembly_line.date_offset_days",
+       "expression": null,
+       "basis": "probed"
+      },
+      "backflush_flag": {
+       "column": "assembly_line.backflush_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "loose_ship_flag": {
+       "column": "assembly_line.loose_ship_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "previous_operation": {
+       "column": "assembly_line.previous_operation",
+       "expression": null,
+       "basis": "probed"
+      },
+      "delete_flag": {
+       "column": "assembly_line.delete_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "next_operation": {
+       "column": "assembly_line.next_operation",
+       "expression": null,
+       "basis": "probed"
+      },
+      "item_desc": {
+       "column": "inv_mast.item_desc",
+       "expression": null,
+       "basis": "probed"
+      },
+      "cf_expandableindicator": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_prodorderflag": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_yesorno": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_dfflag": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_18",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_19",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_20",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_21",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_22",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_23",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_24",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "DOCUMENT_LINK_DETAIL",
+   "text": "Document Links",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "document_link_detail_detail",
+     "fullname": "DOCUMENT_LINK_DETAIL.document_link_detail_detail",
+     "update_table": "document_link",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "document_link",
+      "document_link_area",
+      "inv_mast",
+      "document_link_entity_req"
+     ],
+     "select_sql": "SELECT document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,0 add_source_row_id\n    ,0 row_edited\n    ,0 C_SupplierID\n    ,Cast ('' AS VARCHAR(40)) C_ItemID\n    ,Cast ('' AS VARCHAR(8)) C_OrderNumber\n    ,0 C_OrderLineNumber\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,'N' user_print_flag\n    ,'N' user_fax_flag\n    ,'N' user_email_flag\n    ,'N' ship_to_print_flag\n    ,'N' ship_to_fax_flag\n    ,'N' ship_to_email_flag\n    ,0 number_of_copies\n    ,'N' require_lot_documentation_flag\n    ,document_link_area.display_area_cd\n    ,COALESCE (document_link_entity_req.send_outside_use_docs_flag, 'N') send_outside_use_docs_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_print_flag, 'N') send_outside_use_print_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_fax_flag, 'N') send_outside_use_fax_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_email_flag, 'N') send_outside_use_email_flag\n    ,document_link_entity_req.outside_use_number_of_copies\n    ,0 AS doc_link_file_handler_defaults_uid\n    ,NULL AS c_file_name\n    ,NULL AS c_file_path\n    ,'N' AS append_datetime_flag\n    ,'N' AS prompt_to_overwrite_flag  /*MAIN FROM CLAUSE*/  FROM\n    document_link\n    INNER JOIN document_link_area ON (document_link_area.document_link_uid = document_link.document_link_uid)\n    LEFT JOIN inv_mast ON (Cast(inv_mast.inv_mast_uid AS VARCHAR(50)) = document_link.key1_value)\n    AND (document_link.key1_cd = 'inv_mast_uid')\n    LEFT OUTER JOIN document_link_entity_req ON Cast(document_Link_Entity_req.Entity_Id AS VARCHAR(255)) = COALESCE(document_Link.Key2_Value, document_Link.Key1_Value)\n    AND ((document_link_entity_req.entity_type = 1307\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'customer_id')\n    OR (document_link_entity_req.entity_type = 1328\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'ship_to_id')\n    OR (document_link_entity_req.entity_type = 1333\n    AND document_link.key1_cd = 'supplier_id')\n    OR (document_link_entity_req.entity_type = 1370\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'location_id'))  /*MAIN WHERE CLAUSE*/  /*MAIN GROUP BY CLAUSE*/  GROUP  BY document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,document_link_area.display_area_cd\n    ,send_outside_use_docs_flag\n    ,send_outside_use_print_flag\n    ,send_outside_use_fax_flag\n    ,send_outside_use_email_flag\n    ,outside_use_number_of_copies\n    ,doc_link_file_handler_defaults_uid\n    ,c_file_name\n    ,c_file_path\n    ,append_datetime_flag\n    ,prompt_to_overwrite_flag",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Document Link Uid",
+       "expr": "document_link.document_link_uid",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Source Area",
+       "expr": "document_link.source_area_cd",
+       "kind": "table.column"
+      },
+      {
+       "n": 9,
+       "label": "Link Name",
+       "expr": "document_link.link_name",
+       "kind": "table.column"
+      },
+      {
+       "n": 10,
+       "label": "Link Path",
+       "expr": "document_link.link_path",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Status",
+       "expr": "document_link.row_status_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 25,
+       "label": "Mandatory",
+       "expr": "document_link.mandatory_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": null,
+       "label": "Document Linked to",
+       "expr": "IF ( key2_cd = 'lot_cd', if(isnull(key2_value),'',key2_value), IF ( key1_cd = 'inv_mast_uid', if(isnull(item_id),'',item_id), if(isnull(key1_value),'',key1_value) ) + IF ( IsNull(key2_value), '', '/' + key2_value + IF ( IsNull(key3_value), '', '/' + key3_value)) )",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "link_name": {
+       "column": "document_link.link_name",
+       "expression": null,
+       "basis": "column"
+      },
+      "link_path": {
+       "column": "document_link.link_path",
+       "expression": null,
+       "basis": "column"
+      },
+      "row_status_flag": {
+       "column": "document_link.row_status_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "mandatory_flag": {
+       "column": "document_link.mandatory_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "user_print_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "user_fax_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "user_email_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "outside_use_flag": {
+       "column": "document_link.outside_use_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_print_flag": {
+       "column": "document_link_entity_req.send_outside_use_print_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "document_link_uid": {
+       "column": "document_link.document_link_uid",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_email_flag": {
+       "column": "document_link_entity_req.send_outside_use_email_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "send_outside_use_fax_flag": {
+       "column": "document_link_entity_req.send_outside_use_fax_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "source_area_cd": {
+       "column": "document_link.source_area_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "cf_rowind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_keylist": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "display_area": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_firstind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_rowno": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TP_COMPONENTITEMNOTES",
+   "text": "Component Item Notes",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tp_componentitemnotes",
+     "fullname": "TP_COMPONENTITEMNOTES.tp_componentitemnotes",
+     "update_table": "note",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "note",
+      "note_area",
+      "code_p21",
+      "notepad_class"
+     ],
+     "select_sql": "SELECT note.note_uid,\n    note.document_uid,\n    note.notepad_class_id,\n    note.topic,\n    note.note,\n    note.activation_date,\n    note.expiration_date,\n    note.entry_date,\n    note.mandatory,\n    note.row_status_flag,\n    note.note_type_cd,\n    note.date_created,\n    note.date_last_modified,\n    note.last_maintained_by,\n    note.created_by,\n    notepad_class.notepad_class_desc,\n    note_area.area\n    ,NULL 'line_no' FROM note  INNER JOIN note_area ON (note_area.note_id = note.note_uid)  INNER JOIN code_p21 AS area_cd ON (area_cd.code_description = note_area.area)  LEFT JOIN  notepad_class ON (notepad_class.notepad_class_id = note.notepad_class_id) WHERE (note.activation_date <= CURRENT_TIMESTAMP) AND (note.expiration_date >= CURRENT_TIMESTAMP) AND (note.row_status_flag <> 700) AND (area_cd.code_no = 1302) AND (note.note_type_cd = 1807)",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Note ID",
+       "expr": "note.note_uid",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Topic",
+       "expr": "note.topic",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Note",
+       "expr": "note.note",
+       "kind": "table.column"
+      },
+      {
+       "n": 16,
+       "label": "Class",
+       "expr": "notepad_class.notepad_class_desc",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "note": {
+       "column": "note.note",
+       "expression": null,
+       "basis": "column"
+      },
+      "note_uid": {
+       "column": "note.note_uid",
+       "expression": null,
+       "basis": "column"
+      },
+      "topic": {
+       "column": "note.topic",
+       "expression": null,
+       "basis": "column"
+      },
+      "notepad_class_desc": {
+       "column": "notepad_class.notepad_class_desc",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TIMESTAMPDETAIL",
+   "text": "Timestamp",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "timestampdetail",
+     "fullname": "TIMESTAMPDETAIL.timestampdetail",
+     "update_table": null,
+     "update_table_note": null,
+     "external_source": true,
+     "main_tables": [],
+     "select_sql": "External source data; no SQL select associated with displayed data",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Date Created:",
+       "expr": "date_created",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 2,
+       "label": "Created By:",
+       "expr": "created_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 3,
+       "label": "Date Last Modified:",
+       "expr": "date_last_modified",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 4,
+       "label": "Last Maintained By:",
+       "expr": "last_maintained_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 5,
+       "label": "Last Pricing Service Date:",
+       "expr": "last_pricing_service_date",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      }
+     ],
+     "fields": {
+      "date_created": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "date_last_modified": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "created_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "last_maintained_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "unreachable": [
+  {
+   "tab": "TABPAGE_2",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_3",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_4",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_5",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_6",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_7",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_8",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "ROUTING_TABPAGE",
+   "tab_text": "Routing",
+   "dw": "process",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "ROUTING_TABPAGE",
+   "tab_text": "Routing",
+   "dw": "stage_x_process",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "PROCESSDETAIL_TABPAGE",
+   "tab_text": "Process Detail",
+   "dw": "processdetail_tabpage",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "ROUTENOTESTABPAGE",
+   "tab_text": "Route Notes",
+   "dw": "routenotestabpage",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "PROCESSNOTESTABPAGE",
+   "tab_text": "Process Notes",
+   "dw": "processnotestabpage",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TP_ASSEMBLYITEMNOTES",
+   "tab_text": "Assembly Item Notes",
+   "dw": "tp_assemblyitemnotes",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_18",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_19",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_20",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_21",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_22",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_23",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_24",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TIMESTAMPDETAIL",
+   "tab_text": "Timestamp",
+   "dw": "timestampdetail_dw_audittrail",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  }
+ ]
+}

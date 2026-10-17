@@ -1,0 +1,3615 @@
+{
+ "service": "Shipping",
+ "title": "Shipping",
+ "window_class": "w_ship_sheet",
+ "menu_class": "m_shipping",
+ "definition": {
+  "TABPAGE_1.tp_1_dw_1": [
+   "pick_ticket_no",
+   "carrier_id",
+   "tracking_no",
+   "printpackinglist",
+   "print_label",
+   "instructions",
+   "print_invoice",
+   "create_invoice",
+   "front_counter_tax",
+   "fax_invoice",
+   "email_invoice",
+   "fax_packinglist",
+   "ship_route",
+   "email_packinglist",
+   "delete_flag",
+   "confirmable_row_status_flag",
+   "capture_signature",
+   "receiver_name",
+   "ship_through_quickship",
+   "c_send_edi_753_flag",
+   "send_ucc128info",
+   "print_ucc128_labels",
+   "print_carton_labels",
+   "rfnav_pick_status_cd",
+   "rfnav_stop_no",
+   "period",
+   "year_for_period",
+   "ship_date",
+   "invoice_batch_number",
+   "freight_cd",
+   "customer_id",
+   "order_no",
+   "order_date",
+   "location_id",
+   "invoice_no",
+   "invoice_batch_desc",
+   "customer_name",
+   "name",
+   "freight_desc",
+   "c_po_no",
+   "cf_picktickettype",
+   "contact_name"
+  ],
+  "TABPAGE_3.tp_3_dw_3": [
+   "note",
+   "note_id",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "TABPAGE_5.tp_5_dw_req_pymt": [
+   "req_pymt_upon_release_flag"
+  ],
+  "TABPAGE_5.tp_5_dw_5": [
+   "payment_type_id",
+   "payment_amount",
+   "c_cash_pymt_amt",
+   "payment_desc",
+   "check_number",
+   "payment_date",
+   "store_credit_number",
+   "cf_pay_total",
+   "cc_name",
+   "cc_creditcard_number",
+   "customer_verification_value",
+   "cc_expiration_date",
+   "cc_authorized_date",
+   "cc_authorized_number",
+   "switch_issue_number",
+   "multi_currency_id",
+   "multi_currency_payment_amount",
+   "rental_payment_amt",
+   "exchange_date",
+   "cc_swipe",
+   "override_surcharge",
+   "memo_amount",
+   "sum_cc_payment",
+   "sum_payment_amount",
+   "cf_rowinfo",
+   "sum_memo_amount",
+   "cf_new_payment",
+   "sum_new_payments",
+   "sum_new_cc_payments",
+   "sum_auth_amount",
+   "cf_cash_pymt_chg",
+   "cf_sum_new_pymts_not_cc_or_ca"
+  ],
+  "TABPAGE_5.dw_totals": [
+   "c_dp_to_apply",
+   "c_prev_pymt_not_appd",
+   "c_prev_open_inv_total",
+   "c_open_dp_inv_amt",
+   "c_unapplied_dp",
+   "amount_tendered",
+   "tax",
+   "sub_total",
+   "balance",
+   "cf_sugg_pymt",
+   "cf_downpayment_remaining",
+   "invoice_total",
+   "downpayment_remaining",
+   "total_due",
+   "balance_t1",
+   "cf_prorated_amount"
+  ],
+  "TABPAGE_6.tp_6_dw_6": [
+   "note",
+   "note_id",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "HDR_NOTE.hdr_note": [
+   "note",
+   "note_id",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "TABPAGE_SHIPTO.tabpage_shipto": [
+   "address_id",
+   "contact_id",
+   "ship2_add1",
+   "ship2_add2",
+   "ship2_city",
+   "ship2_name",
+   "ship2_state",
+   "ship2_zip",
+   "ship2_country",
+   "contact_name"
+  ],
+  "TABPAGE_FREIGHT.tabpage_freight": [
+   "freight_cd",
+   "freight_out",
+   "use_strategic_freight",
+   "freight_desc"
+  ],
+  "TP_SHIPPING.shipment_header": [
+   "shipment_id",
+   "shipment_desc",
+   "shipment_uid",
+   "transaction_type_cd",
+   "transaction_no",
+   "row_status_flag",
+   "carrier_id",
+   "ship_location_id",
+   "cf_location_name"
+  ],
+  "TABPAGE_TAX.tabpage_tax": [
+   "jurisdiction_id",
+   "taxable",
+   "jurisdiction_desc",
+   "flat_fee_amount",
+   "compute_1",
+   "tax_in_hundred",
+   "cf_dfflag"
+  ],
+  "TABPAGE_ORDERBINS.tabpage_orderbins": [
+   "bin_cd"
+  ],
+  "REASONCODESHDR.reasoncodeshdr": [
+   "lost_sales_id",
+   "lost_sales_desc"
+  ],
+  "DOCUMENT_LINK.document_link_forms": [
+   "display_area_cd"
+  ],
+  "DOCUMENT_LINK.document_link": [
+   "link_name",
+   "link_path",
+   "row_status_flag",
+   "mandatory_flag",
+   "user_print_flag",
+   "user_fax_flag",
+   "user_email_flag",
+   "outside_use_flag",
+   "send_outside_use_print_flag",
+   "document_link_uid",
+   "send_outside_use_email_flag",
+   "send_outside_use_fax_flag",
+   "source_area_cd",
+   "cf_rowind",
+   "cf_keylist",
+   "display_area",
+   "cf_firstind",
+   "cf_rowno"
+  ],
+  "TP_SCANPACK.scan_pack_container_hdr": [
+   "package_id",
+   "carrier_id",
+   "tracking_no",
+   "weight",
+   "volume",
+   "row_status_flag",
+   "tare_weight",
+   "container_id",
+   "weight_edited_flag",
+   "volume_edited_flag",
+   "compute_1"
+  ],
+  "TP_SHIPMENTINFO.transport_shipping_info": [
+   "trailer_no",
+   "shipment_gross_weight",
+   "internal_transaction_no",
+   "bill_of_lading_no",
+   "commercial_invoice_no"
+  ],
+  "TIMESTAMP.timestamp": [
+   "date_created",
+   "date_last_modified",
+   "created_by",
+   "last_maintained_by"
+  ],
+  "TIMESTAMP.audit_trail": [
+   "item_id",
+   "column_description",
+   "old_value",
+   "new_value",
+   "date_created",
+   "created_by",
+   "cf_display_key",
+   "cf_sub_line_no",
+   "cf_line_no_visible",
+   "cf_item_id_visible"
+  ],
+  "TABPAGE_17.tabpage_ship": [
+   "oe_order_item_id",
+   "trans_revision_level",
+   "unit_quantity",
+   "disposition",
+   "unit_of_measure",
+   "rfnav_pick_status_cd",
+   "line_id",
+   "item_desc",
+   "units_picked",
+   "c_releaseline",
+   "cf_expandableindicator",
+   "qty_available_display",
+   "compute_1",
+   "undershipped_qty",
+   "line_item_price",
+   "new_pick_qty",
+   "total_amount",
+   "new_invoice_qty",
+   "sched_oeline_print_qty",
+   "sum_price",
+   "qty_available",
+   "sched_total_ordered_qty",
+   "cf_dfflag"
+  ],
+  "TABPAGE_21.tp_21_dw_21": [
+   "note",
+   "note_id",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "TABPAGE_22.prices": [
+   "calc_value",
+   "unit_of_measure",
+   "unit_size",
+   "unit_quantity",
+   "pricing_unit",
+   "pricing_unit_size",
+   "unit_price",
+   "extended_price",
+   "one_time_price",
+   "manual_price_overide",
+   "base_ut_price",
+   "oe_order_item_id",
+   "next_break",
+   "next_ut_price",
+   "item_desc",
+   "tariff_percent",
+   "used_strategic_pricing_flag",
+   "canceled_qty",
+   "pricing_option_desc",
+   "cf_tariff_unit_price",
+   "quantity_available",
+   "pricing_qty",
+   "cf_dfflag"
+  ],
+  "TABPAGE_22.tp_22_dw_price_page": [
+   "calculation_method_cd",
+   "description",
+   "effective_date",
+   "expiration_date",
+   "product_group_id",
+   "price_family_id",
+   "mfg_class_id",
+   "item_id",
+   "discount_group_id",
+   "customer_part_no",
+   "customer_id",
+   "supplier_id"
+  ],
+  "TABPAGE_23.tp_23_dw_23": [
+   "return_to_stock",
+   "reason_id",
+   "item_id",
+   "item_desc"
+  ],
+  "TABPAGE_LINE_FREIGHT.tabpage_line_freight": [
+   "freight_in",
+   "use_strategic_freight",
+   "c_freight_edited",
+   "item_id",
+   "item_desc"
+  ],
+  "TABPAGE_LINE_TAX.tabpage_line_tax": [
+   "jurisdiction_id",
+   "taxable",
+   "delete_flag",
+   "item_id",
+   "item_desc",
+   "jurisdiction_desc",
+   "tax_percentage",
+   "flat_fee_amount",
+   "tax_in_hundred",
+   "cf_dfflag"
+  ],
+  "CUST_PARTNO_NOTES.cust_partno_notes": [
+   "note",
+   "note_id",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "ITEM_NOTES.item_notes": [
+   "note",
+   "note_id",
+   "topic",
+   "notepad_class_desc"
+  ],
+  "TABPAGE_SERIAL.serial": [
+   "serial_number",
+   "action_number",
+   "dimension_id",
+   "lot_cd",
+   "usable_area",
+   "slab_bin_id",
+   "row_status",
+   "item_id",
+   "item_desc",
+   "cf_rowcount",
+   "compute_1"
+  ],
+  "TABPAGE_LOT.tabpage_lot": [
+   "trans_type",
+   "lot_cd",
+   "unit_quantity",
+   "unit_of_measure",
+   "transfer_whole_belt_flag",
+   "unit_qty_allocated",
+   "expiration_date",
+   "item_id",
+   "dimension_id",
+   "item_desc",
+   "split_belt_flag",
+   "commingling_lot_no",
+   "compute_user_defined_qty",
+   "unit_applied",
+   "unit_orig_qty",
+   "posted_qty",
+   "total_qty_posted1",
+   "total_qty_posted",
+   "cf_dfflag",
+   "qty_posted",
+   "qty_required",
+   "delta_unit_quantity"
+  ],
+  "TABPAGE_LOT_BIN_XREF.tabpage_lot_bin_xref": [
+   "trans_type",
+   "lot_cd",
+   "bin_cd",
+   "unit_quantity",
+   "unit_of_measure",
+   "expiration_date",
+   "unit_qty_allocated",
+   "item_id",
+   "commingling_lot_no",
+   "item_desc",
+   "compute_user_defined_qty",
+   "posted_qty",
+   "receive_qty_left",
+   "unit_applied",
+   "unit_orig_qty",
+   "total_qty_posted1",
+   "total_qty_posted",
+   "cf_dfflag"
+  ],
+  "TABPAGE_BIN.tabpage_bin": [
+   "trans_type",
+   "bin_cd",
+   "unit_quantity",
+   "unit_of_measure",
+   "item_id",
+   "item_desc",
+   "compute_user_defined_qty",
+   "unit_orig_qty",
+   "posted_qty",
+   "total_qty_posted1",
+   "total_qty_posted",
+   "cf_dfflag",
+   "qty_posted",
+   "qty_required",
+   "delta_unit_quantity"
+  ],
+  "REASONCODESLINE.reasoncodesline": [
+   "lost_sales_id",
+   "lost_sales_desc",
+   "date_created",
+   "item_id",
+   "item_desc",
+   "c_uom",
+   "cf_rowind",
+   "cf_unit_qty_change",
+   "cf_dfflag"
+  ],
+  "DOCUMENT_LINK_DETAIL.document_link_forms": [
+   "display_area_cd"
+  ],
+  "DOCUMENT_LINK_DETAIL.document_link_detail_detail": [
+   "link_name",
+   "link_path",
+   "row_status_flag",
+   "mandatory_flag",
+   "user_print_flag",
+   "user_fax_flag",
+   "user_email_flag",
+   "outside_use_flag",
+   "send_outside_use_print_flag",
+   "document_link_uid",
+   "send_outside_use_email_flag",
+   "send_outside_use_fax_flag",
+   "source_area_cd",
+   "cf_rowind",
+   "cf_keylist",
+   "display_area",
+   "cf_firstind",
+   "cf_rowno"
+  ],
+  "TP_TAGS.tp_tags_tdl_header": [
+   "item_id",
+   "item_desc",
+   "total_sku_qty_to_post",
+   "cf_dfflag"
+  ],
+  "TP_TAGS.tp_tags_dlt": [
+   "c_move_tag",
+   "tdl_tag_no",
+   "c_shipping_action",
+   "tdl_serial_no",
+   "c_tdl_unit_qty",
+   "tdl_pkg_uom",
+   "tdl_lot_cd",
+   "tdl_bin_id",
+   "tdl_pkg_type_id",
+   "c_tdl_unit_qty_per_pkg",
+   "cf_spacer",
+   "cf_unit_qty_available",
+   "cf_unit_qty_allocated",
+   "cf_unit_qty_available_tag_level",
+   "cf_tag_avail_qty",
+   "cf_binlot_avail_qty",
+   "cf_abs_total_sku_qty_posted",
+   "cf_non_abs_total_sku_qty_posted",
+   "cf_total_sku_qty_posted",
+   "cf_total_sku_qty_posted_adjustments",
+   "cf_dfflag"
+  ],
+  "TP_TAGS_VIEW.tp_tags_view": [
+   "tdl_tag_no",
+   "tdl_serial_no",
+   "c_master_instance",
+   "tdl_bin_id",
+   "tdl_top_parent_tag_no",
+   "tdl_top_parent_pkg_type",
+   "tdl_parent_tag",
+   "tdl_parent_tag_pkg_type",
+   "item_id",
+   "item_desc",
+   "tdl_lot_cd",
+   "c_tdl_unit_qty",
+   "tdl_pkg_uom",
+   "tdl_pkg_type_id",
+   "c_tdl_unit_qty_per_pkg",
+   "source_tag_no",
+   "cf_spacer",
+   "cf_unit_qty_available",
+   "cf_dfflag"
+  ],
+  "TP_SHIPPART.tp_shippart": [
+   "item_id",
+   "item_desc",
+   "c_unit_qty_picked",
+   "unit_of_measure",
+   "cf_rowstatus",
+   "cf_dfflag"
+  ],
+  "TIMESTAMPDETAIL.timestampdetail": [
+   "date_created",
+   "date_last_modified",
+   "created_by",
+   "last_maintained_by"
+  ],
+  "TIMESTAMPDETAIL.timestampdetail_dw_audittrail": [
+   "line_no",
+   "item_id",
+   "column_description",
+   "old_value",
+   "new_value",
+   "date_created",
+   "created_by",
+   "cf_display_key",
+   "cf_sub_line_no",
+   "cf_line_no_visible",
+   "cf_item_id_visible"
+  ]
+ },
+ "tabs": [
+  {
+   "tab": "TABPAGE_1",
+   "text": "Shipment",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tp_1_dw_1",
+     "fullname": "TABPAGE_1.tp_1_dw_1",
+     "update_table": "oe_pick_ticket",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_hdr",
+      "oe_pick_ticket",
+      "company",
+      "customer",
+      "cust_defaults",
+      "ship_to",
+      "terms",
+      "invoice_batch",
+      "contacts",
+      "freight_code",
+      "shipping_route",
+      "currency_line",
+      "oe_pick_ticket_detail",
+      "oe_line",
+      "oe_line_service",
+      "group_pick_ticket_detail",
+      "group_pick_ticket_hdr",
+      "oe_hdr_progress_billing",
+      "location",
+      "company_strategic_pricing",
+      "address",
+      "customer_strategic_pricing",
+      "oe_pick_ticket_ups",
+      "customer_terms",
+      "product_group",
+      "system_setting",
+      "location_packing_options"
+     ],
+     "select_sql": "SELECT oe_pick_ticket.pick_ticket_no\n    ,oe_pick_ticket.order_no\n    ,COALESCE(drv_oe_pick_ticket_detail.item_bill_to_id, oe_hdr.customer_id) customer_id\n    ,oe_hdr.order_date\n    ,oe_pick_ticket.ship_date\n    ,oe_hdr.po_no\n    ,oe_pick_ticket.freight_out\n    ,oe_hdr.ship2_name\n    ,oe_hdr.ship2_add1\n    ,oe_hdr.ship2_add2\n    ,oe_hdr.ship2_city\n    ,oe_hdr.ship2_state\n    ,oe_hdr.ship2_zip\n    ,oe_hdr.ship2_country\n    ,oe_pick_ticket.invoice_no\n    ,oe_pick_ticket.tracking_no\n    ,oe_pick_ticket.carrier_id\n    ,oe_hdr.address_id\n    ,oe_hdr.contact_id\n    ,customer_address.name customer_name\n    ,' ' name\n    ,' ' carrier_name\n    ,' ' ship_to_address_name\n    ,oe_pick_ticket.instructions\n    ,oe_pick_ticket.date_created\n    ,oe_pick_ticket.date_last_modified\n    ,oe_pick_ticket.last_maintained_by\n    ,oe_pick_ticket.company_id\n    ,contacts.first_name\n    ,contacts.mi\n    ,contacts.last_name\n    ,contacts.salutation\n    ,' ' mail_address1\n    ,' ' mail_address2\n    ,' ' mail_city\n    ,' ' mail_state\n    ,' ' mail_postal_code\n    ,' ' mail_country\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.ar_account_no\n    ELSE drv_oe_pick_ticket_detail.ar_account_no\n    END ar_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.revenue_account_no\n    ELSE drv_oe_pick_ticket_detail.revenue_account_no\n    END revenue_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.cos_account_no\n    ELSE drv_oe_pick_ticket_detail.cos_account_no\n    END cos_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.freight_account_no\n    ELSE drv_oe_pick_ticket_detail.freight_account_no\n    END freight_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.brokerage_account_no\n    ELSE drv_oe_pick_ticket_detail.brokerage_account_no\n    END brokerage_account_no\n    ,' ' print_label\n    ,' ' print_invoice\n    ,0 year_for_period\n    ,0 period\n    ,company.company_name\n    ,COALESCE(drv_customer_terms_item.terms_desc, COALESCE(drv_customer_terms_pg.terms_desc, terms.terms_desc)) terms_desc\n    ,oe_hdr.requested_date\n    ,oe_pick_ticket.location_id\n    ,COALESCE(drv_customer_terms_item.terms_id, COALESCE(drv_customer_terms_pg.terms_id, oe_hdr.terms)) terms_id\n    ,oe_pick_ticket.delete_flag\n    ,0 corp_address_id\n    ,COALESCE(ship_to.invoice_type, cust_defaults.invoice_type) invoice_type\n    ,oe_pick_ticket.pick_and_hold\n    ,oe_pick_ticket.printed_flag\n    ,oe_pick_ticket.print_date\n    ,oe_pick_ticket.freight_in\n    ,oe_hdr.location_id\n    ,' ' branch_id\n    ,' ' branch_desc\n    ,oe_pick_ticket.front_counter_tax\n    ,oe_pick_ticket.direct_shipment\n    ,oe_pick_ticket.total_tax\n    ,shipping_route.route_code\n    ,oe_pick_ticket.front_counter\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.taxable_flag\n    ELSE drv_oe_pick_ticket_detail.taxable_flag\n    END taxable_flag\n    ,oe_pick_ticket.auxiliary\n    ,oe_hdr.oe_hdr_uid\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.invoice_print_qty\n    ELSE drv_oe_pick_ticket_detail.invoice_print_qty\n    END invoice_print_qty\n    ,oe_hdr.ship_to_phone\n    ,oe_hdr.last_maintained_by\n    ,oe_hdr.completed\n    ,CASE\n    WHEN oe_pick_ticket.pick_and_hold = 'Y' THEN 'N'\n    WHEN (oe_pick_ticket.oe_pick_ticket_type_cd = 1921\n    OR oe_pick_ticket.oe_pick_ticket_type_cd = 1922) THEN 'N'\n    WHEN system_setting.VALUE = 'Y' THEN 'Y'\n    ELSE 'N'\n    END create_invoice\n    ,' ' printpackinglist\n    ,oe_hdr.po_no_append\n    ,oe_pick_ticket.freight_code_uid\n    ,freight_code.freight_cd\n    ,freight_code.freight_desc\n    ,freight_code.tax_group_id\n    ,COALESCE(oe_pick_ticket.shipping_route_uid, oe_hdr.shipping_route_uid)\n    ,' ' fax_invoice\n    ,' ' fax_packinglist\n    ,oe_pick_ticket.invoice_batch_uid\n    ,invoice_batch.invoice_batch_number\n    ,invoice_batch.invoice_batch_desc\n    ,'N' edi_invoice\n    ,'N' edi_shipnotice\n    ,'N' email_invoice\n    ,'N' email_packinglist\n    ,oe_hdr.job_price_hdr_uid\n    ,oe_hdr.ship2_email_address\n    ,oe_pick_ticket.freight_out\n    ,oe_hdr.currency_line_uid\n    ,currency_line.to_currency_id\n    ,oe_hdr.invoice_exch_rate_source_cd\n    ,oe_pick_ticket.oe_pick_ticket_type_cd\n    ,group_pick_ticket_hdr.group_pick_ticket_hdr_uid\n    ,oe_pick_ticket.confirmable_row_status_flag\n    ,oe_pick_ticket.outgoing_freight_cost\n    ,oe_hdr_progress_billing.progress_bill_flag\n    ,'N' capture_signature\n    ,oe_pick_ticket.dea_pick_ticket_flag\n    ,oe_hdr.front_counter front_counter_order\n    ,location.strategic_retail_location_flag\n    ,company_strategic_pricing.retail_warehouse_separate_flag\n    ,CASE\n    WHEN ((address.carrier_strategic_freight_flag = 'Y'\n    OR address.carrier_strategic_freight_flag = 'I'\n    OR address.carrier_strategic_freight_flag = 'O')\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND customer_strategic_pricing.freight_charge_option_cd IS NOT NULL) THEN 'Y'\n    ELSE 'N'\n    END allow_strategic_freight\n    ,CASE\n    WHEN ((address.carrier_strategic_freight_flag = 'Y'\n    OR address.carrier_strategic_freight_flag = 'I'\n    OR address.carrier_strategic_freight_flag = 'O')\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND customer_strategic_pricing.freight_charge_option_cd IS NOT NULL) THEN\n    CASE\n    WHEN customer_strategic_pricing.freight_charge_option_cd = 2630 THEN 'Y'\n    ELSE 'N'\n    END\n    ELSE 'N'\n    END use_strategic_freight\n    ,oe_pick_ticket.original_freight_out\n    ,ups_shipping_route.route_description\n    ,oe_pick_ticket_ups.shipping_route_stop\n    ,(driver.first_name + ' ' + driver.last_name) driver_name\n    ,'' receiver_name\n    ,oe_pick_ticket.freight_out_edited_flag\n    ,oe_pick_ticket.print_canadian_b3_forms_flag\n    ,oe_pick_ticket.slab_flag\n    ,oe_hdr.ship2_add3\n    ,' ' mail_address3\n    ,oe_pick_ticket.pick_confirmed_flag\n    ,oe_pick_ticket.sent_to_trackabout_flag\n    ,oe_hdr.ship2_latitude\n    ,oe_hdr.ship2_longitude\n    ,oe_pick_ticket.driver_id\n    ,(generic_driver.first_name + ' ' + generic_driver.last_name) generic_driver_name\n    ,customer.send_ucc128info\n    ,customer.mfr_no\n    ,'N' print_ucc128_labels\n    ,oe_pick_ticket.scan_pack_uid\n    ,customer.use_scan_pack_flag\n    ,COALESCE(customer.prnt_carton_label_after_final_pkg_flag, COALESCE(location_packing_options.prnt_carton_label_after_final_pkg_flag, 'N')) print_carton_labels\n    ,'N' AS c_send_edi_753_flag\n    ,COALESCE(oe_hdr.advanced_billing_flag, 'N') advanced_billing_flag\n    ,oe_pick_ticket.rfnav_pick_status_cd\n    ,oe_pick_ticket.rfnav_stop_no  ,oe_pick_ticket.packing_list_print_date\n    ,'N' AS ship_through_quickship\n    ,0.00 AS freight_tax  /*MAIN FROM CLAUSE*/  FROM\n    oe_hdr  INNER JOIN oe_pick_ticket ON oe_pick_ticket.order_no = oe_hdr.order_no  INNER JOIN company ON company.company_id = oe_hdr.company_id  INNER JOIN customer ON customer.customer_id = oe_hdr.customer_id\n    AND customer.company_id = oe_hdr.company_id  LEFT JOIN cust_defaults ON cust_defaults.company_id = oe_hdr.company_id  LEFT JOIN ship_to ON ship_to.company_id = oe_hdr.company_id\n    AND ship_to.ship_to_id = oe_hdr.address_id  INNER JOIN terms ON terms.terms_id = oe_hdr.terms  INNER JOIN invoice_batch ON invoice_batch.invoice_batch_uid = oe_pick_ticket.invoice_batch_uid  LEFT JOIN contacts ON contacts.id = oe_hdr.contact_id  LEFT JOIN freight_code ON freight_code.freight_code_uid = oe_pick_ticket.freight_code_uid  LEFT JOIN shipping_route ON (shipping_route.shipping_route_uid = oe_hdr.shipping_route_uid AND oe_pick_ticket.shipping_route_uid IS NULL)\n    OR (shipping_route.shipping_route_uid = oe_pick_ticket.shipping_route_uid)  LEFT JOIN currency_line ON currency_line.currency_line_uid = oe_hdr.currency_line_uid  LEFT JOIN (SELECT DISTINCT oe_pick_ticket.pick_ticket_no\n    FROM\n    oe_pick_ticket\n    INNER JOIN oe_pick_ticket_detail ON oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no\n    INNER JOIN oe_line ON oe_pick_ticket.order_no = oe_line.order_no\n    AND oe_pick_ticket_detail.oe_line_no = oe_line.line_no\n    INNER JOIN oe_line_service ON oe_line_service.oe_line_uid = oe_line.oe_line_uid\n    AND oe_line_service.row_status_flag IN (1732, 1733)\n    WHERE  oe_pick_ticket.oe_pick_ticket_type_cd = 1921) AS drv_Service ON drv_Service.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN group_pick_ticket_detail ON group_pick_ticket_detail.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN group_pick_ticket_hdr ON group_pick_ticket_hdr.group_pick_ticket_hdr_uid = group_pick_ticket_detail.group_pick_ticket_hdr_uid\n    AND group_pick_ticket_hdr.transaction_type_cd = 1941  LEFT JOIN oe_hdr_progress_billing ON oe_hdr_progress_billing.order_no = oe_hdr.order_no  LEFT JOIN (SELECT oe_pick_ticket_detail.pick_ticket_no\n    ,oe_line.item_bill_to_id\n    ,customer.ar_account_no\n    ,customer.revenue_account_no\n    ,customer.cos_account_no\n    ,customer.freight_account_no\n    ,customer.brokerage_account_no\n    ,customer.taxable_flag\n    ,customer.invoice_print_qty\n    FROM\n    oe_pick_ticket_detail\n    INNER JOIN oe_pick_ticket ON oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no\n    INNER JOIN oe_line ON (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)\n    AND (oe_line.order_no = oe_pick_ticket.order_no)\n    INNER JOIN oe_hdr ON (oe_line.order_no = oe_hdr.order_no)\n    INNER JOIN customer ON (customer.customer_id = oe_line.item_bill_to_id)\n    AND (customer.company_id = oe_hdr.company_id)\n    WHERE  oe_pick_ticket_detail.line_number = 1) drv_oe_pick_ticket_detail ON drv_oe_pick_ticket_detail.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN location ON location.company_id = oe_hdr.company_id\n    AND location.location_id = oe_hdr.location_id  LEFT JOIN company_strategic_pricing ON company_strategic_pricing.company_id = oe_hdr.company_id  LEFT JOIN address ON address.id = oe_hdr.carrier_id  LEFT JOIN customer_strategic_pricing ON customer_strategic_pricing.customer_id = oe_hdr.customer_id\n    AND customer_strategic_pricing.company_id = oe_hdr.company_id  LEFT JOIN oe_pick_ticket_ups ON oe_pick_ticket_ups.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN shipping_route AS ups_shipping_route ON ups_shipping_route.shipping_route_uid = oe_pick_ticket_ups.shipping_route_uid  LEFT JOIN contacts AS driver ON driver.id = oe_pick_ticket_ups.driver_id  LEFT JOIN contacts AS generic_driver ON generic_driver.id = oe_pick_ticket.driver_id  LEFT JOIN oe_pick_ticket_detail\n    ON (oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no)\n    AND oe_pick_ticket_detail.line_number = 1  LEFT JOIN customer_terms AS drv_customer_terms\n    ON drv_customer_terms.company_id = oe_hdr.company_id\n    AND drv_customer_terms.customer_id = oe_hdr.customer_id\n    AND drv_customer_terms.type_no = 212\n    AND drv_customer_terms.row_status_flag = 704\n    AND drv_customer_terms.type_uid = oe_pick_ticket_detail.inv_mast_uid  LEFT JOIN terms AS drv_customer_terms_item\n    ON (drv_customer_terms_item.terms_id = drv_customer_terms.terms_id)  LEFT JOIN oe_line\n    ON (oe_line.order_no = oe_hdr.order_no)\n    AND (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)  LEFT JOIN product_group\n    ON (product_group.company_id = oe_hdr.company_id)\n    AND (product_group.product_group_id = oe_line.product_group_id)  LEFT JOIN customer_terms AS drv_customer_terms_with_pg\n    ON (drv_customer_terms_with_pg.company_id = oe_hdr.company_id)\n    AND (drv_customer_terms_with_pg.customer_id = oe_hdr.customer_id)\n    AND (drv_customer_terms_with_pg.type_no = 218)\n    AND (drv_customer_terms_with_pg.row_status_flag = 704)\n    AND (drv_customer_terms_with_pg.type_uid = product_group.product_group_uid)\n    LEFT JOIN terms AS drv_customer_terms_pg\n    ON (drv_customer_terms_pg.terms_id = drv_customer_terms_with_pg.terms_id)\n    CROSS JOIN system_setting  LEFT JOIN address customer_address ON customer_address.id = COALESCE(drv_oe_pick_ticket_detail.item_bill_to_id, oe_hdr.customer_id)  LEFT JOIN location_packing_options ON location_packing_options.location_id = oe_pick_ticket.location_id  /*MAIN WHERE CLAUSE*/  WHERE  oe_pick_ticket.pick_ticket_no = :pick_ticket_no\n    AND oe_pick_ticket.invoice_no IS NULL\n    AND oe_pick_ticket.delete_flag <> 'Y'\n    AND oe_pick_ticket.auxiliary = 'N'\n    AND oe_pick_ticket.direct_shipment <> 'Y'\n    AND system_setting.configuration_id = 0\n    AND system_setting.name = 'confirm_shipment'\n    AND oe_hdr.rma_flag = 'N'\n    AND ((oe_pick_ticket.oe_pick_ticket_type_cd = 1921 AND drv_service.pick_ticket_no IS NOT NULL)\n    OR (oe_pick_ticket.oe_pick_ticket_type_cd IS NULL OR oe_pick_ticket.oe_pick_ticket_type_cd <> 1921))  /*MAIN ORDER BY CLAUSE*/  /*MAIN HAVING CLAUSE*/  /*MAIN GROUP BY CLAUSE*/",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Pick Ticket Number:",
+       "expr": "oe_pick_ticket.pick_ticket_no",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Order Number:",
+       "expr": "oe_pick_ticket.order_no",
+       "kind": "table.column"
+      },
+      {
+       "n": 3,
+       "label": "Customer ID:",
+       "expr": "oe_hdr.customer_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Order Date:",
+       "expr": "oe_hdr.order_date",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Ship Date:",
+       "expr": "oe_pick_ticket.ship_date",
+       "kind": "table.column"
+      },
+      {
+       "n": 15,
+       "label": "Invoice Number:",
+       "expr": "oe_pick_ticket.invoice_no",
+       "kind": "table.column"
+      },
+      {
+       "n": 16,
+       "label": "Carrier Tracking Number:",
+       "expr": "oe_pick_ticket.tracking_no",
+       "kind": "table.column"
+      },
+      {
+       "n": 17,
+       "label": "Carrier:",
+       "expr": "oe_pick_ticket.carrier_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 20,
+       "label": "Customer Name",
+       "expr": "address.name",
+       "kind": "table.column"
+      },
+      {
+       "n": 21,
+       "label": "Name",
+       "expr": "address.name",
+       "kind": "table.column"
+      },
+      {
+       "n": 24,
+       "label": "Instructions:",
+       "expr": "oe_pick_ticket.instructions",
+       "kind": "table.column"
+      },
+      {
+       "n": 44,
+       "label": "Print Label",
+       "expr": "print_label",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 46,
+       "label": "Year:",
+       "expr": "year_for_period",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 47,
+       "label": "Period:",
+       "expr": "period",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 51,
+       "label": "Location ID:",
+       "expr": "oe_pick_ticket.location_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 53,
+       "label": "Delete Flag",
+       "expr": "oe_pick_ticket.delete_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 61,
+       "label": "Sales Branch ID:",
+       "expr": "branch_id",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 62,
+       "label": "Branch Desc",
+       "expr": "branch_desc",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 63,
+       "label": "Front Counter Tax",
+       "expr": "oe_pick_ticket.front_counter_tax",
+       "kind": "table.column"
+      },
+      {
+       "n": 66,
+       "label": "Route:",
+       "expr": "shipping_route.route_code",
+       "kind": "table.column"
+      },
+      {
+       "n": 75,
+       "label": "Create Invoice",
+       "expr": "create_invoice",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 76,
+       "label": "Printpackinglist",
+       "expr": "PrintPackingList",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 79,
+       "label": "Freight Cd:",
+       "expr": "freight_code.freight_cd",
+       "kind": "table.column"
+      },
+      {
+       "n": 80,
+       "label": "Freight Desc:",
+       "expr": "freight_code.freight_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 84,
+       "label": "Fax Packinglist",
+       "expr": "fax_packinglist",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 86,
+       "label": "Invoice Batch Number:",
+       "expr": "invoice_batch.invoice_batch_number",
+       "kind": "table.column"
+      },
+      {
+       "n": 87,
+       "label": "Invoice Batch Desc",
+       "expr": "invoice_batch.invoice_batch_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 91,
+       "label": "Email Packinglist",
+       "expr": "email_packinglist",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 126,
+       "label": "Send Ucc128info",
+       "expr": "customer.send_ucc128info",
+       "kind": "table.column"
+      },
+      {
+       "n": 128,
+       "label": "Print Ucc128 Labels",
+       "expr": "print_ucc128_labels",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 131,
+       "label": "Print Carton Labels",
+       "expr": "print_carton_labels",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 132,
+       "label": "C Send Edi 753 Flag",
+       "expr": "c_send_edi_753_flag",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": null,
+       "label": "PO Number:",
+       "expr": "\"IF(IsNull(po_no), ~\"~\", RightTrim(po_no)) +  IF((ISNull(po_no_append) OR (po_no_append = ~\"-1~\") OR (po_no_append = ~\"~\")),",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "Cf Picktickettype",
+       "expr": "\"If( pick_and_hold = 'Y', ~\"PICK AND HOLD~\",      if( oe_pick_ticket_type_cd = 1921, ~\"PARTS PICK TICKET~\",         if( oe_pick_ticket_type_cd = 1922, ~\"SERVICE PICK TICKET~\", ~\" ~\") ) )\"",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "pick_ticket_no": {
+       "column": "oe_pick_ticket.pick_ticket_no",
+       "expression": null,
+       "basis": "probed"
+      },
+      "carrier_id": {
+       "column": "oe_pick_ticket.carrier_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "tracking_no": {
+       "column": "oe_pick_ticket.tracking_no",
+       "expression": null,
+       "basis": "column"
+      },
+      "printpackinglist": {
+       "column": null,
+       "expression": "' '",
+       "basis": "alias"
+      },
+      "print_label": {
+       "column": null,
+       "expression": "' '",
+       "basis": "probed"
+      },
+      "instructions": {
+       "column": "oe_pick_ticket.instructions",
+       "expression": null,
+       "basis": "column"
+      },
+      "print_invoice": {
+       "column": null,
+       "expression": "' '",
+       "basis": "alias"
+      },
+      "create_invoice": {
+       "column": null,
+       "expression": "CASE WHEN oe_pick_ticket.pick_and_hold = 'Y' THEN 'N' WHEN (oe_pick_ticket.oe_pick_ticket_type_cd = 1921 OR oe_pick_ticket.oe_pick_ticket_type_cd = 1922) THEN 'N' WHEN system_setting.VALUE = 'Y' THEN 'Y' ELSE 'N' END",
+       "basis": "alias"
+      },
+      "front_counter_tax": {
+       "column": "oe_pick_ticket.front_counter_tax",
+       "expression": null,
+       "basis": "column"
+      },
+      "fax_invoice": {
+       "column": null,
+       "expression": "' '",
+       "basis": "alias"
+      },
+      "email_invoice": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "fax_packinglist": {
+       "column": null,
+       "expression": "' '",
+       "basis": "alias"
+      },
+      "ship_route": {
+       "column": "shipping_route.route_code",
+       "expression": null,
+       "basis": "probed"
+      },
+      "email_packinglist": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "delete_flag": {
+       "column": "oe_pick_ticket.delete_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "confirmable_row_status_flag": {
+       "column": "oe_pick_ticket.confirmable_row_status_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "capture_signature": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "probed"
+      },
+      "receiver_name": {
+       "column": null,
+       "expression": "''",
+       "basis": "alias"
+      },
+      "ship_through_quickship": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "c_send_edi_753_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "send_ucc128info": {
+       "column": "customer.send_ucc128info",
+       "expression": null,
+       "basis": "column"
+      },
+      "print_ucc128_labels": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "print_carton_labels": {
+       "column": null,
+       "expression": "COALESCE(customer.prnt_carton_label_after_final_pkg_flag, COALESCE(location_packing_options.prnt_carton_label_after_final_pkg_flag, 'N'))",
+       "basis": "alias"
+      },
+      "rfnav_pick_status_cd": {
+       "column": "oe_pick_ticket.rfnav_pick_status_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "rfnav_stop_no": {
+       "column": "oe_pick_ticket.rfnav_stop_no",
+       "expression": null,
+       "basis": "column"
+      },
+      "period": {
+       "column": null,
+       "expression": "0",
+       "basis": "alias"
+      },
+      "year_for_period": {
+       "column": null,
+       "expression": "0",
+       "basis": "alias"
+      },
+      "ship_date": {
+       "column": "oe_pick_ticket.ship_date",
+       "expression": null,
+       "basis": "column"
+      },
+      "invoice_batch_number": {
+       "column": "invoice_batch.invoice_batch_number",
+       "expression": null,
+       "basis": "column"
+      },
+      "freight_cd": {
+       "column": "freight_code.freight_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "customer_id": {
+       "column": null,
+       "expression": "COALESCE(drv_oe_pick_ticket_detail.item_bill_to_id, oe_hdr.customer_id)",
+       "basis": "alias"
+      },
+      "order_no": {
+       "column": "oe_pick_ticket.order_no",
+       "expression": null,
+       "basis": "column"
+      },
+      "order_date": {
+       "column": "oe_hdr.order_date",
+       "expression": null,
+       "basis": "column"
+      },
+      "location_id": {
+       "column": "oe_pick_ticket.location_id",
+       "expression": null,
+       "basis": "probed"
+      },
+      "invoice_no": {
+       "column": "oe_pick_ticket.invoice_no",
+       "expression": null,
+       "basis": "column"
+      },
+      "invoice_batch_desc": {
+       "column": "invoice_batch.invoice_batch_desc",
+       "expression": null,
+       "basis": "column"
+      },
+      "customer_name": {
+       "column": "address.name",
+       "expression": null,
+       "basis": "alias"
+      },
+      "name": {
+       "column": null,
+       "expression": "' '",
+       "basis": "alias"
+      },
+      "freight_desc": {
+       "column": "freight_code.freight_desc",
+       "expression": null,
+       "basis": "column"
+      },
+      "c_po_no": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_picktickettype": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "contact_name": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_2",
+   "text": null,
+   "select_status": "HTTP 400: Tab with name or display text of TABPAGE_2 does not exist.",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_3",
+   "text": "Customer Notes",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tp_3_dw_3",
+     "fullname": "TABPAGE_3.tp_3_dw_3",
+     "update_table": "customer_notepad",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "customer_notepad",
+      "note_area",
+      "notepad_class"
+     ],
+     "select_sql": "SELECT\n    customer_notepad.note_id ,\n    customer_notepad.topic ,\n    customer_notepad.note ,\n    customer_notepad.mandatory ,\n    notepad_class.notepad_class_desc,\n    customer_notepad.notepad_class,\n    customer_notepad.activation_date,\n    customer_notepad.expiration_date,\n    customer_notepad.entry_date,\n    customer_notepad.delete_flag,\n    customer_notepad.date_created,\n    customer_notepad.date_last_modified,\n    customer_notepad.last_maintained_by,\n    customer_notepad.created_by  FROM\n    customer_notepad\n    INNER JOIN note_area ON note_area.note_id = customer_notepad.note_id\n    LEFT JOIN notepad_class ON notepad_class.notepad_class_id = customer_notepad.notepad_class\n    WHERE  ( ( customer_notepad.company_id = :company_id )\n    and\n    ( customer_notepad.customer_id = :customer_id )\n    and\n    ( note_area.area = :area )\n    and\n    ( customer_notepad.activation_date <= :today )\n    and\n    ( customer_notepad.expiration_date >= :today )\n    and\n    ( customer_notepad.delete_flag = 'N' ) )\n    ORDER BY\n    customer_notepad.note_id\n    ASC",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Note ID",
+       "expr": "customer_notepad.note_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Topic",
+       "expr": "customer_notepad.topic",
+       "kind": "table.column"
+      },
+      {
+       "n": 3,
+       "label": "Note",
+       "expr": "customer_notepad.note",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Class",
+       "expr": "notepad_class.notepad_class_desc",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "note": {
+       "column": "customer_notepad.note",
+       "expression": null,
+       "basis": "column"
+      },
+      "note_id": {
+       "column": "customer_notepad.note_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "topic": {
+       "column": "customer_notepad.topic",
+       "expression": null,
+       "basis": "column"
+      },
+      "notepad_class_desc": {
+       "column": "notepad_class.notepad_class_desc",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_4",
+   "text": null,
+   "select_status": "HTTP 400: Tab with name or display text of TABPAGE_4 does not exist.",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_5",
+   "text": "Remittance",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tp_5_dw_5",
+     "fullname": "TABPAGE_5.tp_5_dw_5",
+     "update_table": "ar_payment_details",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "ar_payment_details",
+      "payment_types",
+      "remittances",
+      "currency_line",
+      "p21_view_ar_payment_details",
+      "check_payment_details",
+      "p21_view_creditcard_payment_details",
+      "epf_transaction_detail",
+      "payment_account_x_transaction",
+      "payment_account",
+      "currency_hdr"
+     ],
+     "select_sql": "SELECT ar_payment_details.payment_number\n    ,ar_payment_details.payment_type_id\n    ,ar_payment_details.payment_desc\n    ,ar_payment_details.payment_date\n    ,ar_payment_details.payment_amount\n    ,ar_payment_details.terms_amount\n    ,ar_payment_details.allowed_amount\n    ,ar_payment_details.check_number\n    ,ar_payment_details.cc_name\n    ,ar_payment_details.cc_number\n    ,ar_payment_details.cc_expiration_date\n    ,ar_payment_details.cc_authorized_date\n    ,ar_payment_details.cc_authorized_number\n    ,ar_payment_details.period\n    ,ar_payment_details.year_for_period\n    ,ar_payment_details.deposit_number\n    ,ar_payment_details.delete_flag\n    ,ar_payment_details.date_created\n    ,ar_payment_details.date_last_modified\n    ,ar_payment_details.last_maintained_by\n    ,payment_types.payment_method_id\n    ,' ' cf_pay_total\n    ,'Y' cf_retrieved\n    ,ar_payment_details.memo_amount\n    ,' ' cc_swipe\n    ,'P' cc_protect_auth\n    ,CASE\n    WHEN payment_method_id = 'EP' THEN\n    epf_transaction_detail.authorization_amount\n    ELSE\n    p21_view_creditcard_payment_details.auth_amount\n    END auth_amount\n    ,p21_view_creditcard_payment_details.customer_verification_value\n    ,'N' cc_swiped\n    ,' ' cc_swiped_info\n    ,' ' cc_auth_failed\n    ,p21_view_creditcard_payment_details.user_specified_amount\n    ,'0' cc_auth_amount\n    ,' ' cc_trans_type\n    ,ar_payment_details.preprocessed_payment_amount\n    ,ar_payment_details.currency_line_uid\n    ,p21_view_ar_payment_details.payment_amount_home\n    ,p21_view_creditcard_payment_details.auth_amount_home\n    ,p21_view_ar_payment_details.memo_amount_home\n    ,'Y' cc_encrypted_number\n    ,remittances.order_no\n    ,ar_payment_details.payment_source_cd\n    ,'N' 'default_instance'\n    ,ar_payment_details.store_credit_number\n    ,'N' cc_switch_payment_preprocessed\n    ,check_payment_details.eft_flag\n    ,0 c_ref_row_number\n    ,ar_payment_details.payment_amount c_cash_pymt_amt\n    ,ar_payment_details.change_amount\n    ,CASE\n    WHEN payment_method_id IN ('CC', 'DE', 'EP') THEN\n    '************' + RIGHT(ar_payment_details.cc_number, 4)\n    ELSE\n    NULL\n    END 'cc_creditcard_number'\n    ,ar_payment_details.source_type_cd\n    ,ar_payment_details.created_by\n    ,p21_view_creditcard_payment_details.switch_issue_number\n    ,payment_types.card_type_cd\n    ,ar_payment_details.payment_account_id\n    ,ar_payment_details.web_cc_processor_uid\n    ,'N' cc_failed_in_session\n    ,ar_payment_details.tax_terms_amount\n    ,ar_payment_details.tax_amount_paid\n    ,0.00 c_price_rounding_offset\n    ,ar_payment_details.rounded_amount\n    ,ar_payment_details.multi_currency_exchange_rate\n    ,ar_payment_details.multi_currency_id\n    ,ar_payment_details.multi_currency_payment_amount\n    ,ar_payment_details.multi_currency_variance_amount\n    ,ar_payment_details.exchange_rate_override_date\n    ,COALESCE(ar_payment_details.exchange_rate_override_date, ar_payment_details.date_created) exchange_date\n    ,NULL epf_request_type_cd\n    ,NULL epf_request_amount\n    ,'N' epf_create_token_on_auth_or_capture_flag\n    ,CASE\n    WHEN ar_payment_details.payment_account_id IS NOT NULL\n    AND payment_account.payment_acct_id IS NOT NULL\n    AND payment_account.row_status_flag = 704 THEN\n    'Y'\n    ELSE\n    'N'\n    END active_token_flag\n    ,'N' epf_request_completed\n    ,0 AS c_refund_amt\n    ,0 AS c_prior_refunded_amount\n    ,ar_payment_details.cc_refund_parent_payment_no\n    ,ar_payment_details.cc_return_transaction_id\n    ,CASE\n    WHEN epf_transaction_detail.capture_reference_no IS NOT NULL\n    OR epf_transaction_detail.void_reference_no IS NOT NULL THEN\n    'Y'\n    ELSE\n    'N'\n    END epf_retrieved_completed\n    ,0 AS c_cc_dp_invoice_amt\n    ,remittances.remittance_number\n    ,0 AS c_overpay_amt\n    ,0 AS rental_payment_amt\n    ,'N' cc_orphan_payment\n    ,ar_payment_details.override_surcharge\n    ,NULL epf_source_payment_number  FROM\n    ar_payment_details  INNER JOIN payment_types ON (payment_types.payment_type_id = ar_payment_details.payment_type_id)  INNER JOIN remittances ON (remittances.payment_number = ar_payment_details.payment_number)  LEFT JOIN currency_line ON currency_line.currency_line_uid = ar_payment_details.currency_line_uid  LEFT JOIN p21_view_ar_payment_details ON p21_view_ar_payment_details.payment_number = ar_payment_details.payment_number  LEFT JOIN check_payment_details ON (check_payment_details.payment_number = ar_payment_details.payment_number)  LEFT JOIN p21_view_creditcard_payment_details ON p21_view_creditcard_payment_details.payment_number = ar_payment_details.payment_number  LEFT JOIN epf_transaction_detail ON epf_transaction_detail.payment_number = ar_payment_details.payment_number  LEFT JOIN (SELECT payment_number\n    ,MAX(payment_account_uid) 'payment_account_uid'\n    FROM payment_account_x_transaction\n    GROUP BY payment_number) AS drv_payment_account_x_transaction ON drv_payment_account_x_transaction.payment_number = ar_payment_details.payment_number  LEFT JOIN payment_account ON payment_account.payment_account_uid = drv_payment_account_x_transaction.payment_account_uid  LEFT JOIN currency_hdr ON currency_hdr.currency_id = ar_payment_details.multi_currency_id  WHERE  (remittances.order_no = :as_OrderNo)",
+     "columns": [
+      {
+       "n": 2,
+       "label": "Pymt Type:",
+       "expr": "ar_payment_details.payment_type_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 3,
+       "label": "Payment Desc:",
+       "expr": "ar_payment_details.payment_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Pymt Date:",
+       "expr": "ar_payment_details.payment_date",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Payment Amount:",
+       "expr": "ar_payment_details.payment_amount",
+       "kind": "table.column"
+      },
+      {
+       "n": 8,
+       "label": "Check Number:",
+       "expr": "ar_payment_details.check_number",
+       "kind": "table.column"
+      },
+      {
+       "n": 9,
+       "label": "CC Name:",
+       "expr": "ar_payment_details.cc_name",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "CC Exp Dt:",
+       "expr": "ar_payment_details.cc_expiration_date",
+       "kind": "table.column"
+      },
+      {
+       "n": 12,
+       "label": "CC Auth Dt:",
+       "expr": "ar_payment_details.cc_authorized_date",
+       "kind": "table.column"
+      },
+      {
+       "n": 13,
+       "label": "CC Auth No:",
+       "expr": "ar_payment_details.cc_authorized_number",
+       "kind": "table.column"
+      },
+      {
+       "n": 22,
+       "label": "Cf Pay Total",
+       "expr": "ar_payment_details.cf_pay_total",
+       "kind": "table.column"
+      },
+      {
+       "n": 24,
+       "label": "AP Credit Memo:",
+       "expr": "ar_payment_details.memo_amount",
+       "kind": "table.column"
+      },
+      {
+       "n": 25,
+       "label": "Cc Swipe",
+       "expr": "cc_swipe",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 27,
+       "label": "Authorized Amount:",
+       "expr": "p21_view_creditcard_payment_details.auth_amount",
+       "kind": "table.column"
+      },
+      {
+       "n": 37,
+       "label": "Payment Amount Home",
+       "expr": "p21_view_ar_payment_details.payment_amount_home",
+       "kind": "table.column"
+      },
+      {
+       "n": 38,
+       "label": "Auth Amount Home",
+       "expr": "p21_view_creditcard_payment_details.auth_amount_home",
+       "kind": "table.column"
+      },
+      {
+       "n": 48,
+       "label": "Cash Pymt Amt:",
+       "expr": "c_cash_pymt_amt",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 50,
+       "label": "CC Number:",
+       "expr": "cc_creditcard_number",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 53,
+       "label": "Switch Issue Number",
+       "expr": "p21_view_creditcard_payment_details.switch_issue_number",
+       "kind": "table.column"
+      },
+      {
+       "n": 81,
+       "label": "Rental Amount:",
+       "expr": "rental_payment_amt",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 83,
+       "label": "Override Surcharge",
+       "expr": "ar_payment_details.override_surcharge",
+       "kind": "table.column"
+      },
+      {
+       "n": null,
+       "label": "Cf Rowinfo",
+       "expr": "'Payment ' + string(getrow()) + ' of ' + String(rowcount())",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "payment_type_id": {
+       "column": "ar_payment_details.payment_type_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "payment_amount": {
+       "column": "ar_payment_details.payment_amount",
+       "expression": null,
+       "basis": "column"
+      },
+      "c_cash_pymt_amt": {
+       "column": "ar_payment_details.payment_amount",
+       "expression": null,
+       "basis": "alias"
+      },
+      "payment_desc": {
+       "column": "ar_payment_details.payment_desc",
+       "expression": null,
+       "basis": "column"
+      },
+      "check_number": {
+       "column": "ar_payment_details.check_number",
+       "expression": null,
+       "basis": "column"
+      },
+      "payment_date": {
+       "column": "ar_payment_details.payment_date",
+       "expression": null,
+       "basis": "column"
+      },
+      "store_credit_number": {
+       "column": "ar_payment_details.store_credit_number",
+       "expression": null,
+       "basis": "column"
+      },
+      "cf_pay_total": {
+       "column": null,
+       "expression": "' '",
+       "basis": "alias"
+      },
+      "cc_name": {
+       "column": "ar_payment_details.cc_name",
+       "expression": null,
+       "basis": "column"
+      },
+      "cc_creditcard_number": {
+       "column": null,
+       "expression": "CASE WHEN payment_method_id IN ('CC', 'DE', 'EP') THEN '************' + RIGHT(ar_payment_details.cc_number, 4) ELSE NULL END",
+       "basis": "alias"
+      },
+      "customer_verification_value": {
+       "column": "p21_view_creditcard_payment_details.customer_verification_value",
+       "expression": null,
+       "basis": "column"
+      },
+      "cc_expiration_date": {
+       "column": "ar_payment_details.cc_expiration_date",
+       "expression": null,
+       "basis": "column"
+      },
+      "cc_authorized_date": {
+       "column": "ar_payment_details.cc_authorized_date",
+       "expression": null,
+       "basis": "column"
+      },
+      "cc_authorized_number": {
+       "column": "ar_payment_details.cc_authorized_number",
+       "expression": null,
+       "basis": "column"
+      },
+      "switch_issue_number": {
+       "column": "p21_view_creditcard_payment_details.switch_issue_number",
+       "expression": null,
+       "basis": "probed"
+      },
+      "multi_currency_id": {
+       "column": "ar_payment_details.multi_currency_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "multi_currency_payment_amount": {
+       "column": "ar_payment_details.multi_currency_payment_amount",
+       "expression": null,
+       "basis": "column"
+      },
+      "rental_payment_amt": {
+       "column": null,
+       "expression": "0",
+       "basis": "alias"
+      },
+      "exchange_date": {
+       "column": null,
+       "expression": "COALESCE(ar_payment_details.exchange_rate_override_date, ar_payment_details.date_created)",
+       "basis": "alias"
+      },
+      "cc_swipe": {
+       "column": null,
+       "expression": "' '",
+       "basis": "alias"
+      },
+      "override_surcharge": {
+       "column": "ar_payment_details.override_surcharge",
+       "expression": null,
+       "basis": "column"
+      },
+      "memo_amount": {
+       "column": "ar_payment_details.memo_amount",
+       "expression": null,
+       "basis": "column"
+      },
+      "sum_cc_payment": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "sum_payment_amount": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_rowinfo": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "sum_memo_amount": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_new_payment": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "sum_new_payments": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "sum_new_cc_payments": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "sum_auth_amount": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_cash_pymt_chg": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_sum_new_pymts_not_cc_or_ca": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    },
+    {
+     "name": "dw_totals",
+     "fullname": "TABPAGE_5.dw_totals",
+     "update_table": null,
+     "update_table_note": null,
+     "external_source": true,
+     "main_tables": [],
+     "select_sql": "External source data; no SQL select associated with displayed data",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Ship Total:",
+       "expr": "sub_total",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 2,
+       "label": "Tax:",
+       "expr": "tax",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 5,
+       "label": "Amt Tendered:",
+       "expr": "amount_tendered",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 13,
+       "label": "DP To Apply:",
+       "expr": "c_dp_to_apply",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 14,
+       "label": "Unapplied Pymt:",
+       "expr": "c_unapplied_dp",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 16,
+       "label": "Open DP Inv Amt:",
+       "expr": "c_open_dp_inv_amt",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": null,
+       "label": "Balance:",
+       "expr": "cf_sugg_pymt  -  amount_tendered",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "Sugg Pymt for Inv:",
+       "expr": "if(sub_total  +  tax+ if(isnull(total_wee_tax), 0, total_wee_tax) + if(isnull(total_eco_fee), 0, total_eco_fee)  -  c_dp_to_apply - bldr_allowance_remaining < 0, 0, sub_total  +  tax + if(isnull(total_wee_tax), 0, total_wee_tax)  +  if(isnull(total_eco_fee), 0, total_eco_fee) -  c_dp_to_apply - bldr_allowance_remaining) + if(isNull(c_price_rounding_offset), 0, c_price_rounding_offset)",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "c_dp_to_apply": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "c_prev_pymt_not_appd": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "c_prev_open_inv_total": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "c_open_dp_inv_amt": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "c_unapplied_dp": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "amount_tendered": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "tax": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "sub_total": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "balance": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "cf_sugg_pymt": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "cf_downpayment_remaining": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "invoice_total": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "downpayment_remaining": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "total_due": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "balance_t1": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "cf_prorated_amount": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      }
+     }
+    },
+    {
+     "name": "tp_5_dw_req_pymt",
+     "fullname": "TABPAGE_5.tp_5_dw_req_pymt",
+     "update_table": "oe_hdr",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_hdr",
+      "address",
+      "shipping_route",
+      "currency_line",
+      "ship_to"
+     ],
+     "select_sql": "SELECT oe_hdr.order_no\n    ,oe_hdr.customer_id\n    ,oe_hdr.order_date\n    ,oe_hdr.ship2_name\n    ,oe_hdr.ship2_add1\n    ,oe_hdr.ship2_add2\n    ,oe_hdr.ship2_city\n    ,oe_hdr.ship2_state\n    ,oe_hdr.ship2_zip\n    ,oe_hdr.ship2_country\n    ,oe_hdr.requested_date\n    ,oe_hdr.po_no\n    ,oe_hdr.terms\n    ,oe_hdr.delete_flag\n    ,oe_hdr.completed\n    ,oe_hdr.company_id\n    ,oe_hdr.date_created\n    ,oe_hdr.date_last_modified\n    ,oe_hdr.projected_order\n    ,oe_hdr.po_no_append\n    ,oe_hdr.location_id\n    ,oe_hdr.carrier_id\n    ,oe_hdr.address_id\n    ,oe_hdr.contact_id\n    ,COALESCE(oe_hdr.corp_address_id, address.corp_address_id) corp_address_id\n    ,oe_hdr.class_1id\n    ,oe_hdr.class_2id\n    ,oe_hdr.class_3id\n    ,oe_hdr.class_4id\n    ,oe_hdr.class_5id\n    ,oe_hdr.rma_flag\n    ,oe_hdr.taker\n    ,oe_hdr.job_name\n    ,oe_hdr.approved\n    ,oe_hdr.source_location_id\n    ,oe_hdr.packing_basis\n    ,shipping_route.route_code\n    ,oe_hdr.delivery_instructions\n    ,oe_hdr.pick_ticket_type\n    ,oe_hdr.requested_downpayment\n    ,oe_hdr.downpayment_invoiced\n    ,oe_hdr.cancel_flag\n    ,oe_hdr.will_call\n    ,oe_hdr.front_counter\n    ,oe_hdr.validation_status\n    ,oe_hdr.oe_hdr_uid\n    ,oe_hdr.ship_to_phone\n    ,oe_hdr.last_maintained_by\n    ,oe_hdr.cod_flag\n    ,oe_hdr.handling_charge_req_flag\n    ,oe_hdr.fob_flag\n    ,oe_hdr.third_party_billing_flag\n    ,oe_hdr.source_id\n    ,oe_hdr.credit_card_hold\n    ,oe_hdr.source_code_no\n    ,oe_hdr.shipping_route_uid\n    ,oe_hdr.exclude_rebates\n    ,oe_hdr.job_price_hdr_uid\n    ,oe_hdr.invoice_exch_rate_source_cd\n    ,oe_hdr.currency_line_uid\n    ,oe_hdr.rma_expiration_date\n    ,oe_hdr.order_type\n    ,oe_hdr.invoice_no\n    ,oe_hdr.tag_hold_cancel_date\n    ,currency_line.to_currency_id\n    ,oe_hdr.date_order_completed\n    ,oe_hdr.apply_builder_allowance_flag\n    ,oe_hdr.req_pymt_upon_release_flag\n    ,oe_hdr.merchandise_credit_flag\n    ,oe_hdr.downpayment_percentage\n    ,oe_hdr.invoice_batch_uid\n    ,ship_to.invoice_type\n    ,address.name\n    ,' ' contact_name\n    ,oe_hdr.product_group_cost_basis\n    ,oe_hdr.landed_cost_included_cd\n    ,oe_hdr.prepaid_invoice_flag\n    ,oe_hdr.default_pricing_cd\n    ,oe_hdr.packing_list_sent_flag\n    ,oe_hdr.strategic_library_uid\n    ,oe_hdr.strategic_library_original_uid\n    ,oe_hdr.send_partial_order_flag\n    ,oe_hdr.use_vendor_item_terms_flag\n    ,oe_hdr.exclude_from_credit_limit_flag\n    ,oe_hdr.approved_for_ar_flag\n    ,oe_hdr.freight_out\n    ,oe_hdr.ship2_add3\n    ,oe_hdr.environmental_fee_flag\n    ,oe_hdr.admin_fee_flag\n    ,oe_hdr.supplier_order_no\n    ,oe_hdr.carrier_contract_hdr_uid\n    ,oe_hdr.promise_date\n    ,oe_hdr.original_promise_date\n    ,oe_hdr.advanced_billing_flag\n    ,oe_hdr.rental_quote_no\n    ,oe_hdr.rental_transaction_no\n    ,oe_hdr.rental_billing_flag\n    ,oe_hdr.quote_type\n    ,oe_hdr.freight_tax\n    ,oe_hdr.tariff_enabled_flag  FROM\n    oe_hdr\n    INNER JOIN address ON address.id = oe_hdr.customer_id\n    LEFT JOIN shipping_route ON shipping_route.shipping_route_uid = oe_hdr.shipping_route_uid\n    LEFT JOIN currency_line ON currency_line.currency_line_uid = oe_hdr.currency_line_uid\n    LEFT JOIN ship_to ON ship_to.ship_to_id = oe_hdr.address_id\n    AND ship_to.customer_id = oe_hdr.customer_id\n    AND ship_to.company_id = oe_hdr.company_id",
+     "columns": [
+      {
+       "n": 68,
+       "label": "Req Pymt Upon Release Flag",
+       "expr": "oe_hdr.req_pymt_upon_release_flag",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "req_pymt_upon_release_flag": {
+       "column": "oe_hdr.req_pymt_upon_release_flag",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_6",
+   "text": "Order Notes",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tp_6_dw_6",
+     "fullname": "TABPAGE_6.tp_6_dw_6",
+     "update_table": "oe_hdr_notepad",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_hdr_notepad",
+      "note_area",
+      "notepad_class"
+     ],
+     "select_sql": "SELECT\n    oe_hdr_notepad.note_id,\n    oe_hdr_notepad.order_no,\n    oe_hdr_notepad.notepad_class_id,\n    oe_hdr_notepad.topic,\n    oe_hdr_notepad.note,\n    oe_hdr_notepad.activation_date,\n    oe_hdr_notepad.expiration_date,\n    oe_hdr_notepad.entry_date,\n    oe_hdr_notepad.mandatory,\n    oe_hdr_notepad.delete_flag,\n    oe_hdr_notepad.date_created,\n    oe_hdr_notepad.date_last_modified,\n    oe_hdr_notepad.last_maintained_by,\n    oe_hdr_notepad.default_in_oe,\n    notepad_class.notepad_class_desc,\n    note_area.area,\n    oe_hdr_notepad.created_by  FROM oe_hdr_notepad  INNER JOIN note_area ON note_area.note_id = oe_hdr_notepad.note_id  LEFT JOIN notepad_class ON notepad_class.notepad_class_id = oe_hdr_notepad.notepad_class_id  WHERE ( ( oe_hdr_notepad.order_no = :order_no ) AND\n    ( note_area.area in (:area) ) AND\n    ( oe_hdr_notepad.activation_date <= :today ) AND\n    ( oe_hdr_notepad.expiration_date >= :today ) AND\n    ( oe_hdr_notepad.delete_flag = 'N' ) )",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Note ID",
+       "expr": "oe_hdr_notepad.note_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Topic",
+       "expr": "oe_hdr_notepad.topic",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Note",
+       "expr": "oe_hdr_notepad.note",
+       "kind": "table.column"
+      },
+      {
+       "n": 15,
+       "label": "Class",
+       "expr": "notepad_class.notepad_class_desc",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "note": {
+       "column": "oe_hdr_notepad.note",
+       "expression": null,
+       "basis": "column"
+      },
+      "note_id": {
+       "column": "oe_hdr_notepad.note_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "topic": {
+       "column": "oe_hdr_notepad.topic",
+       "expression": null,
+       "basis": "column"
+      },
+      "notepad_class_desc": {
+       "column": "notepad_class.notepad_class_desc",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_7",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_8",
+   "text": "none",
+   "select_status": "HTTP 400: Tab page is invisible and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "HDR_NOTE",
+   "text": "Invoice Notes",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "hdr_note",
+     "fullname": "HDR_NOTE.hdr_note",
+     "update_table": "invoice_hdr_notepad",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "invoice_hdr_notepad",
+      "note_area",
+      "notepad_class"
+     ],
+     "select_sql": "SELECT\n    invoice_hdr_notepad.invoice_no,\n    invoice_hdr_notepad.note_id,\n    invoice_hdr_notepad.topic,\n    invoice_hdr_notepad.note,\n    invoice_hdr_notepad.activation_date,\n    invoice_hdr_notepad.expiration_date,\n    invoice_hdr_notepad.entry_date,\n    invoice_hdr_notepad.notepad_class_id,\n    invoice_hdr_notepad.mandatory,\n    invoice_hdr_notepad.delete_flag,\n    invoice_hdr_notepad.date_created,\n    invoice_hdr_notepad.date_last_modified,\n    invoice_hdr_notepad.last_maintained_by,\n    notepad_class.notepad_class_desc,\n    invoice_hdr_notepad.invoice_hdr_notepad_uid,\n    invoice_hdr_notepad.created_by\n    FROM invoice_hdr_notepad\n    INNER JOIN note_area ON note_area.note_id = invoice_hdr_notepad.note_id\n    LEFT JOIN notepad_class ON notepad_class.notepad_class_id = invoice_hdr_notepad.notepad_class_id\n    WHERE ( ( invoice_hdr_notepad.invoice_no = :invoice_no ) AND\n    ( invoice_hdr_notepad.activation_date <= CURRENT_TIMESTAMP ) AND\n    ( invoice_hdr_notepad.expiration_date >= CURRENT_TIMESTAMP ) AND\n    ( invoice_hdr_notepad.delete_flag = 'N' ) )",
+     "columns": [
+      {
+       "n": 2,
+       "label": "Note ID",
+       "expr": "invoice_hdr_notepad.note_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 3,
+       "label": "Topic",
+       "expr": "invoice_hdr_notepad.topic",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Note",
+       "expr": "invoice_hdr_notepad.note",
+       "kind": "table.column"
+      },
+      {
+       "n": 14,
+       "label": "Class",
+       "expr": "notepad_class.notepad_class_desc",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "note": {
+       "column": "invoice_hdr_notepad.note",
+       "expression": null,
+       "basis": "column"
+      },
+      "note_id": {
+       "column": "invoice_hdr_notepad.note_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "topic": {
+       "column": "invoice_hdr_notepad.topic",
+       "expression": null,
+       "basis": "column"
+      },
+      "notepad_class_desc": {
+       "column": "notepad_class.notepad_class_desc",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_SHIPTO",
+   "text": "Ship To",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tabpage_shipto",
+     "fullname": "TABPAGE_SHIPTO.tabpage_shipto",
+     "update_table": "oe_pick_ticket",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_hdr",
+      "oe_pick_ticket",
+      "company",
+      "customer",
+      "cust_defaults",
+      "ship_to",
+      "terms",
+      "invoice_batch",
+      "contacts",
+      "freight_code",
+      "shipping_route",
+      "currency_line",
+      "oe_pick_ticket_detail",
+      "oe_line",
+      "oe_line_service",
+      "group_pick_ticket_detail",
+      "group_pick_ticket_hdr",
+      "oe_hdr_progress_billing",
+      "location",
+      "company_strategic_pricing",
+      "address",
+      "customer_strategic_pricing",
+      "oe_pick_ticket_ups",
+      "customer_terms",
+      "product_group",
+      "system_setting",
+      "location_packing_options"
+     ],
+     "select_sql": "SELECT oe_pick_ticket.pick_ticket_no\n    ,oe_pick_ticket.order_no\n    ,COALESCE(drv_oe_pick_ticket_detail.item_bill_to_id, oe_hdr.customer_id) customer_id\n    ,oe_hdr.order_date\n    ,oe_pick_ticket.ship_date\n    ,oe_hdr.po_no\n    ,oe_pick_ticket.freight_out\n    ,oe_hdr.ship2_name\n    ,oe_hdr.ship2_add1\n    ,oe_hdr.ship2_add2\n    ,oe_hdr.ship2_city\n    ,oe_hdr.ship2_state\n    ,oe_hdr.ship2_zip\n    ,oe_hdr.ship2_country\n    ,oe_pick_ticket.invoice_no\n    ,oe_pick_ticket.tracking_no\n    ,oe_pick_ticket.carrier_id\n    ,oe_hdr.address_id\n    ,oe_hdr.contact_id\n    ,customer_address.name customer_name\n    ,' ' name\n    ,' ' carrier_name\n    ,' ' ship_to_address_name\n    ,oe_pick_ticket.instructions\n    ,oe_pick_ticket.date_created\n    ,oe_pick_ticket.date_last_modified\n    ,oe_pick_ticket.last_maintained_by\n    ,oe_pick_ticket.company_id\n    ,contacts.first_name\n    ,contacts.mi\n    ,contacts.last_name\n    ,contacts.salutation\n    ,' ' mail_address1\n    ,' ' mail_address2\n    ,' ' mail_city\n    ,' ' mail_state\n    ,' ' mail_postal_code\n    ,' ' mail_country\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.ar_account_no\n    ELSE drv_oe_pick_ticket_detail.ar_account_no\n    END ar_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.revenue_account_no\n    ELSE drv_oe_pick_ticket_detail.revenue_account_no\n    END revenue_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.cos_account_no\n    ELSE drv_oe_pick_ticket_detail.cos_account_no\n    END cos_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.freight_account_no\n    ELSE drv_oe_pick_ticket_detail.freight_account_no\n    END freight_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.brokerage_account_no\n    ELSE drv_oe_pick_ticket_detail.brokerage_account_no\n    END brokerage_account_no\n    ,' ' print_label\n    ,' ' print_invoice\n    ,0 year_for_period\n    ,0 period\n    ,company.company_name\n    ,COALESCE(drv_customer_terms_item.terms_desc, COALESCE(drv_customer_terms_pg.terms_desc, terms.terms_desc)) terms_desc\n    ,oe_hdr.requested_date\n    ,oe_pick_ticket.location_id\n    ,COALESCE(drv_customer_terms_item.terms_id, COALESCE(drv_customer_terms_pg.terms_id, oe_hdr.terms)) terms_id\n    ,oe_pick_ticket.delete_flag\n    ,0 corp_address_id\n    ,COALESCE(ship_to.invoice_type, cust_defaults.invoice_type) invoice_type\n    ,oe_pick_ticket.pick_and_hold\n    ,oe_pick_ticket.printed_flag\n    ,oe_pick_ticket.print_date\n    ,oe_pick_ticket.freight_in\n    ,oe_hdr.location_id\n    ,' ' branch_id\n    ,' ' branch_desc\n    ,oe_pick_ticket.front_counter_tax\n    ,oe_pick_ticket.direct_shipment\n    ,oe_pick_ticket.total_tax\n    ,shipping_route.route_code\n    ,oe_pick_ticket.front_counter\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.taxable_flag\n    ELSE drv_oe_pick_ticket_detail.taxable_flag\n    END taxable_flag\n    ,oe_pick_ticket.auxiliary\n    ,oe_hdr.oe_hdr_uid\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.invoice_print_qty\n    ELSE drv_oe_pick_ticket_detail.invoice_print_qty\n    END invoice_print_qty\n    ,oe_hdr.ship_to_phone\n    ,oe_hdr.last_maintained_by\n    ,oe_hdr.completed\n    ,CASE\n    WHEN oe_pick_ticket.pick_and_hold = 'Y' THEN 'N'\n    WHEN (oe_pick_ticket.oe_pick_ticket_type_cd = 1921\n    OR oe_pick_ticket.oe_pick_ticket_type_cd = 1922) THEN 'N'\n    WHEN system_setting.VALUE = 'Y' THEN 'Y'\n    ELSE 'N'\n    END create_invoice\n    ,' ' printpackinglist\n    ,oe_hdr.po_no_append\n    ,oe_pick_ticket.freight_code_uid\n    ,freight_code.freight_cd\n    ,freight_code.freight_desc\n    ,freight_code.tax_group_id\n    ,COALESCE(oe_pick_ticket.shipping_route_uid, oe_hdr.shipping_route_uid)\n    ,' ' fax_invoice\n    ,' ' fax_packinglist\n    ,oe_pick_ticket.invoice_batch_uid\n    ,invoice_batch.invoice_batch_number\n    ,invoice_batch.invoice_batch_desc\n    ,'N' edi_invoice\n    ,'N' edi_shipnotice\n    ,'N' email_invoice\n    ,'N' email_packinglist\n    ,oe_hdr.job_price_hdr_uid\n    ,oe_hdr.ship2_email_address\n    ,oe_pick_ticket.freight_out\n    ,oe_hdr.currency_line_uid\n    ,currency_line.to_currency_id\n    ,oe_hdr.invoice_exch_rate_source_cd\n    ,oe_pick_ticket.oe_pick_ticket_type_cd\n    ,group_pick_ticket_hdr.group_pick_ticket_hdr_uid\n    ,oe_pick_ticket.confirmable_row_status_flag\n    ,oe_pick_ticket.outgoing_freight_cost\n    ,oe_hdr_progress_billing.progress_bill_flag\n    ,'N' capture_signature\n    ,oe_pick_ticket.dea_pick_ticket_flag\n    ,oe_hdr.front_counter front_counter_order\n    ,location.strategic_retail_location_flag\n    ,company_strategic_pricing.retail_warehouse_separate_flag\n    ,CASE\n    WHEN ((address.carrier_strategic_freight_flag = 'Y'\n    OR address.carrier_strategic_freight_flag = 'I'\n    OR address.carrier_strategic_freight_flag = 'O')\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND customer_strategic_pricing.freight_charge_option_cd IS NOT NULL) THEN 'Y'\n    ELSE 'N'\n    END allow_strategic_freight\n    ,CASE\n    WHEN ((address.carrier_strategic_freight_flag = 'Y'\n    OR address.carrier_strategic_freight_flag = 'I'\n    OR address.carrier_strategic_freight_flag = 'O')\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND customer_strategic_pricing.freight_charge_option_cd IS NOT NULL) THEN\n    CASE\n    WHEN customer_strategic_pricing.freight_charge_option_cd = 2630 THEN 'Y'\n    ELSE 'N'\n    END\n    ELSE 'N'\n    END use_strategic_freight\n    ,oe_pick_ticket.original_freight_out\n    ,ups_shipping_route.route_description\n    ,oe_pick_ticket_ups.shipping_route_stop\n    ,(driver.first_name + ' ' + driver.last_name) driver_name\n    ,'' receiver_name\n    ,oe_pick_ticket.freight_out_edited_flag\n    ,oe_pick_ticket.print_canadian_b3_forms_flag\n    ,oe_pick_ticket.slab_flag\n    ,oe_hdr.ship2_add3\n    ,' ' mail_address3\n    ,oe_pick_ticket.pick_confirmed_flag\n    ,oe_pick_ticket.sent_to_trackabout_flag\n    ,oe_hdr.ship2_latitude\n    ,oe_hdr.ship2_longitude\n    ,oe_pick_ticket.driver_id\n    ,(generic_driver.first_name + ' ' + generic_driver.last_name) generic_driver_name\n    ,customer.send_ucc128info\n    ,customer.mfr_no\n    ,'N' print_ucc128_labels\n    ,oe_pick_ticket.scan_pack_uid\n    ,customer.use_scan_pack_flag\n    ,COALESCE(customer.prnt_carton_label_after_final_pkg_flag, COALESCE(location_packing_options.prnt_carton_label_after_final_pkg_flag, 'N')) print_carton_labels\n    ,'N' AS c_send_edi_753_flag\n    ,COALESCE(oe_hdr.advanced_billing_flag, 'N') advanced_billing_flag\n    ,oe_pick_ticket.rfnav_pick_status_cd\n    ,oe_pick_ticket.rfnav_stop_no  ,oe_pick_ticket.packing_list_print_date\n    ,'N' AS ship_through_quickship\n    ,0.00 AS freight_tax  /*MAIN FROM CLAUSE*/  FROM\n    oe_hdr  INNER JOIN oe_pick_ticket ON oe_pick_ticket.order_no = oe_hdr.order_no  INNER JOIN company ON company.company_id = oe_hdr.company_id  INNER JOIN customer ON customer.customer_id = oe_hdr.customer_id\n    AND customer.company_id = oe_hdr.company_id  LEFT JOIN cust_defaults ON cust_defaults.company_id = oe_hdr.company_id  LEFT JOIN ship_to ON ship_to.company_id = oe_hdr.company_id\n    AND ship_to.ship_to_id = oe_hdr.address_id  INNER JOIN terms ON terms.terms_id = oe_hdr.terms  INNER JOIN invoice_batch ON invoice_batch.invoice_batch_uid = oe_pick_ticket.invoice_batch_uid  LEFT JOIN contacts ON contacts.id = oe_hdr.contact_id  LEFT JOIN freight_code ON freight_code.freight_code_uid = oe_pick_ticket.freight_code_uid  LEFT JOIN shipping_route ON (shipping_route.shipping_route_uid = oe_hdr.shipping_route_uid AND oe_pick_ticket.shipping_route_uid IS NULL)\n    OR (shipping_route.shipping_route_uid = oe_pick_ticket.shipping_route_uid)  LEFT JOIN currency_line ON currency_line.currency_line_uid = oe_hdr.currency_line_uid  LEFT JOIN (SELECT DISTINCT oe_pick_ticket.pick_ticket_no\n    FROM\n    oe_pick_ticket\n    INNER JOIN oe_pick_ticket_detail ON oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no\n    INNER JOIN oe_line ON oe_pick_ticket.order_no = oe_line.order_no\n    AND oe_pick_ticket_detail.oe_line_no = oe_line.line_no\n    INNER JOIN oe_line_service ON oe_line_service.oe_line_uid = oe_line.oe_line_uid\n    AND oe_line_service.row_status_flag IN (1732, 1733)\n    WHERE  oe_pick_ticket.oe_pick_ticket_type_cd = 1921) AS drv_Service ON drv_Service.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN group_pick_ticket_detail ON group_pick_ticket_detail.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN group_pick_ticket_hdr ON group_pick_ticket_hdr.group_pick_ticket_hdr_uid = group_pick_ticket_detail.group_pick_ticket_hdr_uid\n    AND group_pick_ticket_hdr.transaction_type_cd = 1941  LEFT JOIN oe_hdr_progress_billing ON oe_hdr_progress_billing.order_no = oe_hdr.order_no  LEFT JOIN (SELECT oe_pick_ticket_detail.pick_ticket_no\n    ,oe_line.item_bill_to_id\n    ,customer.ar_account_no\n    ,customer.revenue_account_no\n    ,customer.cos_account_no\n    ,customer.freight_account_no\n    ,customer.brokerage_account_no\n    ,customer.taxable_flag\n    ,customer.invoice_print_qty\n    FROM\n    oe_pick_ticket_detail\n    INNER JOIN oe_pick_ticket ON oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no\n    INNER JOIN oe_line ON (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)\n    AND (oe_line.order_no = oe_pick_ticket.order_no)\n    INNER JOIN oe_hdr ON (oe_line.order_no = oe_hdr.order_no)\n    INNER JOIN customer ON (customer.customer_id = oe_line.item_bill_to_id)\n    AND (customer.company_id = oe_hdr.company_id)\n    WHERE  oe_pick_ticket_detail.line_number = 1) drv_oe_pick_ticket_detail ON drv_oe_pick_ticket_detail.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN location ON location.company_id = oe_hdr.company_id\n    AND location.location_id = oe_hdr.location_id  LEFT JOIN company_strategic_pricing ON company_strategic_pricing.company_id = oe_hdr.company_id  LEFT JOIN address ON address.id = oe_hdr.carrier_id  LEFT JOIN customer_strategic_pricing ON customer_strategic_pricing.customer_id = oe_hdr.customer_id\n    AND customer_strategic_pricing.company_id = oe_hdr.company_id  LEFT JOIN oe_pick_ticket_ups ON oe_pick_ticket_ups.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN shipping_route AS ups_shipping_route ON ups_shipping_route.shipping_route_uid = oe_pick_ticket_ups.shipping_route_uid  LEFT JOIN contacts AS driver ON driver.id = oe_pick_ticket_ups.driver_id  LEFT JOIN contacts AS generic_driver ON generic_driver.id = oe_pick_ticket.driver_id  LEFT JOIN oe_pick_ticket_detail\n    ON (oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no)\n    AND oe_pick_ticket_detail.line_number = 1  LEFT JOIN customer_terms AS drv_customer_terms\n    ON drv_customer_terms.company_id = oe_hdr.company_id\n    AND drv_customer_terms.customer_id = oe_hdr.customer_id\n    AND drv_customer_terms.type_no = 212\n    AND drv_customer_terms.row_status_flag = 704\n    AND drv_customer_terms.type_uid = oe_pick_ticket_detail.inv_mast_uid  LEFT JOIN terms AS drv_customer_terms_item\n    ON (drv_customer_terms_item.terms_id = drv_customer_terms.terms_id)  LEFT JOIN oe_line\n    ON (oe_line.order_no = oe_hdr.order_no)\n    AND (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)  LEFT JOIN product_group\n    ON (product_group.company_id = oe_hdr.company_id)\n    AND (product_group.product_group_id = oe_line.product_group_id)  LEFT JOIN customer_terms AS drv_customer_terms_with_pg\n    ON (drv_customer_terms_with_pg.company_id = oe_hdr.company_id)\n    AND (drv_customer_terms_with_pg.customer_id = oe_hdr.customer_id)\n    AND (drv_customer_terms_with_pg.type_no = 218)\n    AND (drv_customer_terms_with_pg.row_status_flag = 704)\n    AND (drv_customer_terms_with_pg.type_uid = product_group.product_group_uid)\n    LEFT JOIN terms AS drv_customer_terms_pg\n    ON (drv_customer_terms_pg.terms_id = drv_customer_terms_with_pg.terms_id)\n    CROSS JOIN system_setting  LEFT JOIN address customer_address ON customer_address.id = COALESCE(drv_oe_pick_ticket_detail.item_bill_to_id, oe_hdr.customer_id)  LEFT JOIN location_packing_options ON location_packing_options.location_id = oe_pick_ticket.location_id  /*MAIN WHERE CLAUSE*/  WHERE  oe_pick_ticket.pick_ticket_no = :pick_ticket_no\n    AND oe_pick_ticket.invoice_no IS NULL\n    AND oe_pick_ticket.delete_flag <> 'Y'\n    AND oe_pick_ticket.auxiliary = 'N'\n    AND oe_pick_ticket.direct_shipment <> 'Y'\n    AND system_setting.configuration_id = 0\n    AND system_setting.name = 'confirm_shipment'\n    AND oe_hdr.rma_flag = 'N'\n    AND ((oe_pick_ticket.oe_pick_ticket_type_cd = 1921 AND drv_service.pick_ticket_no IS NOT NULL)\n    OR (oe_pick_ticket.oe_pick_ticket_type_cd IS NULL OR oe_pick_ticket.oe_pick_ticket_type_cd <> 1921))  /*MAIN ORDER BY CLAUSE*/  /*MAIN HAVING CLAUSE*/  /*MAIN GROUP BY CLAUSE*/",
+     "columns": [
+      {
+       "n": 8,
+       "label": "Ship To Name:",
+       "expr": "oe_hdr.ship2_name",
+       "kind": "table.column"
+      },
+      {
+       "n": 9,
+       "label": "Ship To Address:",
+       "expr": "oe_hdr.ship2_add1",
+       "kind": "table.column"
+      },
+      {
+       "n": 10,
+       "label": "Ship2 Add2",
+       "expr": "oe_hdr.ship2_add2",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Ship To City/State/Zip/Country:",
+       "expr": "oe_hdr.ship2_city",
+       "kind": "table.column"
+      },
+      {
+       "n": 12,
+       "label": "Ship2 State",
+       "expr": "oe_hdr.ship2_state",
+       "kind": "table.column"
+      },
+      {
+       "n": 13,
+       "label": "Ship2 Zip",
+       "expr": "oe_hdr.ship2_zip",
+       "kind": "table.column"
+      },
+      {
+       "n": 14,
+       "label": "Ship2 Country",
+       "expr": "oe_hdr.ship2_country",
+       "kind": "table.column"
+      },
+      {
+       "n": 18,
+       "label": "Ship To ID:",
+       "expr": "oe_hdr.address_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 19,
+       "label": "Contact ID:",
+       "expr": "oe_hdr.contact_id",
+       "kind": "table.column"
+      },
+      {
+       "n": null,
+       "label": "Contact Name",
+       "expr": "trim(first_name) + \" \" + if(isNull(mi),\"\",mi + \".\" ) + \" \" + trim(last_name)",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "address_id": {
+       "column": "oe_hdr.address_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "contact_id": {
+       "column": "oe_hdr.contact_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "ship2_add1": {
+       "column": "oe_hdr.ship2_add1",
+       "expression": null,
+       "basis": "probed"
+      },
+      "ship2_add2": {
+       "column": "oe_hdr.ship2_add2",
+       "expression": null,
+       "basis": "column"
+      },
+      "ship2_city": {
+       "column": "oe_hdr.ship2_city",
+       "expression": null,
+       "basis": "column"
+      },
+      "ship2_name": {
+       "column": "oe_hdr.ship2_name",
+       "expression": null,
+       "basis": "column"
+      },
+      "ship2_state": {
+       "column": "oe_hdr.ship2_state",
+       "expression": null,
+       "basis": "column"
+      },
+      "ship2_zip": {
+       "column": "oe_hdr.ship2_zip",
+       "expression": null,
+       "basis": "column"
+      },
+      "ship2_country": {
+       "column": "oe_hdr.ship2_country",
+       "expression": null,
+       "basis": "column"
+      },
+      "contact_name": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_FREIGHT",
+   "text": "Out Freight",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tabpage_freight",
+     "fullname": "TABPAGE_FREIGHT.tabpage_freight",
+     "update_table": "oe_pick_ticket",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_hdr",
+      "oe_pick_ticket",
+      "company",
+      "customer",
+      "cust_defaults",
+      "ship_to",
+      "terms",
+      "invoice_batch",
+      "contacts",
+      "freight_code",
+      "shipping_route",
+      "currency_line",
+      "oe_pick_ticket_detail",
+      "oe_line",
+      "oe_line_service",
+      "group_pick_ticket_detail",
+      "group_pick_ticket_hdr",
+      "oe_hdr_progress_billing",
+      "location",
+      "company_strategic_pricing",
+      "address",
+      "customer_strategic_pricing",
+      "oe_pick_ticket_ups",
+      "customer_terms",
+      "product_group",
+      "system_setting",
+      "location_packing_options"
+     ],
+     "select_sql": "SELECT oe_pick_ticket.pick_ticket_no\n    ,oe_pick_ticket.order_no\n    ,COALESCE(drv_oe_pick_ticket_detail.item_bill_to_id, oe_hdr.customer_id) customer_id\n    ,oe_hdr.order_date\n    ,oe_pick_ticket.ship_date\n    ,oe_hdr.po_no\n    ,oe_pick_ticket.freight_out\n    ,oe_hdr.ship2_name\n    ,oe_hdr.ship2_add1\n    ,oe_hdr.ship2_add2\n    ,oe_hdr.ship2_city\n    ,oe_hdr.ship2_state\n    ,oe_hdr.ship2_zip\n    ,oe_hdr.ship2_country\n    ,oe_pick_ticket.invoice_no\n    ,oe_pick_ticket.tracking_no\n    ,oe_pick_ticket.carrier_id\n    ,oe_hdr.address_id\n    ,oe_hdr.contact_id\n    ,customer_address.name customer_name\n    ,' ' name\n    ,' ' carrier_name\n    ,' ' ship_to_address_name\n    ,oe_pick_ticket.instructions\n    ,oe_pick_ticket.date_created\n    ,oe_pick_ticket.date_last_modified\n    ,oe_pick_ticket.last_maintained_by\n    ,oe_pick_ticket.company_id\n    ,contacts.first_name\n    ,contacts.mi\n    ,contacts.last_name\n    ,contacts.salutation\n    ,' ' mail_address1\n    ,' ' mail_address2\n    ,' ' mail_city\n    ,' ' mail_state\n    ,' ' mail_postal_code\n    ,' ' mail_country\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.ar_account_no\n    ELSE drv_oe_pick_ticket_detail.ar_account_no\n    END ar_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.revenue_account_no\n    ELSE drv_oe_pick_ticket_detail.revenue_account_no\n    END revenue_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.cos_account_no\n    ELSE drv_oe_pick_ticket_detail.cos_account_no\n    END cos_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.freight_account_no\n    ELSE drv_oe_pick_ticket_detail.freight_account_no\n    END freight_account_no\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.brokerage_account_no\n    ELSE drv_oe_pick_ticket_detail.brokerage_account_no\n    END brokerage_account_no\n    ,' ' print_label\n    ,' ' print_invoice\n    ,0 year_for_period\n    ,0 period\n    ,company.company_name\n    ,COALESCE(drv_customer_terms_item.terms_desc, COALESCE(drv_customer_terms_pg.terms_desc, terms.terms_desc)) terms_desc\n    ,oe_hdr.requested_date\n    ,oe_pick_ticket.location_id\n    ,COALESCE(drv_customer_terms_item.terms_id, COALESCE(drv_customer_terms_pg.terms_id, oe_hdr.terms)) terms_id\n    ,oe_pick_ticket.delete_flag\n    ,0 corp_address_id\n    ,COALESCE(ship_to.invoice_type, cust_defaults.invoice_type) invoice_type\n    ,oe_pick_ticket.pick_and_hold\n    ,oe_pick_ticket.printed_flag\n    ,oe_pick_ticket.print_date\n    ,oe_pick_ticket.freight_in\n    ,oe_hdr.location_id\n    ,' ' branch_id\n    ,' ' branch_desc\n    ,oe_pick_ticket.front_counter_tax\n    ,oe_pick_ticket.direct_shipment\n    ,oe_pick_ticket.total_tax\n    ,shipping_route.route_code\n    ,oe_pick_ticket.front_counter\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.taxable_flag\n    ELSE drv_oe_pick_ticket_detail.taxable_flag\n    END taxable_flag\n    ,oe_pick_ticket.auxiliary\n    ,oe_hdr.oe_hdr_uid\n    ,CASE\n    WHEN drv_oe_pick_ticket_detail.item_bill_to_id IS NULL THEN customer.invoice_print_qty\n    ELSE drv_oe_pick_ticket_detail.invoice_print_qty\n    END invoice_print_qty\n    ,oe_hdr.ship_to_phone\n    ,oe_hdr.last_maintained_by\n    ,oe_hdr.completed\n    ,CASE\n    WHEN oe_pick_ticket.pick_and_hold = 'Y' THEN 'N'\n    WHEN (oe_pick_ticket.oe_pick_ticket_type_cd = 1921\n    OR oe_pick_ticket.oe_pick_ticket_type_cd = 1922) THEN 'N'\n    WHEN system_setting.VALUE = 'Y' THEN 'Y'\n    ELSE 'N'\n    END create_invoice\n    ,' ' printpackinglist\n    ,oe_hdr.po_no_append\n    ,oe_pick_ticket.freight_code_uid\n    ,freight_code.freight_cd\n    ,freight_code.freight_desc\n    ,freight_code.tax_group_id\n    ,COALESCE(oe_pick_ticket.shipping_route_uid, oe_hdr.shipping_route_uid)\n    ,' ' fax_invoice\n    ,' ' fax_packinglist\n    ,oe_pick_ticket.invoice_batch_uid\n    ,invoice_batch.invoice_batch_number\n    ,invoice_batch.invoice_batch_desc\n    ,'N' edi_invoice\n    ,'N' edi_shipnotice\n    ,'N' email_invoice\n    ,'N' email_packinglist\n    ,oe_hdr.job_price_hdr_uid\n    ,oe_hdr.ship2_email_address\n    ,oe_pick_ticket.freight_out\n    ,oe_hdr.currency_line_uid\n    ,currency_line.to_currency_id\n    ,oe_hdr.invoice_exch_rate_source_cd\n    ,oe_pick_ticket.oe_pick_ticket_type_cd\n    ,group_pick_ticket_hdr.group_pick_ticket_hdr_uid\n    ,oe_pick_ticket.confirmable_row_status_flag\n    ,oe_pick_ticket.outgoing_freight_cost\n    ,oe_hdr_progress_billing.progress_bill_flag\n    ,'N' capture_signature\n    ,oe_pick_ticket.dea_pick_ticket_flag\n    ,oe_hdr.front_counter front_counter_order\n    ,location.strategic_retail_location_flag\n    ,company_strategic_pricing.retail_warehouse_separate_flag\n    ,CASE\n    WHEN ((address.carrier_strategic_freight_flag = 'Y'\n    OR address.carrier_strategic_freight_flag = 'I'\n    OR address.carrier_strategic_freight_flag = 'O')\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND customer_strategic_pricing.freight_charge_option_cd IS NOT NULL) THEN 'Y'\n    ELSE 'N'\n    END allow_strategic_freight\n    ,CASE\n    WHEN ((address.carrier_strategic_freight_flag = 'Y'\n    OR address.carrier_strategic_freight_flag = 'I'\n    OR address.carrier_strategic_freight_flag = 'O')\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND address.carrier_strategic_freight_flag IS NOT NULL\n    AND customer_strategic_pricing.freight_charge_option_cd IS NOT NULL) THEN\n    CASE\n    WHEN customer_strategic_pricing.freight_charge_option_cd = 2630 THEN 'Y'\n    ELSE 'N'\n    END\n    ELSE 'N'\n    END use_strategic_freight\n    ,oe_pick_ticket.original_freight_out\n    ,ups_shipping_route.route_description\n    ,oe_pick_ticket_ups.shipping_route_stop\n    ,(driver.first_name + ' ' + driver.last_name) driver_name\n    ,'' receiver_name\n    ,oe_pick_ticket.freight_out_edited_flag\n    ,oe_pick_ticket.print_canadian_b3_forms_flag\n    ,oe_pick_ticket.slab_flag\n    ,oe_hdr.ship2_add3\n    ,' ' mail_address3\n    ,oe_pick_ticket.pick_confirmed_flag\n    ,oe_pick_ticket.sent_to_trackabout_flag\n    ,oe_hdr.ship2_latitude\n    ,oe_hdr.ship2_longitude\n    ,oe_pick_ticket.driver_id\n    ,(generic_driver.first_name + ' ' + generic_driver.last_name) generic_driver_name\n    ,customer.send_ucc128info\n    ,customer.mfr_no\n    ,'N' print_ucc128_labels\n    ,oe_pick_ticket.scan_pack_uid\n    ,customer.use_scan_pack_flag\n    ,COALESCE(customer.prnt_carton_label_after_final_pkg_flag, COALESCE(location_packing_options.prnt_carton_label_after_final_pkg_flag, 'N')) print_carton_labels\n    ,'N' AS c_send_edi_753_flag\n    ,COALESCE(oe_hdr.advanced_billing_flag, 'N') advanced_billing_flag\n    ,oe_pick_ticket.rfnav_pick_status_cd\n    ,oe_pick_ticket.rfnav_stop_no  ,oe_pick_ticket.packing_list_print_date\n    ,'N' AS ship_through_quickship\n    ,0.00 AS freight_tax  /*MAIN FROM CLAUSE*/  FROM\n    oe_hdr  INNER JOIN oe_pick_ticket ON oe_pick_ticket.order_no = oe_hdr.order_no  INNER JOIN company ON company.company_id = oe_hdr.company_id  INNER JOIN customer ON customer.customer_id = oe_hdr.customer_id\n    AND customer.company_id = oe_hdr.company_id  LEFT JOIN cust_defaults ON cust_defaults.company_id = oe_hdr.company_id  LEFT JOIN ship_to ON ship_to.company_id = oe_hdr.company_id\n    AND ship_to.ship_to_id = oe_hdr.address_id  INNER JOIN terms ON terms.terms_id = oe_hdr.terms  INNER JOIN invoice_batch ON invoice_batch.invoice_batch_uid = oe_pick_ticket.invoice_batch_uid  LEFT JOIN contacts ON contacts.id = oe_hdr.contact_id  LEFT JOIN freight_code ON freight_code.freight_code_uid = oe_pick_ticket.freight_code_uid  LEFT JOIN shipping_route ON (shipping_route.shipping_route_uid = oe_hdr.shipping_route_uid AND oe_pick_ticket.shipping_route_uid IS NULL)\n    OR (shipping_route.shipping_route_uid = oe_pick_ticket.shipping_route_uid)  LEFT JOIN currency_line ON currency_line.currency_line_uid = oe_hdr.currency_line_uid  LEFT JOIN (SELECT DISTINCT oe_pick_ticket.pick_ticket_no\n    FROM\n    oe_pick_ticket\n    INNER JOIN oe_pick_ticket_detail ON oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no\n    INNER JOIN oe_line ON oe_pick_ticket.order_no = oe_line.order_no\n    AND oe_pick_ticket_detail.oe_line_no = oe_line.line_no\n    INNER JOIN oe_line_service ON oe_line_service.oe_line_uid = oe_line.oe_line_uid\n    AND oe_line_service.row_status_flag IN (1732, 1733)\n    WHERE  oe_pick_ticket.oe_pick_ticket_type_cd = 1921) AS drv_Service ON drv_Service.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN group_pick_ticket_detail ON group_pick_ticket_detail.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN group_pick_ticket_hdr ON group_pick_ticket_hdr.group_pick_ticket_hdr_uid = group_pick_ticket_detail.group_pick_ticket_hdr_uid\n    AND group_pick_ticket_hdr.transaction_type_cd = 1941  LEFT JOIN oe_hdr_progress_billing ON oe_hdr_progress_billing.order_no = oe_hdr.order_no  LEFT JOIN (SELECT oe_pick_ticket_detail.pick_ticket_no\n    ,oe_line.item_bill_to_id\n    ,customer.ar_account_no\n    ,customer.revenue_account_no\n    ,customer.cos_account_no\n    ,customer.freight_account_no\n    ,customer.brokerage_account_no\n    ,customer.taxable_flag\n    ,customer.invoice_print_qty\n    FROM\n    oe_pick_ticket_detail\n    INNER JOIN oe_pick_ticket ON oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no\n    INNER JOIN oe_line ON (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)\n    AND (oe_line.order_no = oe_pick_ticket.order_no)\n    INNER JOIN oe_hdr ON (oe_line.order_no = oe_hdr.order_no)\n    INNER JOIN customer ON (customer.customer_id = oe_line.item_bill_to_id)\n    AND (customer.company_id = oe_hdr.company_id)\n    WHERE  oe_pick_ticket_detail.line_number = 1) drv_oe_pick_ticket_detail ON drv_oe_pick_ticket_detail.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN location ON location.company_id = oe_hdr.company_id\n    AND location.location_id = oe_hdr.location_id  LEFT JOIN company_strategic_pricing ON company_strategic_pricing.company_id = oe_hdr.company_id  LEFT JOIN address ON address.id = oe_hdr.carrier_id  LEFT JOIN customer_strategic_pricing ON customer_strategic_pricing.customer_id = oe_hdr.customer_id\n    AND customer_strategic_pricing.company_id = oe_hdr.company_id  LEFT JOIN oe_pick_ticket_ups ON oe_pick_ticket_ups.pick_ticket_no = oe_pick_ticket.pick_ticket_no  LEFT JOIN shipping_route AS ups_shipping_route ON ups_shipping_route.shipping_route_uid = oe_pick_ticket_ups.shipping_route_uid  LEFT JOIN contacts AS driver ON driver.id = oe_pick_ticket_ups.driver_id  LEFT JOIN contacts AS generic_driver ON generic_driver.id = oe_pick_ticket.driver_id  LEFT JOIN oe_pick_ticket_detail\n    ON (oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no)\n    AND oe_pick_ticket_detail.line_number = 1  LEFT JOIN customer_terms AS drv_customer_terms\n    ON drv_customer_terms.company_id = oe_hdr.company_id\n    AND drv_customer_terms.customer_id = oe_hdr.customer_id\n    AND drv_customer_terms.type_no = 212\n    AND drv_customer_terms.row_status_flag = 704\n    AND drv_customer_terms.type_uid = oe_pick_ticket_detail.inv_mast_uid  LEFT JOIN terms AS drv_customer_terms_item\n    ON (drv_customer_terms_item.terms_id = drv_customer_terms.terms_id)  LEFT JOIN oe_line\n    ON (oe_line.order_no = oe_hdr.order_no)\n    AND (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)  LEFT JOIN product_group\n    ON (product_group.company_id = oe_hdr.company_id)\n    AND (product_group.product_group_id = oe_line.product_group_id)  LEFT JOIN customer_terms AS drv_customer_terms_with_pg\n    ON (drv_customer_terms_with_pg.company_id = oe_hdr.company_id)\n    AND (drv_customer_terms_with_pg.customer_id = oe_hdr.customer_id)\n    AND (drv_customer_terms_with_pg.type_no = 218)\n    AND (drv_customer_terms_with_pg.row_status_flag = 704)\n    AND (drv_customer_terms_with_pg.type_uid = product_group.product_group_uid)\n    LEFT JOIN terms AS drv_customer_terms_pg\n    ON (drv_customer_terms_pg.terms_id = drv_customer_terms_with_pg.terms_id)\n    CROSS JOIN system_setting  LEFT JOIN address customer_address ON customer_address.id = COALESCE(drv_oe_pick_ticket_detail.item_bill_to_id, oe_hdr.customer_id)  LEFT JOIN location_packing_options ON location_packing_options.location_id = oe_pick_ticket.location_id  /*MAIN WHERE CLAUSE*/  WHERE  oe_pick_ticket.pick_ticket_no = :pick_ticket_no\n    AND oe_pick_ticket.invoice_no IS NULL\n    AND oe_pick_ticket.delete_flag <> 'Y'\n    AND oe_pick_ticket.auxiliary = 'N'\n    AND oe_pick_ticket.direct_shipment <> 'Y'\n    AND system_setting.configuration_id = 0\n    AND system_setting.name = 'confirm_shipment'\n    AND oe_hdr.rma_flag = 'N'\n    AND ((oe_pick_ticket.oe_pick_ticket_type_cd = 1921 AND drv_service.pick_ticket_no IS NOT NULL)\n    OR (oe_pick_ticket.oe_pick_ticket_type_cd IS NULL OR oe_pick_ticket.oe_pick_ticket_type_cd <> 1921))  /*MAIN ORDER BY CLAUSE*/  /*MAIN HAVING CLAUSE*/  /*MAIN GROUP BY CLAUSE*/",
+     "columns": [
+      {
+       "n": 7,
+       "label": "Outgoing Freight:",
+       "expr": "oe_pick_ticket.freight_out",
+       "kind": "table.column"
+      },
+      {
+       "n": 79,
+       "label": "Freight Code:",
+       "expr": "freight_code.freight_cd",
+       "kind": "table.column"
+      },
+      {
+       "n": 80,
+       "label": "Freight Desc",
+       "expr": "freight_code.freight_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 109,
+       "label": "Use Strategic Freight",
+       "expr": "use_strategic_freight",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      }
+     ],
+     "fields": {
+      "freight_cd": {
+       "column": "freight_code.freight_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "freight_out": {
+       "column": "oe_pick_ticket.freight_out",
+       "expression": null,
+       "basis": "column"
+      },
+      "use_strategic_freight": {
+       "column": null,
+       "expression": "CASE WHEN ((address.carrier_strategic_freight_flag = 'Y' OR address.carrier_strategic_freight_flag = 'I' OR address.carrier_strategic_freight_flag = 'O') AND address.carrier_strategic_freight_flag IS NOT NULL AND address.carrier_strategic_freight_flag IS NOT NULL AND customer_strategic_pricing.freight_charge_option_cd IS NOT NULL) THEN CASE WHEN customer_strategic_pricing.freight_charge_option_cd = 2630 THEN 'Y' ELSE 'N' END ELSE 'N' END",
+       "basis": "alias"
+      },
+      "freight_desc": {
+       "column": "freight_code.freight_desc",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TP_SHIPPING",
+   "text": "Shipping",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_TAX",
+   "text": "Tax",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tabpage_tax",
+     "fullname": "TABPAGE_TAX.tabpage_tax",
+     "update_table": "oe_hdr_tax",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_hdr_tax",
+      "tax_jurisdiction"
+     ],
+     "select_sql": "SELECT oe_hdr_tax.jurisdiction_id ,\n    oe_hdr_tax.taxable,\n    oe_hdr_tax.date_created,\n    oe_hdr_tax.date_last_modified,\n    oe_hdr_tax.last_maintained_by,\n    tax_jurisdiction.jurisdiction_desc,\n    tax_jurisdiction.tax_percentage,\n    oe_hdr_tax.order_no,\n    tax_jurisdiction.calculate_tax_method,\n    COALESCE(tax_jurisdiction.tax_amount_per_unit, 0) tax_amount_per_unit,\n    tax_jurisdiction.unit_of_measure,\n    0 ship_to_id,\n    CASE WHEN COALESCE(tax_jurisdiction.invoice_limit, 0) > 0\n    THEN COALESCE(tax_jurisdiction.invoice_limit,0)\n    ELSE COALESCE(tax_jurisdiction.order_limit, 0)\n    END 'tax_limit',\n    tax_jurisdiction.eco_fees_taxable_flag,\n    oe_hdr_tax.rma_linked_tax,\n    tax_jurisdiction.flat_fee_amount,\n    tax_jurisdiction.apply_flat_fee_to_linked_rma_flag,\n    tax_jurisdiction.apply_flat_fee_to_will_call_flag  FROM oe_hdr_tax  INNER JOIN tax_jurisdiction ON (tax_jurisdiction.jurisdiction_id = oe_hdr_tax.jurisdiction_id)  WHERE (oe_hdr_tax.order_no = :order_no )",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Jurisdiction ID",
+       "expr": "oe_hdr_tax.jurisdiction_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Taxable",
+       "expr": "oe_hdr_tax.taxable",
+       "kind": "table.column"
+      },
+      {
+       "n": 6,
+       "label": "Jurisdiction Description",
+       "expr": "tax_jurisdiction.jurisdiction_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 16,
+       "label": "Flat Rate Amount",
+       "expr": "tax_jurisdiction.flat_fee_amount",
+       "kind": "table.column"
+      },
+      {
+       "n": null,
+       "label": "Tax Percentage",
+       "expr": "tax_percentage",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "jurisdiction_id": {
+       "column": "oe_hdr_tax.jurisdiction_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "taxable": {
+       "column": "oe_hdr_tax.taxable",
+       "expression": null,
+       "basis": "column"
+      },
+      "jurisdiction_desc": {
+       "column": "tax_jurisdiction.jurisdiction_desc",
+       "expression": null,
+       "basis": "column"
+      },
+      "flat_fee_amount": {
+       "column": "tax_jurisdiction.flat_fee_amount",
+       "expression": null,
+       "basis": "column"
+      },
+      "compute_1": {
+       "column": "oe_hdr_tax.jurisdiction_id",
+       "expression": null,
+       "basis": "position"
+      },
+      "tax_in_hundred": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_dfflag": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_ORDERBINS",
+   "text": "Order Bins",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tabpage_orderbins",
+     "fullname": "TABPAGE_ORDERBINS.tabpage_orderbins",
+     "update_table": "document_line_bin",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "document_line_bin",
+      "bin",
+      "oe_pick_ticket"
+     ],
+     "select_sql": "SELECT document_line_bin.bin_cd,\n    document_line_bin.document_no,\n    document_line_bin.document_type\n    FROM document_line_bin\n    INNER JOIN bin ON bin.bin_id = document_line_bin.bin_cd\n    INNER JOIN oe_pick_ticket ON oe_pick_ticket.pick_ticket_no = document_line_bin.document_no\n    AND bin.location_id = oe_pick_ticket.location_id\n    WHERE document_line_bin.qty_to_change<>0\n    AND document_line_bin.rf_qty_picked >0\n    AND bin.rf_bin_flag = 'N'\n    GROUP BY bin_cd, document_no, document_type",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Bin",
+       "expr": "document_line_bin.bin_cd",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "bin_cd": {
+       "column": "document_line_bin.bin_cd",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "REASONCODESHDR",
+   "text": "Reason Codes",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "DOCUMENT_LINK",
+   "text": "Document Links",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "document_link",
+     "fullname": "DOCUMENT_LINK.document_link",
+     "update_table": "document_link",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "document_link",
+      "document_link_area",
+      "inv_mast",
+      "document_link_entity_req"
+     ],
+     "select_sql": "SELECT document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,0 add_source_row_id\n    ,0 row_edited\n    ,0 C_SupplierID\n    ,Cast ('' AS VARCHAR(40)) C_ItemID\n    ,Cast ('' AS VARCHAR(8)) C_OrderNumber\n    ,0 C_OrderLineNumber\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,'N' user_print_flag\n    ,'N' user_fax_flag\n    ,'N' user_email_flag\n    ,'N' ship_to_print_flag\n    ,'N' ship_to_fax_flag\n    ,'N' ship_to_email_flag\n    ,0 number_of_copies\n    ,'N' require_lot_documentation_flag\n    ,document_link_area.display_area_cd\n    ,COALESCE (document_link_entity_req.send_outside_use_docs_flag, 'N') send_outside_use_docs_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_print_flag, 'N') send_outside_use_print_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_fax_flag, 'N') send_outside_use_fax_flag\n    ,COALESCE (document_link_entity_req.send_outside_use_email_flag, 'N') send_outside_use_email_flag\n    ,document_link_entity_req.outside_use_number_of_copies\n    ,0 AS doc_link_file_handler_defaults_uid\n    ,NULL AS c_file_name\n    ,NULL AS c_file_path\n    ,'N' AS append_datetime_flag\n    ,'N' AS prompt_to_overwrite_flag  /*MAIN FROM CLAUSE*/  FROM\n    document_link\n    INNER JOIN document_link_area ON (document_link_area.document_link_uid = document_link.document_link_uid)\n    LEFT JOIN inv_mast ON (Cast(inv_mast.inv_mast_uid AS VARCHAR(50)) = document_link.key1_value)\n    AND (document_link.key1_cd = 'inv_mast_uid')\n    LEFT OUTER JOIN document_link_entity_req ON Cast(document_Link_Entity_req.Entity_Id AS VARCHAR(255)) = COALESCE(document_Link.Key2_Value, document_Link.Key1_Value)\n    AND ((document_link_entity_req.entity_type = 1307\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'customer_id')\n    OR (document_link_entity_req.entity_type = 1328\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'ship_to_id')\n    OR (document_link_entity_req.entity_type = 1333\n    AND document_link.key1_cd = 'supplier_id')\n    OR (document_link_entity_req.entity_type = 1370\n    AND document_link_entity_req.company_id = document_link.key1_value\n    AND document_link.key2_cd = 'location_id'))  /*MAIN WHERE CLAUSE*/  /*MAIN GROUP BY CLAUSE*/  GROUP  BY document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,document_link_area.display_area_cd\n    ,send_outside_use_docs_flag\n    ,send_outside_use_print_flag\n    ,send_outside_use_fax_flag\n    ,send_outside_use_email_flag\n    ,outside_use_number_of_copies\n    ,doc_link_file_handler_defaults_uid\n    ,c_file_name\n    ,c_file_path\n    ,append_datetime_flag\n    ,prompt_to_overwrite_flag",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Document Link Uid",
+       "expr": "document_link.document_link_uid",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Source Area",
+       "expr": "document_link.source_area_cd",
+       "kind": "table.column"
+      },
+      {
+       "n": 9,
+       "label": "Link Name",
+       "expr": "document_link.link_name",
+       "kind": "table.column"
+      },
+      {
+       "n": 10,
+       "label": "Link Path",
+       "expr": "document_link.link_path",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Status",
+       "expr": "document_link.row_status_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 24,
+       "label": "Outside Use",
+       "expr": "document_link.outside_use_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 25,
+       "label": "Mandatory",
+       "expr": "document_link.mandatory_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 26,
+       "label": "Print",
+       "expr": "user_print_flag",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 27,
+       "label": "Fax",
+       "expr": "user_fax_flag",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 28,
+       "label": "E-mail",
+       "expr": "user_email_flag",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 36,
+       "label": "OU-Print",
+       "expr": "document_link_entity_req.send_outside_use_print_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 37,
+       "label": "OU-Fax",
+       "expr": "document_link_entity_req.send_outside_use_fax_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 38,
+       "label": "OU-Email",
+       "expr": "document_link_entity_req.send_outside_use_email_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": null,
+       "label": "Document Linked to",
+       "expr": "IF ( key2_cd = 'lot_cd', if(isnull(key2_value),'',key2_value), IF ( key1_cd = 'inv_mast_uid', if(isnull(item_id),'',item_id), if(isnull(key1_value),'',key1_value) ) + IF ( IsNull(key2_value), '', '/' + key2_value + IF ( IsNull(key3_value), '', '/' + key3_value)) )",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "Form",
+       "expr": "if( display_area_cd = 2284, 'RFQ', '') + if(display_area_cd = 2285, 'PO','')  + if(display_area_cd = 709, 'Quote','') + if(display_area_cd = 999, 'Packing List','') + if(display_area_cd = 998, 'Order Acknowledgment','') + if(display_area_cd = 2750, 'Production Order','') + if(display_area_cd = 995, 'Invoice', '') + if(display_area_cd = 3376, 'Builder Selection Sheet', '') + if(display_area_cd = 3451, 'Service Order Parts Pick Tickets', '') + if(display_area_cd = 3452, 'Service Order Pick Tickets', '') + if(display_area_cd = 3453, 'Sales Order Pick Ticket', '')  + if(display_area_cd = 1319, 'Order Entry/RMA', '')",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "link_name": {
+       "column": "document_link.link_name",
+       "expression": null,
+       "basis": "column"
+      },
+      "link_path": {
+       "column": "document_link.link_path",
+       "expression": null,
+       "basis": "column"
+      },
+      "row_status_flag": {
+       "column": "document_link.row_status_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "mandatory_flag": {
+       "column": "document_link.mandatory_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "user_print_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "user_fax_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "user_email_flag": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "outside_use_flag": {
+       "column": "document_link.outside_use_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_print_flag": {
+       "column": "document_link_entity_req.send_outside_use_print_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "document_link_uid": {
+       "column": "document_link.document_link_uid",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_email_flag": {
+       "column": "document_link_entity_req.send_outside_use_email_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "send_outside_use_fax_flag": {
+       "column": "document_link_entity_req.send_outside_use_fax_flag",
+       "expression": null,
+       "basis": "alias"
+      },
+      "source_area_cd": {
+       "column": "document_link.source_area_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "cf_rowind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_keylist": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "display_area": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_firstind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_rowno": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    },
+    {
+     "name": "document_link_forms",
+     "fullname": "DOCUMENT_LINK.document_link_forms",
+     "update_table": null,
+     "update_table_note": null,
+     "external_source": true,
+     "main_tables": [],
+     "select_sql": "External source data; no SQL select associated with displayed data",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Form:",
+       "expr": "document_link_area.display_area_cd",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "display_area_cd": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TP_SCANPACK",
+   "text": "Scan and Pack",
+   "select_status": "skipped (known hang/500 trap)",
+   "datawindows": []
+  },
+  {
+   "tab": "TP_SHIPMENTINFO",
+   "text": "Shipment Info",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "transport_shipping_info",
+     "fullname": "TP_SHIPMENTINFO.transport_shipping_info",
+     "update_table": "transport_shipping_info",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "transport_shipping_info"
+     ],
+     "select_sql": "SELECT transport_shipping_info.transport_shipping_info_uid,\n    transport_shipping_info.pick_ticket_no,\n    transport_shipping_info.trailer_no,\n    transport_shipping_info.shipment_gross_weight,\n    transport_shipping_info.internal_transaction_no,\n    transport_shipping_info.date_created,\n    transport_shipping_info.created_by,\n    transport_shipping_info.date_last_modified,\n    transport_shipping_info.last_maintained_by,\n    transport_shipping_info.scan_pack_uid,\n    transport_shipping_info.bill_of_lading_no,\n    transport_shipping_info.commercial_invoice_no\n    FROM transport_shipping_info",
+     "columns": [
+      {
+       "n": 3,
+       "label": "Trailer Number:",
+       "expr": "transport_shipping_info.trailer_no",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Shipment Gross Weight:",
+       "expr": "transport_shipping_info.shipment_gross_weight",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Internal Transaction Number (ITN):",
+       "expr": "transport_shipping_info.internal_transaction_no",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Bill of Lading Number:",
+       "expr": "transport_shipping_info.bill_of_lading_no",
+       "kind": "table.column"
+      },
+      {
+       "n": 12,
+       "label": "Proforma Invoice Number:",
+       "expr": "transport_shipping_info.commercial_invoice_no",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "trailer_no": {
+       "column": "transport_shipping_info.trailer_no",
+       "expression": null,
+       "basis": "column"
+      },
+      "shipment_gross_weight": {
+       "column": "transport_shipping_info.shipment_gross_weight",
+       "expression": null,
+       "basis": "probed"
+      },
+      "internal_transaction_no": {
+       "column": "transport_shipping_info.internal_transaction_no",
+       "expression": null,
+       "basis": "column"
+      },
+      "bill_of_lading_no": {
+       "column": "transport_shipping_info.bill_of_lading_no",
+       "expression": null,
+       "basis": "column"
+      },
+      "commercial_invoice_no": {
+       "column": "transport_shipping_info.commercial_invoice_no",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TIMESTAMP",
+   "text": "Audit Trail",
+   "select_status": "HTTP 400: Multiple tabs have a name or display text of TIMESTAMP.",
+   "datawindows": [
+    {
+     "name": "timestamp",
+     "fullname": "TIMESTAMP.timestamp",
+     "update_table": null,
+     "update_table_note": null,
+     "external_source": true,
+     "main_tables": [],
+     "select_sql": "External source data; no SQL select associated with displayed data",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Date Created:",
+       "expr": "date_created",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 2,
+       "label": "Created By:",
+       "expr": "created_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 3,
+       "label": "Date Last Modified:",
+       "expr": "date_last_modified",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 4,
+       "label": "Last Maintained By:",
+       "expr": "last_maintained_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 5,
+       "label": "Last Pricing Service Date:",
+       "expr": "last_pricing_service_date",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      }
+     ],
+     "fields": {
+      "date_created": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "date_last_modified": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "created_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "last_maintained_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      }
+     }
+    },
+    {
+     "name": "audit_trail",
+     "fullname": "TIMESTAMP.audit_trail",
+     "update_table": "p21_view_audit_trail_oe_pick_ticket_<id>",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "p21_view_audit_trail_oe_pick_ticket_<id>"
+     ],
+     "select_sql": "SELECT audit_trail_uid,\n    source_area_cd,\n    table_changed,\n    column_changed,\n    column_description,\n    key1_cd,\n    key1_value,\n    key2_cd,\n    key2_value,\n    key3_cd,\n    key3_value,\n    line_no,\n    inv_mast_uid,\n    old_value,\n    new_value,\n    uid_value,\n    auxiliary_value,\n    date_created,\n    created_by,\n    code_sub_description,\n    item_id FROM p21_view_audit_trail_oe_pick_ticket_<id> ORDER BY date_created DESC, audit_trail_uid DESC",
+     "columns": [
+      {
+       "n": 5,
+       "label": "Column Changed",
+       "expr": "column_description",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 14,
+       "label": "Old Value",
+       "expr": "old_value",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 15,
+       "label": "New Value",
+       "expr": "new_value",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 18,
+       "label": "Date Created",
+       "expr": "date_created",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 19,
+       "label": "Created By",
+       "expr": "created_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 21,
+       "label": "'Item IDIF (source_area_cd",
+       "expr": "950, 'Process', IF(source_area_cd = 1302, 'Component ID', 'Item ID'))' = item_id",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "Key Values",
+       "expr": "\"IF ((source_area_cd = 1763 and key1_cd = 'service_labor_uid'), item_id,  IF (source_area_cd = 950, key1_value,  IF (key2_cd = 'item_service_uid',  Item_id + ' / ALL / ALL',  IF ( key2_cd = 'lot_cd', key2_value,   IF ( Len(auxiliary_value) > 0 AND source_area_cd IN (1544, 1250, 2531), auxiliary_value,  IF (source_area_cd = 1314 and table_changed = 'inv_mast_strategic_pricing', item_id + '/' + key3_value + IF (IsNull(key2_value), '', '/' + auxiliary_value),  IF ( key1_cd = 'inv_mast_uid', item_id, key1_value ) + IF ( IsNull ( key2_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key2_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key2_value ), 'ALL', key2_value ) )  + IF ( IsNull (key3_value) AND source_area_cd <> 1314, '', ' / ' + IF ( key3_cd = 'inv_mast_uid', item_id, IF ( IsNull ( key3_value ), 'ALL', key3_value ) ) ) )  ) ) ) ) ) )\"",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "'Sub Line No",
+       "expr": "",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "item_id": {
+       "column": "p21_view_audit_trail_oe_pick_ticket_<id>.item_id",
+       "expression": null,
+       "basis": "probed"
+      },
+      "column_description": {
+       "column": "p21_view_audit_trail_oe_pick_ticket_<id>.column_description",
+       "expression": null,
+       "basis": "probed"
+      },
+      "old_value": {
+       "column": "p21_view_audit_trail_oe_pick_ticket_<id>.old_value",
+       "expression": null,
+       "basis": "probed"
+      },
+      "new_value": {
+       "column": "p21_view_audit_trail_oe_pick_ticket_<id>.new_value",
+       "expression": null,
+       "basis": "probed"
+      },
+      "date_created": {
+       "column": "p21_view_audit_trail_oe_pick_ticket_<id>.date_created",
+       "expression": null,
+       "basis": "probed"
+      },
+      "created_by": {
+       "column": "p21_view_audit_trail_oe_pick_ticket_<id>.created_by",
+       "expression": null,
+       "basis": "probed"
+      },
+      "cf_display_key": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_sub_line_no": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_line_no_visible": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_item_id_visible": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_17",
+   "text": "Items",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tabpage_ship",
+     "fullname": "TABPAGE_17.tabpage_ship",
+     "update_table": "oe_pick_ticket_detail",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_pick_ticket_detail",
+      "oe_pick_ticket",
+      "inv_mast",
+      "inv_loc",
+      "oe_hdr",
+      "oe_line",
+      "system_setting",
+      "inv_loc_stock_status",
+      "oe_line_service",
+      "service_inv_mast",
+      "oe_line_service_part",
+      "oe_hdr_progress_billing",
+      "revision_transaction",
+      "item_revision",
+      "p21_view_getrevisionlotquantity",
+      "carrier_cube_factor"
+     ],
+     "select_sql": "SELECT inv_mast.item_id,\n    oe_pick_ticket_detail.pick_ticket_no,\n    oe_line.qty_ordered,\n    oe_pick_ticket_detail.ship_quantity,\n    oe_pick_ticket_detail.date_created,\n    oe_pick_ticket_detail.date_last_modified,\n    oe_pick_ticket_detail.last_maintained_by,\n    inv_mast.net_weight,\n    inv_mast.serialized,\n    inv_mast.track_lots,\n    inv_mast.item_desc,\n    inv_loc_a.revenue_account_no,\n    inv_loc_b.gl_account_no,\n    inv_loc_b.track_bins,\n    oe_line.qty_on_pick_tickets,\n    oe_line.unit_price,\n    oe_pick_ticket_detail.line_number,\n    inv_loc_a.cos_account_no,\n    oe_line.qty_invoiced,\n    oe_line.line_no,\n    oe_pick_ticket_detail.print_quantity,\n    oe_pick_ticket_detail.unit_of_measure,\n    oe_pick_ticket_detail.unit_size,\n    oe_pick_ticket_detail.unit_quantity,\n    CASE WHEN system_setting_revision.value = 'N' THEN  inv_loc_b.qty_on_hand\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN\n    COALESCE(p21_view_getrevisionlotquantity.qty_on_hand,0)\n    ELSE inv_loc_b.qty_on_hand\n    END qty_on_hand,\n    CASE WHEN system_setting_revision.value = 'N' THEN inv_loc_b.qty_allocated\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN  COALESCE(p21_view_getrevisionlotquantity.qty_allocated,0)\n    ELSE inv_loc_b.qty_allocated\n    END qty_allocated,\n    inv_loc_b.product_group_id,\n    oe_line.supplier_id,\n    oe_pick_ticket_detail.company_id,\n    oe_line.manual_price_overide,\n    oe_pick_ticket.location_id,\n    oe_line.extended_price,\n    oe_line.base_ut_price,\n    oe_line.calc_type,\n    oe_line.calc_value,\n    oe_line.combinable,\n    '' disposition,\n    '' return_to_stock,\n    oe_pick_ticket_detail.oe_line_no,\n    '' reason_id,\n    0.000000000 minus_qty_alloc,\n    '' unit_of_measure,\n    0.000000000 unit_size,\n    0.000000000 unit_quantity,\n    oe_line.other_charge,\n    inv_loc_a.default_in_oe,\n    oe_line.sales_cost,\n    oe_pick_ticket_detail.qty_requested,\n    oe_line.tax_item,\n    oe_line.customer_part_number,\n    oe_line.next_break,\n    oe_line.next_ut_price,\n    inv_mast.catch_weight_indicator,\n    oe_line.pricing_unit,\n    oe_line.pricing_unit_size,\n    oe_line.pricing_unit_size,\n    oe_line.qty_staged,\n    oe_pick_ticket_detail.qty_to_pick,\n    oe_pick_ticket_detail.freight_in,\n    oe_pick_ticket.pick_and_hold,\n    '' viewed_item_note,\n    '' viewed_line_note,\n    oe_pick_ticket_detail.staged,\n    oe_pick_ticket_detail.release_no,\n    CAST(Round(oe_pick_ticket_detail.print_quantity / oe_pick_ticket_detail.unit_size, 9) AS Decimal(19,9)) units_picked,\n    inv_mast.product_type,\n    oe_line.ship_loc_id,\n    oe_line.parent_oe_line_uid,\n    oe_line.assembly,\n    oe_line.oe_line_uid,\n    oe_line.qty_per_assembly,\n    '' viwed_partno_note,\n    oe_line.item_source,\n    0.000000000 sku_parent_picked,\n    0.000000000 sku_parent_shipped,\n    '' parent_disposition,\n    'N' cf_clippership,\n    inv_mast.other_charge_item,\n    0 library_customer_id,\n    '' library_customer_part_no,\n    oe_line.price_page_uid,\n    oe_pick_ticket_detail.invoice_line_uid,\n    'N' c_freight_edited,\n    oe_pick_ticket_detail.inv_mast_uid,\n    oe_line.lot_bill,\n    oe_line.detail_type,\n    0.00 c_lot_bill_comp_unit_price,\n    oe_line.qty_canceled,\n    'N' c_unpriced_check_done,\n    oe_pick_ticket_detail.freight_in,\n    oe_line.pricing_option,\n    CASE WHEN system_setting_revision.value = 'N' THEN COALESCE( inv_loc_stock_status.qty_non_pickable, 0)\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN COALESCE(p21_view_getrevisionlotquantity.qty_non_pickable,0)\n    ELSE COALESCE( inv_loc_stock_status.qty_non_pickable, 0)\n    END qty_non_pickable,\n    CASE WHEN system_setting_revision.value = 'N' THEN COALESCE( inv_loc_stock_status.qty_quarantined, 0)\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN COALESCE(p21_view_getrevisionlotquantity.qty_quarantined,0)\n    ELSE COALESCE( inv_loc_stock_status.qty_quarantined, 0)\n    END qty_quarantined,\n    CASE WHEN system_setting_revision.value = 'N' THEN COALESCE( inv_loc_stock_status.qty_frozen, 0)\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN COALESCE(p21_view_getrevisionlotquantity.qty_frozen,0)\n    ELSE COALESCE( inv_loc_stock_status.qty_frozen, 0)\n    END qty_frozen ,\n    inv_mast.use_tags_flag,\n    inv_loc_b.discontinued,\n    inv_loc_b.allow_ds_discontinued_items,\n    inv_loc_b.allow_sp_discontinued_items,\n    oe_line.used_specific_cost_flag,\n    service_inv_mast.serial_number,\n    CASE\n    WHEN oe_pick_ticket_detail.release_no > 0 THEN 'Y'\n    ELSE 'N'\n    END c_releaseline,\n    oe_line.order_no,\n    oe_pick_ticket.oe_pick_ticket_type_cd,\n    part_service_item.row_status_flag,\n    oe_hdr_progress_billing.progress_bill_flag,\n    oe_pick_ticket_detail.unit_quantity_edited\n    ,oe_line.cost_price_page_uid\n    ,COALESCE(item_revision.revision_level, '') trans_revision_level,\n    CASE WHEN inv_loc_b.stockable = 'Y' THEN COALESCE(inv_mast.use_revisions_flag, 'N')\n    ELSE 'N'\n    END use_revisions_flag\n    ,COALESCE(item_revision.item_revision_uid, 0) item_revision_uid\n    ,oe_line_service.oe_line_service_uid\n    ,oe_line.other_cost\n    ,oe_line.commission_cost,\n    COALESCE(CASE WHEN oe_line.core_status_cd = 2632 THEN carrier_cube_factor.core_a\n    WHEN oe_line.core_status_cd = 2633 THEN carrier_cube_factor.core_b\n    WHEN oe_line.core_status_cd = 2634 THEN carrier_cube_factor.non_core_c\n    ELSE carrier_cube_factor.non_core_d\n    END, 0) freight_cube_factor\n    ,'' use_strategic_freight\n    ,oe_pick_ticket_detail.original_freight_in\n    ,oe_line.core_status_cd\n    ,CASE WHEN inv_mast.product_type = 'S' THEN 'Y' ELSE 'N' END AS c_slab_item_flag\n    ,oe_line.sales_discount_group_id\n    ,oe_line.price_family_uid\n    ,oe_line.line_seq_no\n    ,COALESCE(oe_pick_ticket_detail.original_qty_to_pick,0) original_qty_to_pick\n    ,COALESCE(oe_hdr.advanced_billing_flag, 'N') advanced_billing_flag\n    ,oe_pick_ticket_detail.returned_cylinder_quantity\n    ,oe_pick_ticket_detail.rfnav_pick_status_cd\n    ,oe_line.qty_allocated\n    ,oe_line.disposition\n    ,COALESCE(oe_line.sales_tax, 0) AS sales_tax\n    ,oe_line.tariff_detail_uid\n    ,oe_line.tariff_percent  FROM oe_pick_ticket_detail  INNER JOIN oe_pick_ticket ON (oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no)  INNER JOIN inv_mast ON (inv_mast.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)  INNER JOIN inv_loc AS inv_loc_b ON (inv_loc_b.location_id = oe_pick_ticket.location_id)\n    AND (inv_loc_b.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)  INNER JOIN oe_hdr ON (oe_hdr.order_no = oe_pick_ticket.order_no)  INNER JOIN oe_line ON (oe_line.order_no = oe_pick_ticket.order_no)\n    AND (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)  INNER JOIN inv_loc AS inv_loc_a ON (inv_loc_a.location_id = oe_hdr.location_id)\n    AND (inv_loc_a.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)  INNER JOIN system_setting system_setting_revision ON (system_setting_revision.name = 'use_revision_tracking')\n    LEFT JOIN inv_loc_stock_status ON (inv_loc_b.location_id = inv_loc_stock_status.location_id)\n    AND (inv_loc_b.inv_mast_uid = inv_loc_stock_status.inv_mast_uid)  LEFT JOIN oe_line_service ON (oe_line_service.oe_line_uid = oe_line.oe_line_uid)  LEFT JOIN service_inv_mast ON (service_inv_mast.service_inv_mast_uid = oe_line_service.service_inv_mast_uid)  LEFT JOIN oe_line_service_part ON (oe_line_service_part.oe_line_uid = oe_line.oe_line_uid)  LEFT JOIN oe_line_service part_service_item ON (oe_line_service_part.oe_line_service_uid = part_service_item.oe_line_service_uid)  LEFT JOIN oe_hdr_progress_billing ON (oe_hdr_progress_billing.order_no = oe_hdr.order_no)  LEFT JOIN revision_transaction ON (revision_transaction.transaction_no = oe_pick_ticket_detail.pick_ticket_no)\n    AND (revision_transaction.transaction_line_no = oe_pick_ticket_detail.line_number)\n    AND (revision_transaction.transaction_code_no = 1000)  LEFT JOIN item_revision ON (item_revision.item_revision_uid = revision_transaction.item_revision_uid)  LEFT JOIN p21_view_getrevisionlotquantity ON (p21_view_getrevisionlotquantity.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)\n    AND (p21_view_getrevisionlotquantity.location_id = oe_pick_ticket.location_id)\n    AND (p21_view_getrevisionlotquantity.item_revision_uid = item_revision.item_revision_uid)  LEFT LOOP JOIN carrier_cube_factor ON (carrier_cube_factor.address_id = oe_pick_ticket.carrier_id)\n    AND (carrier_cube_factor.visibility_cd = dbo.p21_fn_visibility_cd(oe_pick_ticket_detail.company_id\n    ,oe_line.supplier_id\n    ,oe_line.product_group_id\n    ,:al_StratPricingIsValid\n    ,oe_line.sales_discount_group_id\n    ,oe_line.price_family_uid))  WHERE (oe_pick_ticket_detail.pick_ticket_no = :al_PickTicketNo)\n    AND (oe_pick_ticket_detail.print_quantity <> 0)",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Item ID",
+       "expr": "inv_mast.item_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Item Description",
+       "expr": "inv_mast.item_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 37,
+       "label": "Disp",
+       "expr": "oe_line.disposition",
+       "kind": "table.column"
+      },
+      {
+       "n": 42,
+       "label": "UOM",
+       "expr": "oe_pick_ticket_detail.unit_of_measure",
+       "kind": "table.column"
+      },
+      {
+       "n": 44,
+       "label": "QuantityShipped",
+       "expr": "oe_line.unit_quantity",
+       "kind": "table.column"
+      },
+      {
+       "n": 65,
+       "label": "QuantityPicked",
+       "expr": "units_picked",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 100,
+       "label": "Serial Number",
+       "expr": "service_inv_mast.serial_number",
+       "kind": "table.column"
+      },
+      {
+       "n": 101,
+       "label": "Release",
+       "expr": "c_releaseline",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": null,
+       "label": "= if(((oe_line_assembly in ('B', 'P'))) or (lot_bill",
+       "expr": "'Y'), \"+\",\"\")",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "Quantity Available",
+       "expr": "\"/* qty_available_display */  if(oe_pick_ticket_type_cd = 1922, 1,      if (qty_available < 0 OR IsNull (qty_available), 0, qty_available))\"",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "oe_order_item_id": {
+       "column": "inv_mast.item_id",
+       "expression": null,
+       "basis": "probed"
+      },
+      "trans_revision_level": {
+       "column": "item_revision.revision_level",
+       "expression": null,
+       "basis": "alias"
+      },
+      "unit_quantity": {
+       "column": null,
+       "expression": "0.000000000",
+       "basis": "alias"
+      },
+      "disposition": {
+       "column": null,
+       "expression": "''",
+       "basis": "alias"
+      },
+      "unit_of_measure": {
+       "column": null,
+       "expression": "''",
+       "basis": "alias"
+      },
+      "rfnav_pick_status_cd": {
+       "column": "oe_pick_ticket_detail.rfnav_pick_status_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "line_id": {
+       "column": "oe_pick_ticket_detail.line_number",
+       "expression": null,
+       "basis": "probed"
+      },
+      "item_desc": {
+       "column": "inv_mast.item_desc",
+       "expression": null,
+       "basis": "column"
+      },
+      "units_picked": {
+       "column": null,
+       "expression": "CAST(Round(oe_pick_ticket_detail.print_quantity / oe_pick_ticket_detail.unit_size, 9) AS Decimal(19,9))",
+       "basis": "alias"
+      },
+      "c_releaseline": {
+       "column": null,
+       "expression": "CASE WHEN oe_pick_ticket_detail.release_no > 0 THEN 'Y' ELSE 'N' END",
+       "basis": "alias"
+      },
+      "cf_expandableindicator": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "qty_available_display": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "compute_1": {
+       "column": "inv_mast.item_id",
+       "expression": null,
+       "basis": "position"
+      },
+      "undershipped_qty": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "line_item_price": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "new_pick_qty": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "total_amount": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "new_invoice_qty": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "sched_oeline_print_qty": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "sum_price": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "qty_available": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "sched_total_ordered_qty": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_dfflag": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_18",
+   "text": null,
+   "select_status": "HTTP 400: Tab with name or display text of TABPAGE_18 does not exist.",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_19",
+   "text": null,
+   "select_status": "HTTP 400: Tab with name or display text of TABPAGE_19 does not exist.",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_20",
+   "text": null,
+   "select_status": "HTTP 400: Tab with name or display text of TABPAGE_20 does not exist.",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_21",
+   "text": "Order Line Notes",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tp_21_dw_21",
+     "fullname": "TABPAGE_21.tp_21_dw_21",
+     "update_table": "oe_line_notepad",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_line_notepad",
+      "note_area",
+      "notepad_class"
+     ],
+     "select_sql": "SELECT\n    oe_line_notepad.note_id,\n    oe_line_notepad.order_no,\n    oe_line_notepad.line_no,\n    oe_line_notepad.notepad_class_id,\n    oe_line_notepad.topic,\n    oe_line_notepad.note,\n    oe_line_notepad.activation_date,\n    oe_line_notepad.expiration_date,\n    oe_line_notepad.entry_date,\n    oe_line_notepad.mandatory,\n    oe_line_notepad.delete_flag,\n    oe_line_notepad.date_created,\n    oe_line_notepad.date_last_modified,\n    oe_line_notepad.last_maintained_by,\n    notepad_class.notepad_class_desc,\n    note_area.area,\n    oe_line_notepad.created_by  FROM oe_line_notepad  INNER JOIN note_area ON note_area.note_id = oe_line_notepad.note_id  LEFT JOIN notepad_class ON notepad_class.notepad_class_id = oe_line_notepad.notepad_class_id\n    WHERE ( ( oe_line_notepad.order_no = :order_no ) AND\n    ( note_area.area in (:area) ) AND\n    ( oe_line_notepad.activation_date <= :today ) AND\n    ( oe_line_notepad.expiration_date >= :today ) AND\n    ( oe_line_notepad.delete_flag = 'N' ) )",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Note ID",
+       "expr": "oe_line_notepad.note_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Topic",
+       "expr": "oe_line_notepad.topic",
+       "kind": "table.column"
+      },
+      {
+       "n": 6,
+       "label": "Note",
+       "expr": "oe_line_notepad.note",
+       "kind": "table.column"
+      },
+      {
+       "n": 15,
+       "label": "Class",
+       "expr": "notepad_class.notepad_class_desc",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "note": {
+       "column": "oe_line_notepad.note",
+       "expression": null,
+       "basis": "column"
+      },
+      "note_id": {
+       "column": "oe_line_notepad.note_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "topic": {
+       "column": "oe_line_notepad.topic",
+       "expression": null,
+       "basis": "column"
+      },
+      "notepad_class_desc": {
+       "column": "notepad_class.notepad_class_desc",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_22",
+   "text": "Pricing",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_23",
+   "text": "Undership",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_24",
+   "text": null,
+   "select_status": "HTTP 400: Tab with name or display text of TABPAGE_24 does not exist.",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_LINE_FREIGHT",
+   "text": "In Freight",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tabpage_line_freight",
+     "fullname": "TABPAGE_LINE_FREIGHT.tabpage_line_freight",
+     "update_table": "oe_pick_ticket_detail",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_pick_ticket_detail",
+      "oe_pick_ticket",
+      "inv_mast",
+      "inv_loc",
+      "oe_hdr",
+      "oe_line",
+      "system_setting",
+      "inv_loc_stock_status",
+      "oe_line_service",
+      "service_inv_mast",
+      "oe_line_service_part",
+      "oe_hdr_progress_billing",
+      "revision_transaction",
+      "item_revision",
+      "p21_view_getrevisionlotquantity",
+      "carrier_cube_factor"
+     ],
+     "select_sql": "SELECT inv_mast.item_id,\n    oe_pick_ticket_detail.pick_ticket_no,\n    oe_line.qty_ordered,\n    oe_pick_ticket_detail.ship_quantity,\n    oe_pick_ticket_detail.date_created,\n    oe_pick_ticket_detail.date_last_modified,\n    oe_pick_ticket_detail.last_maintained_by,\n    inv_mast.net_weight,\n    inv_mast.serialized,\n    inv_mast.track_lots,\n    inv_mast.item_desc,\n    inv_loc_a.revenue_account_no,\n    inv_loc_b.gl_account_no,\n    inv_loc_b.track_bins,\n    oe_line.qty_on_pick_tickets,\n    oe_line.unit_price,\n    oe_pick_ticket_detail.line_number,\n    inv_loc_a.cos_account_no,\n    oe_line.qty_invoiced,\n    oe_line.line_no,\n    oe_pick_ticket_detail.print_quantity,\n    oe_pick_ticket_detail.unit_of_measure,\n    oe_pick_ticket_detail.unit_size,\n    oe_pick_ticket_detail.unit_quantity,\n    CASE WHEN system_setting_revision.value = 'N' THEN  inv_loc_b.qty_on_hand\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN\n    COALESCE(p21_view_getrevisionlotquantity.qty_on_hand,0)\n    ELSE inv_loc_b.qty_on_hand\n    END qty_on_hand,\n    CASE WHEN system_setting_revision.value = 'N' THEN inv_loc_b.qty_allocated\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN  COALESCE(p21_view_getrevisionlotquantity.qty_allocated,0)\n    ELSE inv_loc_b.qty_allocated\n    END qty_allocated,\n    inv_loc_b.product_group_id,\n    oe_line.supplier_id,\n    oe_pick_ticket_detail.company_id,\n    oe_line.manual_price_overide,\n    oe_pick_ticket.location_id,\n    oe_line.extended_price,\n    oe_line.base_ut_price,\n    oe_line.calc_type,\n    oe_line.calc_value,\n    oe_line.combinable,\n    '' disposition,\n    '' return_to_stock,\n    oe_pick_ticket_detail.oe_line_no,\n    '' reason_id,\n    0.000000000 minus_qty_alloc,\n    '' unit_of_measure,\n    0.000000000 unit_size,\n    0.000000000 unit_quantity,\n    oe_line.other_charge,\n    inv_loc_a.default_in_oe,\n    oe_line.sales_cost,\n    oe_pick_ticket_detail.qty_requested,\n    oe_line.tax_item,\n    oe_line.customer_part_number,\n    oe_line.next_break,\n    oe_line.next_ut_price,\n    inv_mast.catch_weight_indicator,\n    oe_line.pricing_unit,\n    oe_line.pricing_unit_size,\n    oe_line.pricing_unit_size,\n    oe_line.qty_staged,\n    oe_pick_ticket_detail.qty_to_pick,\n    oe_pick_ticket_detail.freight_in,\n    oe_pick_ticket.pick_and_hold,\n    '' viewed_item_note,\n    '' viewed_line_note,\n    oe_pick_ticket_detail.staged,\n    oe_pick_ticket_detail.release_no,\n    CAST(Round(oe_pick_ticket_detail.print_quantity / oe_pick_ticket_detail.unit_size, 9) AS Decimal(19,9)) units_picked,\n    inv_mast.product_type,\n    oe_line.ship_loc_id,\n    oe_line.parent_oe_line_uid,\n    oe_line.assembly,\n    oe_line.oe_line_uid,\n    oe_line.qty_per_assembly,\n    '' viwed_partno_note,\n    oe_line.item_source,\n    0.000000000 sku_parent_picked,\n    0.000000000 sku_parent_shipped,\n    '' parent_disposition,\n    'N' cf_clippership,\n    inv_mast.other_charge_item,\n    0 library_customer_id,\n    '' library_customer_part_no,\n    oe_line.price_page_uid,\n    oe_pick_ticket_detail.invoice_line_uid,\n    'N' c_freight_edited,\n    oe_pick_ticket_detail.inv_mast_uid,\n    oe_line.lot_bill,\n    oe_line.detail_type,\n    0.00 c_lot_bill_comp_unit_price,\n    oe_line.qty_canceled,\n    'N' c_unpriced_check_done,\n    oe_pick_ticket_detail.freight_in,\n    oe_line.pricing_option,\n    CASE WHEN system_setting_revision.value = 'N' THEN COALESCE( inv_loc_stock_status.qty_non_pickable, 0)\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN COALESCE(p21_view_getrevisionlotquantity.qty_non_pickable,0)\n    ELSE COALESCE( inv_loc_stock_status.qty_non_pickable, 0)\n    END qty_non_pickable,\n    CASE WHEN system_setting_revision.value = 'N' THEN COALESCE( inv_loc_stock_status.qty_quarantined, 0)\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN COALESCE(p21_view_getrevisionlotquantity.qty_quarantined,0)\n    ELSE COALESCE( inv_loc_stock_status.qty_quarantined, 0)\n    END qty_quarantined,\n    CASE WHEN system_setting_revision.value = 'N' THEN COALESCE( inv_loc_stock_status.qty_frozen, 0)\n    WHEN inv_mast.use_revisions_flag = 'Y' AND inv_loc_b.stockable = 'Y' THEN COALESCE(p21_view_getrevisionlotquantity.qty_frozen,0)\n    ELSE COALESCE( inv_loc_stock_status.qty_frozen, 0)\n    END qty_frozen ,\n    inv_mast.use_tags_flag,\n    inv_loc_b.discontinued,\n    inv_loc_b.allow_ds_discontinued_items,\n    inv_loc_b.allow_sp_discontinued_items,\n    oe_line.used_specific_cost_flag,\n    service_inv_mast.serial_number,\n    CASE\n    WHEN oe_pick_ticket_detail.release_no > 0 THEN 'Y'\n    ELSE 'N'\n    END c_releaseline,\n    oe_line.order_no,\n    oe_pick_ticket.oe_pick_ticket_type_cd,\n    part_service_item.row_status_flag,\n    oe_hdr_progress_billing.progress_bill_flag,\n    oe_pick_ticket_detail.unit_quantity_edited\n    ,oe_line.cost_price_page_uid\n    ,COALESCE(item_revision.revision_level, '') trans_revision_level,\n    CASE WHEN inv_loc_b.stockable = 'Y' THEN COALESCE(inv_mast.use_revisions_flag, 'N')\n    ELSE 'N'\n    END use_revisions_flag\n    ,COALESCE(item_revision.item_revision_uid, 0) item_revision_uid\n    ,oe_line_service.oe_line_service_uid\n    ,oe_line.other_cost\n    ,oe_line.commission_cost,\n    COALESCE(CASE WHEN oe_line.core_status_cd = 2632 THEN carrier_cube_factor.core_a\n    WHEN oe_line.core_status_cd = 2633 THEN carrier_cube_factor.core_b\n    WHEN oe_line.core_status_cd = 2634 THEN carrier_cube_factor.non_core_c\n    ELSE carrier_cube_factor.non_core_d\n    END, 0) freight_cube_factor\n    ,'' use_strategic_freight\n    ,oe_pick_ticket_detail.original_freight_in\n    ,oe_line.core_status_cd\n    ,CASE WHEN inv_mast.product_type = 'S' THEN 'Y' ELSE 'N' END AS c_slab_item_flag\n    ,oe_line.sales_discount_group_id\n    ,oe_line.price_family_uid\n    ,oe_line.line_seq_no\n    ,COALESCE(oe_pick_ticket_detail.original_qty_to_pick,0) original_qty_to_pick\n    ,COALESCE(oe_hdr.advanced_billing_flag, 'N') advanced_billing_flag\n    ,oe_pick_ticket_detail.returned_cylinder_quantity\n    ,oe_pick_ticket_detail.rfnav_pick_status_cd\n    ,oe_line.qty_allocated\n    ,oe_line.disposition\n    ,COALESCE(oe_line.sales_tax, 0) AS sales_tax\n    ,oe_line.tariff_detail_uid\n    ,oe_line.tariff_percent  FROM oe_pick_ticket_detail  INNER JOIN oe_pick_ticket ON (oe_pick_ticket.pick_ticket_no = oe_pick_ticket_detail.pick_ticket_no)  INNER JOIN inv_mast ON (inv_mast.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)  INNER JOIN inv_loc AS inv_loc_b ON (inv_loc_b.location_id = oe_pick_ticket.location_id)\n    AND (inv_loc_b.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)  INNER JOIN oe_hdr ON (oe_hdr.order_no = oe_pick_ticket.order_no)  INNER JOIN oe_line ON (oe_line.order_no = oe_pick_ticket.order_no)\n    AND (oe_line.line_no = oe_pick_ticket_detail.oe_line_no)  INNER JOIN inv_loc AS inv_loc_a ON (inv_loc_a.location_id = oe_hdr.location_id)\n    AND (inv_loc_a.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)  INNER JOIN system_setting system_setting_revision ON (system_setting_revision.name = 'use_revision_tracking')\n    LEFT JOIN inv_loc_stock_status ON (inv_loc_b.location_id = inv_loc_stock_status.location_id)\n    AND (inv_loc_b.inv_mast_uid = inv_loc_stock_status.inv_mast_uid)  LEFT JOIN oe_line_service ON (oe_line_service.oe_line_uid = oe_line.oe_line_uid)  LEFT JOIN service_inv_mast ON (service_inv_mast.service_inv_mast_uid = oe_line_service.service_inv_mast_uid)  LEFT JOIN oe_line_service_part ON (oe_line_service_part.oe_line_uid = oe_line.oe_line_uid)  LEFT JOIN oe_line_service part_service_item ON (oe_line_service_part.oe_line_service_uid = part_service_item.oe_line_service_uid)  LEFT JOIN oe_hdr_progress_billing ON (oe_hdr_progress_billing.order_no = oe_hdr.order_no)  LEFT JOIN revision_transaction ON (revision_transaction.transaction_no = oe_pick_ticket_detail.pick_ticket_no)\n    AND (revision_transaction.transaction_line_no = oe_pick_ticket_detail.line_number)\n    AND (revision_transaction.transaction_code_no = 1000)  LEFT JOIN item_revision ON (item_revision.item_revision_uid = revision_transaction.item_revision_uid)  LEFT JOIN p21_view_getrevisionlotquantity ON (p21_view_getrevisionlotquantity.inv_mast_uid = oe_pick_ticket_detail.inv_mast_uid)\n    AND (p21_view_getrevisionlotquantity.location_id = oe_pick_ticket.location_id)\n    AND (p21_view_getrevisionlotquantity.item_revision_uid = item_revision.item_revision_uid)  LEFT LOOP JOIN carrier_cube_factor ON (carrier_cube_factor.address_id = oe_pick_ticket.carrier_id)\n    AND (carrier_cube_factor.visibility_cd = dbo.p21_fn_visibility_cd(oe_pick_ticket_detail.company_id\n    ,oe_line.supplier_id\n    ,oe_line.product_group_id\n    ,:al_StratPricingIsValid\n    ,oe_line.sales_discount_group_id\n    ,oe_line.price_family_uid))  WHERE (oe_pick_ticket_detail.pick_ticket_no = :al_PickTicketNo)\n    AND (oe_pick_ticket_detail.print_quantity <> 0)",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Item ID:",
+       "expr": "inv_mast.item_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Item Desc",
+       "expr": "inv_mast.item_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 59,
+       "label": "Incoming Freight:",
+       "expr": "oe_pick_ticket_detail.freight_in",
+       "kind": "table.column"
+      },
+      {
+       "n": 83,
+       "label": "C Freight Edited",
+       "expr": "c_freight_edited",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 115,
+       "label": "Use Strategic Freight",
+       "expr": "use_strategic_freight",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      }
+     ],
+     "fields": {
+      "freight_in": {
+       "column": "oe_pick_ticket_detail.freight_in",
+       "expression": null,
+       "basis": "column"
+      },
+      "use_strategic_freight": {
+       "column": null,
+       "expression": "''",
+       "basis": "alias"
+      },
+      "c_freight_edited": {
+       "column": null,
+       "expression": "'N'",
+       "basis": "alias"
+      },
+      "item_id": {
+       "column": "inv_mast.item_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "item_desc": {
+       "column": "inv_mast.item_desc",
+       "expression": null,
+       "basis": "column"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TABPAGE_LINE_TAX",
+   "text": "Taxes",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "tabpage_line_tax",
+     "fullname": "TABPAGE_LINE_TAX.tabpage_line_tax",
+     "update_table": "oe_line_tax",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "oe_line_tax",
+      "oe_line",
+      "tax_jurisdiction",
+      "inv_mast"
+     ],
+     "select_sql": "SELECT oe_line_tax.jurisdiction_id,\n    inv_mast.item_id,\n    inv_mast.item_desc,\n    tax_jurisdiction.jurisdiction_desc,\n    oe_line_tax.taxable,\n    oe_line_tax.delete_flag,\n    oe_line_tax.date_created,\n    oe_line_tax.date_last_modified,\n    oe_line_tax.last_maintained_by,\n    oe_line_tax.order_number,\n    oe_line_tax.line_number,\n    tax_jurisdiction.tax_percentage,\n    oe_line_tax.line_type,\n    tax_jurisdiction.tax_is_taxable,\n    oe_line.product_group_id,\n    tax_jurisdiction.tax_amount_per_unit,\n    tax_jurisdiction.unit_of_measure,\n    oe_line.other_charge\n    ,tax_jurisdiction.delete_flag\n    ,tax_jurisdiction.flat_fee_amount\n    ,tax_jurisdiction.min_tx_value\n    ,tax_jurisdiction.application_point_cd  FROM\n    oe_line_tax\n    INNER JOIN oe_line ON (oe_line.order_no = oe_line_tax.order_number AND oe_line.line_no = oe_line_tax.line_number)\n    INNER JOIN tax_jurisdiction ON (tax_jurisdiction.jurisdiction_id = oe_line_tax.jurisdiction_id)\n    INNER JOIN inv_mast ON (inv_mast.inv_mast_uid = oe_line.inv_mast_uid)  WHERE  (oe_line_tax.order_number = :order_number)  ORDER BY oe_line_tax.order_number ASC,\n    oe_line_tax.line_number ASC,\n    oe_line_tax.jurisdiction_id ASC",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Jurisdiction ID",
+       "expr": "oe_line_tax.jurisdiction_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Item ID:",
+       "expr": "inv_mast.item_id",
+       "kind": "table.column"
+      },
+      {
+       "n": 3,
+       "label": "Item Desc",
+       "expr": "inv_mast.item_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 4,
+       "label": "Jurisdiction Description",
+       "expr": "tax_jurisdiction.jurisdiction_desc",
+       "kind": "table.column"
+      },
+      {
+       "n": 5,
+       "label": "Taxable",
+       "expr": "oe_line_tax.taxable",
+       "kind": "table.column"
+      },
+      {
+       "n": 6,
+       "label": "Delete",
+       "expr": "oe_line_tax.delete_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 12,
+       "label": "Tax Percentage",
+       "expr": "tax_jurisdiction.tax_percentage",
+       "kind": "table.column"
+      },
+      {
+       "n": 20,
+       "label": "Flat Rate Amount",
+       "expr": "tax_jurisdiction.flat_fee_amount",
+       "kind": "table.column"
+      }
+     ],
+     "fields": {
+      "jurisdiction_id": {
+       "column": "oe_line_tax.jurisdiction_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "taxable": {
+       "column": "oe_line_tax.taxable",
+       "expression": null,
+       "basis": "column"
+      },
+      "delete_flag": {
+       "column": "oe_line_tax.delete_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "item_id": {
+       "column": "inv_mast.item_id",
+       "expression": null,
+       "basis": "column"
+      },
+      "item_desc": {
+       "column": "inv_mast.item_desc",
+       "expression": null,
+       "basis": "column"
+      },
+      "jurisdiction_desc": {
+       "column": "tax_jurisdiction.jurisdiction_desc",
+       "expression": null,
+       "basis": "column"
+      },
+      "tax_percentage": {
+       "column": "tax_jurisdiction.tax_percentage",
+       "expression": null,
+       "basis": "column"
+      },
+      "flat_fee_amount": {
+       "column": "tax_jurisdiction.flat_fee_amount",
+       "expression": null,
+       "basis": "column"
+      },
+      "tax_in_hundred": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_dfflag": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "CUST_PARTNO_NOTES",
+   "text": "Customer Part Number Notes",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "ITEM_NOTES",
+   "text": "Item Notes",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_SERIAL",
+   "text": "Serial",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_LOT",
+   "text": "Lot",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_LOT_BIN_XREF",
+   "text": "Lot/Bin",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TABPAGE_BIN",
+   "text": "Bin",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "REASONCODESLINE",
+   "text": "Reason Codes",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "DOCUMENT_LINK_DETAIL",
+   "text": "Document Links",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "document_link_detail_detail",
+     "fullname": "DOCUMENT_LINK_DETAIL.document_link_detail_detail",
+     "update_table": "document_link",
+     "update_table_note": null,
+     "external_source": false,
+     "main_tables": [
+      "document_link",
+      "document_link_area",
+      "inv_mast",
+      "ship_to",
+      "document_link_entity_req"
+     ],
+     "select_sql": "SELECT document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,0 add_source_row_id\n    ,0 row_edited\n    ,0 C_SupplierID\n    ,Cast ('' AS VARCHAR(40)) C_ItemID\n    ,Cast ('' AS VARCHAR(8)) C_OrderNumber\n    ,0 C_OrderLineNumber\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,COALESCE (dler_ship_to.print_flag, dler_customer.print_flag, 'N') user_print_flag\n    ,COALESCE (dler_ship_to.fax_flag, dler_customer.fax_flag, 'N') user_fax_flag\n    ,COALESCE (dler_ship_to.email_flag, dler_customer.email_flag, 'N') user_email_flag\n    ,COALESCE (dler_ship_to.print_flag, dler_customer.print_flag, 'N') ship_to_print_flag\n    ,COALESCE (dler_ship_to.fax_flag, dler_customer.fax_flag, 'N') ship_to_fax_flag\n    ,COALESCE (dler_ship_to.email_flag, dler_customer.email_flag, 'N') ship_to_email_flag\n    ,COALESCE (dler_ship_to.number_of_copies, dler_customer.number_of_copies, 0) number_of_copies\n    ,COALESCE (dler_ship_to.require_lot_documentation_flag, dler_customer.require_lot_documentation_flag, 'N') require_lot_documentation_flag\n    ,document_link_area.display_area_cd\n    ,COALESCE (dler_ship_to.send_outside_use_docs_flag, dler_customer.send_outside_use_docs_flag, 'N')\n    ,COALESCE (dler_ship_to.send_outside_use_print_flag, dler_customer.send_outside_use_print_flag, 'N')\n    ,COALESCE (dler_ship_to.send_outside_use_fax_flag, dler_customer.send_outside_use_fax_flag, 'N')\n    ,COALESCE (dler_ship_to.send_outside_use_email_flag, dler_customer.send_outside_use_email_flag, 'N')\n    ,COALESCE (dler_ship_to.outside_use_number_of_copies, dler_customer.outside_use_number_of_copies, 0)\n    ,0 AS doc_link_file_handler_defaults_uid\n    ,NULL AS c_file_name\n    ,NULL AS c_file_path\n    ,'N' AS append_datetime_flag\n    ,'N' AS prompt_to_overwrite_flag  /*MAIN FROM CLAUSE*/  FROM\n    document_link\n    INNER JOIN document_link_area ON (document_link_area.document_link_uid = document_link.document_link_uid)\n    LEFT OUTER JOIN inv_mast ON (Cast (inv_mast.inv_mast_uid AS VARCHAR(50)) = document_link.key1_value)\n    AND (document_link.key1_cd = 'inv_mast_uid')\n    LEFT OUTER JOIN ship_to ON (ship_to.company_id = :as_companyid)\n    AND (ship_to.ship_to_id = :al_shiptoid)\n    LEFT JOIN document_link_entity_req dler_customer ON (dler_customer.entity_type = 1307)\n    AND (dler_customer.entity_id = ship_to.customer_id)\n    AND (dler_customer.company_id = ship_to.company_id)\n    LEFT OUTER JOIN document_link_entity_req dler_ship_to ON (dler_ship_to.entity_type = 1328)\n    AND (dler_ship_to.entity_id = ship_to.ship_to_id)\n    AND (dler_ship_to.company_id = ship_to.company_id)  /*MAIN WHERE CLAUSE*/  /*MAIN GROUP BY CLAUSE*/  GROUP  BY document_link.document_link_uid\n    ,document_link.source_area_cd\n    ,document_link.key1_cd\n    ,document_link.key1_value\n    ,document_link.key2_cd\n    ,document_link.key2_value\n    ,document_link.key3_cd\n    ,document_link.key3_value\n    ,document_link.link_name\n    ,document_link.link_path\n    ,document_link.row_status_flag\n    ,document_link.date_created\n    ,document_link.created_by\n    ,document_link.date_last_modified\n    ,document_link.last_maintained_by\n    ,inv_mast.item_id\n    ,inv_mast.item_desc\n    ,document_link.outside_use_flag\n    ,document_link.mandatory_flag\n    ,COALESCE (dler_ship_to.print_flag, dler_customer.print_flag, 'N')\n    ,COALESCE (dler_ship_to.fax_flag, dler_customer.fax_flag, 'N')\n    ,COALESCE (dler_ship_to.email_flag, dler_customer.email_flag, 'N')\n    ,COALESCE (dler_ship_to.number_of_copies, dler_customer.number_of_copies, 0)\n    ,COALESCE (dler_ship_to.require_lot_documentation_flag, dler_customer.require_lot_documentation_flag, 'N')\n    ,document_link_area.display_area_cd\n    ,COALESCE (dler_ship_to.send_outside_use_docs_flag, dler_customer.send_outside_use_docs_flag, 'N')\n    ,COALESCE (dler_ship_to.send_outside_use_print_flag, dler_customer.send_outside_use_print_flag, 'N')\n    ,COALESCE (dler_ship_to.send_outside_use_fax_flag, dler_customer.send_outside_use_fax_flag, 'N')\n    ,COALESCE (dler_ship_to.send_outside_use_email_flag, dler_customer.send_outside_use_email_flag, 'N')\n    ,COALESCE (dler_ship_to.outside_use_number_of_copies, dler_customer.outside_use_number_of_copies, 0)\n    ,doc_link_file_handler_defaults_uid\n    ,c_file_name\n    ,c_file_path\n    ,append_datetime_flag\n    ,prompt_to_overwrite_flag",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Document Link Uid",
+       "expr": "document_link.document_link_uid",
+       "kind": "table.column"
+      },
+      {
+       "n": 2,
+       "label": "Source Area",
+       "expr": "document_link.source_area_cd",
+       "kind": "table.column"
+      },
+      {
+       "n": 9,
+       "label": "Link Name",
+       "expr": "document_link.link_name",
+       "kind": "table.column"
+      },
+      {
+       "n": 10,
+       "label": "Link Path",
+       "expr": "document_link.link_path",
+       "kind": "table.column"
+      },
+      {
+       "n": 11,
+       "label": "Status",
+       "expr": "document_link.row_status_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 24,
+       "label": "Outside Use",
+       "expr": "document_link.outside_use_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 25,
+       "label": "Mandatory",
+       "expr": "document_link.mandatory_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 26,
+       "label": "Print",
+       "expr": "user_print_flag",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 27,
+       "label": "Fax",
+       "expr": "user_fax_flag",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 28,
+       "label": "E-mail",
+       "expr": "user_email_flag",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 36,
+       "label": "OU-Print",
+       "expr": "dler_ship_to.send_outside_use_print_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 37,
+       "label": "OU-Fax",
+       "expr": "dler_ship_to.send_outside_use_fax_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": 38,
+       "label": "OU-Email",
+       "expr": "dler_ship_to.send_outside_use_email_flag",
+       "kind": "table.column"
+      },
+      {
+       "n": null,
+       "label": "Document Linked to",
+       "expr": "IF ( key2_cd = 'lot_cd', if(isnull(key2_value),'',key2_value), IF ( key1_cd = 'inv_mast_uid', if(isnull(item_id),'',item_id), if(isnull(key1_value),'',key1_value) ) + IF ( IsNull(key2_value), '', '/' + key2_value + IF ( IsNull(key3_value), '', '/' + key3_value)) )",
+       "kind": "computed expression (dw)"
+      },
+      {
+       "n": null,
+       "label": "Form",
+       "expr": "if( display_area_cd = 2284, 'RFQ', '') + if(display_area_cd = 2285, 'PO','')  + if(display_area_cd = 709, 'Quote','') + if(display_area_cd = 999, 'Packing List','') + if(display_area_cd = 998, 'Order Acknowledgment','') + if(display_area_cd = 2750, 'Production Order','') + if(display_area_cd = 995, 'Invoice', '') + if(display_area_cd = 3376, 'Builder Selection Sheet', '') + if(display_area_cd = 3451, 'Service Order Parts Pick Tickets', '') + if(display_area_cd = 3452, 'Service Order Pick Tickets', '') + if(display_area_cd = 3453, 'Sales Order Pick Ticket', '')  + if(display_area_cd = 1319, 'Order Entry/RMA', '')",
+       "kind": "computed expression (dw)"
+      }
+     ],
+     "fields": {
+      "link_name": {
+       "column": "document_link.link_name",
+       "expression": null,
+       "basis": "probed"
+      },
+      "link_path": {
+       "column": "document_link.link_path",
+       "expression": null,
+       "basis": "column"
+      },
+      "row_status_flag": {
+       "column": "document_link.row_status_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "mandatory_flag": {
+       "column": "document_link.mandatory_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "user_print_flag": {
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.print_flag, dler_customer.print_flag, 'N')",
+       "basis": "alias"
+      },
+      "user_fax_flag": {
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.fax_flag, dler_customer.fax_flag, 'N')",
+       "basis": "alias"
+      },
+      "user_email_flag": {
+       "column": null,
+       "expression": "COALESCE (dler_ship_to.email_flag, dler_customer.email_flag, 'N')",
+       "basis": "alias"
+      },
+      "outside_use_flag": {
+       "column": "document_link.outside_use_flag",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_print_flag": {
+       "column": "document_link_entity_req.send_outside_use_print_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "document_link_uid": {
+       "column": "document_link.document_link_uid",
+       "expression": null,
+       "basis": "column"
+      },
+      "send_outside_use_email_flag": {
+       "column": "document_link_entity_req.send_outside_use_email_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "send_outside_use_fax_flag": {
+       "column": "document_link_entity_req.send_outside_use_fax_flag",
+       "expression": null,
+       "basis": "probed"
+      },
+      "source_area_cd": {
+       "column": "document_link.source_area_cd",
+       "expression": null,
+       "basis": "column"
+      },
+      "cf_rowind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_keylist": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "display_area": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "probed"
+      },
+      "cf_firstind": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      },
+      "cf_rowno": {
+       "column": null,
+       "expression": "(computed in the datawindow)",
+       "basis": "dw_name"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "tab": "TP_TAGS",
+   "text": "Tags",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TP_TAGS_VIEW",
+   "text": "Tag Results",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TP_SHIPPART",
+   "text": "Parts",
+   "select_status": "HTTP 400: Tab page is disabled and cannot be selected",
+   "datawindows": []
+  },
+  {
+   "tab": "TIMESTAMPDETAIL",
+   "text": "Timestamp",
+   "select_status": "selected",
+   "datawindows": [
+    {
+     "name": "timestampdetail",
+     "fullname": "TIMESTAMPDETAIL.timestampdetail",
+     "update_table": null,
+     "update_table_note": null,
+     "external_source": true,
+     "main_tables": [],
+     "select_sql": "External source data; no SQL select associated with displayed data",
+     "columns": [
+      {
+       "n": 1,
+       "label": "Date Created:",
+       "expr": "date_created",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 2,
+       "label": "Created By:",
+       "expr": "created_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 3,
+       "label": "Date Last Modified:",
+       "expr": "date_last_modified",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 4,
+       "label": "Last Maintained By:",
+       "expr": "last_maintained_by",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      },
+      {
+       "n": 5,
+       "label": "Last Pricing Service Date:",
+       "expr": "last_pricing_service_date",
+       "kind": "unqualified (alias, external or computed in SQL)"
+      }
+     ],
+     "fields": {
+      "date_created": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "date_last_modified": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "created_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      },
+      "last_maintained_by": {
+       "column": null,
+       "expression": null,
+       "basis": "no_sql"
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "unreachable": [
+  {
+   "tab": "TABPAGE_2",
+   "tab_text": null,
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab with name or display text of TABPAGE_2 does not exist.); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_4",
+   "tab_text": null,
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab with name or display text of TABPAGE_4 does not exist.); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_7",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_8",
+   "tab_text": "none",
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab page is invisible and cannot be selected); hidden placeholder page"
+  },
+  {
+   "tab": "TP_SHIPPING",
+   "tab_text": "Shipping",
+   "dw": "shipment_header",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "REASONCODESHDR",
+   "tab_text": "Reason Codes",
+   "dw": "reasoncodeshdr",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TP_SCANPACK",
+   "tab_text": "Scan and Pack",
+   "dw": "scan_pack_container_hdr",
+   "reason": "skipped: TP_SCANPACK hangs the Shipping window over the API"
+  },
+  {
+   "tab": "TABPAGE_18",
+   "tab_text": null,
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab with name or display text of TABPAGE_18 does not exist.); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_19",
+   "tab_text": null,
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab with name or display text of TABPAGE_19 does not exist.); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_20",
+   "tab_text": null,
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab with name or display text of TABPAGE_20 does not exist.); hidden placeholder page"
+  },
+  {
+   "tab": "TABPAGE_22",
+   "tab_text": "Pricing",
+   "dw": "prices",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_22",
+   "tab_text": "Pricing",
+   "dw": "tp_22_dw_price_page",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_23",
+   "tab_text": "Undership",
+   "dw": "tp_23_dw_23",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_24",
+   "tab_text": null,
+   "dw": null,
+   "reason": "tab has no datawindow in the API definition and cannot be selected (HTTP 400: Tab with name or display text of TABPAGE_24 does not exist.); hidden placeholder page"
+  },
+  {
+   "tab": "CUST_PARTNO_NOTES",
+   "tab_text": "Customer Part Number Notes",
+   "dw": "cust_partno_notes",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "ITEM_NOTES",
+   "tab_text": "Item Notes",
+   "dw": "item_notes",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_SERIAL",
+   "tab_text": "Serial",
+   "dw": "serial",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_LOT",
+   "tab_text": "Lot",
+   "dw": "tabpage_lot",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_LOT_BIN_XREF",
+   "tab_text": "Lot/Bin",
+   "dw": "tabpage_lot_bin_xref",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TABPAGE_BIN",
+   "tab_text": "Bin",
+   "dw": "tabpage_bin",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "REASONCODESLINE",
+   "tab_text": "Reason Codes",
+   "dw": "reasoncodesline",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "DOCUMENT_LINK_DETAIL",
+   "tab_text": "Document Links",
+   "dw": "document_link_forms",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TP_TAGS",
+   "tab_text": "Tags",
+   "dw": "tp_tags_tdl_header",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TP_TAGS",
+   "tab_text": "Tags",
+   "dw": "tp_tags_dlt",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TP_TAGS_VIEW",
+   "tab_text": "Tag Results",
+   "dw": "tp_tags_view",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TP_SHIPPART",
+   "tab_text": "Parts",
+   "dw": "tp_shippart",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  },
+  {
+   "tab": "TIMESTAMPDETAIL",
+   "tab_text": "Timestamp",
+   "dw": "timestampdetail_dw_audittrail",
+   "reason": "datawindow never instantiated (tab not enabled)"
+  }
+ ]
+}

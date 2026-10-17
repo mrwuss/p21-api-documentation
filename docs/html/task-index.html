@@ -613,6 +613,7 @@
             <summary>More</summary>
             <ul class="nav-pages">
             <li><a href="15-Other-REST-Families.html">Other REST Endpoint Families</a></li>
+            <li><a href="16-Window-Field-Maps.html">Window Field-to-Table Maps</a></li>
             </ul>
         </details>
         <details class="nav-group">
@@ -1415,6 +1416,10 @@
 <tr>
 <td><strong>Read a window's SQL</strong> — the datawindow's full <code>SELECT</code>, its column → <code>table.column</code> map, and one field's table, datatype, and update table</td>
 <td><a href="04-Interactive-API.html#5-p21-sql-information">04 § P21 SQL Information</a> · <a href="recipes/window-sql-information.html">recipe: window-sql-information</a> — run <code>m_sqlinformation</code> with <code>POST /v2/tools</code>; the <code>SELECT</code> comes back only from <code>POST ui/full/v2/window/page</code> <code>{"PageName": "SQL"}</code> on the dialog, as <code>TextBoxes[].Text</code></td>
+</tr>
+<tr>
+<td><strong>Which table does this field write?</strong> — an API field name that is not a database column (<code>sales_loc_id</code>, <code>buyer_id</code>)</td>
+<td><a href="16-Window-Field-Maps.html">16 Window Field-to-Table Maps</a> — 228 datawindows in 7 windows, each field resolved to <code>table.column</code>; files in <a href="https://github.com/mrwuss/p21-api-documentation/blob/master/definitions/window-maps"><code>definitions/window-maps/</code></a></td>
 </tr>
 <tr>
 <td><strong>An action works in the client but not the API</strong> — capture the web client's request and replay it</td>

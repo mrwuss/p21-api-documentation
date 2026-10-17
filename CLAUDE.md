@@ -59,11 +59,13 @@ p21-api-documentation/
 │   ├── 13-UDT-Service-API.md
 │   ├── 14-Breaking-Changes.md
 │   ├── 15-Other-REST-Families.md
+│   ├── 16-Window-Field-Maps.md
 │   ├── img/                     # Screenshots used by the docs (00-Authentication)
 │   ├── index.html               # GitHub Pages landing page (redirects into html/)
 │   └── html/                    # Generated HTML versions
 │
 ├── definitions/                 # Sanitized full-field service definition JSONs (schema library)
+│   └── window-maps/             # Scrubbed field-to-table maps for 7 windows (docs/16)
 │
 ├── examples/
 │   ├── python/                  # Python examples
