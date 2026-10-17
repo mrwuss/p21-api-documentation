@@ -17,6 +17,7 @@ One page per task, **self-contained**: the complete working payload, a full runn
 | [set-primary-bin-supplier](set-primary-bin-supplier.md) | Set an item's primary bin or primary supplier at a location | Transaction (`Item`), Interactive fallback |
 | [generate-pick-ticket-pdf](generate-pick-ticket-pdf.md) | Generate/reprint pick tickets and POs as PDF | `pdfreport` (`m_*` services) |
 | [item-document-links](item-document-links.md) | Attach a document to an item, assembly or kit (Document Links), pick-ticket area included | File handler + Interactive (`Item`) |
+| [window-sql-information](window-sql-information.md) | Read any window's SQL (Help > SQL Information): the datawindow's `SELECT`, column map, and one field's table and datatype | Interactive (`m_sqlinformation`) + `ui/full` |
 | [production-order-runbook](production-order-runbook.md) | Full production cycle: create → print → confirm → complete → ship | Transaction + Interactive |
 | [record-labor-time](record-labor-time.md) | Post labor hours to a production order | Transaction (`TimeEntry`) |
 | [inventory-adjustment](inventory-adjustment.md) | Adjust on-hand quantity (write-offs) | Transaction (`InventoryAdjustment`) |
