@@ -1518,8 +1518,8 @@
 <td><a href="recipes/production-order-runbook.html">recipe: production-order-runbook</a> · <a href="12-Production-Labor-API.html#production-order-lifecycle-end-to-end">12 § Production Order Lifecycle</a></td>
 </tr>
 <tr>
-<td>Pick ticket won't generate (make loc vs stock loc)</td>
-<td><a href="12-Production-Labor-API.html#printing-the-pick-ticket-and-form">12 § Printing the Pick Ticket</a> · <a href="03-Transaction-API.html#example-generate-a-production-order-pick-ticket-m_picktickets">03 § m_picktickets example</a></td>
+<td>Pick ticket won't generate (make loc vs stock loc) · sales order: <code>m_picktickets</code> returns HTTP 200 <code>[]</code></td>
+<td><a href="12-Production-Labor-API.html#printing-the-pick-ticket-and-form">12 § Printing the Pick Ticket</a> · <a href="03-Transaction-API.html#example-generate-a-production-order-pick-ticket-m_picktickets">03 § m_picktickets example</a> · sales order: <a href="recipes/generate-pick-ticket-pdf.html#eligibility-traps">recipe § Eligibility traps</a> — omitted date ranges take past-dated defaults; an under-allocated kit skips the whole order</td>
 </tr>
 <tr>
 <td>Confirm a pick (shell-confirm trap — use Interactive)</td>
@@ -1589,6 +1589,10 @@
 <td><a href="03-Transaction-API.html#example-generate-a-production-order-pick-ticket-m_picktickets">03 § m_picktickets example</a></td>
 </tr>
 <tr>
+<td><strong>Generate a sales-order pick ticket</strong> with <code>m_picktickets</code> — HTTP 200 <code>[]</code>, no ticket</td>
+<td><a href="recipes/generate-pick-ticket-pdf.html#sales-order-pick-ticket">recipe § Sales-order pick ticket</a> — <code>"Sales Order"</code> with <code>UseCodeValues: false</code>, all three date ranges sent wide, read <code>pick_ticket_no</code> from <code>oe_pick_ticket</code> · <a href="recipes/generate-pick-ticket-pdf.html#eligibility-traps">§ Eligibility traps</a></td>
+</tr>
+<tr>
 <td>PDFs from print flags on a normal transaction</td>
 <td><a href="03-Transaction-API.html#pdfs-from-the-transaction-endpoint-print-flags">03 § PDFs from the /transaction endpoint</a></td>
 </tr>
@@ -1598,7 +1602,7 @@
 </tr>
 <tr>
 <td><strong>Put an assembly's drawing on its pick ticket</strong> · does an API pick-ticket PDF include linked documents?</td>
-<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — display area <code>3453</code> Sales Order Pick Ticket; in the tests (<code>print_tix</code>, <code>m_reprintpicktickets</code>) the API's pick-ticket PDF did not include the linked file, with <em>Transmit Document Links</em> on or off; what the client prints was not tested</td>
+<td><a href="recipes/item-document-links.html">recipe: item-document-links</a> — display area <code>3453</code> Sales Order Pick Ticket; in the tests (<code>print_tix</code>, <code>m_reprintpicktickets</code>, <code>m_picktickets</code>) the API's pick-ticket PDF did not include the linked file, with <em>Transmit Document Links</em> on or off; what the client prints was not tested</td>
 </tr>
 </tbody>
 </table></div>
