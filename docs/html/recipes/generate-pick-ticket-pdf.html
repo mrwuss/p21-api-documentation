@@ -1246,7 +1246,7 @@
 <p>When a kit or assembly parent line cannot fully allocate — in the test, a component was cancelled for lack of stock, and the assembly has <code>print_incomplete_assemblies</code> = <code>N</code> — the run skips the <strong>entire order</strong>, not just that line. The client's own <em>Pick Ticket</em> window gives the same answer for that order: <em>"No records exist to print for this range."</em> Setting <em>Release Partials</em> (<code>delete_flag</code> <code>ON</code>) on the order did not change it. A kit with every component allocated generated a ticket normally.</p>
 <p>Before you blame the payload, check the order the way the client would: allocated quantity at <code>location_id</code> that is not already on a ticket (<code>oe_line.qty_allocated</code>, <code>oe_line.qty_on_pick_tickets</code>), and every kit component allocated. An order whose allocated quantity is already on a ticket also returns <code>[]</code>; running the examples below a second time on the same order created no second ticket.</p>
 <h3 id="complete-example-sales-order">Complete example: sales order</h3>
-<p>Takes the order number and location as arguments (<code>python so_pick_ticket.py 1001234 10</code>, <code>dotnet run -- 1001234 10</code>), generates the ticket, saves the PDF to <code>OUTPUT_DIR</code>, and reads the new <code>oe_pick_ticket</code> row back over OData by comparing the order's tickets before and after the run. An empty array stops with the eligibility checklist above.</p>
+<p>Takes the order number and location as arguments (<code>python so_pick_ticket.py 1001234 10</code>, <code>dotnet run -- 1001234 10</code>), generates the ticket, saves the PDF to <code>OUTPUT_DIR</code>, and reads the new <code>oe_pick_ticket</code> row back over OData by comparing the order's tickets before and after the run. An empty array stops with the eligibility checklist above. The programs retry an empty 5xx like the production example, but here the retry is <strong>not</strong> free of side effects: <code>m_picktickets</code> creates the ticket, so a 5xx after the ticket was created makes the retry return <code>[]</code>. That is why both programs read <code>oe_pick_ticket</code> before they report a failure; if a ticket exists without a PDF, reprint it with <code>m_reprintpicktickets</code>.</p>
 <div class="code-tabs">
   <div class="tab-buttons">
     <button class="tab-btn active" data-lang="python">Python</button>
@@ -1322,8 +1322,11 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;POST a report payload and return its document array (possibly empty).</span>
 
 <span class="sd">    Retries an empty 5xx, which the report engine emits now and then and which</span>
-<span class="sd">    clears on the next try. Do not retry an empty array: it is a deterministic</span>
-<span class="sd">    &quot;nothing matched&quot; (see the eligibility traps).</span>
+<span class="sd">    clears on the next try. This retry is not free of side effects here:</span>
+<span class="sd">    m_picktickets creates the ticket, so a 5xx after the ticket was created</span>
+<span class="sd">    makes the retry return [] -- the caller reads oe_pick_ticket before it</span>
+<span class="sd">    reports a failure. Do not retry an empty array itself: it is a</span>
+<span class="sd">    deterministic &quot;nothing matched&quot; (see the eligibility traps).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">attempts</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
         <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ui_server</span><span class="si">}</span><span class="s2">/api/v2/process/pdfreport&quot;</span><span class="p">,</span>
@@ -1417,18 +1420,22 @@
 
     <span class="n">before</span> <span class="o">=</span> <span class="n">read_tickets</span><span class="p">()</span>
     <span class="n">documents</span> <span class="o">=</span> <span class="n">run_report</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">ui_server</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">documents</span><span class="p">:</span>
+    <span class="n">save_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+    <span class="c1"># --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---</span>
+    <span class="c1"># Read it even when no document came back: a retried 5xx can leave a ticket</span>
+    <span class="c1"># created by the first attempt and an empty array from the retry.</span>
+    <span class="n">after</span> <span class="o">=</span> <span class="n">read_tickets</span><span class="p">()</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="p">[</span><span class="n">after</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">after</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">before</span><span class="p">))]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">documents</span> <span class="ow">and</span> <span class="n">new</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Ticket created but no PDF returned; reprint it with m_reprintpicktickets.&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">documents</span><span class="p">:</span>
         <span class="c1"># HTTP 200 with [] means the criteria matched nothing printable.</span>
         <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;No pick ticket generated for order </span><span class="si">{</span><span class="n">ORDER_NO</span><span class="si">}</span><span class="s2"> at location </span><span class="si">{</span><span class="n">LOCATION_ID</span><span class="si">}</span><span class="s2">. &quot;</span>
             <span class="s2">&quot;Check: the order has allocated quantity at that location not already on a &quot;</span>
             <span class="s2">&quot;ticket; every kit/assembly parent line can fully allocate; the order and &quot;</span>
             <span class="s2">&quot;required dates fall inside the date ranges sent.&quot;</span><span class="p">)</span>
-    <span class="n">save_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
-
-    <span class="c1"># --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---</span>
-    <span class="n">after</span> <span class="o">=</span> <span class="n">read_tickets</span><span class="p">()</span>
-    <span class="n">new</span> <span class="o">=</span> <span class="p">[</span><span class="n">after</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">after</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">before</span><span class="p">))]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">new</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PDF returned but no new oe_pick_ticket row on order </span><span class="si">{</span><span class="n">ORDER_NO</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">ticket</span> <span class="ow">in</span> <span class="n">new</span><span class="p">:</span>
@@ -1520,7 +1527,18 @@
 
 <span class="kt">var</span><span class="w"> </span><span class="n">before</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ReadTicketsAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">orderNo</span><span class="p">);</span>
 <span class="kt">var</span><span class="w"> </span><span class="n">documents</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">RunReportAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">uiServer</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
-<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">documents</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="n">SaveDocuments</span><span class="p">(</span><span class="n">documents</span><span class="p">,</span><span class="w"> </span><span class="n">orderNo</span><span class="p">);</span>
+
+<span class="c1">// --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---</span>
+<span class="c1">// Read it even when no document came back: a retried 5xx can leave a ticket</span>
+<span class="c1">// created by the first attempt and an empty array from the retry.</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ReadTicketsAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">orderNo</span><span class="p">);</span>
+<span class="kt">var</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">after</span><span class="p">.</span><span class="n">Keys</span><span class="p">.</span><span class="n">Except</span><span class="p">(</span><span class="n">before</span><span class="p">.</span><span class="n">Keys</span><span class="p">).</span><span class="n">OrderBy</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">n</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">documents</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">created</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">Console</span><span class="p">.</span><span class="n">WriteLine</span><span class="p">(</span><span class="s">&quot;Ticket created but no PDF returned; reprint it with m_reprintpicktickets.&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="k">else</span><span class="w"> </span><span class="nf">if</span><span class="w"> </span><span class="p">(</span><span class="n">documents</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
 <span class="p">{</span>
 <span class="w">    </span><span class="c1">// HTTP 200 with [] means the criteria matched nothing printable.</span>
 <span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span>
@@ -1529,11 +1547,6 @@
 <span class="w">        </span><span class="s">&quot;kit/assembly parent line can fully allocate; the order and required dates fall &quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">        </span><span class="s">&quot;inside the date ranges sent.&quot;</span><span class="p">);</span>
 <span class="p">}</span>
-<span class="n">SaveDocuments</span><span class="p">(</span><span class="n">documents</span><span class="p">,</span><span class="w"> </span><span class="n">orderNo</span><span class="p">);</span>
-
-<span class="c1">// --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">after</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">ReadTicketsAsync</span><span class="p">(</span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="n">orderNo</span><span class="p">);</span>
-<span class="kt">var</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">after</span><span class="p">.</span><span class="n">Keys</span><span class="p">.</span><span class="n">Except</span><span class="p">(</span><span class="n">before</span><span class="p">.</span><span class="n">Keys</span><span class="p">).</span><span class="n">OrderBy</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">n</span><span class="p">).</span><span class="n">ToList</span><span class="p">();</span>
 <span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">created</span><span class="p">.</span><span class="n">Count</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
 <span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">InvalidOperationException</span><span class="p">(</span><span class="s">$&quot;PDF returned but no new oe_pick_ticket row on order {orderNo}&quot;</span><span class="p">);</span>
 <span class="k">foreach</span><span class="w"> </span><span class="p">(</span><span class="kt">var</span><span class="w"> </span><span class="n">number</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">created</span><span class="p">)</span>
@@ -1561,8 +1574,11 @@
 
 <span class="c1">// POST a report payload and return its document array (possibly empty).</span>
 <span class="c1">// Retries an empty 5xx, which the report engine emits now and then and which</span>
-<span class="c1">// clears on the next try. Do not retry an empty array: it is a deterministic</span>
-<span class="c1">// &quot;nothing matched&quot; (see the eligibility traps).</span>
+<span class="c1">// clears on the next try. This retry is not free of side effects here:</span>
+<span class="c1">// m_picktickets creates the ticket, so a 5xx after the ticket was created</span>
+<span class="c1">// makes the retry return [] -- the caller reads oe_pick_ticket before it</span>
+<span class="c1">// reports a failure. Do not retry an empty array itself: it is a</span>
+<span class="c1">// deterministic &quot;nothing matched&quot; (see the eligibility traps).</span>
 <span class="k">static</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">JsonElement</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">RunReportAsync</span><span class="p">(</span>
 <span class="w">    </span><span class="n">HttpClient</span><span class="w"> </span><span class="n">client</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">uiServer</span><span class="p">,</span><span class="w"> </span><span class="kt">object</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">attempts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">)</span>
 <span class="p">{</span>

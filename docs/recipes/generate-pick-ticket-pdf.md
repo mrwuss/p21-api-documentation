@@ -571,7 +571,7 @@ Before you blame the payload, check the order the way the client would: allocate
 
 ### Complete example: sales order
 
-Takes the order number and location as arguments (`python so_pick_ticket.py 1001234 10`, `dotnet run -- 1001234 10`), generates the ticket, saves the PDF to `OUTPUT_DIR`, and reads the new `oe_pick_ticket` row back over OData by comparing the order's tickets before and after the run. An empty array stops with the eligibility checklist above.
+Takes the order number and location as arguments (`python so_pick_ticket.py 1001234 10`, `dotnet run -- 1001234 10`), generates the ticket, saves the PDF to `OUTPUT_DIR`, and reads the new `oe_pick_ticket` row back over OData by comparing the order's tickets before and after the run. An empty array stops with the eligibility checklist above. The programs retry an empty 5xx like the production example, but here the retry is **not** free of side effects: `m_picktickets` creates the ticket, so a 5xx after the ticket was created makes the retry return `[]`. That is why both programs read `oe_pick_ticket` before they report a failure; if a ticket exists without a PDF, reprint it with `m_reprintpicktickets`.
 
 <!-- tabs -->
 ```python
@@ -644,8 +644,11 @@ def run_report(client: httpx.Client, ui_server: str, headers: dict,
     """POST a report payload and return its document array (possibly empty).
 
     Retries an empty 5xx, which the report engine emits now and then and which
-    clears on the next try. Do not retry an empty array: it is a deterministic
-    "nothing matched" (see the eligibility traps).
+    clears on the next try. This retry is not free of side effects here:
+    m_picktickets creates the ticket, so a 5xx after the ticket was created
+    makes the retry return [] -- the caller reads oe_pick_ticket before it
+    reports a failure. Do not retry an empty array itself: it is a
+    deterministic "nothing matched" (see the eligibility traps).
     """
     for attempt in range(1, attempts + 1):
         response = client.post(f"{ui_server}/api/v2/process/pdfreport",
@@ -739,18 +742,22 @@ with httpx.Client(verify=VERIFY_SSL, timeout=300, follow_redirects=True) as clie
 
     before = read_tickets()
     documents = run_report(client, ui_server, headers, payload)
-    if not documents:
+    save_documents(documents)
+
+    # --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---
+    # Read it even when no document came back: a retried 5xx can leave a ticket
+    # created by the first attempt and an empty array from the retry.
+    after = read_tickets()
+    new = [after[n] for n in sorted(set(after) - set(before))]
+    if not documents and new:
+        print("Ticket created but no PDF returned; reprint it with m_reprintpicktickets.")
+    elif not documents:
         # HTTP 200 with [] means the criteria matched nothing printable.
         raise SystemExit(
             f"No pick ticket generated for order {ORDER_NO} at location {LOCATION_ID}. "
             "Check: the order has allocated quantity at that location not already on a "
             "ticket; every kit/assembly parent line can fully allocate; the order and "
             "required dates fall inside the date ranges sent.")
-    save_documents(documents)
-
-    # --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---
-    after = read_tickets()
-    new = [after[n] for n in sorted(set(after) - set(before))]
     if not new:
         raise SystemExit(f"PDF returned but no new oe_pick_ticket row on order {ORDER_NO}")
     for ticket in new:
@@ -842,7 +849,18 @@ var payload = new
 
 var before = await ReadTicketsAsync(client, orderNo);
 var documents = await RunReportAsync(client, uiServer, payload);
-if (documents.Count == 0)
+SaveDocuments(documents, orderNo);
+
+// --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---
+// Read it even when no document came back: a retried 5xx can leave a ticket
+// created by the first attempt and an empty array from the retry.
+var after = await ReadTicketsAsync(client, orderNo);
+var created = after.Keys.Except(before.Keys).OrderBy(n => n).ToList();
+if (documents.Count == 0 && created.Count > 0)
+{
+    Console.WriteLine("Ticket created but no PDF returned; reprint it with m_reprintpicktickets.");
+}
+else if (documents.Count == 0)
 {
     // HTTP 200 with [] means the criteria matched nothing printable.
     throw new InvalidOperationException(
@@ -851,11 +869,6 @@ if (documents.Count == 0)
         "kit/assembly parent line can fully allocate; the order and required dates fall " +
         "inside the date ranges sent.");
 }
-SaveDocuments(documents, orderNo);
-
-// --- Read-back: m_picktickets CREATED an oe_pick_ticket row. ---
-var after = await ReadTicketsAsync(client, orderNo);
-var created = after.Keys.Except(before.Keys).OrderBy(n => n).ToList();
 if (created.Count == 0)
     throw new InvalidOperationException($"PDF returned but no new oe_pick_ticket row on order {orderNo}");
 foreach (var number in created)
@@ -883,8 +896,11 @@ static async Task<Dictionary<long, JsonElement>> ReadTicketsAsync(HttpClient cli
 
 // POST a report payload and return its document array (possibly empty).
 // Retries an empty 5xx, which the report engine emits now and then and which
-// clears on the next try. Do not retry an empty array: it is a deterministic
-// "nothing matched" (see the eligibility traps).
+// clears on the next try. This retry is not free of side effects here:
+// m_picktickets creates the ticket, so a 5xx after the ticket was created
+// makes the retry return [] -- the caller reads oe_pick_ticket before it
+// reports a failure. Do not retry an empty array itself: it is a
+// deterministic "nothing matched" (see the eligibility traps).
 static async Task<List<JsonElement>> RunReportAsync(
     HttpClient client, string uiServer, object payload, int attempts = 3)
 {
