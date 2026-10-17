@@ -3257,11 +3257,33 @@ The Transaction API [cannot create an item](03-Transaction-API.md#item-service-g
 7. Save.
 
 - **One location per session.** Add the remaining locations afterwards through the Transaction `Item` service — one POST per location, `IgnoreDisabled: true`, with `TABPAGE_17.invloclist`, `TABPAGE_18.inv_loc_detail` and a keyed [location supplier row](03-Transaction-API.md#adding-a-location-supplier-row-the-prerequisite-insert).
-- **The Units of Measure grid can be locked for your role by a DynaChange screen version.** On one tenant the same steps worked in production and failed on the test copy for exactly that reason — check [which role the API user runs as](03-Transaction-API.md#column-is-disabled-can-mean-disabled-for-you).
+- **The Units of Measure grid can be locked, cause unknown.** On one tenant these steps worked in production and failed on the test copy: every field of `TABPAGE_2.tp_2_dw_2` was disabled. A screen version, a role difference and the build were each ruled out — see [The locked Units of Measure grid](#the-locked-units-of-measure-grid-open-limitation) below. Before you start, open the grid and check that its fields are `Enabled`; step 2 cannot work otherwise.
 
 > **Credit:** [Alex Westemeier](https://github.com/AWestemeier) — verified on production, September 2026 (two items created end to end).
 
-**Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.** Step 1 behaved as described (`Status: 2` with `tabpageenabled` events, then `item_desc` and both discount groups — `sales_discount_group_id` / `purchase_discount_group_id` — accepted). Step 2 failed: every change on `TABPAGE_2.tp_2_dw_2` (`unit_id`, `unit_size`, the four unit flags) returned **HTTP 400 `Column is disabled: unit_id`**, for a password user and for a consumer-key user alike, and the save then failed *"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."* That is the screen-version lock in the last bullet above. Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.
+**Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.** Step 1 behaved as described (`Status: 2` with `tabpageenabled` events, then `item_desc` and both discount groups, `sales_discount_group_id` / `purchase_discount_group_id`, accepted). Step 2 failed: every change on `TABPAGE_2.tp_2_dw_2` (`unit_id`, `unit_size`, the four unit flags) returned **HTTP 400 `Column is disabled: unit_id`**, for a password user and for a consumer-key user alike, and the save then failed *"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."* Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.
+
+### The locked Units of Measure grid (open limitation)
+
+On the test tenant the Interactive `Item` window's Units of Measure grid is read-only, and **the cause is unknown**. Until it is found, create items with the [Inventory REST create](11-Inventory-REST-API.md#minimum-create-payload).
+
+What the window reports:
+
+- **All 11 fields** of `TABPAGE_2.tp_2_dw_2` come back `Enabled: false` in `GET /v2/window`: `unit_id`, `unit_description`, `unit_size`, the four unit flags, `base_unit_flag`, `base_unit_is_item_uom`, `delete_flag` and `unit_of_measure`. `PUT /v2/change` on `unit_id` or `unit_size` returns HTTP 400 `Column is disabled`.
+- **The lock is the same for a new item and an existing one.** It is not new-item sequencing: an existing item with its units already set shows the same 11 disabled fields.
+- **There is no tool to add a unit.** `GET /v2/tools` with `dwName=tp_2_dw_2` lists only the standard menu.
+- [SQL Information](recipes/window-sql-information.md) on `unit_id` reports an ordinary editable column: `char(8)`, update table `item_uom`, window `w_inventory_sheet`.
+
+What it is **not**:
+
+- **Not a screen version.** The test tenant has 134 `w_inventory_sheet` screen versions in `custom_objects`, the same set as production, and none of them touches `tp_2_dw_2` or the units of measure. The DynaChange field-security tables `dc_security` and `dc_security_detail` are empty.
+- **Not a role difference.** The API users on both tenants run as the same role.
+- **Not a setting.** No units-of-measure system setting differs between the two tenants.
+- **Not the build.** The session-create response reports `fullversion` `26.1.5950.0` on the test tenant and on production.
+
+Still open: a lock in the base datawindow that the web client lifts with its own call sequence. To test that, capture the web client adding a unit to a new item ([Browser DevTools](#6-browser-devtools)) and replay its requests.
+
+> **Verified** on play 26.1.5950.0, 2026-10-17 ([#216](https://github.com/mrwuss/p21-api-documentation/issues/216)): the grid's `Enabled` flags, the `Column is disabled` responses and the tools listing for an unsaved new item and for an existing item (never saved); the screen versions, `dc_security*` and the build on play. The production comparisons (screen-version set, settings, build) are read-only reads from the same day. — *@mrwuss*
 
 ## Adding a Document Link in the Item Window
 

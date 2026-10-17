@@ -738,7 +738,10 @@
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
-<li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
+<li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a><ul>
+<li><a href="#the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid (open limitation)</a></li>
+</ul>
+</li>
 <li><a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a></li>
 <li><a href="#customer-window-adding-a-price-library">Customer Window: Adding a Price Library</a><ul>
 <li><a href="#p21-renumbers-sequence_number-on-save">P21 renumbers sequence_number on save</a></li>
@@ -4521,12 +4524,32 @@ GET /odataservice/odata/table/oe_line_notepad?$filter=order_no eq '1001237'</cod
 <li>
 <p><strong>One location per session.</strong> Add the remaining locations afterwards through the Transaction <code>Item</code> service — one POST per location, <code>IgnoreDisabled: true</code>, with <code>TABPAGE_17.invloclist</code>, <code>TABPAGE_18.inv_loc_detail</code> and a keyed <a href="03-Transaction-API.html#adding-a-location-supplier-row-the-prerequisite-insert">location supplier row</a>.</p>
 </li>
-<li><strong>The Units of Measure grid can be locked for your role by a DynaChange screen version.</strong> On one tenant the same steps worked in production and failed on the test copy for exactly that reason — check <a href="03-Transaction-API.html#column-is-disabled-can-mean-disabled-for-you">which role the API user runs as</a>.</li>
+<li><strong>The Units of Measure grid can be locked, cause unknown.</strong> On one tenant these steps worked in production and failed on the test copy: every field of <code>TABPAGE_2.tp_2_dw_2</code> was disabled. A screen version, a role difference and the build were each ruled out — see <a href="#the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid</a> below. Before you start, open the grid and check that its fields are <code>Enabled</code>; step 2 cannot work otherwise.</li>
 </ol>
 <blockquote>
 <p><strong>Credit:</strong> <a href="https://github.com/AWestemeier">Alex Westemeier</a> — verified on production, September 2026 (two items created end to end).</p>
 </blockquote>
-<p><strong>Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.</strong> Step 1 behaved as described (<code>Status: 2</code> with <code>tabpageenabled</code> events, then <code>item_desc</code> and both discount groups — <code>sales_discount_group_id</code> / <code>purchase_discount_group_id</code> — accepted). Step 2 failed: every change on <code>TABPAGE_2.tp_2_dw_2</code> (<code>unit_id</code>, <code>unit_size</code>, the four unit flags) returned <strong>HTTP 400 <code>Column is disabled: unit_id</code></strong>, for a password user and for a consumer-key user alike, and the save then failed <em>"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."</em> That is the screen-version lock in the last bullet above. Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.</p>
+<p><strong>Not reproduced on play 26.1.5950.0 (October 2026), so there is no runnable example.</strong> Step 1 behaved as described (<code>Status: 2</code> with <code>tabpageenabled</code> events, then <code>item_desc</code> and both discount groups, <code>sales_discount_group_id</code> / <code>purchase_discount_group_id</code>, accepted). Step 2 failed: every change on <code>TABPAGE_2.tp_2_dw_2</code> (<code>unit_id</code>, <code>unit_size</code>, the four unit flags) returned <strong>HTTP 400 <code>Column is disabled: unit_id</code></strong>, for a password user and for a consumer-key user alike, and the save then failed <em>"A Default Sales Unit, Sales Pricing Unit, Default Purchasing Unit And Purchase Pricing Unit Must Each Be Specified."</em> Locations, product group (with the GL prompt answered Yes), supplier and location-supplier steps were accepted, so steps 3–6 are unverified only because the save never got past step 2. No item was created.</p>
+<h3 id="the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid (open limitation)</h3>
+<p>On the test tenant the Interactive <code>Item</code> window's Units of Measure grid is read-only, and <strong>the cause is unknown</strong>. Until it is found, create items with the <a href="11-Inventory-REST-API.html#minimum-create-payload">Inventory REST create</a>.</p>
+<p>What the window reports:</p>
+<ul>
+<li><strong>All 11 fields</strong> of <code>TABPAGE_2.tp_2_dw_2</code> come back <code>Enabled: false</code> in <code>GET /v2/window</code>: <code>unit_id</code>, <code>unit_description</code>, <code>unit_size</code>, the four unit flags, <code>base_unit_flag</code>, <code>base_unit_is_item_uom</code>, <code>delete_flag</code> and <code>unit_of_measure</code>. <code>PUT /v2/change</code> on <code>unit_id</code> or <code>unit_size</code> returns HTTP 400 <code>Column is disabled</code>.</li>
+<li><strong>The lock is the same for a new item and an existing one.</strong> It is not new-item sequencing: an existing item with its units already set shows the same 11 disabled fields.</li>
+<li><strong>There is no tool to add a unit.</strong> <code>GET /v2/tools</code> with <code>dwName=tp_2_dw_2</code> lists only the standard menu.</li>
+<li><a href="recipes/window-sql-information.html">SQL Information</a> on <code>unit_id</code> reports an ordinary editable column: <code>char(8)</code>, update table <code>item_uom</code>, window <code>w_inventory_sheet</code>.</li>
+</ul>
+<p>What it is <strong>not</strong>:</p>
+<ul>
+<li><strong>Not a screen version.</strong> The test tenant has 134 <code>w_inventory_sheet</code> screen versions in <code>custom_objects</code>, the same set as production, and none of them touches <code>tp_2_dw_2</code> or the units of measure. The DynaChange field-security tables <code>dc_security</code> and <code>dc_security_detail</code> are empty.</li>
+<li><strong>Not a role difference.</strong> The API users on both tenants run as the same role.</li>
+<li><strong>Not a setting.</strong> No units-of-measure system setting differs between the two tenants.</li>
+<li><strong>Not the build.</strong> The session-create response reports <code>fullversion</code> <code>26.1.5950.0</code> on the test tenant and on production.</li>
+</ul>
+<p>Still open: a lock in the base datawindow that the web client lifts with its own call sequence. To test that, capture the web client adding a unit to a new item (<a href="#6-browser-devtools">Browser DevTools</a>) and replay its requests.</p>
+<blockquote>
+<p><strong>Verified</strong> on play 26.1.5950.0, 2026-10-17 (<a href="https://github.com/mrwuss/p21-api-documentation/issues/216">#216</a>): the grid's <code>Enabled</code> flags, the <code>Column is disabled</code> responses and the tools listing for an unsaved new item and for an existing item (never saved); the screen versions, <code>dc_security*</code> and the build on play. The production comparisons (screen-version set, settings, build) are read-only reads from the same day. — <em>@mrwuss</em></p>
+</blockquote>
 <h2 id="adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</h2>
 <p>Item links — the <strong>Document Links</strong> tab — cannot be added through the Transaction API: the <code>Item</code> and <code>Assembly</code> services both expose <code>DOCUMENT_LINK.document_link</code>, and both refuse <code>link_name</code> with <code>Column is disabled</code>. The Interactive <code>Item</code> window adds them the way the client does:</p>
 <ol>
@@ -6311,7 +6334,10 @@ Row 5 selected → Detail shows row 4 (1 behind)
 <li><a href="#sales-order-notepad-writes-header-vs-line">Sales Order Notepad Writes (Header vs Line)</a></li>
 <li><a href="#production-order-notes-header">Production Order Notes (Header)</a></li>
 <li><a href="#standalone-notepad-windows-itemcustomersupplier">Standalone Notepad Windows (Item/Customer/Supplier)</a></li>
-<li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a></li>
+<li><a href="#creating-an-item-in-the-item-window">Creating an Item in the Item Window</a><ul>
+<li><a href="#the-locked-units-of-measure-grid-open-limitation">The locked Units of Measure grid (open limitation)</a></li>
+</ul>
+</li>
 <li><a href="#adding-a-document-link-in-the-item-window">Adding a Document Link in the Item Window</a></li>
 <li><a href="#customer-window-adding-a-price-library">Customer Window: Adding a Price Library</a><ul>
 <li><a href="#p21-renumbers-sequence_number-on-save">P21 renumbers sequence_number on save</a></li>
